@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Hata düzeltildi: => yerine from kullanıldı
+import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -328,81 +328,82 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const furnitureComponents = [
     {
       id: 'panels',
-      icon: <Layers size={16} />,
+      icon: <Layers size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'blue',
       description: 'Add Panels - Click faces to add panels',
     },
     {
       id: 'panel-edit',
-      icon: <Edit3 size={16} />,
+      icon: <Edit3 size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'red',
       description: 'Panel Edit - Click panels to edit dimensions',
     },
     {
       id: 'shelves',
-      icon: <Shelf size={16} />,
+      icon: <Shelf size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'green',
       description: 'Add Shelves - Add horizontal shelves',
     },
     {
       id: 'backs',
-      icon: <Package size={16} />,
+      icon: <Package size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'purple',
       description: 'Add Backs - Add back panels',
     },
     {
       id: 'doors',
-      icon: <DoorOpen size={16} />,
+      icon: <DoorOpen size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'orange',
       description: 'Add Doors - Add cabinet doors',
     },
     {
       id: 'edgeband',
-      icon: <RectangleHorizontal size={16} />,
+      icon: <RectangleHorizontal size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'amber',
       description: 'Add Edgeband - Add edge banding',
     },
     {
       id: 'drawer',
-      icon: <Minus size={16} />,
+      icon: <Minus size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'indigo',
       description: 'Add Drawer - Add drawers',
     },
     {
       id: 'hinge',
-      icon: <Zap size={16} />,
+      icon: <Zap size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'cyan',
       description: 'Add Hinge - Add hinges',
     },
     {
       id: 'divider',
-      icon: <Grid3X3 size={16} />,
+      icon: <Grid3X3 size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'pink',
       description: 'Add Divider - Add dividers',
     },
     {
       id: 'notch',
-      icon: <Scissors size={16} />,
+      icon: <Scissors size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'teal',
       description: 'Add Notch - Add notches',
     },
     {
       id: 'accessories',
-      icon: <Settings size={16} />,
+      icon: <Settings size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'slate',
       description: 'Add Accessories - Add hardware & accessories',
     },
     {
       id: 'local-params',
-      icon: <Sliders size={16} />,
+      icon: <Sliders size={12} />, // İkon boyutu 12 olarak ayarlandı
       color: 'emerald',
       description: 'Local Parameters - Edit local parameters',
     },
   ];
 
   const getIconButtonColorClasses = (color: string, isActive: boolean) => {
+    // w-10 h-10 sınıfları kaldırıldı, boyut p-1.5 ile belirlenecek
     const baseClasses =
-      'w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-105 active:scale-95';
+      'p-1.5 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-105 active:scale-95';
 
     if (isActive) {
       switch (color) {
@@ -434,34 +435,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           return `${baseClasses} bg-gray-600/90 text-white shadow-lg shadow-gray-500/25`;
       }
     } else {
-      switch (color) {
-        case 'blue':
-          return `${baseClasses} bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30`;
-        case 'red':
-          return `${baseClasses} bg-red-600/20 text-red-300 hover:bg-red-600/40 border border-red-500/30`;
-        case 'green':
-          return `${baseClasses} bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30`;
-        case 'purple':
-          return `${baseClasses} bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 border border-purple-500/30`;
-        case 'orange':
-          return `${baseClasses} bg-orange-600/20 text-orange-300 hover:bg-orange-600/40 border border-orange-500/30`;
-        case 'amber':
-          return `${baseClasses} bg-amber-600/20 text-amber-300 hover:bg-amber-600/40 border border-amber-500/30`;
-        case 'indigo':
-          return `${baseClasses} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/40 border border-indigo-500/30`;
-        case 'cyan':
-          return `${baseClasses} bg-cyan-600/20 text-cyan-300 hover:bg-cyan-600/40 border border-cyan-500/30`;
-        case 'pink':
-          return `${baseClasses} bg-pink-600/20 text-pink-300 hover:bg-pink-600/40 border border-pink-500/30`;
-        case 'teal':
-          return `${baseClasses} bg-teal-600/20 text-teal-300 hover:bg-teal-600/40 border border-teal-500/30`;
-        case 'slate':
-          return `${baseClasses} bg-slate-600/20 text-slate-300 hover:bg-slate-600/40 border border-slate-500/30`;
-        case 'emerald':
-          return `${baseClasses} bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 border border-emerald-500/30`;
-        default:
-          return `${baseClasses} bg-gray-600/20 text-gray-300 hover:bg-gray-600/40 border border-gray-500/30`;
-      }
+      // Pasif durum için genel gri renk teması
+      return `${baseClasses} bg-gray-800/50 text-gray-300 hover:bg-gray-600/50 border border-gray-500/30`;
     }
   };
 
@@ -557,8 +532,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         </div>
 
         {/* Content - Split into left (buttons) and right (dimensions/other) */}
-        <div className="flex-1 flex flex-row overflow-hidden"> {/* Changed to flex-row */}
-
+        <div className="flex-1 flex flex-row overflow-hidden">
           {/* New Component Menu Bar (Left Side) */}
           <div className="flex flex-col w-14 bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
