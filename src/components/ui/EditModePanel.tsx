@@ -1,0 +1,669 @@
+import React, { useState, useEffect } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Box,
+  Cylinder,
+  Check,
+  X,
+  Save,
+  Layers,
+  Shell as Shelf,
+  DoorOpen,
+  Package,
+  Settings,
+  Scissors,
+  RectangleHorizontal,
+  Minus,
+  Grid3X3,
+  Zap,
+  Hash,
+  Sliders,
+  Edit3,
+} from 'lucide-react';
+import { useAppStore, MeasurementUnit } from '../../store/appStore';
+import { Shape } from '../../types/shapes';
+
+interface EditModePanelProps {
+  editedShape: Shape;
+  onExit: () => void;
+  // Panel manager state
+  isAddPanelMode: boolean;
+  setIsAddPanelMode: (mode: boolean) => void;
+  selectedFaces: number[];
+  setSelectedFaces: (faces: number[] | ((prev: number[]) => number[])) => void;
+  hoveredFace: number | null;
+  hoveredEdge: number | null;
+  showEdges: boolean;
+  setShowEdges: (show: boolean) => void;
+  showFaces: boolean;
+  setShowFaces: (show: boolean) => void;
+  // 🔴 NEW: Panel Edit Mode
+  isPanelEditMode: boolean;
+  setIsPanelEditMode: (mode: boolean) => void;
+}
+
+const EditModePanel: React.FC<EditModePanelProps> = ({
+  editedShape,
+  onExit,
+  isAddPanelMode,
+  setIsAddPanelMode,
+  selectedFaces,
+  setSelectedFaces,
+  hoveredFace,
+  hoveredEdge,
+  showEdges,
+  setShowEdges,
+  showFaces,
+  setShowFaces,
+  // 🔴 NEW: Panel Edit Mode props
+  isPanelEditMode,
+  setIsPanelEditMode,
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [dimensionValues, setDimensionValues] = useState<{
+    [key: string]: string;
+  }>({});
+  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)'); // Default height
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [activeComponent, setActiveComponent] = useState<string | null>(null);
+
+  const {
+    measurementUnit,
+    convertToDisplayUnit,
+    convertToBaseUnit,
+    updateShape,
+  } = useAppStore();
+
+  // Calculate panel height dynamically - responsive to terminal and status bar
+  useEffect(() => {
+    const calculatePanelHeight = () => {
+      const topOffset = 88; // 3 katmanlı toolbar yüksekliği
+
+      // Terminal ve status bar yüksekliklerini hesapla
+      const terminalElement =
+        document.querySelector('[class*="terminal"]') ||
+        document.querySelector('[class*="Terminal"]') ||
+        document.querySelector('.fixed.bottom-0');
+      const statusBarElement =
+        document.querySelector('[class*="status"]') ||
+        document.querySelector('[class*="StatusBar"]') ||
+        document.querySelector('.flex.items-center.justify-between.h-5');
+
+      let bottomOffset = 0;
+
+      if (terminalElement) {
+        const terminalRect = terminalElement.getBoundingClientRect();
+        const terminalHeight = terminalRect.height;
+        bottomOffset += terminalHeight;
+        console.log('Terminal height detected:', terminalHeight);
+      }
+
+      if (statusBarElement) {
+        const statusRect = statusBarElement.getBoundingClientRect();
+        const statusHeight = statusRect.height;
+        bottomOffset += statusHeight;
+        console.log('Status bar height detected:', statusHeight);
+      }
+
+      // Eğer hiçbiri bulunamazsa varsayılan değer kullan
+      if (bottomOffset === 0) {
+        bottomOffset = 20; // Varsayılan status bar yüksekliği
+      }
+
+      const availableHeight = window.innerHeight - topOffset - bottomOffset;
+      const newHeight = `${Math.max(availableHeight, 200)}px`; // Minimum 200px
+
+      setPanelHeight(newHeight);
+
+      console.log('Panel height calculated:', {
+        windowHeight: window.innerHeight,
+        topOffset,
+        bottomOffset,
+        availableHeight,
+        newHeight,
+      });
+    };
+
+    // İlk hesaplama
+    calculatePanelHeight();
+
+    // Debounced hesaplama fonksiyonu
+    let timeoutId: NodeJS.Timeout;
+    const debouncedCalculate = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(calculatePanelHeight, 50);
+    };
+
+    // Window resize event listener
+    window.addEventListener('resize', debouncedCalculate);
+
+    // MutationObserver ile DOM değişikliklerini izle (terminal genişletme/küçültme için)
+    const observer = new MutationObserver(debouncedCalculate);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+
+    // Interval ile periyodik kontrol (terminal animasyonları için)
+    const intervalId = setInterval(calculatePanelHeight, 1000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+      observer.disconnect();
+      window.removeEventListener('resize', debouncedCalculate);
+    };
+  }, []);
+
+  // Initialize dimension values
+  useEffect(() => {
+    const initialValues: { [key: string]: string } = {};
+    if (editedShape.parameters.width)
+      initialValues.width = convertToDisplayUnit(
+        editedShape.parameters.width
+      ).toFixed(1);
+    if (editedShape.parameters.height)
+      initialValues.height = convertToDisplayUnit(
+        editedShape.parameters.height
+      ).toFixed(1);
+    if (editedShape.parameters.depth)
+      initialValues.depth = convertToDisplayUnit(
+        editedShape.parameters.depth
+      ).toFixed(1);
+    if (editedShape.parameters.radius)
+      initialValues.radius = convertToDisplayUnit(
+        editedShape.parameters.radius
+      ).toFixed(1);
+    setDimensionValues(initialValues);
+    setHasUnsavedChanges(false);
+  }, [editedShape, convertToDisplayUnit]);
+
+  const handleDimensionChange = (dimensionType: string, value: string) => {
+    setDimensionValues((prev) => ({
+      ...prev,
+      [dimensionType]: value,
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDimensionSubmit = async (dimensionType: string) => {
+    const value = parseFloat(dimensionValues[dimensionType]);
+    if (isNaN(value) || value <= 0) {
+      console.log('Invalid dimension value');
+      return;
+    }
+
+    const valueInMm = convertToBaseUnit(value);
+    const newParameters = { ...editedShape.parameters };
+    newParameters[dimensionType] = valueInMm;
+
+    let newGeometry;
+    if (editedShape.type === 'box') {
+      const THREE = await import('three');
+      newGeometry = new THREE.BoxGeometry(
+        newParameters.width || 500,
+        newParameters.height || 500,
+        newParameters.depth || 500
+      );
+    } else if (editedShape.type === 'cylinder') {
+      const THREE = await import('three');
+      newGeometry = new THREE.CylinderGeometry(
+        newParameters.radius || 250,
+        newParameters.radius || 250,
+        newParameters.height || 500,
+        32
+      );
+    } else {
+      console.log('Dimension editing not supported for this shape type');
+      return;
+    }
+
+    updateShape(editedShape.id, {
+      parameters: newParameters,
+      geometry: newGeometry,
+    });
+
+    setHasUnsavedChanges(false);
+    console.log(
+      `Updated ${dimensionType} to ${value} ${measurementUnit} (${valueInMm}mm)`
+    );
+  };
+
+  const handleSaveAll = async () => {
+    // Apply all pending changes
+    for (const [dimensionType, value] of Object.entries(dimensionValues)) {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue) && numValue > 0) {
+        await handleDimensionSubmit(dimensionType);
+      }
+    }
+    setHasUnsavedChanges(false);
+    console.log('All changes saved');
+  };
+
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      const confirmClose = window.confirm(
+        'You have unsaved changes. Are you sure you want to exit edit mode?'
+      );
+      if (!confirmClose) return;
+    }
+    setActiveComponent(null);
+    setIsAddPanelMode(false);
+    setIsPanelEditMode(false); // 🔴 NEW: Reset panel edit mode
+    onExit();
+  };
+
+  const handleComponentClick = (componentType: string) => {
+    // Toggle component mode
+    if (activeComponent === componentType) {
+      setActiveComponent(null);
+      setIsAddPanelMode(false);
+      setIsPanelEditMode(false); // 🔴 NEW: Reset panel edit mode
+      console.log(`${componentType} mode deactivated`);
+    } else {
+      setActiveComponent(componentType);
+
+      // Special handling for different component types
+      if (componentType === 'panels') {
+        setIsAddPanelMode(true);
+        setIsPanelEditMode(false);
+        console.log('Panel mode activated - Click on faces to add panels');
+      } else if (componentType === 'panel-edit') {
+        // 🔴 NEW: Panel Edit Mode
+        setIsAddPanelMode(false);
+        setIsPanelEditMode(true);
+        console.log('Panel Edit mode activated - Click on panels to edit them');
+      } else {
+        setIsAddPanelMode(false);
+        setIsPanelEditMode(false);
+        console.log(`${componentType} mode activated`);
+      }
+    }
+  };
+
+  const getShapeIcon = () => {
+    switch (editedShape.type) {
+      case 'box':
+        return <Box size={14} className="text-blue-400" />;
+      case 'cylinder':
+        return <Cylinder size={14} className="text-teal-400" />;
+      default:
+        return <Box size={14} className="text-orange-400" />;
+    }
+  };
+
+  const renderDimensionField = (label: string, dimensionType: string) => {
+    const value =
+      dimensionValues[dimensionType] ||
+      convertToDisplayUnit(editedShape.parameters[dimensionType] || 0).toFixed(
+        1
+      );
+
+    return (
+      <div className="flex items-center gap-1.5 h-5">
+        <span className="text-gray-300 text-xs font-medium w-10 flex-shrink-0">
+          {label}:
+        </span>
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => handleDimensionChange(dimensionType, e.target.value)}
+          className="flex-1 bg-gray-700/50 text-white text-xs px-1.5 py-0.5 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50 min-w-0"
+          step="0.1"
+          min="0.1"
+        />
+        <span className="text-gray-400 text-xs w-6 flex-shrink-0 text-center">
+          {measurementUnit}
+        </span>
+        <button
+          onClick={() => handleDimensionSubmit(dimensionType)}
+          className="p-0.5 bg-blue-600/90 hover:bg-blue-500 text-white rounded transition-colors flex-shrink-0"
+          title="Apply"
+        >
+          <Check size={10} />
+        </button>
+      </div>
+    );
+  };
+
+  // 🎯 ICON-ONLY furniture component buttons configuration
+  const furnitureComponents = [
+    {
+      id: 'panels',
+      icon: <Layers size={16} />,
+      color: 'blue',
+      description: 'Add Panels - Click faces to add panels',
+    },
+    {
+      id: 'panel-edit',
+      icon: <Edit3 size={16} />,
+      color: 'red',
+      description: 'Panel Edit - Click panels to edit dimensions',
+    },
+    {
+      id: 'shelves',
+      icon: <Shelf size={16} />,
+      color: 'green',
+      description: 'Add Shelves - Add horizontal shelves',
+    },
+    {
+      id: 'backs',
+      icon: <Package size={16} />,
+      color: 'purple',
+      description: 'Add Backs - Add back panels',
+    },
+    {
+      id: 'doors',
+      icon: <DoorOpen size={16} />,
+      color: 'orange',
+      description: 'Add Doors - Add cabinet doors',
+    },
+    {
+      id: 'edgeband',
+      icon: <RectangleHorizontal size={16} />,
+      color: 'amber',
+      description: 'Add Edgeband - Add edge banding',
+    },
+    {
+      id: 'drawer',
+      icon: <Minus size={16} />,
+      color: 'indigo',
+      description: 'Add Drawer - Add drawers',
+    },
+    {
+      id: 'hinge',
+      icon: <Zap size={16} />,
+      color: 'cyan',
+      description: 'Add Hinge - Add hinges',
+    },
+    {
+      id: 'divider',
+      icon: <Grid3X3 size={16} />,
+      color: 'pink',
+      description: 'Add Divider - Add dividers',
+    },
+    {
+      id: 'notch',
+      icon: <Scissors size={16} />,
+      color: 'teal',
+      description: 'Add Notch - Add notches',
+    },
+    {
+      id: 'accessories',
+      icon: <Settings size={16} />,
+      color: 'slate',
+      description: 'Add Accessories - Add hardware & accessories',
+    },
+    {
+      id: 'local-params',
+      icon: <Sliders size={16} />,
+      color: 'emerald',
+      description: 'Local Parameters - Edit local parameters',
+    },
+  ];
+
+  const getIconButtonColorClasses = (color: string, isActive: boolean) => {
+    const baseClasses =
+      'w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-105 active:scale-95';
+
+    if (isActive) {
+      switch (color) {
+        case 'blue':
+          return `${baseClasses} bg-blue-600/90 text-white shadow-lg shadow-blue-500/25`;
+        case 'red':
+          return `${baseClasses} bg-red-600/90 text-white shadow-lg shadow-red-500/25`;
+        case 'green':
+          return `${baseClasses} bg-green-600/90 text-white shadow-lg shadow-green-500/25`;
+        case 'purple':
+          return `${baseClasses} bg-purple-600/90 text-white shadow-lg shadow-purple-500/25`;
+        case 'orange':
+          return `${baseClasses} bg-orange-600/90 text-white shadow-lg shadow-orange-500/25`;
+        case 'amber':
+          return `${baseClasses} bg-amber-600/90 text-white shadow-lg shadow-amber-500/25`;
+        case 'indigo':
+          return `${baseClasses} bg-indigo-600/90 text-white shadow-lg shadow-indigo-500/25`;
+        case 'cyan':
+          return `${baseClasses} bg-cyan-600/90 text-white shadow-lg shadow-cyan-500/25`;
+        case 'pink':
+          return `${baseClasses} bg-pink-600/90 text-white shadow-lg shadow-pink-500/25`;
+        case 'teal':
+          return `${baseClasses} bg-teal-600/90 text-white shadow-lg shadow-teal-500/25`;
+        case 'slate':
+          return `${baseClasses} bg-slate-600/90 text-white shadow-lg shadow-slate-500/25`;
+        case 'emerald':
+          return `${baseClasses} bg-emerald-600/90 text-white shadow-lg shadow-emerald-500/25`;
+        default:
+          return `${baseClasses} bg-gray-600/90 text-white shadow-lg shadow-gray-500/25`;
+      }
+    } else {
+      switch (color) {
+        case 'blue':
+          return `${baseClasses} bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 border border-blue-500/30`;
+        case 'red':
+          return `${baseClasses} bg-red-600/20 text-red-300 hover:bg-red-600/40 border border-red-500/30`;
+        case 'green':
+          return `${baseClasses} bg-green-600/20 text-green-300 hover:bg-green-600/40 border border-green-500/30`;
+        case 'purple':
+          return `${baseClasses} bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 border border-purple-500/30`;
+        case 'orange':
+          return `${baseClasses} bg-orange-600/20 text-orange-300 hover:bg-orange-600/40 border border-orange-500/30`;
+        case 'amber':
+          return `${baseClasses} bg-amber-600/20 text-amber-300 hover:bg-amber-600/40 border border-amber-500/30`;
+        case 'indigo':
+          return `${baseClasses} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/40 border border-indigo-500/30`;
+        case 'cyan':
+          return `${baseClasses} bg-cyan-600/20 text-cyan-300 hover:bg-cyan-600/40 border border-cyan-500/30`;
+        case 'pink':
+          return `${baseClasses} bg-pink-600/20 text-pink-300 hover:bg-pink-600/40 border border-pink-500/30`;
+        case 'teal':
+          return `${baseClasses} bg-teal-600/20 text-teal-300 hover:bg-teal-600/40 border border-teal-500/30`;
+        case 'slate':
+          return `${baseClasses} bg-slate-600/20 text-slate-300 hover:bg-slate-600/40 border border-slate-500/30`;
+        case 'emerald':
+          return `${baseClasses} bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 border border-emerald-500/30`;
+        default:
+          return `${baseClasses} bg-gray-600/20 text-gray-300 hover:bg-gray-600/40 border border-gray-500/30`;
+      }
+    }
+  };
+
+  // Collapsed state - thin strip on the left
+  if (isCollapsed) {
+    return (
+      <div
+        className="fixed left-0 z-50 w-6 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
+        style={{
+          top: '88px',
+          height: panelHeight,
+        }}
+      >
+        {/* Expand button */}
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="flex-1 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
+          title="Expand Edit Panel"
+        >
+          <ChevronRight size={14} />
+        </button>
+
+        {/* Vertical text indicator */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="transform -rotate-90 text-xs text-gray-500 font-medium whitespace-nowrap">
+            EDIT
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Main Edit Panel - Made narrower */}
+      <div
+        className="fixed left-0 z-50 w-60 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
+        style={{
+          top: '88px',
+          height: panelHeight,
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2 bg-gray-700/50 border-b border-gray-600/50 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            {getShapeIcon()}
+            <span className="text-white text-sm font-medium">
+              {editedShape.type.charAt(0).toUpperCase() +
+                editedShape.type.slice(1)}
+            </span>
+            {hasUnsavedChanges && (
+              <div
+                className="w-2 h-2 bg-orange-500 rounded-full"
+                title="Unsaved changes"
+              />
+            )}
+          </div>
+
+          {/* Header buttons */}
+          <div className="flex items-center gap-1">
+            {/* Save button */}
+            <button
+              onClick={handleSaveAll}
+              disabled={!hasUnsavedChanges}
+              className={`p-1 rounded transition-colors ${
+                hasUnsavedChanges
+                  ? 'text-green-400 hover:text-green-300 hover:bg-gray-600/50'
+                  : 'text-gray-600 cursor-not-allowed'
+              }`}
+              title="Save All Changes"
+            >
+              <Save size={14} />
+            </button>
+
+            {/* Collapse button */}
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+              title="Collapse Panel"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+              title="Exit Edit Mode"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content - No padding, fills entire space */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* 🎯 COMPACT Dimensions Section */}
+          <div className="p-2 flex-shrink-0">
+            <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
+              Dimensions
+            </h3>
+            <div className="space-y-2">
+              {editedShape.type === 'box' && (
+                <>
+                  {renderDimensionField('W', 'width')}
+                  {renderDimensionField('H', 'height')}
+                  {renderDimensionField('D', 'depth')}
+                </>
+              )}
+
+              {editedShape.type === 'cylinder' && (
+                <>
+                  {renderDimensionField('R', 'radius')}
+                  {renderDimensionField('H', 'height')}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 🎯 ICON-ONLY Furniture Components Section */}
+          <div className="flex-1 border-t border-gray-600/30 flex flex-col overflow-hidden">
+            <div className="p-2 flex-shrink-0">
+              <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
+                Components
+              </h3>
+            </div>
+
+            {/* 🎯 ICON-ONLY Furniture Component Buttons - Only for box shapes */}
+            {editedShape.type === 'box' && (
+              <div className="flex-1 px-2 pb-2 overflow-hidden">
+                {/* 🎯 SCROLLABLE ICON GRID */}
+                <div
+                  className="h-full overflow-y-auto pr-1"
+                  style={{ scrollbarWidth: 'thin' }}
+                >
+                  <div className="grid grid-cols-4 gap-2">
+                    {furnitureComponents.map((component) => {
+                      const isActive = activeComponent === component.id;
+
+                      return (
+                        <button
+                          key={component.id}
+                          onClick={() => handleComponentClick(component.id)}
+                          className={getIconButtonColorClasses(
+                            component.color,
+                            isActive
+                          )}
+                          title={component.description}
+                        >
+                          {component.icon}
+                          {isActive && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer - Always at bottom */}
+          <div className="flex-shrink-0 p-2 border-t border-gray-600/30 bg-gray-700/30">
+            <div className="text-xs text-gray-400 text-center">
+              Edit mode - Other objects are hidden
+            </div>
+            {hasUnsavedChanges && (
+              <div className="text-xs text-orange-400 text-center mt-1">
+                You have unsaved changes
+              </div>
+            )}
+            {activeComponent === 'panels' && (
+              <div className="text-xs text-green-400 text-center mt-1">
+                Click on faces to add panels
+              </div>
+            )}
+            {activeComponent === 'panel-edit' && (
+              <div className="text-xs text-red-400 text-center mt-1">
+                🔴 Click on panels to edit them
+              </div>
+            )}
+            {activeComponent &&
+              !['panels', 'panel-edit'].includes(activeComponent) && (
+                <div className="text-xs text-blue-400 text-center mt-1">
+                  {activeComponent.charAt(0).toUpperCase()}
+                  {activeComponent.slice(1)} mode active
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default EditModePanel;
