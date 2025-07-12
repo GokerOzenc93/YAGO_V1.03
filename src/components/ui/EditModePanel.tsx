@@ -21,7 +21,7 @@ import {
   Sliders,
   Edit3,
 } from 'lucide-react';
-import { useAppStore, MeasurementUnit } from '../../store/appStore';
+import { useAppStore, MeasurementUnit } from '../../store/appStore.ts'; // .ts uzantısı eklendi
 import { Shape } from '../../types/shapes';
 
 interface EditModePanelProps {
@@ -64,7 +64,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [dimensionValues, setDimensionValues] = useState<{
     [key: string]: string;
   }>({});
-  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)'); // Default height
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
@@ -74,89 +73,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     convertToBaseUnit,
     updateShape,
   } = useAppStore();
-
-  // Calculate panel height dynamically - responsive to terminal and status bar
-  useEffect(() => {
-    const calculatePanelHeight = () => {
-      const topOffset = 88; // 3 katmanlı toolbar yüksekliği
-
-      // Terminal ve status bar yüksekliklerini hesapla
-      const terminalElement =
-        document.querySelector('[class*="terminal"]') ||
-        document.querySelector('[class*="Terminal"]') ||
-        document.querySelector('.fixed.bottom-0');
-      const statusBarElement =
-        document.querySelector('[class*="status"]') ||
-        document.querySelector('[class*="StatusBar"]') ||
-        document.querySelector('.flex.items-center.justify-between.h-5');
-
-      let bottomOffset = 0;
-
-      if (terminalElement) {
-        const terminalRect = terminalElement.getBoundingClientRect();
-        const terminalHeight = terminalRect.height;
-        bottomOffset += terminalHeight;
-        console.log('Terminal height detected:', terminalHeight);
-      }
-
-      if (statusBarElement) {
-        const statusRect = statusBarElement.getBoundingClientRect();
-        const statusHeight = statusRect.height;
-        bottomOffset += statusHeight;
-        console.log('Status bar height detected:', statusHeight);
-      }
-
-      // Eğer hiçbiri bulunamazsa varsayılan değer kullan
-      if (bottomOffset === 0) {
-        bottomOffset = 20; // Varsayılan status bar yüksekliği
-      }
-
-      const availableHeight = window.innerHeight - topOffset - bottomOffset;
-      const newHeight = `${Math.max(availableHeight, 200)}px`; // Minimum 200px
-
-      setPanelHeight(newHeight);
-
-      console.log('Panel height calculated:', {
-        windowHeight: window.innerHeight,
-        topOffset,
-        bottomOffset,
-        availableHeight,
-        newHeight,
-      });
-    };
-
-    // İlk hesaplama
-    calculatePanelHeight();
-
-    // Debounced hesaplama fonksiyonu
-    let timeoutId: NodeJS.Timeout;
-    const debouncedCalculate = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(calculatePanelHeight, 50);
-    };
-
-    // Window resize event listener
-    window.addEventListener('resize', debouncedCalculate);
-
-    // MutationObserver ile DOM değişikliklerini izle (terminal genişletme/küçültme için)
-    const observer = new MutationObserver(debouncedCalculate);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style'],
-    });
-
-    // Interval ile periyodik kontrol (terminal animasyonları için)
-    const intervalId = setInterval(calculatePanelHeight, 1000);
-
-    return () => {
-      clearTimeout(timeoutId);
-      clearInterval(intervalId);
-      observer.disconnect();
-      window.removeEventListener('resize', debouncedCalculate);
-    };
-  }, []);
 
   // Initialize dimension values
   useEffect(() => {
@@ -246,6 +162,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
+      // NOTE: Using a custom modal or confirmation UI is recommended instead of window.confirm in production.
       const confirmClose = window.confirm(
         'You have unsaved changes. Are you sure you want to exit edit mode?'
       );
@@ -475,11 +392,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   if (isCollapsed) {
     return (
       <div
-        className="fixed left-0 z-50 w-6 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
-        style={{
-          top: '88px',
-          height: panelHeight,
-        }}
+        className="fixed left-0 top-0 bottom-0 z-50 w-6 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col h-full"
       >
         {/* Expand button */}
         <button
@@ -504,11 +417,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     <>
       {/* Main Edit Panel - Made narrower */}
       <div
-        className="fixed left-0 z-50 w-60 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
-        style={{
-          top: '88px',
-          height: panelHeight,
-        }}
+        className="fixed left-0 top-0 bottom-0 z-50 w-60 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col h-full"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 bg-gray-700/50 border-b border-gray-600/50 flex-shrink-0">
