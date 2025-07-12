@@ -1,4 +1,4 @@
-import React, { useState, useEffect } => 'react';
+import React, { useState, useEffect } from 'react'; // Hata düzeltildi: => yerine from kullanıldı
 import {
   ChevronLeft,
   ChevronRight,
