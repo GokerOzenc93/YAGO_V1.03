@@ -20,9 +20,11 @@ import {
   Hash,
   Sliders,
   Edit3,
+  Puzzle,
 } from 'lucide-react';
 import { useAppStore, MeasurementUnit } from '../../store/appStore.ts';
 import { Shape } from '../../types/shapes';
+import DraggableWindow from './DraggableWindow';
 
 interface EditModePanelProps {
   editedShape: Shape;
@@ -41,6 +43,14 @@ interface EditModePanelProps {
   // 🔴 NEW: Panel Edit Mode
   isPanelEditMode: boolean;
   setIsPanelEditMode: (mode: boolean) => void;
+}
+
+interface OpenWindow {
+  id: string;
+  title: string;
+  component: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
 }
 
 const EditModePanel: React.FC<EditModePanelProps> = ({
@@ -68,6 +78,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [panelTop, setPanelTop] = useState('88px'); // Default top position
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
+  const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
 
   const {
     measurementUnit,
