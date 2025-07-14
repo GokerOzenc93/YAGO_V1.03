@@ -401,42 +401,42 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   ];
 
   const getIconButtonColorClasses = (color: string, isActive: boolean) => {
-    // w-10 h-10 sınıfları kaldırıldı, boyut p-1.5 ile belirlenecek
+    // Updated for horizontal layout with text
     const baseClasses =
-      'p-1.5 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-105 active:scale-95';
+      'relative flex items-center rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]';
 
     if (isActive) {
       switch (color) {
         case 'blue':
-          return `${baseClasses} bg-blue-600/90 text-white shadow-lg shadow-blue-500/25`;
+          return `${baseClasses} bg-blue-600/90 text-white shadow-lg shadow-blue-500/25 border border-blue-400/30`;
         case 'red':
-          return `${baseClasses} bg-red-600/90 text-white shadow-lg shadow-red-500/25`;
+          return `${baseClasses} bg-red-600/90 text-white shadow-lg shadow-red-500/25 border border-red-400/30`;
         case 'green':
-          return `${baseClasses} bg-green-600/90 text-white shadow-lg shadow-green-500/25`;
+          return `${baseClasses} bg-green-600/90 text-white shadow-lg shadow-green-500/25 border border-green-400/30`;
         case 'purple':
-          return `${baseClasses} bg-purple-600/90 text-white shadow-lg shadow-purple-500/25`;
+          return `${baseClasses} bg-purple-600/90 text-white shadow-lg shadow-purple-500/25 border border-purple-400/30`;
         case 'orange':
-          return `${baseClasses} bg-orange-600/90 text-white shadow-lg shadow-orange-500/25`;
+          return `${baseClasses} bg-orange-600/90 text-white shadow-lg shadow-orange-500/25 border border-orange-400/30`;
         case 'amber':
-          return `${baseClasses} bg-amber-600/90 text-white shadow-lg shadow-amber-500/25`;
+          return `${baseClasses} bg-amber-600/90 text-white shadow-lg shadow-amber-500/25 border border-amber-400/30`;
         case 'indigo':
-          return `${baseClasses} bg-indigo-600/90 text-white shadow-lg shadow-indigo-500/25`;
+          return `${baseClasses} bg-indigo-600/90 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30`;
         case 'cyan':
-          return `${baseClasses} bg-cyan-600/90 text-white shadow-lg shadow-cyan-500/25`;
+          return `${baseClasses} bg-cyan-600/90 text-white shadow-lg shadow-cyan-500/25 border border-cyan-400/30`;
         case 'pink':
-          return `${baseClasses} bg-pink-600/90 text-white shadow-lg shadow-pink-500/25`;
+          return `${baseClasses} bg-pink-600/90 text-white shadow-lg shadow-pink-500/25 border border-pink-400/30`;
         case 'teal':
-          return `${baseClasses} bg-teal-600/90 text-white shadow-lg shadow-teal-500/25`;
+          return `${baseClasses} bg-teal-600/90 text-white shadow-lg shadow-teal-500/25 border border-teal-400/30`;
         case 'slate':
-          return `${baseClasses} bg-slate-600/90 text-white shadow-lg shadow-slate-500/25`;
+          return `${baseClasses} bg-slate-600/90 text-white shadow-lg shadow-slate-500/25 border border-slate-400/30`;
         case 'emerald':
-          return `${baseClasses} bg-emerald-600/90 text-white shadow-lg shadow-emerald-500/25`;
+          return `${baseClasses} bg-emerald-600/90 text-white shadow-lg shadow-emerald-500/25 border border-emerald-400/30`;
         default:
-          return `${baseClasses} bg-gray-600/90 text-white shadow-lg shadow-gray-500/25`;
+          return `${baseClasses} bg-gray-600/90 text-white shadow-lg shadow-gray-500/25 border border-gray-400/30`;
       }
     } else {
       // Pasif durum için genel gri renk teması
-      return `${baseClasses} bg-gray-800/50 text-gray-300 hover:bg-gray-600/50 border border-gray-500/30`;
+      return `${baseClasses} bg-gray-800/50 text-gray-300 hover:bg-gray-600/50 border border-gray-500/30 hover:border-gray-400/50`;
     }
   };
 
@@ -473,7 +473,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     <>
       {/* Main Edit Panel - Made narrower */}
       <div
-        className="fixed left-0 z-50 w-60 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
+        className="fixed left-0 z-50 w-72 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
         style={{
           top: panelTop,
           height: panelHeight,
@@ -533,22 +533,38 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Content - Split into left (buttons) and right (dimensions/other) */}
         <div className="flex-1 flex flex-row overflow-hidden">
-          {/* New Component Menu Bar (Left Side) */}
-          <div className="flex flex-col w-14 bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          {/* New Component Menu Bar (Left Side) - Expanded with descriptions */}
+          <div className="flex flex-col w-40 bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
-              <div className="flex flex-col gap-2 px-2">
+              <div className="flex flex-col gap-1 px-2">
                 {furnitureComponents.map((component) => {
                   const isActive = activeComponent === component.id;
                   return (
                     <button
                       key={component.id}
                       onClick={() => handleComponentClick(component.id)}
-                      className={getIconButtonColorClasses(component.color, isActive)}
+                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
                       title={component.description}
                     >
-                      {component.icon}
+                      <div className="flex-shrink-0">
+                        {component.icon}
+                      </div>
+                      <span className="text-xs font-medium truncate">
+                        {component.id === 'panels' && 'Panels'}
+                        {component.id === 'panel-edit' && 'Edit Panel'}
+                        {component.id === 'shelves' && 'Shelves'}
+                        {component.id === 'backs' && 'Backs'}
+                        {component.id === 'doors' && 'Doors'}
+                        {component.id === 'edgeband' && 'Edgeband'}
+                        {component.id === 'drawer' && 'Drawer'}
+                        {component.id === 'hinge' && 'Hinge'}
+                        {component.id === 'divider' && 'Divider'}
+                        {component.id === 'notch' && 'Notch'}
+                        {component.id === 'accessories' && 'Accessories'}
+                        {component.id === 'local-params' && 'Parameters'}
+                      </span>
                       {isActive && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                         </div>
                       )}
@@ -560,7 +576,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Right Content Area (Dimensions and other sections) */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             {/* 🎯 COMPACT Dimensions Section */}
             <div className="p-2 flex-shrink-0">
               <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
