@@ -534,7 +534,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         {/* Content - Split into left (buttons) and right (dimensions/other) */}
         <div className="flex-1 flex flex-row overflow-hidden">
           {/* New Component Menu Bar (Left Side) - Expanded with descriptions */}
-          <div className="flex flex-col w-40 bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex flex-col w-70 bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
               <div className="flex flex-col gap-1 px-2">
                 {furnitureComponents.map((component) => {
