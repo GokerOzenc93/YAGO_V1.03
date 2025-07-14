@@ -473,7 +473,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     <>
       {/* Main Edit Panel - Made narrower */}
       <div
-        className="fixed left-0 z-50 w-72 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
+        className="fixed left-0 z-50 w-92 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
         style={{
           top: panelTop,
           height: panelHeight,
