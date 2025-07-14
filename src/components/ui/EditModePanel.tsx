@@ -636,8 +636,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               🔴 Click on panels to edit them
             </div>
           )}
+          {activeComponent === 'module' && (
+            <div className="text-xs text-violet-400 text-center mt-1">
+              Module information window opened
+            </div>
+          )}
           {activeComponent &&
-            !['panels', 'panel-edit'].includes(activeComponent) && (
+            !['panels', 'panel-edit', 'module'].includes(activeComponent) && (
               <div className="text-xs text-blue-400 text-center mt-1">
                 {activeComponent.charAt(0).toUpperCase()}
                 {activeComponent.slice(1)} mode active
@@ -645,6 +650,21 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             )}
         </div>
       </div>
+
+      {/* Draggable Windows */}
+      {openWindows.map((window) => (
+        <DraggableWindow
+          key={window.id}
+          id={window.id}
+          title={window.title}
+          position={window.position}
+          size={window.size}
+          onClose={() => closeWindow(window.id)}
+          onPositionChange={(position) => updateWindowPosition(window.id, position)}
+        >
+          {renderWindowContent(window.component)}
+        </DraggableWindow>
+      ))}
     </>
   );
 };
