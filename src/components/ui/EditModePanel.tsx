@@ -588,7 +588,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Right Content Area (Dimensions and other sections) */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 transition-all duration-300`}>
             {/* 🎯 COMPACT Dimensions Section */}
             <div className="p-2 flex-shrink-0">
               <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
