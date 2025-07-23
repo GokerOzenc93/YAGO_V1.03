@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronUp, // Boyut panelini daraltmak için
+  ChevronDown, // Boyut panelini genişletmek için
   Box,
   Cylinder,
   Check,
@@ -20,7 +22,6 @@ import {
   Hash,
   Sliders,
   Edit3,
-  Minimize2,
   Puzzle,
 } from 'lucide-react';
 import { useAppStore, MeasurementUnit } from '../../store/appStore.ts';
@@ -72,7 +73,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   setIsPanelEditMode,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false); // Sola kaydırarak gizlemeyi kontrol eder
-  const [isCompactMode, setIsCompactMode] = useState(false); // Kompakt mod için state (boyutları gizler)
+  const [isDimensionsCollapsed, setIsDimensionsCollapsed] = useState(false); // Yeni: Boyutlar panelinin daraltılmasını kontrol eder
   const [dimensionValues, setDimensionValues] = useState<{
     [key: string]: string;
   }>({});
@@ -475,7 +476,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   // Panel genişliğini duruma göre belirler
   const getPanelWidthClass = () => {
-    if (isCompactMode) {
+    if (isDimensionsCollapsed) {
       // Boyutlar bölümü gizli ise
       if (buttonDisplayMode === 'icon') {
         return 'w-20'; // Çok dar, sadece ikonlar için
@@ -541,14 +542,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               {buttonDisplayMode === 'text' ? <Hash size={14} /> : <Sliders size={14} />}
             </button>
 
-            {/* Kompakt Mod Değiştirme */}
-            <button
+            {/* Kompakt Mod Değiştirme kaldırıldı */}
+            {/* <button
               onClick={() => setIsCompactMode(prev => !prev)}
               className="text-gray-400 hover:text-white p-1 rounded transition-colors"
               title={isCompactMode ? 'Kompakt Moddan Çık' : 'Kompakt Moda Gir (Boyutları Gizle)'}
             >
               <Minimize2 size={14} />
-            </button>
+            </button> */}
 
             {/* Daralt butonu - Paneli sola doğru gizler */}
             <button
@@ -623,12 +624,23 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
           {/* Sağ İçerik Alanı (Boyutlar ve diğer bölümler) */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* Kompakt Boyutlar Bölümü - isCompactMode true ise tamamen gizlenir */}
-            {!isCompactMode && (
+            {/* Boyutlar Bölümü Başlığı ve Toggle Butonu */}
+            <div className="p-2 flex-shrink-0 border-b border-gray-600/30 flex items-center justify-between">
+              <h3 className="text-gray-300 text-xs font-medium">
+                Boyutlar
+              </h3>
+              <button
+                onClick={() => setIsDimensionsCollapsed(prev => !prev)}
+                className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
+                title={isDimensionsCollapsed ? 'Boyutları Genişlet' : 'Boyutları Daralt'}
+              >
+                {isDimensionsCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+              </button>
+            </div>
+
+            {/* Boyutlar İçeriği - isDimensionsCollapsed true ise gizlenir */}
+            {!isDimensionsCollapsed && (
               <div className="p-2 flex-shrink-0">
-                <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
-                  Boyutlar
-                </h3>
                 <div className="space-y-2">
                   {editedShape.type === 'box' && (
                     <>
