@@ -538,13 +538,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               <Save size={14} />
             </button>
 
-            {/* Collapse button */}
+            {/* Display Mode Toggle */}
             <button
-              onClick={() => setIsCollapsed(true)}
+              onClick={() => setButtonDisplayMode(prev => prev === 'text' ? 'icon' : 'text')}
               className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title="Collapse Panel"
+              title={buttonDisplayMode === 'text' ? 'Switch to Icon Mode' : 'Switch to Text Mode'}
             >
-              <ChevronLeft size={14} />
+              {buttonDisplayMode === 'text' ? <Hash size={14} /> : <Sliders size={14} />}
             </button>
 
             {/* Close button */}
