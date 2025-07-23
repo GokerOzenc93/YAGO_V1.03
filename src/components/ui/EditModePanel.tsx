@@ -72,17 +72,19 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   isPanelEditMode,
   setIsPanelEditMode,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false); // Controls sliding left/right
   const [dimensionValues, setDimensionValues] = useState<{
     [key: string]: string;
   }>({});
-  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)'); // Default height
-  const [panelTop, setPanelTop] = useState('88px'); // Default top position
+  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)'); // Default height as string
+  const [panelTop, setPanelTop] = useState('88px'); // Default top position as string
+  const [panelTopValue, setPanelTopValue] = useState(88); // Numeric top position for calculations
+  const [panelHeightValue, setPanelHeightValue] = useState(0); // Numeric height for calculations
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
   const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
   const [buttonDisplayMode, setButtonDisplayMode] = useState<'text' | 'icon'>('text');
-  const [isRibbonMode, setIsRibbonMode] = useState(false);
+  const [isRibbonMode, setIsRibbonMode] = useState(false); // Controls ribbon mode (horizontal at top)
 
   const {
     measurementUnit,
@@ -119,11 +121,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       }
 
       const availableHeight = window.innerHeight - topOffset - bottomOffset;
-      const newHeight = `${Math.max(availableHeight, 200)}px`; // Minimum 200px
-      const newTop = `${topOffset}px`;
+      const newHeight = Math.max(availableHeight, 200); // Minimum 200px
+      const newTop = topOffset;
 
-      setPanelHeight(newHeight);
-      setPanelTop(newTop);
+      setPanelHeight(`${newHeight}px`);
+      setPanelTop(`${newTop}px`);
+      setPanelHeightValue(newHeight); // Update numeric value
+      setPanelTopValue(newTop); // Update numeric value
 
       console.log('Panel position and height calculated:', {
         windowHeight: window.innerHeight,
@@ -255,6 +259,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const handleClose = () => {
     if (hasUnsavedChanges) {
       // NOTE: Using a custom modal or confirmation UI is recommended instead of window.confirm in production.
+      // For this example, we'll keep window.confirm as it was.
       const confirmClose = window.confirm(
         'You have unsaved changes. Are you sure you want to exit edit mode?'
       );
@@ -470,35 +475,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     return <div>Content for {componentType}</div>;
   };
 
-  // Collapsed state - thin strip on the left
-  if (isCollapsed) {
-    return (
-      <div
-        className="fixed left-0 z-50 w-6 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
-        style={{
-          top: panelTop,
-          height: panelHeight,
-        }}
-      >
-        {/* Expand button */}
-        <button
-          onClick={() => setIsCollapsed(false)}
-          className="flex-1 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
-          title="Expand Edit Panel"
-        >
-          <ChevronRight size={14} />
-        </button>
-
-        {/* Vertical text indicator */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="transform -rotate-90 text-xs text-gray-500 font-medium whitespace-nowrap">
-            EDIT
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Ribbon mode - ultra-thin horizontal strip at top
   if (isRibbonMode) {
     return (
@@ -579,11 +555,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     );
   }
 
+  // Normal and Collapsed-Left mode (main panel)
   return (
     <>
-      {/* Main Edit Panel - Made narrower */}
+      {/* Main Edit Panel */}
       <div
-        className="fixed left-0 z-50 w-92 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col"
+        className={`fixed left-0 z-50 w-92 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col
+          transition-all duration-300 ease-in-out
+          ${isCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100 pointer-events-auto'}`}
         style={{
           top: panelTop,
           height: panelHeight,
@@ -630,15 +609,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               {buttonDisplayMode === 'text' ? <Hash size={14} /> : <Sliders size={14} />}
             </button>
 
-            {/* Close button */}
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-              title="Exit Edit Mode"
-            >
-              <X size={14} />
-            </button>
-          </div>
             {/* Ribbon Mode Toggle */}
             <button
               onClick={() => setIsRibbonMode(true)}
@@ -647,6 +617,25 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             >
               <ChevronUp size={14} />
             </button>
+
+            {/* Collapse button - This button will now collapse the panel */}
+            <button
+              onClick={() => setIsCollapsed(true)} // Set to true to collapse
+              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+              title="Collapse Panel"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            {/* Close button - Exits edit mode entirely */}
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+              title="Exit Edit Mode"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         {/* Content - Split into left (buttons) and right (dimensions/other) */}
@@ -764,6 +753,18 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             )}
         </div>
       </div>
+
+      {/* New: Toggle button for the collapsed panel - appears only when panel is collapsed */}
+      {isCollapsed && (
+        <button
+          onClick={() => setIsCollapsed(false)} // Set to false to expand
+          className="fixed left-0 z-50 w-6 h-12 flex items-center justify-center bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors rounded-r"
+          title="Expand Edit Panel"
+          style={{ top: `${panelTopValue + panelHeightValue / 2 - 24}px` }} // Center vertically relative to the panel's area
+        >
+          <ChevronRight size={14} />
+        </button>
+      )}
 
       {/* Draggable Windows */}
       {openWindows.map((window) => (
