@@ -79,6 +79,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
   const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
+  const [buttonDisplayMode, setButtonDisplayMode] = useState<'text' | 'icon'>('text');
 
   const {
     measurementUnit,
