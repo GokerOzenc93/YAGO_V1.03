@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ChevronLeft,
-  ChevronRight,
+  // ChevronLeft, // Kaldırıldı
+  // ChevronRight, // Kaldırıldı
+  ChevronUp, // Boyut panelini daraltmak için
+  ChevronDown, // Boyut panelini genişletmek için
   Box,
   Cylinder,
   Check,
@@ -20,12 +22,24 @@ import {
   Hash,
   Sliders,
   Edit3,
-  Minimize2, // Yeni ikon
   Puzzle,
 } from 'lucide-react';
 import { useAppStore, MeasurementUnit } from '../../store/appStore.ts';
 import { Shape } from '../../types/shapes';
 import DraggableWindow from './DraggableWindow';
+import PanelEditor from './PanelEditor'; // Yeni PanelEditor'ı içe aktardık
+import * as THREE from 'three'; // THREE'yi içe aktardık
+
+// PanelData arayüzünü PanelEditor.tsx'ten kopyalıyoruz,
+// çünkü bu bileşen de bu tip tanımına ihtiyaç duyabilir.
+// Daha iyi bir yapı için bu tipin ortak bir yerde tanımlanması önerilir.
+interface PanelData {
+  faceIndex: number;
+  position: THREE.Vector3;
+  size: THREE.Vector3;
+  panelOrder: number;
+}
+
 
 interface EditModePanelProps {
   editedShape: Shape;
@@ -44,14 +58,9 @@ interface EditModePanelProps {
   // 🔴 NEW: Panel Edit Mode
   isPanelEditMode: boolean;
   setIsPanelEditMode: (mode: boolean) => void;
-}
-
-interface OpenWindow {
-  id: string;
-  title: string;
-  component: string;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
+  // PanelEditor modalı için gerekli prop'lar
+  selectedPanel: PanelData | null; // Dışarıdan seçili panel bilgisini alacak
+  onPanelUpdate: (shapeId: string, faceIndex: number, updates: Partial<PanelData>) => void; // Panel güncelleme fonksiyonu
 }
 
 const EditModePanel: React.FC<EditModePanelProps> = ({
@@ -70,21 +79,22 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode,
   setIsPanelEditMode,
+  selectedPanel, // Yeni prop
+  onPanelUpdate, // Yeni prop
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false); // Controls sliding left/right
-  const [isCompactMode, setIsCompactMode] = useState(false); // Yeni: Kompakt mod için state
+  // const [isCollapsed, setIsCollapsed] = useState(false); // Kaldırıldı: Sola kaydırarak gizlemeyi kontrol eder
+  const [isDimensionsCollapsed, setIsDimensionsCollapsed] = useState(false); // Yeni: Boyutlar panelinin daraltılmasını kontrol eder
   const [dimensionValues, setDimensionValues] = useState<{
     [key: string]: string;
   }>({});
-  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)'); // Default height as string
-  const [panelTop, setPanelTop] = useState('88px'); // Default top position as string
-  const [panelTopValue, setPanelTopValue] = useState(88); // Numeric top position for calculations
-  const [panelHeightValue, setPanelHeightValue] = useState(0); // Numeric height for calculations
+  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)'); // Varsayılan yükseklik
+  const [panelTop, setPanelTop] = useState('88px'); // Varsayılan üst pozisyon
+  const [panelTopValue, setPanelTopValue] = useState(88); // Hesaplamalar için sayısal üst pozisyon
+  const [panelHeightValue, setPanelHeightValue] = useState(0); // Hesaplamalar için sayısal yükseklik
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
   const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
-  const [buttonDisplayMode, setButtonDisplayMode] = useState<'text' | 'icon'>('text');
-  // const [isRibbonMode, setIsRibbonMode] = useState(false); // Ribbon mode kaldırıldı
+  const [buttonDisplayMode, setButtonDisplayMode] = useState<'text' | 'icon'>('text'); // Butonların metin mi ikon mu olacağını kontrol eder
 
   const {
     measurementUnit,
@@ -93,19 +103,19 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     updateShape,
   } = useAppStore();
 
-  // Calculate panel height dynamically - responsive to terminal and status bar
+  // Panel yüksekliğini dinamik olarak hesaplar - terminal ve durum çubuğuna duyarlı
   useEffect(() => {
     const calculatePanelPositionAndHeight = () => {
-      // Get Toolbar height dynamically
+      // Araç çubuğu yüksekliğini dinamik olarak alır
       const toolbarElement =
-        document.querySelector('.flex.flex-col.font-inter'); // Main toolbar container
-      const topOffset = toolbarElement ? toolbarElement.clientHeight : 88; // Default to 88px if not found
+        document.querySelector('.flex.flex-col.font-inter'); // Ana araç çubuğu kapsayıcısı
+      const topOffset = toolbarElement ? toolbarElement.clientHeight : 88; // Bulunamazsa varsayılan 88px
 
-      // Get Terminal and Status Bar height dynamically
+      // Terminal ve Durum Çubuğu yüksekliğini dinamik olarak alır
       const terminalElement =
-        document.querySelector('.fixed.bottom-0.left-0.right-0.z-30'); // Main terminal container
+        document.querySelector('.fixed.bottom-0.left-0.right-0.z-30'); // Ana terminal kapsayıcısı
       const statusBarElement =
-        document.querySelector('.flex.items-center.justify-between.h-5.px-2.text-xs.bg-gray-800\\/80'); // Status bar specific class
+        document.querySelector('.flex.items-center.justify-between.h-5.px-2.text-xs.bg-gray-800\\/80'); // Durum çubuğuna özgü sınıf
 
       let bottomOffset = 0;
 
@@ -113,11 +123,11 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         bottomOffset = terminalElement.clientHeight;
         console.log('Terminal height detected:', terminalElement.clientHeight);
       } else if (statusBarElement) {
-        // Fallback if terminal is not found but status bar is
+        // Terminal bulunamazsa durum çubuğu yedeği
         bottomOffset = statusBarElement.clientHeight;
         console.log('Status bar height detected:', statusBarElement.clientHeight);
       } else {
-        bottomOffset = 20; // Default status bar height if nothing found
+        bottomOffset = 20; // Hiçbir şey bulunamazsa varsayılan durum çubuğu yüksekliği
       }
 
       const availableHeight = window.innerHeight - topOffset - bottomOffset;
@@ -126,8 +136,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
       setPanelHeight(`${newHeight}px`);
       setPanelTop(`${newTop}px`);
-      setPanelHeightValue(newHeight); // Update numeric value
-      setPanelTopValue(newTop); // Update numeric value
+      setPanelHeightValue(newHeight); // Sayısal değeri günceller
+      setPanelTopValue(newTop); // Sayısal değeri günceller
 
       console.log('Panel position and height calculated:', {
         windowHeight: window.innerHeight,
@@ -139,38 +149,38 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       });
     };
 
-    // Initial calculation
+    // İlk hesaplama
     calculatePanelPositionAndHeight();
 
-    // Debounced calculation function for resize events
+    // Yeniden boyutlandırma olayları için gecikmeli hesaplama fonksiyonu
     let resizeTimeoutId: NodeJS.Timeout;
     const debouncedCalculate = () => {
       clearTimeout(resizeTimeoutId);
       resizeTimeoutId = setTimeout(calculatePanelPositionAndHeight, 50);
     };
 
-    // Window resize event listener
+    // Pencere yeniden boyutlandırma olay dinleyicisi
     window.addEventListener('resize', debouncedCalculate);
 
-    // MutationObserver to watch for DOM changes (like terminal expansion/collapse)
+    // DOM değişikliklerini izlemek için MutationObserver (terminal genişletme/daraltma gibi)
     const observer = new MutationObserver(debouncedCalculate);
     observer.observe(document.body, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'style'], // Watch for class and style changes
+      attributeFilter: ['class', 'style'], // Sınıf ve stil değişikliklerini izler
     });
 
-    // Clean up
+    // Temizleme
     return () => {
       clearTimeout(resizeTimeoutId);
       window.removeEventListener('resize', debouncedCalculate);
       observer.disconnect();
     };
-  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
+  }, []); // Boş bağımlılık dizisi, bu fonksiyonun sadece bağlandığında bir kez çalışıp ayrıldığında temizleneceği anlamına gelir
 
 
-  // Initialize dimension values
+  // Boyut değerlerini başlatır
   useEffect(() => {
     const initialValues: { [key: string]: string } = {};
     if (editedShape.parameters.width)
@@ -204,7 +214,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const handleDimensionSubmit = async (dimensionType: string) => {
     const value = parseFloat(dimensionValues[dimensionType]);
     if (isNaN(value) || value <= 0) {
-      console.log('Invalid dimension value');
+      console.log('Geçersiz boyut değeri');
       return;
     }
 
@@ -213,15 +223,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     newParameters[dimensionType] = valueInMm;
 
     let newGeometry;
+    // THREE'yi burada dinamik olarak içe aktarıyoruz
+    // THREE zaten en üstte import edildiği için tekrar import etmeye gerek yok
     if (editedShape.type === 'box') {
-      const THREE = await import('three');
       newGeometry = new THREE.BoxGeometry(
         newParameters.width || 500,
         newParameters.height || 500,
         newParameters.depth || 500
       );
     } else if (editedShape.type === 'cylinder') {
-      const THREE = await import('three');
       newGeometry = new THREE.CylinderGeometry(
         newParameters.radius || 250,
         newParameters.radius || 250,
@@ -229,7 +239,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         32
       );
     } else {
-      console.log('Dimension editing not supported for this shape type');
+      console.log('Bu şekil tipi için boyut düzenleme desteklenmiyor');
       return;
     }
 
@@ -240,12 +250,12 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
     setHasUnsavedChanges(false);
     console.log(
-      `Updated ${dimensionType} to ${value} ${measurementUnit} (${valueInMm}mm)`
+      `${dimensionType} değeri ${value} ${measurementUnit} (${valueInMm}mm) olarak güncellendi`
     );
   };
 
   const handleSaveAll = async () => {
-    // Apply all pending changes
+    // Tüm bekleyen değişiklikleri uygula
     for (const [dimensionType, value] of Object.entries(dimensionValues)) {
       const numValue = parseFloat(value);
       if (!isNaN(numValue) && numValue > 0) {
@@ -253,48 +263,52 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       }
     }
     setHasUnsavedChanges(false);
-    console.log('All changes saved');
+    console.log('Tüm değişiklikler kaydedildi');
   };
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
-      // NOTE: Using a custom modal or confirmation UI is recommended instead of window.confirm in production.
-      // For this example, we'll keep window.confirm as it was.
-      const confirmClose = window.confirm(
-        'You have unsaved changes. Are you sure you want to exit edit mode?'
+      // NOT: Üretim ortamında window.confirm yerine özel bir modal veya onay UI'ı kullanılması önerilir.
+      console.warn(
+        'Kaydedilmemiş değişiklikleriniz var. Düzenleme modundan çıkmak istediğinizden emin misiniz?'
       );
-      if (!confirmClose) return;
+      // Eğer özel bir modal isteniyorsa, buraya implemente edilmelidir.
     }
     setActiveComponent(null);
     setIsAddPanelMode(false);
-    setIsPanelEditMode(false); // 🔴 NEW: Reset panel edit mode
+    setIsPanelEditMode(false); // Panel düzenleme modunu sıfırlar
+    // setIsPanelEditorModalOpen(false); // Modal'ı da kapat - bu state artık burada değil
     onExit();
   };
 
   const handleComponentClick = (componentType: string) => {
-    // Toggle component mode
+    // Bileşen modunu değiştir
     if (activeComponent === componentType) {
       setActiveComponent(null);
       setIsAddPanelMode(false);
-      setIsPanelEditMode(false); // 🔴 NEW: Reset panel edit mode
-      console.log(`${componentType} mode deactivated`);
+      setIsPanelEditMode(false); // Panel düzenleme modunu sıfırlar
+      // setIsPanelEditorModalOpen(false); // Modu kapatırken modalı da kapat - bu state artık burada değil
+      console.log(`${componentType} modu devre dışı bırakıldı`);
     } else {
       setActiveComponent(componentType);
 
-      // Special handling for different component types
+      // Farklı bileşen tipleri için özel işlem
       if (componentType === 'panels') {
         setIsAddPanelMode(true);
         setIsPanelEditMode(false);
-        console.log('Panel mode activated - Click on faces to add panels');
+        // setIsPanelEditorModalOpen(false); // Panel ekleme moduna girerken modalı kapat - bu state artık burada değil
+        console.log('Panel modu etkinleştirildi - Panel eklemek için yüzeylere tıklayın');
       } else if (componentType === 'panel-edit') {
-        // 🔴 NEW: Panel Edit Mode
+        // Panel Düzenleme Modu
         setIsAddPanelMode(false);
         setIsPanelEditMode(true);
-        console.log('Panel Edit mode activated - Click on panels to edit them');
+        // setIsPanelEditorModalOpen(true); // Panel düzenleme moduna girerken modalı aç - bu state artık burada değil
+        console.log('Panel Düzenleme modu etkinleştirildi - Boyutları düzenlemek için panellere tıklayın');
       } else {
         setIsAddPanelMode(false);
         setIsPanelEditMode(false);
-        console.log(`${componentType} mode activated`);
+        // setIsPanelEditorModalOpen(false); // Diğer modlar için modalı kapat - bu state artık burada değil
+        console.log(`${componentType} modu etkinleştirildi`);
       }
     }
   };
@@ -336,7 +350,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <button
           onClick={() => handleDimensionSubmit(dimensionType)}
           className="p-0.5 bg-blue-600/90 hover:bg-blue-500 text-white rounded transition-colors flex-shrink-0"
-          title="Apply"
+          title="Uygula"
         >
           <Check size={10} />
         </button>
@@ -344,84 +358,83 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     );
   };
 
-  // 🎯 ICON-ONLY furniture component buttons configuration
+  // Mobilya bileşen butonları yapılandırması
   const furnitureComponents = [
     {
       id: 'panels',
-      icon: <Layers size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Layers size={12} />,
       color: 'blue',
-      description: 'Add Panels - Click faces to add panels',
+      description: 'Panel Ekle - Panel eklemek için yüzeylere tıklayın',
     },
     {
       id: 'panel-edit',
-      icon: <Edit3 size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Edit3 size={12} />,
       color: 'red',
-      description: 'Panel Edit - Click panels to edit dimensions',
+      description: 'Panel Düzenle - Boyutları düzenlemek için panellere tıklayın',
     },
     {
       id: 'shelves',
-      icon: <Shelf size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Shelf size={12} />,
       color: 'green',
-      description: 'Add Shelves - Add horizontal shelves',
+      description: 'Raf Ekle - Yatay raflar ekleyin',
     },
     {
       id: 'backs',
-      icon: <Package size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Package size={12} />,
       color: 'purple',
-      description: 'Add Backs - Add back panels',
+      description: 'Arkalık Ekle - Arka paneller ekleyin',
     },
     {
       id: 'doors',
-      icon: <DoorOpen size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <DoorOpen size={12} />,
       color: 'orange',
-      description: 'Add Doors - Add cabinet doors',
+      description: 'Kapı Ekle - Dolap kapakları ekleyin',
     },
     {
       id: 'edgeband',
-      icon: <RectangleHorizontal size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <RectangleHorizontal size={12} />,
       color: 'amber',
-      description: 'Add Edgeband - Add edge banding',
+      description: 'Kenar Bandı Ekle - Kenar bandı ekleyin',
     },
     {
       id: 'drawer',
-      icon: <Minus size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Minus size={12} />,
       color: 'indigo',
-      description: 'Add Drawer - Add drawers',
+      description: 'Çekmece Ekle - Çekmeceler ekleyin',
     },
     {
       id: 'hinge',
-      icon: <Zap size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Zap size={12} />,
       color: 'cyan',
-      description: 'Add Hinge - Add hinges',
+      description: 'Menteşe Ekle - Menteşeler ekleyin',
     },
     {
       id: 'divider',
-      icon: <Grid3X3 size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Grid3X3 size={12} />,
       color: 'pink',
-      description: 'Add Divider - Add dividers',
+      description: 'Bölücü Ekle - Bölücüler ekleyin',
     },
     {
       id: 'notch',
-      icon: <Scissors size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Scissors size={12} />,
       color: 'teal',
-      description: 'Add Notch - Add notches',
+      description: 'Çentik Ekle - Çentikler ekleyin',
     },
     {
       id: 'accessories',
-      icon: <Settings size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Settings size={12} />,
       color: 'slate',
-      description: 'Add Accessories - Add hardware & accessories',
+      description: 'Aksesuar Ekle - Donanım ve aksesuarlar ekleyin',
     },
     {
       id: 'local-params',
-      icon: <Sliders size={12} />, // İkon boyutu 12 olarak ayarlandı
+      icon: <Sliders size={12} />,
       color: 'emerald',
-      description: 'Local Parameters - Edit local parameters',
+      description: 'Yerel Parametreler - Yerel parametreleri düzenleyin',
     },
   ];
 
   const getIconButtonColorClasses = (color: string, isActive: boolean) => {
-    // Updated for horizontal layout with text
     const baseClasses =
       'relative flex items-center rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]';
 
@@ -465,29 +478,43 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   };
 
   const updateWindowPosition = (windowId: string, position: { x: number; y: number }) => {
-    setOpenWindows(prev => prev.map(window => 
+    setOpenWindows(prev => prev.map(window =>
       window.id === windowId ? { ...window, position } : window
     ));
   };
 
   const renderWindowContent = (componentType: string) => {
-    // Placeholder for window content rendering
-    return <div>Content for {componentType}</div>;
+    // Pencere içeriği oluşturma için yer tutucu
+    return <div>{componentType} İçeriği</div>;
+  };
+
+  // Panel genişliğini duruma göre belirler
+  const getPanelWidthClass = () => {
+    if (isDimensionsCollapsed) {
+      // Boyutlar bölümü gizli ise
+      if (buttonDisplayMode === 'icon') {
+        return 'w-20'; // Çok dar, sadece ikonlar için
+      } else {
+        return 'w-48'; // Metinler için yeterli, boyutlar gizli
+      }
+    } else {
+      // Boyutlar bölümü görünür ise (standart genişlik)
+      return 'w-92';
+    }
   };
 
   return (
     <>
-      {/* Main Edit Panel */}
+      {/* Ana Düzenleme Paneli */}
       <div
-        className={`fixed left-0 z-50 w-92 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col
-          transition-all duration-300 ease-in-out
-          ${isCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100 pointer-events-auto'}`}
+        className={`fixed left-0 z-50 ${getPanelWidthClass()} bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col
+          transition-all duration-300 ease-in-out`} {/* isCollapsed ile ilgili sınıflar kaldırıldı */}
         style={{
           top: panelTop,
           height: panelHeight,
         }}
       >
-        {/* Header */}
+        {/* Başlık */}
         <div className="flex items-center justify-between px-3 py-2 bg-gray-700/50 border-b border-gray-600/50 flex-shrink-0">
           <div className="flex items-center gap-2">
             {getShapeIcon()}
@@ -498,14 +525,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             {hasUnsavedChanges && (
               <div
                 className="w-2 h-2 bg-orange-500 rounded-full"
-                title="Unsaved changes"
+                title="Kaydedilmemiş değişiklikler"
               />
             )}
           </div>
 
-          {/* Header buttons */}
+          {/* Başlık butonları */}
           <div className="flex items-center gap-1">
-            {/* Save button */}
+            {/* Kaydet butonu */}
             <button
               onClick={handleSaveAll}
               disabled={!hasUnsavedChanges}
@@ -514,52 +541,43 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   ? 'text-green-400 hover:text-green-300 hover:bg-gray-600/50'
                   : 'text-gray-600 cursor-not-allowed'
               }`}
-              title="Save All Changes"
+              title="Tüm Değişiklikleri Kaydet"
             >
               <Save size={14} />
             </button>
 
-            {/* Display Mode Toggle (Text/Icon) */}
+            {/* Görüntü Modu Değiştirme (Metin/İkon) */}
             <button
               onClick={() => setButtonDisplayMode(prev => prev === 'text' ? 'icon' : 'text')}
               className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title={buttonDisplayMode === 'text' ? 'Switch to Icon Mode' : 'Switch to Text Mode'}
+              title={buttonDisplayMode === 'text' ? 'İkon Moduna Geç' : 'Metin Moduna Geç'}
             >
               {buttonDisplayMode === 'text' ? <Hash size={14} /> : <Sliders size={14} />}
             </button>
 
-            {/* Yeni: Kompakt Mod Toggle */}
-            <button
-              onClick={() => setIsCompactMode(prev => !prev)}
+            {/* Daralt butonu - Paneli sola doğru gizler (Kaldırıldı) */}
+            {/* <button
+              onClick={() => setIsCollapsed(true)}
               className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title={isCompactMode ? 'Exit Compact Mode' : 'Enter Compact Mode (Hide Dimensions)'}
-            >
-              <Minimize2 size={14} />
-            </button>
-
-            {/* Collapse button - This button will now collapse the panel */}
-            <button
-              onClick={() => setIsCollapsed(true)} // Set to true to collapse
-              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title="Collapse Panel"
+              title="Paneli Daralt"
             >
               <ChevronLeft size={14} />
-            </button>
+            </button> */}
 
-            {/* Close button - Exits edit mode entirely */}
+            {/* Kapat butonu - Düzenleme modundan tamamen çıkar */}
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-              title="Exit Edit Mode"
+              title="Düzenleme Modundan Çık"
             >
               <X size={14} />
             </button>
           </div>
         </div>
 
-        {/* Content - Split into left (buttons) and right (dimensions/other) */}
+        {/* İçerik - Sol (butonlar) ve Sağ (boyutlar/diğer) olarak bölünmüş */}
         <div className="flex-1 flex flex-row overflow-hidden">
-          {/* New Component Menu Bar (Left Side) - Expanded with descriptions */}
+          {/* Yeni Bileşen Menü Çubuğu (Sol Taraf) - Açıklamalarla genişletilmiş */}
           <div className={`flex flex-col ${buttonDisplayMode === 'icon' ? 'w-14' : 'w-40'} bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto transition-all duration-300`} style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
               <div className={`flex flex-col gap-1 ${buttonDisplayMode === 'icon' ? 'px-1' : 'px-2'}`}>
@@ -570,8 +588,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                       key={component.id}
                       onClick={() => handleComponentClick(component.id)}
                       className={`${getIconButtonColorClasses(component.color, isActive)} w-full ${
-                        buttonDisplayMode === 'icon' 
-                          ? 'justify-center p-2' 
+                        buttonDisplayMode === 'icon'
+                          ? 'justify-center p-2'
                           : 'justify-start gap-2 px-2 py-1.5 text-left'
                       }`}
                       title={component.description}
@@ -581,18 +599,18 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                       </div>
                       {buttonDisplayMode === 'text' && (
                         <span className="text-xs font-medium truncate">
-                          {component.id === 'panels' && 'Panels'}
-                          {component.id === 'panel-edit' && 'Edit Panel'}
-                          {component.id === 'shelves' && 'Shelves'}
-                          {component.id === 'backs' && 'Backs'}
-                          {component.id === 'doors' && 'Doors'}
-                          {component.id === 'edgeband' && 'Edgeband'}
-                          {component.id === 'drawer' && 'Drawer'}
-                          {component.id === 'hinge' && 'Hinge'}
-                          {component.id === 'divider' && 'Divider'}
-                          {component.id === 'notch' && 'Notch'}
-                          {component.id === 'accessories' && 'Accessories'}
-                          {component.id === 'local-params' && 'Parameters'}
+                          {component.id === 'panels' && 'Paneller'}
+                          {component.id === 'panel-edit' && 'Panel Düzenle'}
+                          {component.id === 'shelves' && 'Raflar'}
+                          {component.id === 'backs' && 'Arkalıklar'}
+                          {component.id === 'doors' && 'Kapılar'}
+                          {component.id === 'edgeband' && 'Kenar Bandı'}
+                          {component.id === 'drawer' && 'Çekmece'}
+                          {component.id === 'hinge' && 'Menteşe'}
+                          {component.id === 'divider' && 'Bölücü'}
+                          {component.id === 'notch' && 'Çentik'}
+                          {component.id === 'accessories' && 'Aksesuarlar'}
+                          {component.id === 'local-params' && 'Parametreler'}
                           {component.id === 'module' && 'Modül'}
                         </span>
                       )}
@@ -608,86 +626,97 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             )}
           </div>
 
-          {/* Right Content Area (Dimensions and other sections) */}
+          {/* Sağ İçerik Alanı (Boyutlar ve diğer bölümler) */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* 🎯 COMPACT Dimensions Section - isCompactMode true ise gizle */}
-            {!isCompactMode && ( // Bu div, isCompactMode true olduğunda tamamen gizlenecek
+            {/* Boyutlar Bölümü Başlığı ve Toggle Butonu */}
+            <div className="p-2 flex-shrink-0 border-b border-gray-600/30 flex items-center justify-between">
+              <h3 className="text-gray-300 text-xs font-medium">
+                Boyutlar
+              </h3>
+              <button
+                onClick={() => setIsDimensionsCollapsed(prev => !prev)}
+                className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
+                title={isDimensionsCollapsed ? 'Boyutları Genişlet' : 'Boyutları Daralt'}
+              >
+                {isDimensionsCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+              </button>
+            </div>
+
+            {/* Boyutlar İçeriği - isDimensionsCollapsed true ise gizlenir */}
+            {!isDimensionsCollapsed && (
               <div className="p-2 flex-shrink-0">
-                <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
-                  Dimensions
-                </h3>
                 <div className="space-y-2">
                   {editedShape.type === 'box' && (
                     <>
-                      {renderDimensionField('W', 'width')}
-                      {renderDimensionField('H', 'height')}
-                      {renderDimensionField('D', 'depth')}
+                      {renderDimensionField('G', 'width')} {/* Genişlik */}
+                      {renderDimensionField('Y', 'height')} {/* Yükseklik */}
+                      {renderDimensionField('D', 'depth')} {/* Derinlik */}
                     </>
                   )}
 
                   {editedShape.type === 'cylinder' && (
                     <>
-                      {renderDimensionField('R', 'radius')}
-                      {renderDimensionField('H', 'height')}
+                      {renderDimensionField('R', 'radius')} {/* Yarıçap */}
+                      {renderDimensionField('Y', 'height')} {/* Yükseklik */}
                     </>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Placeholder for other content if needed, fills remaining vertical space */}
+            {/* Diğer içerikler için yer tutucu, kalan dikey alanı doldurur */}
             <div className="flex-1"></div>
           </div>
         </div>
 
-        {/* Footer - Always at bottom */}
+        {/* Alt Bilgi - Her zaman altta */}
         <div className="flex-shrink-0 p-2 border-t border-gray-600/30 bg-gray-700/30">
           <div className="text-xs text-gray-400 text-center">
-            Edit mode - Other objects are hidden
+            Düzenleme modu - Diğer nesneler gizli
           </div>
           {hasUnsavedChanges && (
             <div className="text-xs text-orange-400 text-center mt-1">
-              You have unsaved changes
+              Kaydedilmemiş değişiklikleriniz var
             </div>
           )}
           {activeComponent === 'panels' && (
             <div className="text-xs text-green-400 text-center mt-1">
-              Click on faces to add panels
+              Panel eklemek için yüzeylere tıklayın
             </div>
           )}
           {activeComponent === 'panel-edit' && (
             <div className="text-xs text-red-400 text-center mt-1">
-              🔴 Click on panels to edit them
+              🔴 Panelleri düzenlemek için panellere tıklayın
             </div>
           )}
           {activeComponent === 'module' && (
             <div className="text-xs text-violet-400 text-center mt-1">
-              Module information window opened
+              Modül bilgi penceresi açıldı
             </div>
           )}
           {activeComponent &&
             !['panels', 'panel-edit', 'module'].includes(activeComponent) && (
               <div className="text-xs text-blue-400 text-center mt-1">
                 {activeComponent.charAt(0).toUpperCase()}
-                {activeComponent.slice(1)} mode active
+                {activeComponent.slice(1)} modu aktif
               </div>
             )}
         </div>
       </div>
 
-      {/* New: Toggle button for the collapsed panel - appears only when panel is collapsed */}
-      {isCollapsed && (
+      {/* Daraltılmış panel için yeni düğme - artık kullanılmıyor */}
+      {/* {isCollapsed && (
         <button
-          onClick={() => setIsCollapsed(false)} // Set to false to expand
+          onClick={() => setIsCollapsed(false)} // Genişletmek için false yapar
           className="fixed left-0 z-50 w-6 h-12 flex items-center justify-center bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors rounded-r"
-          title="Expand Edit Panel"
-          style={{ top: `${panelTopValue + panelHeightValue / 2 - 24}px` }} // Center vertically relative to the panel's area
+          title="Düzenleme Panelini Genişlet"
+          style={{ top: `${panelTopValue + panelHeightValue / 2 - 24}px` }} // Panelin alanına göre dikeyde ortalar
         >
           <ChevronRight size={14} />
         </button>
-      )}
+      )} */}
 
-      {/* Draggable Windows */}
+      {/* Sürüklenebilir Pencereler */}
       {openWindows.map((window) => (
         <DraggableWindow
           key={window.id}
@@ -701,6 +730,17 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           {renderWindowContent(window.component)}
         </DraggableWindow>
       ))}
+
+      {/* Yeni PanelEditor modalı */}
+      {isPanelEditorModalOpen && (
+        <PanelEditor
+          isOpen={isPanelEditorModalOpen}
+          onClose={() => setIsPanelEditorModalOpen(false)}
+          selectedPanel={selectedPanel} // Bu prop'un dışarıdan doğru bir panel ile beslenmesi gerekecek
+          onPanelUpdate={onPanelUpdate} // Bu prop'un dışarıdan panel güncelleme mantığı ile beslenmesi gerekecek
+          editingShapeId={editedShape.id}
+        />
+      )}
     </>
   );
 };
