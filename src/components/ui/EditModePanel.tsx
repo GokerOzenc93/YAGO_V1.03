@@ -611,7 +611,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           {/* Right Content Area (Dimensions and other sections) */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             {/* 🎯 COMPACT Dimensions Section - isCompactMode true ise gizle */}
-            {!isCompactMode && (
+            {!isCompactMode && ( // Bu div, isCompactMode true olduğunda tamamen gizlenecek
               <div className="p-2 flex-shrink-0">
                 <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
                   Dimensions
