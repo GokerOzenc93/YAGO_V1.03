@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
   Box,
   Cylinder,
   Check,
@@ -84,7 +82,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
   const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
   const [buttonDisplayMode, setButtonDisplayMode] = useState<'text' | 'icon'>('text');
-  const [isRibbonMode, setIsRibbonMode] = useState(false); // Controls ribbon mode (horizontal at top)
+  // const [isRibbonMode, setIsRibbonMode] = useState(false); // Ribbon mode kaldırıldı
 
   const {
     measurementUnit,
@@ -475,85 +473,85 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     return <div>Content for {componentType}</div>;
   };
 
-  // Ribbon mode - ultra-thin horizontal strip at top
-  if (isRibbonMode) {
-    return (
-      <div
-        className="fixed left-0 right-0 z-50 h-8 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700/50 shadow-lg flex items-center"
-        style={{
-          top: panelTop,
-        }}
-      >
-        {/* Shape info */}
-        <div className="flex items-center gap-2 px-2 flex-shrink-0">
-          {getShapeIcon()}
-          <span className="text-white text-xs font-medium">
-            {editedShape.type.charAt(0).toUpperCase() + editedShape.type.slice(1)}
-          </span>
-          {hasUnsavedChanges && (
-            <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-          )}
-        </div>
+  // Ribbon mode kaldırıldığı için bu blok artık kullanılmıyor
+  // if (isRibbonMode) {
+  //   return (
+  //     <div
+  //       className="fixed left-0 right-0 z-50 h-8 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700/50 shadow-lg flex items-center"
+  //       style={{
+  //         top: panelTop,
+  //       }}
+  //     >
+  //       {/* Shape info */}
+  //       <div className="flex items-center gap-2 px-2 flex-shrink-0">
+  //         {getShapeIcon()}
+  //         <span className="text-white text-xs font-medium">
+  //           {editedShape.type.charAt(0).toUpperCase() + editedShape.type.slice(1)}
+  //         </span>
+  //         {hasUnsavedChanges && (
+  //           <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+  //         )}
+  //       </div>
 
-        {/* Horizontal component buttons */}
-        <div className="flex items-center gap-1 px-2 flex-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
-          {editedShape.type === 'box' && furnitureComponents.map((component) => {
-            const isActive = activeComponent === component.id;
-            return (
-              <button
-                key={component.id}
-                onClick={() => handleComponentClick(component.id)}
-                className={`${getIconButtonColorClasses(component.color, isActive)} flex-shrink-0 p-1.5 justify-center`}
-                title={component.description}
-              >
-                {React.cloneElement(component.icon, { size: 10 })}
-                {isActive && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full flex items-center justify-center">
-                    <div className="w-1 h-1 bg-green-500 rounded-full"></div>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+  //       {/* Horizontal component buttons */}
+  //       <div className="flex items-center gap-1 px-2 flex-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+  //         {editedShape.type === 'box' && furnitureComponents.map((component) => {
+  //           const isActive = activeComponent === component.id;
+  //           return (
+  //             <button
+  //               key={component.id}
+  //               onClick={() => handleComponentClick(component.id)}
+  //               className={`${getIconButtonColorClasses(component.color, isActive)} flex-shrink-0 p-1.5 justify-center`}
+  //               title={component.description}
+  //             >
+  //               {React.cloneElement(component.icon, { size: 10 })}
+  //               {isActive && (
+  //                 <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full flex items-center justify-center">
+  //                   <div className="w-1 h-1 bg-green-500 rounded-full"></div>
+  //                 </div>
+  //               )}
+  //             </button>
+  //           );
+  //         })}
+  //       </div>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-1 px-2 flex-shrink-0">
-          {/* Save button */}
-          <button
-            onClick={handleSaveAll}
-            disabled={!hasUnsavedChanges}
-            className={`p-1 rounded transition-colors ${
-              hasUnsavedChanges
-                ? 'text-green-400 hover:text-green-300 hover:bg-gray-600/50'
-                : 'text-gray-600 cursor-not-allowed'
-            }`}
-            title="Save All Changes"
-          >
-            <Save size={12} />
-          </button>
+  //       {/* Right controls */}
+  //       <div className="flex items-center gap-1 px-2 flex-shrink-0">
+  //         {/* Save button */}
+  //         <button
+  //           onClick={handleSaveAll}
+  //           disabled={!hasUnsavedChanges}
+  //           className={`p-1 rounded transition-colors ${
+  //             hasUnsavedChanges
+  //               ? 'text-green-400 hover:text-green-300 hover:bg-gray-600/50'
+  //               : 'text-gray-600 cursor-not-allowed'
+  //           }`}
+  //           title="Save All Changes"
+  //         >
+  //           <Save size={12} />
+  //         </button>
 
-          {/* Expand to normal mode */}
-          <button
-            onClick={() => setIsRibbonMode(false)}
-            className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-            title="Expand to Normal Mode"
-          >
-            <ChevronDown size={12} />
-          </button>
+  //         {/* Expand to normal mode */}
+  //         <button
+  //           onClick={() => setIsRibbonMode(false)}
+  //           className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+  //           title="Expand to Normal Mode"
+  //         >
+  //           <ChevronDown size={12} />
+  //         </button>
 
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-            title="Exit Edit Mode"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      </div>
-    );
-  }
+  //         {/* Close button */}
+  //         <button
+  //           onClick={handleClose}
+  //           className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+  //           title="Exit Edit Mode"
+  //         >
+  //           <X size={12} />
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Normal and Collapsed-Left mode (main panel)
   return (
@@ -609,14 +607,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               {buttonDisplayMode === 'text' ? <Hash size={14} /> : <Sliders size={14} />}
             </button>
 
-            {/* Ribbon Mode Toggle */}
-            <button
+            {/* Ribbon Mode Toggle kaldırıldı */}
+            {/* <button
               onClick={() => setIsRibbonMode(true)}
               className="text-gray-400 hover:text-white p-1 rounded transition-colors"
               title="Switch to Ribbon Mode"
             >
               <ChevronUp size={14} />
-            </button>
+            </button> */}
 
             {/* Collapse button - This button will now collapse the panel */}
             <button
