@@ -452,6 +452,21 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     }
   };
 
+  const closeWindow = (windowId: string) => {
+    setOpenWindows(prev => prev.filter(window => window.id !== windowId));
+  };
+
+  const updateWindowPosition = (windowId: string, position: { x: number; y: number }) => {
+    setOpenWindows(prev => prev.map(window => 
+      window.id === windowId ? { ...window, position } : window
+    ));
+  };
+
+  const renderWindowContent = (componentType: string) => {
+    // Placeholder for window content rendering
+    return <div>Content for {componentType}</div>;
+  };
+
   // Collapsed state - thin strip on the left
   if (isCollapsed) {
     return (
@@ -546,37 +561,44 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         {/* Content - Split into left (buttons) and right (dimensions/other) */}
         <div className="flex-1 flex flex-row overflow-hidden">
           {/* New Component Menu Bar (Left Side) - Expanded with descriptions */}
-          <div className="flex flex-col w-70 bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <div className={`flex flex-col ${buttonDisplayMode === 'icon' ? 'w-14' : 'w-40'} bg-gray-700/50 border-r border-gray-600/50 flex-shrink-0 py-2 overflow-y-auto transition-all duration-300`} style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
-              <div className="flex flex-col gap-1 px-2">
+              <div className={`flex flex-col gap-1 ${buttonDisplayMode === 'icon' ? 'px-1' : 'px-2'}`}>
                 {furnitureComponents.map((component) => {
                   const isActive = activeComponent === component.id;
                   return (
                     <button
                       key={component.id}
                       onClick={() => handleComponentClick(component.id)}
-                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full ${
+                        buttonDisplayMode === 'icon' 
+                          ? 'justify-center p-2' 
+                          : 'justify-start gap-2 px-2 py-1.5 text-left'
+                      }`}
                       title={component.description}
                     >
-                      <div className="flex-shrink-0">
+                      <div className={buttonDisplayMode === 'icon' ? '' : 'flex-shrink-0'}>
                         {component.icon}
                       </div>
-                      <span className="text-xs font-medium truncate">
-                        {component.id === 'panels' && 'Panels'}
-                        {component.id === 'panel-edit' && 'Edit Panel'}
-                        {component.id === 'shelves' && 'Shelves'}
-                        {component.id === 'backs' && 'Backs'}
-                        {component.id === 'doors' && 'Doors'}
-                        {component.id === 'edgeband' && 'Edgeband'}
-                        {component.id === 'drawer' && 'Drawer'}
-                        {component.id === 'hinge' && 'Hinge'}
-                        {component.id === 'divider' && 'Divider'}
-                        {component.id === 'notch' && 'Notch'}
-                        {component.id === 'accessories' && 'Accessories'}
-                        {component.id === 'local-params' && 'Parameters'}
-                      </span>
+                      {buttonDisplayMode === 'text' && (
+                        <span className="text-xs font-medium truncate">
+                          {component.id === 'panels' && 'Panels'}
+                          {component.id === 'panel-edit' && 'Edit Panel'}
+                          {component.id === 'shelves' && 'Shelves'}
+                          {component.id === 'backs' && 'Backs'}
+                          {component.id === 'doors' && 'Doors'}
+                          {component.id === 'edgeband' && 'Edgeband'}
+                          {component.id === 'drawer' && 'Drawer'}
+                          {component.id === 'hinge' && 'Hinge'}
+                          {component.id === 'divider' && 'Divider'}
+                          {component.id === 'notch' && 'Notch'}
+                          {component.id === 'accessories' && 'Accessories'}
+                          {component.id === 'local-params' && 'Parameters'}
+                          {component.id === 'module' && 'Modül'}
+                        </span>
+                      )}
                       {isActive && (
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                        <div className={`absolute ${buttonDisplayMode === 'icon' ? 'top-1 right-1' : 'top-0 right-0'} w-3 h-3 bg-white rounded-full flex items-center justify-center`}>
                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                         </div>
                       )}
@@ -588,7 +610,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Right Content Area (Dimensions and other sections) */}
-          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 transition-all duration-300`}>
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             {/* 🎯 COMPACT Dimensions Section */}
             <div className="p-2 flex-shrink-0">
               <h3 className="text-gray-300 text-xs font-medium mb-2 border-b border-gray-600/30 pb-1">
