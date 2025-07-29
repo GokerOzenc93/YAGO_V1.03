@@ -109,7 +109,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
     >
       {/* Window Header */}
       <div
-        className={`window-header flex items-center justify-between px-3 py-2 bg-gray-700/50 border-b border-gray-600/50 rounded-t-lg ${
+        className={`window-header flex items-center justify-between px-2 py-1.5 bg-gray-700/50 border-b border-gray-600/50 rounded-t-lg ${
           isDragging ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         onMouseDown={handleMouseDown}
@@ -118,7 +118,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
           <div className="w-3 h-3 bg-red-500 rounded-full"></div>
           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span className="text-white text-sm font-medium ml-2">{title}</span>
+          <span className="text-white text-xs font-medium ml-1">{title}</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -131,7 +131,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
             className="p-1 hover:bg-gray-600/50 rounded transition-colors"
             title={isMinimized ? "Restore" : "Minimize"}
           >
-            {isMinimized ? <Maximize2 size={12} className="text-gray-300" /> : <Minimize2 size={12} className="text-gray-300" />}
+            {isMinimized ? <Maximize2 size={10} className="text-gray-300" /> : <Minimize2 size={10} className="text-gray-300" />}
           </button>
 
           {/* Close Button */}
@@ -143,7 +143,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
             className="p-1 hover:bg-red-600/50 rounded transition-colors"
             title="Close"
           >
-            <X size={12} className="text-gray-300 hover:text-white" />
+            <X size={10} className="text-gray-300 hover:text-white" />
           </button>
         </div>
       </div>
@@ -153,8 +153,8 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
         <div 
           className="overflow-auto"
           style={{ 
-            height: size.height - 40, // Subtract header height
-            maxHeight: size.height - 40 
+            height: size.height - 32, // Subtract header height (reduced)
+            maxHeight: size.height - 32 
           }}
         >
           {children}
