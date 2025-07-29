@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  // ChevronLeft, // Kaldırıldı
-  // ChevronRight, // Kaldırıldı
+  Minimize2,
   ChevronUp, // Boyut panelini daraltmak için
   ChevronDown, // Boyut panelini genişletmek için
   Box,
