@@ -565,4 +565,136 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   );
 };
 
+// Modül penceresi bileşeni
+const ModuleWindow: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
+  const { measurementUnit, convertToDisplayUnit } = useAppStore();
+  
+  const getDimensionValue = (paramName: string) => {
+    const value = editedShape.parameters[paramName];
+    return value ? convertToDisplayUnit(value).toFixed(1) : '0.0';
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Başlık */}
+      <div className="flex items-center gap-2 pb-2 border-b border-gray-600/30">
+        <Puzzle size={16} className="text-violet-400" />
+        <h3 className="text-white font-medium">Modül Bilgileri</h3>
+      </div>
+
+      {/* Şekil Tipi */}
+      <div className="bg-gray-700/30 rounded-lg p-3">
+        <div className="flex items-center gap-2 mb-2">
+          {editedShape.type === 'box' ? (
+            <Box size={14} className="text-blue-400" />
+          ) : (
+            <Cylinder size={14} className="text-teal-400" />
+          )}
+          <span className="text-white font-medium">
+            {editedShape.type.charAt(0).toUpperCase() + editedShape.type.slice(1)}
+          </span>
+        </div>
+        <div className="text-xs text-gray-400">
+          ID: {editedShape.id}
+        </div>
+      </div>
+
+      {/* Boyutlar */}
+      <div className="space-y-3">
+        <h4 className="text-gray-300 font-medium text-sm">Boyutlar</h4>
+        
+        {editedShape.type === 'box' && (
+          <div className="grid grid-cols-1 gap-2">
+            <div className="flex justify-between items-center bg-gray-700/20 rounded px-3 py-2">
+              <span className="text-gray-300 text-sm">Genişlik:</span>
+              <span className="text-white font-mono">
+                {getDimensionValue('width')} {measurementUnit}
+              </span>
+            </div>
+            <div className="flex justify-between items-center bg-gray-700/20 rounded px-3 py-2">
+              <span className="text-gray-300 text-sm">Yükseklik:</span>
+              <span className="text-white font-mono">
+                {getDimensionValue('height')} {measurementUnit}
+              </span>
+            </div>
+            <div className="flex justify-between items-center bg-gray-700/20 rounded px-3 py-2">
+              <span className="text-gray-300 text-sm">Derinlik:</span>
+              <span className="text-white font-mono">
+                {getDimensionValue('depth')} {measurementUnit}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {editedShape.type === 'cylinder' && (
+          <div className="grid grid-cols-1 gap-2">
+            <div className="flex justify-between items-center bg-gray-700/20 rounded px-3 py-2">
+              <span className="text-gray-300 text-sm">Yarıçap:</span>
+              <span className="text-white font-mono">
+                {getDimensionValue('radius')} {measurementUnit}
+              </span>
+            </div>
+            <div className="flex justify-between items-center bg-gray-700/20 rounded px-3 py-2">
+              <span className="text-gray-300 text-sm">Yükseklik:</span>
+              <span className="text-white font-mono">
+                {getDimensionValue('height')} {measurementUnit}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pozisyon */}
+      <div className="space-y-3">
+        <h4 className="text-gray-300 font-medium text-sm">Pozisyon</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-gray-700/20 rounded px-2 py-2 text-center">
+            <div className="text-xs text-gray-400">X</div>
+            <div className="text-white font-mono text-sm">
+              {convertToDisplayUnit(editedShape.position[0]).toFixed(1)}
+            </div>
+          </div>
+          <div className="bg-gray-700/20 rounded px-2 py-2 text-center">
+            <div className="text-xs text-gray-400">Y</div>
+            <div className="text-white font-mono text-sm">
+              {convertToDisplayUnit(editedShape.position[1]).toFixed(1)}
+            </div>
+          </div>
+          <div className="bg-gray-700/20 rounded px-2 py-2 text-center">
+            <div className="text-xs text-gray-400">Z</div>
+            <div className="text-white font-mono text-sm">
+              {convertToDisplayUnit(editedShape.position[2]).toFixed(1)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Ölçek */}
+      <div className="space-y-3">
+        <h4 className="text-gray-300 font-medium text-sm">Ölçek</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-gray-700/20 rounded px-2 py-2 text-center">
+            <div className="text-xs text-gray-400">X</div>
+            <div className="text-white font-mono text-sm">
+              {editedShape.scale[0].toFixed(2)}
+            </div>
+          </div>
+          <div className="bg-gray-700/20 rounded px-2 py-2 text-center">
+            <div className="text-xs text-gray-400">Y</div>
+            <div className="text-white font-mono text-sm">
+              {editedShape.scale[1].toFixed(2)}
+            </div>
+          </div>
+          <div className="bg-gray-700/20 rounded px-2 py-2 text-center">
+            <div className="text-xs text-gray-400">Z</div>
+            <div className="text-white font-mono text-sm">
+              {editedShape.scale[2].toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default EditModePanel;

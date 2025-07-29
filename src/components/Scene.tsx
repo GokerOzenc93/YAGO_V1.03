@@ -683,8 +683,6 @@ const Scene: React.FC = () => {
           setShowEdges={setShowEdges}
           showFaces={showFaces}
           setShowFaces={setShowFaces}
-          isPanelEditMode={isPanelEditMode} // 🔴 NEW: Pass panel edit mode
-          setIsPanelEditMode={setIsPanelEditMode} // 🔴 NEW: Pass setter
         />
       )}
 
