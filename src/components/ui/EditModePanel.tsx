@@ -217,7 +217,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           title: 'Modül',
           component: 'module',
           position: { x: 192, y: parseInt(panelTop) },
-          size: { width: 280, height: parseInt(panelHeight.replace('px', '')) }
+          size: { width: 220, height: parseInt(panelHeight.replace('px', '')) }
         };
         setOpenWindows(prev => {
           // Eğer zaten açıksa, kapat
@@ -630,24 +630,24 @@ const ModuleWindow: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
       {/* Pozisyon */}
       <div className="space-y-1">
         <div className="text-xs text-gray-400 font-medium">Pozisyon</div>
-        <div className="grid grid-cols-3 gap-1 text-xs">
-          <div className="bg-gray-700/30 rounded px-1 py-1 text-center">
-            <div className="text-gray-400">X</div>
-            <div className="text-white font-mono">
-              {convertToDisplayUnit(editedShape.position[0]).toFixed(1)}
-            </div>
+        <div className="space-y-1">
+          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
+            <span className="text-gray-300">X:</span>
+            <span className="text-white font-mono">
+              {convertToDisplayUnit(editedShape.position[0]).toFixed(1)} {measurementUnit}
+            </span>
           </div>
-          <div className="bg-gray-700/30 rounded px-1 py-1 text-center">
-            <div className="text-gray-400">Y</div>
-            <div className="text-white font-mono">
-              {convertToDisplayUnit(editedShape.position[1]).toFixed(1)}
-            </div>
+          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
+            <span className="text-gray-300">Y:</span>
+            <span className="text-white font-mono">
+              {convertToDisplayUnit(editedShape.position[1]).toFixed(1)} {measurementUnit}
+            </span>
           </div>
-          <div className="bg-gray-700/30 rounded px-1 py-1 text-center">
-            <div className="text-gray-400">Z</div>
-            <div className="text-white font-mono">
-              {convertToDisplayUnit(editedShape.position[2]).toFixed(1)}
-            </div>
+          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
+            <span className="text-gray-300">Z:</span>
+            <span className="text-white font-mono">
+              {convertToDisplayUnit(editedShape.position[2]).toFixed(1)} {measurementUnit}
+            </span>
           </div>
         </div>
       </div>
