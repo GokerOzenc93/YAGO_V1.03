@@ -233,6 +233,18 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       label: 'Module'
     },
     {
+      id: 'edgeband',
+      icon: <RectangleHorizontal size={12} />,
+      color: 'amber',
+      label: 'Edgeband'
+    },
+    {
+      id: 'parameter',
+      icon: <Sliders size={12} />,
+      color: 'cyan',
+      label: 'Parameter'
+    },
+    {
       id: 'shelves',
       icon: <Shelf size={12} />,
       color: 'green',
@@ -360,7 +372,36 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-12 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
               <div className="flex flex-col gap-1 px-2">
-                {furnitureComponents.map((component) => {
+                {furnitureComponents.slice(0, 4).map((component) => {
+                  const isActive = activeComponent === component.id;
+                  return (
+                    <button
+                      key={component.id}
+                      onClick={() => handleComponentClick(component.id)}
+                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                      title={component.label}
+                    >
+                      <div className="flex-shrink-0">
+                        {React.cloneElement(component.icon, { size: 12 })}
+                      </div>
+                      <span className="text-xs font-medium truncate">
+                        {component.label}
+                      </span>
+                      {isActive && (
+                        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Additional buttons - scrollable area */}
+            {furnitureComponents.length > 4 && (
+              <div className="flex flex-col gap-1 px-2 mt-2 pt-2 border-t border-gray-600/30">
+                {furnitureComponents.slice(4).map((component) => {
                   const isActive = activeComponent === component.id;
                   return (
                     <button
@@ -879,6 +920,57 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeComponent === 'edgeband' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`,
+            height: `${panelHeightValue - 200}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <RectangleHorizontal size={14} className="text-amber-400" />
+              <span className="text-white font-medium text-sm">Edgeband</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Edgeband details will be shown here...
+              <br /><br />
+              Edge thickness, material, color options etc.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parameter Detay Bölümü */}
+      {activeComponent === 'parameter' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`,
+            height: `${panelHeightValue - 200}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Sliders size={14} className="text-cyan-400" />
+              <span className="text-white font-medium text-sm">Parameter</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Parameter details will be shown here...
+              <br /><br />
+              Custom parameters, variables, formulas etc.
             </div>
           </div>
         </div>
