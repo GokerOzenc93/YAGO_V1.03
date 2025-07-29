@@ -347,6 +347,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               <ChevronRight size={16} />
             </button>
           </div>
+          </>
         )}
 
         {/* İçerik - Sol (butonlar) ve Sağ (boyutlar/diğer) olarak bölünmüş */}
@@ -448,8 +449,9 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               </div>
             </div>
           ) : (
-          {/* En Üst - Dolap Kodu Girişi */}
-          <div className="absolute top-2 left-2 right-16 z-10">
+          <>
+            {/* En Üst - Dolap Kodu Girişi */}
+            <div className="absolute top-2 left-2 right-16 z-10">
             <input
               type="text"
               placeholder="Cabinet Code (e.g: CAB-001)"
