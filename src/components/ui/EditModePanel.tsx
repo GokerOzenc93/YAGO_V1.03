@@ -388,98 +388,115 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         </div>
 
-        {/* Paneller Bölümü */}
-        {activeComponent === 'panels' && (
-          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
-            {/* Başlık ve Kapat Düğmesi */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
-              <div className="flex items-center gap-2">
-                <Layers size={14} className="text-blue-400" />
-                <span className="text-white font-medium text-sm">Paneller</span>
-              </div>
-            </div>
-            
-            {/* İçerik Alanı - Kaydırılabilir */}
-            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-              <div className="text-gray-400 text-xs text-center py-8">
-                Panel detayları burada gösterilecek...
-                <br /><br />
-                Burada çok içerik olursa aşağıya kaydırılabilir olacak.
-                <br /><br />
-                Örnek içerik: Panel ekleme, düzenleme, ayarlar vs.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modül Bilgileri - Panelin altında genişletilir */}
-        {activeComponent === 'module' && (
-          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
-            {/* Başlık ve Kapat Düğmesi */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
-              <div className="flex items-center gap-2">
-                <Puzzle size={14} className="text-violet-400" />
-                <span className="text-white font-medium text-sm">Modül</span>
-              </div>
-            </div>
-            
-            {/* İçerik Alanı - Kaydırılabilir */}
-            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-              <div className="text-gray-400 text-xs text-center py-8">
-                Modül detayları burada gösterilecek...
-                <br /><br />
-                Boyut ayarları, pozisyon, malzeme seçimi vs.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Raflar Bölümü */}
-        {activeComponent === 'shelves' && (
-          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
-            {/* Başlık ve Kapat Düğmesi */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
-              <div className="flex items-center gap-2">
-                <Shelf size={14} className="text-green-400" />
-                <span className="text-white font-medium text-sm">Raflar</span>
-              </div>
-            </div>
-            
-            {/* İçerik Alanı - Kaydırılabilir */}
-            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-              <div className="text-gray-400 text-xs text-center py-8">
-                Raf detayları burada gösterilecek...
-                <br /><br />
-                Sabit raf, ayarlanabilir raf, raf pozisyonları vs.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Kapılar Bölümü */}
-        {activeComponent === 'doors' && (
-          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
-            {/* Başlık ve Kapat Düğmesi */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
-              <div className="flex items-center gap-2">
-                <DoorOpen size={14} className="text-orange-400" />
-                <span className="text-white font-medium text-sm">Kapılar</span>
-              </div>
-            </div>
-            
-            {/* İçerik Alanı - Kaydırılabilir */}
-            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-              <div className="text-gray-400 text-xs text-center py-8">
-                Kapı detayları burada gösterilecek...
-                <br /><br />
-                Tek kapı, çift kapı, menteşe ayarları, kulp seçimi vs.
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Alt Bilgi - Her zaman altta */}
       </div>
 
+      {/* Detay Bölümleri - Ana panelin dışında, altında */}
+      {activeComponent === 'panels' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`, // Ana düğmelerin altında başlar
+            height: `${panelHeightValue - 200}px`, // Kalan yüksekliği kullanır
+          }}
+        >
+          {/* Başlık */}
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Layers size={14} className="text-blue-400" />
+              <span className="text-white font-medium text-sm">Paneller</span>
+            </div>
+          </div>
+          
+          {/* İçerik Alanı - Kaydırılabilir */}
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Panel detayları burada gösterilecek...
+              <br /><br />
+              Burada çok içerik olursa aşağıya kaydırılabilir olacak.
+              <br /><br />
+              Örnek içerik: Panel ekleme, düzenleme, ayarlar vs.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modül Detay Bölümü */}
+      {activeComponent === 'module' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`,
+            height: `${panelHeightValue - 200}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Puzzle size={14} className="text-violet-400" />
+              <span className="text-white font-medium text-sm">Modül</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Modül detayları burada gösterilecek...
+              <br /><br />
+              Boyut ayarları, pozisyon, malzeme seçimi vs.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Raflar Detay Bölümü */}
+      {activeComponent === 'shelves' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`,
+            height: `${panelHeightValue - 200}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Shelf size={14} className="text-green-400" />
+              <span className="text-white font-medium text-sm">Raflar</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Raf detayları burada gösterilecek...
+              <br /><br />
+              Sabit raf, ayarlanabilir raf, raf pozisyonları vs.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kapılar Detay Bölümü */}
+      {activeComponent === 'doors' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`,
+            height: `${panelHeightValue - 200}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <DoorOpen size={14} className="text-orange-400" />
+              <span className="text-white font-medium text-sm">Kapılar</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Kapı detayları burada gösterilecek...
+              <br /><br />
+              Tek kapı, çift kapı, menteşe ayarları, kulp seçimi vs.
+            </div>
+          </div>
+        </div>
+      )}
       {/* Daraltılmış panel için yeni düğme - artık kullanılmıyor */}
       {/* {isCollapsed && (
         <button
