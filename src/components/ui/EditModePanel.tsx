@@ -732,15 +732,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       ))}
 
       {/* Yeni PanelEditor modalı */}
-      {isPanelEditorModalOpen && (
-        <PanelEditor
-          isOpen={isPanelEditorModalOpen}
-          onClose={() => setIsPanelEditorModalOpen(false)}
-          selectedPanel={selectedPanel} // Bu prop'un dışarıdan doğru bir panel ile beslenmesi gerekecek
-          onPanelUpdate={onPanelUpdate} // Bu prop'un dışarıdan panel güncelleme mantığı ile beslenmesi gerekecek
-          editingShapeId={editedShape.id}
-        />
-      )}
     </>
   );
 };
