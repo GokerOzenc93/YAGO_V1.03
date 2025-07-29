@@ -224,25 +224,25 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       id: 'panels',
       icon: <Layers size={12} />,
       color: 'blue',
-      label: 'Paneller'
+      label: 'Panels'
     },
     {
       id: 'module',
       icon: <Puzzle size={12} />,
       color: 'violet',
-      label: 'Modül'
+      label: 'Module'
     },
     {
       id: 'shelves',
       icon: <Shelf size={12} />,
       color: 'green',
-      label: 'Raflar'
+      label: 'Shelves'
     },
     {
       id: 'doors',
       icon: <DoorOpen size={12} />,
       color: 'orange',
-      label: 'Kapılar'
+      label: 'Doors'
     },
   ];
 
@@ -317,7 +317,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             <button
               onClick={() => setIsCollapsed(false)}
               className="text-gray-400 hover:text-white p-2 rounded transition-colors hover:bg-gray-700/50"
-              title="Paneli Genişlet"
+              title="Expand Panel"
             >
               <ChevronRight size={16} />
             </button>
@@ -330,7 +330,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           <div className="absolute top-2 left-2 right-16 z-10">
             <input
               type="text"
-              placeholder="Dolap Kodu (örn: DLB-001)"
+              placeholder="Cabinet Code (e.g: CAB-001)"
               className="w-full bg-gray-700/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50"
             />
           </div>
@@ -341,7 +341,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-              title="Düzenleme Modundan Çık"
+              title="Exit Edit Mode"
             >
               <X size={12} />
             </button>
@@ -350,7 +350,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             <button
               onClick={() => setIsCollapsed(true)}
               className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-              title="Arayüzü Küçült"
+              title="Minimize Interface"
             >
               <ChevronLeft size={12} />
             </button>
@@ -388,103 +388,81 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
             {/* Modül Detayları - Sol Panel İçinde */}
             {activeComponent === 'module' && (
-              <div className="px-2 mt-4 border-t-2 border-blue-400/40 pt-4 bg-gradient-to-b from-blue-900/20 to-gray-800/30 rounded-lg shadow-inner border-l-4 border-l-blue-500/60">
+              <div className="px-2 mt-4 border-t border-gray-600/30 pt-4 bg-gray-700/20 rounded-b-lg">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
-                    <Puzzle size={12} className="text-blue-400" />
-                  </div>
-                  <span className="text-blue-200 font-semibold text-sm tracking-wide">MODÜL BOYUTLARI</span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-blue-400/30 to-transparent"></div>
+                  <Puzzle size={12} className="text-violet-400" />
+                  <span className="text-white font-medium text-sm">Module</span>
                 </div>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-400/60 to-transparent mb-3"></div>
                 
-                {/* Alt detay kutusu */}
-                <div className="bg-gray-800/40 rounded-lg p-3 border border-gray-600/30 shadow-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span className="text-gray-300 font-medium text-xs uppercase tracking-wider">Ölçüler</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300 text-xs w-4">W:</span>
+                    <input
+                      type="number"
+                      value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
+                      onChange={(e) => {
+                        const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                        const newGeometry = new THREE.BoxGeometry(
+                          newWidth,
+                          editedShape.parameters.height || 500,
+                          editedShape.parameters.depth || 500
+                        );
+                        updateShape(editedShape.id, {
+                          parameters: { ...editedShape.parameters, width: newWidth },
+                          geometry: newGeometry
+                        });
+                      }}
+                      className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                      step="0.1"
+                      min="1"
+                    />
                   </div>
-                
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-blue-500/10 rounded flex items-center justify-center">
-                          <span className="text-blue-300 text-xs font-bold">W</span>
-                        </div>
-                        <input
-                          type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
-                          onChange={(e) => {
-                            const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
-                            const newGeometry = new THREE.BoxGeometry(
-                              newWidth,
-                              editedShape.parameters.height || 500,
-                              editedShape.parameters.depth || 500
-                            );
-                            updateShape(editedShape.id, {
-                              parameters: { ...editedShape.parameters, width: newWidth },
-                              geometry: newGeometry
-                            });
-                          }}
-                          className="flex-1 bg-gray-700/60 text-white text-xs px-3 py-2 rounded-lg border border-gray-500/40 focus:outline-none focus:border-blue-400/60 focus:bg-gray-700/80 transition-all"
-                          step="0.1"
-                          min="1"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-green-500/10 rounded flex items-center justify-center">
-                          <span className="text-green-300 text-xs font-bold">H</span>
-                        </div>
-                        <input
-                          type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
-                          onChange={(e) => {
-                            const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
-                            const newGeometry = new THREE.BoxGeometry(
-                              editedShape.parameters.width || 500,
-                              newHeight,
-                              editedShape.parameters.depth || 500
-                            );
-                            updateShape(editedShape.id, {
-                              parameters: { ...editedShape.parameters, height: newHeight },
-                              geometry: newGeometry
-                            });
-                          }}
-                          className="flex-1 bg-gray-700/60 text-white text-xs px-3 py-2 rounded-lg border border-gray-500/40 focus:outline-none focus:border-green-400/60 focus:bg-gray-700/80 transition-all"
-                          step="0.1"
-                          min="1"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-orange-500/10 rounded flex items-center justify-center">
-                          <span className="text-orange-300 text-xs font-bold">D</span>
-                        </div>
-                        <input
-                          type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
-                          onChange={(e) => {
-                            const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
-                            const newGeometry = new THREE.BoxGeometry(
-                              editedShape.parameters.width || 500,
-                              editedShape.parameters.height || 500,
-                              newDepth
-                            );
-                            updateShape(editedShape.id, {
-                              parameters: { ...editedShape.parameters, depth: newDepth },
-                              geometry: newGeometry
-                            });
-                          }}
-                          className="flex-1 bg-gray-700/60 text-white text-xs px-3 py-2 rounded-lg border border-gray-500/40 focus:outline-none focus:border-orange-400/60 focus:bg-gray-700/80 transition-all"
-                          step="0.1"
-                          min="1"
-                        />
-                      </div>
-                    </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300 text-xs w-4">H:</span>
+                    <input
+                      type="number"
+                      value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
+                      onChange={(e) => {
+                        const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                        const newGeometry = new THREE.BoxGeometry(
+                          editedShape.parameters.width || 500,
+                          newHeight,
+                          editedShape.parameters.depth || 500
+                        );
+                        updateShape(editedShape.id, {
+                          parameters: { ...editedShape.parameters, height: newHeight },
+                          geometry: newGeometry
+                        });
+                      }}
+                      className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                      step="0.1"
+                      min="1"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300 text-xs w-4">D:</span>
+                    <input
+                      type="number"
+                      value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
+                      onChange={(e) => {
+                        const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                        const newGeometry = new THREE.BoxGeometry(
+                          editedShape.parameters.width || 500,
+                          editedShape.parameters.height || 500,
+                          newDepth
+                        );
+                        updateShape(editedShape.id, {
+                          parameters: { ...editedShape.parameters, depth: newDepth },
+                          geometry: newGeometry
+                        });
+                      }}
+                      className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                      step="0.1"
+                      min="1"
+                    />
                   </div>
                 </div>
               </div>
