@@ -508,7 +508,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       {/* Ana Düzenleme Paneli */}
       <div
         className={`fixed left-0 z-50 ${getPanelWidthClass()} bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 shadow-lg flex flex-col
-          transition-all duration-300 ease-in-out`} {/* isCollapsed ile ilgili sınıflar kaldırıldı */}
+          transition-all duration-300 ease-in-out`}
         style={{
           top: panelTop,
           height: panelHeight,
