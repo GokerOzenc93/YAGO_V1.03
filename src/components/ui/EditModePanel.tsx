@@ -326,8 +326,29 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* İçerik - Sol (butonlar) ve Sağ (boyutlar/diğer) olarak bölünmüş */}
         <div className={`flex-1 flex flex-row overflow-hidden ${isCollapsed ? 'hidden' : ''}`}>
-          {/* Bileşen Menü Çubuğu - Tam genişlik */}
-          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          {/* Üst Kısım - Sağ üst düğmeler */}
+          <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+            {/* Kapat butonu */}
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+              title="Düzenleme Modundan Çık"
+            >
+              <X size={12} />
+            </button>
+            
+            {/* Collapse düğmesi */}
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+              title="Arayüzü Küçült"
+            >
+              <ChevronLeft size={12} />
+            </button>
+          </div>
+
+          {/* Bileşen Menü Çubuğu - Kaydırılabilir */}
+          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-10 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
               <div className="flex flex-col gap-1 px-2">
                 {furnitureComponents.map((component) => {
@@ -360,26 +381,23 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Paneller Bölümü */}
         {activeComponent === 'panels' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
                 <Layers size={14} className="text-blue-400" />
                 <span className="text-white font-medium text-sm">Paneller</span>
               </div>
-              <button
-                onClick={() => setActiveComponent(null)}
-                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
-                title="Kapat"
-              >
-                <X size={12} className="text-gray-400 hover:text-white" />
-              </button>
             </div>
             
-            {/* İçerik Alanı - Sonra doldurulacak */}
-            <div className="flex-1 p-3">
+            {/* İçerik Alanı - Kaydırılabilir */}
+            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
               <div className="text-gray-400 text-xs text-center py-8">
                 Panel detayları burada gösterilecek...
+                <br /><br />
+                Burada çok içerik olursa aşağıya kaydırılabilir olacak.
+                <br /><br />
+                Örnek içerik: Panel ekleme, düzenleme, ayarlar vs.
               </div>
             </div>
           </div>
@@ -387,26 +405,21 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Modül Bilgileri - Panelin altında genişletilir */}
         {activeComponent === 'module' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
                 <Puzzle size={14} className="text-violet-400" />
                 <span className="text-white font-medium text-sm">Modül</span>
               </div>
-              <button
-                onClick={() => setActiveComponent(null)}
-                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
-                title="Kapat"
-              >
-                <X size={12} className="text-gray-400 hover:text-white" />
-              </button>
             </div>
             
-            {/* İçerik Alanı - Sonra doldurulacak */}
-            <div className="flex-1 p-3">
+            {/* İçerik Alanı - Kaydırılabilir */}
+            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
               <div className="text-gray-400 text-xs text-center py-8">
                 Modül detayları burada gösterilecek...
+                <br /><br />
+                Boyut ayarları, pozisyon, malzeme seçimi vs.
               </div>
             </div>
           </div>
@@ -414,26 +427,21 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Raflar Bölümü */}
         {activeComponent === 'shelves' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
                 <Shelf size={14} className="text-green-400" />
                 <span className="text-white font-medium text-sm">Raflar</span>
               </div>
-              <button
-                onClick={() => setActiveComponent(null)}
-                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
-                title="Kapat"
-              >
-                <X size={12} className="text-gray-400 hover:text-white" />
-              </button>
             </div>
             
-            {/* İçerik Alanı - Sonra doldurulacak */}
-            <div className="flex-1 p-3">
+            {/* İçerik Alanı - Kaydırılabilir */}
+            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
               <div className="text-gray-400 text-xs text-center py-8">
                 Raf detayları burada gösterilecek...
+                <br /><br />
+                Sabit raf, ayarlanabilir raf, raf pozisyonları vs.
               </div>
             </div>
           </div>
@@ -441,53 +449,26 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Kapılar Bölümü */}
         {activeComponent === 'doors' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
                 <DoorOpen size={14} className="text-orange-400" />
                 <span className="text-white font-medium text-sm">Kapılar</span>
               </div>
-              <button
-                onClick={() => setActiveComponent(null)}
-                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
-                title="Kapat"
-              >
-                <X size={12} className="text-gray-400 hover:text-white" />
-              </button>
             </div>
             
-            {/* İçerik Alanı - Sonra doldurulacak */}
-            <div className="flex-1 p-3">
+            {/* İçerik Alanı - Kaydırılabilir */}
+            <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
               <div className="text-gray-400 text-xs text-center py-8">
                 Kapı detayları burada gösterilecek...
+                <br /><br />
+                Tek kapı, çift kapı, menteşe ayarları, kulp seçimi vs.
               </div>
             </div>
           </div>
         )}
         {/* Alt Bilgi - Her zaman altta */}
-        <div className={`flex-shrink-0 px-2 py-1 border-t border-gray-600/30 bg-gray-700/30 ${isCollapsed ? 'hidden' : ''}`}>
-          {/* Collapse düğmesi */}
-          <div className="flex justify-between items-center">
-            {/* Kapat butonu */}
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-              title="Düzenleme Modundan Çık"
-            >
-              <X size={10} />
-            </button>
-            
-            {/* Collapse düğmesi */}
-            <button
-              onClick={() => setIsCollapsed(true)}
-              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title="Arayüzü Küçült"
-            >
-              <ChevronLeft size={10} />
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Daraltılmış panel için yeni düğme - artık kullanılmıyor */}
