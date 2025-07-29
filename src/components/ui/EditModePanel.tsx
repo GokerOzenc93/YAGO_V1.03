@@ -360,29 +360,109 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Paneller Bölümü */}
         {activeComponent === 'panels' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <PanelsExpandedSection selectedFaces={selectedFaces} />
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+            {/* Başlık ve Kapat Düğmesi */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
+              <div className="flex items-center gap-2">
+                <Layers size={14} className="text-blue-400" />
+                <span className="text-white font-medium text-sm">Paneller</span>
+              </div>
+              <button
+                onClick={() => setActiveComponent(null)}
+                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
+                title="Kapat"
+              >
+                <X size={12} className="text-gray-400 hover:text-white" />
+              </button>
+            </div>
+            
+            {/* İçerik Alanı - Sonra doldurulacak */}
+            <div className="flex-1 p-3">
+              <div className="text-gray-400 text-xs text-center py-8">
+                Panel detayları burada gösterilecek...
+              </div>
+            </div>
           </div>
         )}
 
         {/* Modül Bilgileri - Panelin altında genişletilir */}
         {activeComponent === 'module' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <ModuleExpandedSection editedShape={editedShape} />
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+            {/* Başlık ve Kapat Düğmesi */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
+              <div className="flex items-center gap-2">
+                <Puzzle size={14} className="text-violet-400" />
+                <span className="text-white font-medium text-sm">Modül</span>
+              </div>
+              <button
+                onClick={() => setActiveComponent(null)}
+                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
+                title="Kapat"
+              >
+                <X size={12} className="text-gray-400 hover:text-white" />
+              </button>
+            </div>
+            
+            {/* İçerik Alanı - Sonra doldurulacak */}
+            <div className="flex-1 p-3">
+              <div className="text-gray-400 text-xs text-center py-8">
+                Modül detayları burada gösterilecek...
+              </div>
+            </div>
           </div>
         )}
 
         {/* Raflar Bölümü */}
         {activeComponent === 'shelves' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <ShelvesExpandedSection />
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+            {/* Başlık ve Kapat Düğmesi */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
+              <div className="flex items-center gap-2">
+                <Shelf size={14} className="text-green-400" />
+                <span className="text-white font-medium text-sm">Raflar</span>
+              </div>
+              <button
+                onClick={() => setActiveComponent(null)}
+                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
+                title="Kapat"
+              >
+                <X size={12} className="text-gray-400 hover:text-white" />
+              </button>
+            </div>
+            
+            {/* İçerik Alanı - Sonra doldurulacak */}
+            <div className="flex-1 p-3">
+              <div className="text-gray-400 text-xs text-center py-8">
+                Raf detayları burada gösterilecek...
+              </div>
+            </div>
           </div>
         )}
 
         {/* Kapılar Bölümü */}
         {activeComponent === 'doors' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <DoorsExpandedSection />
+          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col">
+            {/* Başlık ve Kapat Düğmesi */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
+              <div className="flex items-center gap-2">
+                <DoorOpen size={14} className="text-orange-400" />
+                <span className="text-white font-medium text-sm">Kapılar</span>
+              </div>
+              <button
+                onClick={() => setActiveComponent(null)}
+                className="p-1 hover:bg-gray-600/50 rounded transition-colors"
+                title="Kapat"
+              >
+                <X size={12} className="text-gray-400 hover:text-white" />
+              </button>
+            </div>
+            
+            {/* İçerik Alanı - Sonra doldurulacak */}
+            <div className="flex-1 p-3">
+              <div className="text-gray-400 text-xs text-center py-8">
+                Kapı detayları burada gösterilecek...
+              </div>
+            </div>
           </div>
         )}
         {/* Alt Bilgi - Her zaman altta */}
@@ -426,527 +506,5 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   );
 };
 
-// Paneller genişletilmiş bölüm bileşeni
-const PanelsExpandedSection: React.FC<{ selectedFaces: number[] }> = ({ selectedFaces }) => {
-  const faceNames = ['Ön', 'Arka', 'Üst', 'Alt', 'Sağ', 'Sol'];
-  
-  return (
-    <div className="p-2 space-y-2 text-gray-200">
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Panel Ekle
-        </button>
-        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Panel Düzenle
-        </button>
-        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Tüm Panelleri Ekle
-        </button>
-        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Panel Ayarları
-        </button>
-        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Malzeme Seç
-        </button>
-        <button className="w-full bg-yellow-600/90 hover:bg-yellow-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Kenar Bandı
-        </button>
-        <button className="w-full bg-gray-600/90 hover:bg-gray-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Panelleri Temizle
-        </button>
-      </div>
-      
-      {/* Seçili Paneller */}
-      {selectedFaces.length > 0 && (
-        <div className="space-y-1">
-          <div className="text-xs text-gray-400 font-medium">Seçili ({selectedFaces.length})</div>
-          {selectedFaces.map((faceIndex) => (
-            <div key={faceIndex} className="flex justify-between items-center bg-green-600/20 rounded px-2 py-1 text-xs border border-green-500/30">
-              <span className="text-green-300">{faceNames[faceIndex]}</span>
-              <span className="text-green-400 font-mono">18mm</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Panel Düzenleme genişletilmiş bölüm bileşeni
-const PanelEditExpandedSection: React.FC<{ selectedFaces: number[] }> = ({ selectedFaces }) => {
-  return (
-    <div className="p-2 space-y-2 text-gray-200">
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Boyut Düzenle
-        </button>
-        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Pozisyon Düzenle
-        </button>
-        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Malzeme Değiştir
-        </button>
-      </div>
-      
-      {/* Düzenlenebilir Paneller */}
-      {selectedFaces.length > 0 && (
-        <div className="text-xs text-red-400 bg-red-600/10 rounded px-2 py-1 border border-red-500/30">
-          {selectedFaces.length} panel düzenlenebilir
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Raflar genişletilmiş bölüm bileşeni
-const ShelvesExpandedSection: React.FC = () => {
-  return (
-    <div className="p-2 space-y-2 text-gray-200">
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Sabit Raf Ekle
-        </button>
-        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Ayarlanabilir Raf
-        </button>
-        <button className="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Cam Raf Ekle
-        </button>
-        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Tel Raf Ekle
-        </button>
-        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Raf Desteği Ekle
-        </button>
-        <button className="w-full bg-yellow-600/90 hover:bg-yellow-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Raf Pozisyonu
-        </button>
-        <button className="w-full bg-pink-600/90 hover:bg-pink-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Raf Kalınlığı
-        </button>
-        <button className="w-full bg-gray-600/90 hover:bg-gray-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Rafları Temizle
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Arkalıklar genişletilmiş bölüm bileşeni
-const BacksExpandedSection: React.FC = () => {
-  return (
-    <div className="p-2 space-y-2 text-gray-200">
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Sunta Arkalık (3mm)
-        </button>
-        <button className="w-full bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          MDF Arkalık (6mm)
-        </button>
-        <button className="w-full bg-violet-600/90 hover:bg-violet-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Arkalık Ayarları
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Kapılar genişletilmiş bölüm bileşeni
-const DoorsExpandedSection: React.FC = () => {
-  return (
-    <div className="p-2 space-y-2 text-gray-200">
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Tek Kapı Ekle
-        </button>
-        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Çift Kapı Ekle
-        </button>
-        <button className="w-full bg-amber-600/90 hover:bg-amber-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Cam Kapı Ekle
-        </button>
-        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Sürgülü Kapı
-        </button>
-        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Menteşe Ekle
-        </button>
-        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Kulp Ekle
-        </button>
-        <button className="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Kapı Boyutu
-        </button>
-        <button className="w-full bg-pink-600/90 hover:bg-pink-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Açılış Yönü
-        </button>
-        <button className="w-full bg-gray-600/90 hover:bg-gray-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Kapıları Temizle
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Kenar Bandı genişletilmiş bölüm bileşeni
-const EdgebandExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Kenar Bandı Türü</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-amber-600/20 rounded px-2 py-1 text-xs text-amber-300 hover:bg-amber-600/30 border border-amber-500/30">
-            + PVC Kenar Bandı
-          </button>
-          <button className="w-full text-left bg-yellow-600/20 rounded px-2 py-1 text-xs text-yellow-300 hover:bg-yellow-600/30 border border-yellow-500/30">
-            + ABS Kenar Bandı
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Kenar Seçimi</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Kalınlık:</span>
-            <span className="text-white font-mono">0.4 mm</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Renk:</span>
-            <span className="text-white font-mono">Beyaz</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Çekmece genişletilmiş bölüm bileşeni
-const DrawerExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Çekmece Türü</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-indigo-600/20 rounded px-2 py-1 text-xs text-indigo-300 hover:bg-indigo-600/30 border border-indigo-500/30">
-            + Standart Çekmece
-          </button>
-          <button className="w-full text-left bg-blue-600/20 rounded px-2 py-1 text-xs text-blue-300 hover:bg-blue-600/30 border border-blue-500/30">
-            + Derin Çekmece
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Ray Sistemi</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Tip:</span>
-            <span className="text-white font-mono">Soft Close</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Uzunluk:</span>
-            <span className="text-white font-mono">450 mm</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Menteşe genişletilmiş bölüm bileşeni
-const HingeExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Menteşe Türü</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-cyan-600/20 rounded px-2 py-1 text-xs text-cyan-300 hover:bg-cyan-600/30 border border-cyan-500/30">
-            + Gizli Menteşe
-          </button>
-          <button className="w-full text-left bg-teal-600/20 rounded px-2 py-1 text-xs text-teal-300 hover:bg-teal-600/30 border border-teal-500/30">
-            + Soft Close Menteşe
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Menteşe Ayarları</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Açılış Açısı:</span>
-            <span className="text-white font-mono">110°</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Adet:</span>
-            <span className="text-white font-mono">2</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Bölücü genişletilmiş bölüm bileşeni
-const DividerExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Bölücü Türü</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-pink-600/20 rounded px-2 py-1 text-xs text-pink-300 hover:bg-pink-600/30 border border-pink-500/30">
-            + Dikey Bölücü
-          </button>
-          <button className="w-full text-left bg-rose-600/20 rounded px-2 py-1 text-xs text-rose-300 hover:bg-rose-600/30 border border-rose-500/30">
-            + Yatay Bölücü
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Bölücü Ayarları</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Kalınlık:</span>
-            <span className="text-white font-mono">18 mm</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Pozisyon:</span>
-            <span className="text-white font-mono">Orta</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Çentik genişletilmiş bölüm bileşeni
-const NotchExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Çentik Türü</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-teal-600/20 rounded px-2 py-1 text-xs text-teal-300 hover:bg-teal-600/30 border border-teal-500/30">
-            + Dikdörtgen Çentik
-          </button>
-          <button className="w-full text-left bg-emerald-600/20 rounded px-2 py-1 text-xs text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/30">
-            + Yuvarlak Çentik
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Çentik Boyutları</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">G:</span>
-            <span className="text-white font-mono">35 mm</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">D:</span>
-            <span className="text-white font-mono">18 mm</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Aksesuarlar genişletilmiş bölüm bileşeni
-const AccessoriesExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Donanım</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-slate-600/20 rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-600/30 border border-slate-500/30">
-            + Kulp Ekle
-          </button>
-          <button className="w-full text-left bg-gray-600/20 rounded px-2 py-1 text-xs text-gray-300 hover:bg-gray-600/30 border border-gray-500/30">
-            + Kilit Ekle
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">İç Aksesuarlar</div>
-        <div className="space-y-1">
-          <button className="w-full text-left bg-zinc-600/20 rounded px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-600/30 border border-zinc-500/30">
-            + Raf Desteği
-          </button>
-          <button className="w-full text-left bg-stone-600/20 rounded px-2 py-1 text-xs text-stone-300 hover:bg-stone-600/30 border border-stone-500/30">
-            + Kablo Geçişi
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Yerel Parametreler genişletilmiş bölüm bileşeni
-const LocalParamsExpandedSection: React.FC = () => {
-  return (
-    <div className="p-3 space-y-3 text-gray-200">
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Özel Parametreler</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Panel Kalınlığı:</span>
-            <span className="text-white font-mono">18 mm</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Kenar Mesafesi:</span>
-            <span className="text-white font-mono">32 mm</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Vida Çapı:</span>
-            <span className="text-white font-mono">5 mm</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 font-medium">Malzeme Ayarları</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Ana Malzeme:</span>
-            <span className="text-white font-mono">Lam</span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Kenar Bandı:</span>
-            <span className="text-white font-mono">PVC</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Modül genişletilmiş bölüm bileşeni
-const ModuleExpandedSection: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
-  const { measurementUnit, convertToDisplayUnit } = useAppStore();
-  
-  const getDimensionValue = (paramName: string) => {
-    const value = editedShape.parameters[paramName];
-    return value ? convertToDisplayUnit(value).toFixed(1) : '0.0';
-  };
-
-  return (
-    <div className="p-2 space-y-2 text-gray-200">
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-violet-600/90 hover:bg-violet-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Boyut Düzenle
-        </button>
-        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Pozisyon Düzenle
-        </button>
-        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Modül Kopyala
-        </button>
-        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Döndür
-        </button>
-        <button className="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Ölçekle
-        </button>
-        <button className="w-full bg-pink-600/90 hover:bg-pink-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Malzeme Değiştir
-        </button>
-        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Modülü Sil
-        </button>
-      </div>
-      {/* Ana Aksiyon Butonları */}
-      <div className="grid grid-cols-1 gap-1">
-        <button className="w-full bg-violet-600/90 hover:bg-violet-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Boyut Düzenle
-        </button>
-        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Pozisyon Düzenle
-        </button>
-        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Modül Kopyala
-        </button>
-      </div>
-
-      {/* Boyutlar */}
-      <div className="space-y-1">
-        <div className="text-xs text-gray-400 font-medium">Mevcut Boyutlar</div>
-        {editedShape.type === 'box' && (
-          <div className="space-y-1">
-            <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-              <span className="text-gray-300">G:</span>
-              <span className="text-white font-mono">
-                {getDimensionValue('width')} {measurementUnit}
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-              <span className="text-gray-300">Y:</span>
-              <span className="text-white font-mono">
-                {getDimensionValue('height')} {measurementUnit}
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-              <span className="text-gray-300">D:</span>
-              <span className="text-white font-mono">
-                {getDimensionValue('depth')} {measurementUnit}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {editedShape.type === 'cylinder' && (
-          <div className="space-y-1">
-            <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-              <span className="text-gray-300">R:</span>
-              <span className="text-white font-mono">
-                {getDimensionValue('radius')} {measurementUnit}
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-              <span className="text-gray-300">Y:</span>
-              <span className="text-white font-mono">
-                {getDimensionValue('height')} {measurementUnit}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Pozisyon */}
-      <div className="space-y-1">
-        <div className="text-xs text-gray-400 font-medium">Mevcut Pozisyon</div>
-        <div className="space-y-1">
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">X:</span>
-            <span className="text-white font-mono">
-              {convertToDisplayUnit(editedShape.position[0]).toFixed(1)} {measurementUnit}
-            </span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Y:</span>
-            <span className="text-white font-mono">
-              {convertToDisplayUnit(editedShape.position[1]).toFixed(1)} {measurementUnit}
-            </span>
-          </div>
-          <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
-            <span className="text-gray-300">Z:</span>
-            <span className="text-white font-mono">
-              {convertToDisplayUnit(editedShape.position[2]).toFixed(1)} {measurementUnit}
-            </span>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  );
-};
 
 export default EditModePanel;
