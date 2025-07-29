@@ -611,6 +611,197 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         </div>
       )}
 
+      {/* Modül Detay Bölümü */}
+      {activeComponent === 'module' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 200}px`,
+            height: `${panelHeightValue - 200}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Puzzle size={14} className="text-violet-400" />
+              <span className="text-white font-medium text-sm">Modül</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            {/* Boyut Ayarları */}
+            <div className="space-y-3">
+              <div className="text-white font-medium text-sm mb-3">Boyutlar</div>
+              
+              {/* Genişlik */}
+              <div className="space-y-1">
+                <label className="text-gray-300 text-xs">Genişlik</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
+                    onChange={(e) => {
+                      const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                      const newGeometry = new THREE.BoxGeometry(
+                        newWidth,
+                        editedShape.parameters.height || 500,
+                        editedShape.parameters.depth || 500
+                      );
+                      updateShape(editedShape.id, {
+                        parameters: { ...editedShape.parameters, width: newWidth },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                    step="0.1"
+                    min="1"
+                  />
+                  <span className="text-gray-400 text-xs w-6">{measurementUnit}</span>
+                </div>
+              </div>
+              
+              {/* Yükseklik */}
+              <div className="space-y-1">
+                <label className="text-gray-300 text-xs">Yükseklik</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
+                    onChange={(e) => {
+                      const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                      const newGeometry = new THREE.BoxGeometry(
+                        editedShape.parameters.width || 500,
+                        newHeight,
+                        editedShape.parameters.depth || 500
+                      );
+                      updateShape(editedShape.id, {
+                        parameters: { ...editedShape.parameters, height: newHeight },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                    step="0.1"
+                    min="1"
+                  />
+                  <span className="text-gray-400 text-xs w-6">{measurementUnit}</span>
+                </div>
+              </div>
+              
+              {/* Derinlik */}
+              <div className="space-y-1">
+                <label className="text-gray-300 text-xs">Derinlik</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
+                    onChange={(e) => {
+                      const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                      const newGeometry = new THREE.BoxGeometry(
+                        editedShape.parameters.width || 500,
+                        editedShape.parameters.height || 500,
+                        newDepth
+                      );
+                      updateShape(editedShape.id, {
+                        parameters: { ...editedShape.parameters, depth: newDepth },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                    step="0.1"
+                    min="1"
+                  />
+                  <span className="text-gray-400 text-xs w-6">{measurementUnit}</span>
+                </div>
+              </div>
+              
+              {/* Silindir için Radius */}
+              {editedShape.type === 'cylinder' && (
+                <div className="space-y-1">
+                  <label className="text-gray-300 text-xs">Yarıçap</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={convertToDisplayUnit(editedShape.parameters.radius || 250).toFixed(1)}
+                      onChange={(e) => {
+                        const newRadius = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                        const newGeometry = new THREE.CylinderGeometry(
+                          newRadius,
+                          newRadius,
+                          editedShape.parameters.height || 500,
+                          32
+                        );
+                        updateShape(editedShape.id, {
+                          parameters: { ...editedShape.parameters, radius: newRadius },
+                          geometry: newGeometry
+                        });
+                      }}
+                      className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                      step="0.1"
+                      min="1"
+                    />
+                    <span className="text-gray-400 text-xs w-6">{measurementUnit}</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Hızlı Boyut Düğmeleri */}
+              <div className="pt-2 border-t border-gray-600/30">
+                <div className="text-gray-300 text-xs mb-2">Hızlı Boyutlar</div>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    onClick={() => {
+                      const newGeometry = new THREE.BoxGeometry(600, 800, 350);
+                      updateShape(editedShape.id, {
+                        parameters: { width: 600, height: 800, depth: 350 },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 text-xs px-2 py-1 rounded transition-colors"
+                  >
+                    Dolap
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newGeometry = new THREE.BoxGeometry(1200, 750, 400);
+                      updateShape(editedShape.id, {
+                        parameters: { width: 1200, height: 750, depth: 400 },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 text-xs px-2 py-1 rounded transition-colors"
+                  >
+                    Masa
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newGeometry = new THREE.BoxGeometry(400, 400, 400);
+                      updateShape(editedShape.id, {
+                        parameters: { width: 400, height: 400, depth: 400 },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 text-xs px-2 py-1 rounded transition-colors"
+                  >
+                    Kare
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newGeometry = new THREE.BoxGeometry(800, 200, 600);
+                      updateShape(editedShape.id, {
+                        parameters: { width: 800, height: 200, depth: 600 },
+                        geometry: newGeometry
+                      });
+                    }}
+                    className="bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 text-xs px-2 py-1 rounded transition-colors"
+                  >
+                    Raf
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Raflar Detay Bölümü */}
       {activeComponent === 'shelves' && (
         <div 
