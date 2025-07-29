@@ -176,7 +176,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     setActiveComponent(null);
     setIsAddPanelMode(false);
     setIsPanelEditMode(false); // Panel düzenleme modunu sıfırlar
-    setOpenWindows([]); // Tüm pencereleri kapat
     onExit();
   };
 
