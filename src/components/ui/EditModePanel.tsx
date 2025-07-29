@@ -624,19 +624,22 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                 Boyutlar
               </h3>
               <div className="flex items-center gap-1">
+                {/* Sadece boyutları gizle */}
                 <button
                   onClick={() => setShowDimensions(false)}
                   className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
-                  title="Boyutları Gizle"
+                  title="Sadece Boyutları Gizle"
                 >
-                  <X size={14} />
+                  <ChevronUp size={12} />
                 </button>
+                
+                {/* Komple arayüzü küçült */}
                 <button
                   onClick={() => setIsCollapsed(true)}
                   className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
-                  title="Paneli Daralt"
+                  title="Komple Arayüzü Küçült"
                 >
-                  <ChevronLeft size={14} />
+                  <ChevronLeft size={12} />
                 </button>
               </div>
             </div>
@@ -671,9 +674,9 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               <button
                 onClick={() => setShowDimensions(true)}
                 className="text-gray-400 hover:text-white p-1 rounded transition-colors rotate-90"
-                title="Boyutları Göster"
+                title="Boyutları Tekrar Göster"
               >
-                <ChevronDown size={12} />
+                <ChevronDown size={10} />
               </button>
             </div>
           )}
