@@ -4,6 +4,8 @@ import {
   Maximize,
   ChevronUp, // Boyut panelini daraltmak için
   ChevronDown, // Boyut panelini genişletmek için
+  ChevronLeft,
+  ChevronRight,
   Box,
   Cylinder,
   Check,
