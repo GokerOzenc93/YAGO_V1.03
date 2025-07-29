@@ -326,6 +326,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* İçerik - Sol (butonlar) ve Sağ (boyutlar/diğer) olarak bölünmüş */}
         <div className={`flex-1 flex flex-row overflow-hidden ${isCollapsed ? 'hidden' : ''}`}>
+          {/* En Üst - Dolap Kodu Girişi */}
+          <div className="absolute top-2 left-2 right-16 z-10">
+            <input
+              type="text"
+              placeholder="Dolap Kodu (örn: DLB-001)"
+              className="w-full bg-gray-700/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50"
+            />
+          </div>
+
           {/* Üst Kısım - Sağ üst düğmeler */}
           <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
             {/* Kapat butonu */}
@@ -348,7 +357,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Bileşen Menü Çubuğu - Kaydırılabilir */}
-          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-10 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-12 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
               <div className="flex flex-col gap-1 px-2">
                 {furnitureComponents.map((component) => {
@@ -381,7 +390,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Paneller Bölümü */}
         {activeComponent === 'panels' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
+          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
@@ -405,7 +414,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Modül Bilgileri - Panelin altında genişletilir */}
         {activeComponent === 'module' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
+          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
@@ -427,7 +436,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Raflar Bölümü */}
         {activeComponent === 'shelves' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
+          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
@@ -449,7 +458,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Kapılar Bölümü */}
         {activeComponent === 'doors' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30 flex-1 flex flex-col overflow-hidden">
+          <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-700/30 flex flex-col overflow-hidden border-t border-gray-600/30">
             {/* Başlık ve Kapat Düğmesi */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-600/30">
               <div className="flex items-center gap-2">
