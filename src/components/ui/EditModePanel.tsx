@@ -558,13 +558,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
         {/* Collapse Düğmesi - Collapsed modda görünür */}
         {isCollapsed && (
-          <div className="flex items-center justify-center p-2">
+          <div className="flex items-center justify-center p-2 h-full">
             <button
               onClick={() => setIsCollapsed(false)}
-              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+              className="text-gray-400 hover:text-white p-2 rounded transition-colors hover:bg-gray-700/50"
               title="Paneli Genişlet"
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={16} />
             </button>
           </div>
         )}
