@@ -94,8 +94,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
   const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
-  const [buttonDisplayMode, setButtonDisplayMode] = useState<'text' | 'icon'>('text'); // Butonların metin mi ikon mu olacağını kontrol eder
-  const [isCompact, setIsCompact] = useState(false); // Kompakt mod kontrolü
+  const [isCollapsed, setIsCollapsed] = useState(false); // Tek collapse kontrolü
   const [showDimensions, setShowDimensions] = useState(true); // Boyutlar bölümünü göster/gizle
 
   const {
@@ -492,17 +491,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   // Panel genişliğini duruma göre belirler
   const getPanelWidthClass = () => {
-    // Kompakt mod kontrolü
-    if (isCompact) {
-      return 'w-12'; // Ultra kompakt - sadece ikonlar
+    // Collapsed mod kontrolü
+    if (isCollapsed) {
+      return 'w-8'; // Ultra dar - sadece collapse düğmesi
     }
     
-    // Normal mod
-    if (buttonDisplayMode === 'icon') {
-      return showDimensions ? 'w-16' : 'w-14'; // İkon modu
-    } else {
-      return showDimensions ? 'w-80' : 'w-48'; // Text modu
-    }
+    // Normal mod - her zaman text modu
+    return showDimensions ? 'w-80' : 'w-48';
   };
 
   return (
@@ -517,7 +512,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         }}
       >
         {/* Başlık */}
-        <div className="flex items-center justify-between px-3 py-2 bg-gray-700/50 border-b border-gray-600/50 flex-shrink-0">
+        <div className={`flex items-center justify-between px-3 py-2 bg-gray-700/50 border-b border-gray-600/50 flex-shrink-0 ${isCollapsed ? 'hidden' : ''}`}>
           <div className="flex items-center gap-2">
             {getShapeIcon()}
             <span className="text-white text-sm font-medium">
@@ -534,15 +529,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
           {/* Başlık butonları */}
           <div className="flex items-center gap-1">
-            {/* Kompakt Mod Toggle */}
-            <button
-              onClick={() => setIsCompact(!isCompact)}
-              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title={isCompact ? 'Normal Moda Geç' : 'Kompakt Moda Geç'}
-            >
-              {isCompact ? <Maximize size={14} /> : <Minimize2 size={14} />}
-            </button>
-
             {/* Kaydet butonu */}
             <button
               onClick={handleSaveAll}
@@ -557,24 +543,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               <Save size={14} />
             </button>
 
-            {/* Görüntü Modu Değiştirme (Metin/İkon) */}
-            <button
-              onClick={() => setButtonDisplayMode(prev => prev === 'text' ? 'icon' : 'text')}
-              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title={buttonDisplayMode === 'text' ? 'İkon Moduna Geç' : 'Metin Moduna Geç'}
-            >
-              {buttonDisplayMode === 'text' ? <Hash size={14} /> : <Sliders size={14} />}
-            </button>
-
-            {/* Daralt butonu - Paneli sola doğru gizler (Kaldırıldı) */}
-            {/* <button
-              onClick={() => setIsCollapsed(true)}
-              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-              title="Paneli Daralt"
-            >
-              <ChevronLeft size={14} />
-            </button> */}
-
             {/* Kapat butonu - Düzenleme modundan tamamen çıkar */}
             <button
               onClick={handleClose}
@@ -586,66 +554,57 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         </div>
 
+        {/* Collapse Düğmesi - Collapsed modda görünür */}
+        {isCollapsed && (
+          <div className="flex items-center justify-center p-2">
+            <button
+              onClick={() => setIsCollapsed(false)}
+              className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+              title="Paneli Genişlet"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+
         {/* İçerik - Sol (butonlar) ve Sağ (boyutlar/diğer) olarak bölünmüş */}
-        <div className="flex-1 flex flex-row overflow-hidden">
+        <div className={`flex-1 flex flex-row overflow-hidden ${isCollapsed ? 'hidden' : ''}`}>
           {/* Yeni Bileşen Menü Çubuğu (Sol Taraf) - Açıklamalarla genişletilmiş */}
           <div className={`flex flex-col ${
-            isCompact 
-              ? 'w-full' 
-              : buttonDisplayMode === 'icon' 
-                ? 'w-14' 
-                : showDimensions 
-                  ? 'w-40' 
-                  : 'w-full'
-          } bg-gray-700/50 ${!isCompact && showDimensions ? 'border-r border-gray-600/50' : ''} flex-shrink-0 py-2 overflow-y-auto transition-all duration-300`} style={{ scrollbarWidth: 'thin' }}>
+            showDimensions ? 'w-40' : 'w-full'
+          } bg-gray-700/50 ${showDimensions ? 'border-r border-gray-600/50' : ''} flex-shrink-0 py-2 overflow-y-auto transition-all duration-300`} style={{ scrollbarWidth: 'thin' }}>
             {editedShape.type === 'box' && (
-              <div className={`flex ${isCompact ? 'flex-row flex-wrap' : 'flex-col'} gap-1 ${
-                isCompact 
-                  ? 'px-1' 
-                  : buttonDisplayMode === 'icon' 
-                    ? 'px-1' 
-                    : 'px-2'
-              }`}>
+              <div className="flex flex-col gap-1 px-2">
                 {furnitureComponents.map((component) => {
                   const isActive = activeComponent === component.id;
                   return (
                     <button
                       key={component.id}
                       onClick={() => handleComponentClick(component.id)}
-                      className={`${getIconButtonColorClasses(component.color, isActive)} ${
-                        isCompact 
-                          ? 'w-8 h-8 justify-center p-1' 
-                          : buttonDisplayMode === 'icon'
-                            ? 'w-full justify-center p-2'
-                            : 'w-full justify-start gap-2 px-2 py-1.5 text-left'
-                      }`}
+                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
                       title={component.description}
                     >
-                      <div className={buttonDisplayMode === 'icon' || isCompact ? '' : 'flex-shrink-0'}>
-                        {React.cloneElement(component.icon, { 
-                          size: isCompact ? 10 : 12 
-                        })}
+                      <div className="flex-shrink-0">
+                        {React.cloneElement(component.icon, { size: 12 })}
                       </div>
-                      {buttonDisplayMode === 'text' && !isCompact && (
-                        <span className="text-xs font-medium truncate">
-                          {component.id === 'panels' && 'Paneller'}
-                          {component.id === 'panel-edit' && 'Panel Düzenle'}
-                          {component.id === 'shelves' && 'Raflar'}
-                          {component.id === 'backs' && 'Arkalıklar'}
-                          {component.id === 'doors' && 'Kapılar'}
-                          {component.id === 'edgeband' && 'Kenar Bandı'}
-                          {component.id === 'drawer' && 'Çekmece'}
-                          {component.id === 'hinge' && 'Menteşe'}
-                          {component.id === 'divider' && 'Bölücü'}
-                          {component.id === 'notch' && 'Çentik'}
-                          {component.id === 'accessories' && 'Aksesuarlar'}
-                          {component.id === 'local-params' && 'Parametreler'}
-                          {component.id === 'module' && 'Modül'}
-                        </span>
-                      )}
+                      <span className="text-xs font-medium truncate">
+                        {component.id === 'panels' && 'Paneller'}
+                        {component.id === 'panel-edit' && 'Panel Düzenle'}
+                        {component.id === 'shelves' && 'Raflar'}
+                        {component.id === 'backs' && 'Arkalıklar'}
+                        {component.id === 'doors' && 'Kapılar'}
+                        {component.id === 'edgeband' && 'Kenar Bandı'}
+                        {component.id === 'drawer' && 'Çekmece'}
+                        {component.id === 'hinge' && 'Menteşe'}
+                        {component.id === 'divider' && 'Bölücü'}
+                        {component.id === 'notch' && 'Çentik'}
+                        {component.id === 'accessories' && 'Aksesuarlar'}
+                        {component.id === 'local-params' && 'Parametreler'}
+                        {component.id === 'module' && 'Modül'}
+                      </span>
                       {isActive && (
-                        <div className={`absolute ${isCompact ? 'top-0 right-0' : buttonDisplayMode === 'icon' ? 'top-1 right-1' : 'top-0 right-0'} ${isCompact ? 'w-2 h-2' : 'w-3 h-3'} bg-white rounded-full flex items-center justify-center`}>
-                          <div className={`${isCompact ? 'w-1 h-1' : 'w-1.5 h-1.5'} bg-green-500 rounded-full`}></div>
+                        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                         </div>
                       )}
                     </button>
@@ -656,19 +615,28 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Sağ İçerik Alanı (Boyutlar ve diğer bölümler) */}
-          <div className={`${isCompact || !showDimensions ? 'hidden' : 'flex-1 flex flex-col overflow-hidden min-w-0'}`}>
+          <div className={`${!showDimensions ? 'hidden' : 'flex-1 flex flex-col overflow-hidden min-w-0'}`}>
             {/* Boyutlar Bölümü Başlığı ve Toggle Butonu */}
             <div className="p-2 flex-shrink-0 border-b border-gray-600/30 flex items-center justify-between">
               <h3 className="text-gray-300 text-xs font-medium">
                 Boyutlar
               </h3>
-              <button
-                onClick={() => setShowDimensions(false)}
-                className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
-                title="Boyutları Gizle"
-              >
-                <X size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setShowDimensions(false)}
+                  className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
+                  title="Boyutları Gizle"
+                >
+                  <X size={14} />
+                </button>
+                <button
+                  onClick={() => setIsCollapsed(true)}
+                  className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
+                  title="Paneli Daralt"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+              </div>
             </div>
 
             {/* Boyutlar İçeriği */}
@@ -696,7 +664,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Boyutları Göster Butonu - Gizli olduğunda görünür */}
-          {!showDimensions && !isCompact && (
+          {!showDimensions && (
             <div className="w-6 bg-gray-700/30 border-l border-gray-600/50 flex items-center justify-center">
               <button
                 onClick={() => setShowDimensions(true)}
@@ -710,7 +678,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         </div>
 
         {/* Alt Bilgi - Her zaman altta */}
-        <div className="flex-shrink-0 p-2 border-t border-gray-600/30 bg-gray-700/30">
+        <div className={`flex-shrink-0 p-2 border-t border-gray-600/30 bg-gray-700/30 ${isCollapsed ? 'hidden' : ''}`}>
           <div className="text-xs text-gray-400 text-center">
             Düzenleme modu - Diğer nesneler gizli
           </div>
@@ -719,23 +687,23 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               Kaydedilmemiş değişiklikleriniz var
             </div>
           )}
-          {activeComponent === 'panels' && !isCompact && (
+          {activeComponent === 'panels' && (
             <div className="text-xs text-green-400 text-center mt-1">
               Panel eklemek için yüzeylere tıklayın
             </div>
           )}
-          {activeComponent === 'panel-edit' && !isCompact && (
+          {activeComponent === 'panel-edit' && (
             <div className="text-xs text-red-400 text-center mt-1">
               🔴 Panelleri düzenlemek için panellere tıklayın
             </div>
           )}
-          {activeComponent === 'module' && !isCompact && (
+          {activeComponent === 'module' && (
             <div className="text-xs text-violet-400 text-center mt-1">
               Modül bilgi penceresi açıldı
             </div>
           )}
           {activeComponent &&
-            !['panels', 'panel-edit', 'module'].includes(activeComponent) && !isCompact && (
+            !['panels', 'panel-edit', 'module'].includes(activeComponent) && (
               <div className="text-xs text-blue-400 text-center mt-1">
                 {activeComponent.charAt(0).toUpperCase()}
                 {activeComponent.slice(1)} modu aktif
