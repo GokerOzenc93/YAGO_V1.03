@@ -26,6 +26,8 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [zIndex, setZIndex] = useState(1000);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
 
   // Bring window to front when clicked
@@ -54,14 +56,20 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
         const newY = Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragOffset.y));
         
         onPositionChange({ x: newX, y: newY });
+      } else if (isResizing && onSizeChange) {
+        const newWidth = Math.max(200, resizeStart.width + (e.clientX - resizeStart.x));
+        const newHeight = Math.max(150, resizeStart.height + (e.clientY - resizeStart.y));
+        
+        onSizeChange({ width: newWidth, height: newHeight });
       }
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setIsResizing(false);
     };
 
-    if (isDragging) {
+    if (isDragging || isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
@@ -70,7 +78,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragOffset, position, size, onPositionChange]);
+  }, [isDragging, isResizing, dragOffset, resizeStart, position, size, onPositionChange, onSizeChange]);
 
   // Prevent window from going off-screen when window resizes
   useEffect(() => {
@@ -162,15 +170,22 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
       )}
 
       {/* Resize Handle */}
-      {!isMinimized && onSizeChange && (
+      {!isMinimized && (
         <div
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+          className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize hover:bg-gray-500/50 rounded-tl"
           onMouseDown={(e) => {
             e.stopPropagation();
-            // Resize functionality can be implemented here if needed
+            setIsResizing(true);
+            setResizeStart({
+              x: e.clientX,
+              y: e.clientY,
+              width: size.width,
+              height: size.height
+            });
+            bringToFront();
           }}
         >
-          <div className="absolute bottom-1 right-1 w-2 h-2 bg-gray-500 rounded-sm"></div>
+          <div className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 bg-gray-400 rounded-sm"></div>
         </div>
       )}
     </div>
