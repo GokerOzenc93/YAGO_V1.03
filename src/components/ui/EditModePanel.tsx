@@ -224,79 +224,25 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       id: 'panels',
       icon: <Layers size={12} />,
       color: 'blue',
-      description: 'Panel Ekle - Panel eklemek için yüzeylere tıklayın',
-    },
-    {
-      id: 'panel-edit',
-      icon: <Edit3 size={12} />,
-      color: 'red',
-      description: 'Panel Düzenle - Boyutları düzenlemek için panellere tıklayın',
+      label: 'Paneller'
     },
     {
       id: 'module',
       icon: <Puzzle size={12} />,
       color: 'violet',
-      description: 'Modül Bilgileri - Boyutları ve özellikleri görüntüle',
+      label: 'Modül'
     },
     {
       id: 'shelves',
       icon: <Shelf size={12} />,
       color: 'green',
-      description: 'Raf Ekle - Yatay raflar ekleyin',
-    },
-    {
-      id: 'backs',
-      icon: <Package size={12} />,
-      color: 'purple',
-      description: 'Arkalık Ekle - Arka paneller ekleyin',
+      label: 'Raflar'
     },
     {
       id: 'doors',
       icon: <DoorOpen size={12} />,
       color: 'orange',
-      description: 'Kapı Ekle - Dolap kapakları ekleyin',
-    },
-    {
-      id: 'edgeband',
-      icon: <RectangleHorizontal size={12} />,
-      color: 'amber',
-      description: 'Kenar Bandı Ekle - Kenar bandı ekleyin',
-    },
-    {
-      id: 'drawer',
-      icon: <Minus size={12} />,
-      color: 'indigo',
-      description: 'Çekmece Ekle - Çekmeceler ekleyin',
-    },
-    {
-      id: 'hinge',
-      icon: <Zap size={12} />,
-      color: 'cyan',
-      description: 'Menteşe Ekle - Menteşeler ekleyin',
-    },
-    {
-      id: 'divider',
-      icon: <Grid3X3 size={12} />,
-      color: 'pink',
-      description: 'Bölücü Ekle - Bölücüler ekleyin',
-    },
-    {
-      id: 'notch',
-      icon: <Scissors size={12} />,
-      color: 'teal',
-      description: 'Çentik Ekle - Çentikler ekleyin',
-    },
-    {
-      id: 'accessories',
-      icon: <Settings size={12} />,
-      color: 'slate',
-      description: 'Aksesuar Ekle - Donanım ve aksesuarlar ekleyin',
-    },
-    {
-      id: 'local-params',
-      icon: <Sliders size={12} />,
-      color: 'emerald',
-      description: 'Yerel Parametreler - Yerel parametreleri düzenleyin',
+      label: 'Kapılar'
     },
   ];
 
@@ -391,25 +337,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                       key={component.id}
                       onClick={() => handleComponentClick(component.id)}
                       className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                      title={component.description}
+                      title={component.label}
                     >
                       <div className="flex-shrink-0">
                         {React.cloneElement(component.icon, { size: 12 })}
                       </div>
                       <span className="text-xs font-medium truncate">
-                        {component.id === 'panels' && 'Paneller'}
-                        {component.id === 'panel-edit' && 'Panel Düzenle'}
-                        {component.id === 'module' && 'Modül'}
-                        {component.id === 'shelves' && 'Raflar'}
-                        {component.id === 'backs' && 'Arkalıklar'}
-                        {component.id === 'doors' && 'Kapılar'}
-                        {component.id === 'edgeband' && 'Kenar Bandı'}
-                        {component.id === 'drawer' && 'Çekmece'}
-                        {component.id === 'hinge' && 'Menteşe'}
-                        {component.id === 'divider' && 'Bölücü'}
-                        {component.id === 'notch' && 'Çentik'}
-                        {component.id === 'accessories' && 'Aksesuarlar'}
-                        {component.id === 'local-params' && 'Parametreler'}
+                        {component.label}
                       </span>
                       {isActive && (
                         <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
@@ -424,13 +358,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         </div>
 
-        {/* Modül Bilgileri - Panelin altında genişletilir */}
-        {activeComponent === 'module' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <ModuleExpandedSection editedShape={editedShape} />
-          </div>
-        )}
-
         {/* Paneller Bölümü */}
         {activeComponent === 'panels' && (
           <div className="border-t border-gray-600/30 bg-gray-700/30">
@@ -438,10 +365,10 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         )}
 
-        {/* Panel Düzenleme Bölümü */}
-        {activeComponent === 'panel-edit' && (
+        {/* Modül Bilgileri - Panelin altında genişletilir */}
+        {activeComponent === 'module' && (
           <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <PanelEditExpandedSection selectedFaces={selectedFaces} />
+            <ModuleExpandedSection editedShape={editedShape} />
           </div>
         )}
 
@@ -452,66 +379,10 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         )}
 
-        {/* Arkalıklar Bölümü */}
-        {activeComponent === 'backs' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <BacksExpandedSection />
-          </div>
-        )}
-
         {/* Kapılar Bölümü */}
         {activeComponent === 'doors' && (
           <div className="border-t border-gray-600/30 bg-gray-700/30">
             <DoorsExpandedSection />
-          </div>
-        )}
-
-        {/* Kenar Bandı Bölümü */}
-        {activeComponent === 'edgeband' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <EdgebandExpandedSection />
-          </div>
-        )}
-
-        {/* Çekmece Bölümü */}
-        {activeComponent === 'drawer' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <DrawerExpandedSection />
-          </div>
-        )}
-
-        {/* Menteşe Bölümü */}
-        {activeComponent === 'hinge' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <HingeExpandedSection />
-          </div>
-        )}
-
-        {/* Bölücü Bölümü */}
-        {activeComponent === 'divider' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <DividerExpandedSection />
-          </div>
-        )}
-
-        {/* Çentik Bölümü */}
-        {activeComponent === 'notch' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <NotchExpandedSection />
-          </div>
-        )}
-
-        {/* Aksesuarlar Bölümü */}
-        {activeComponent === 'accessories' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <AccessoriesExpandedSection />
-          </div>
-        )}
-
-        {/* Yerel Parametreler Bölümü */}
-        {activeComponent === 'local-params' && (
-          <div className="border-t border-gray-600/30 bg-gray-700/30">
-            <LocalParamsExpandedSection />
           </div>
         )}
         {/* Alt Bilgi - Her zaman altta */}
@@ -566,10 +437,22 @@ const PanelsExpandedSection: React.FC<{ selectedFaces: number[] }> = ({ selected
         <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
           Panel Ekle
         </button>
+        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Panel Düzenle
+        </button>
         <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
           Tüm Panelleri Ekle
         </button>
-        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Panel Ayarları
+        </button>
+        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Malzeme Seç
+        </button>
+        <button className="w-full bg-yellow-600/90 hover:bg-yellow-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Kenar Bandı
+        </button>
+        <button className="w-full bg-gray-600/90 hover:bg-gray-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
           Panelleri Temizle
         </button>
       </div>
@@ -630,7 +513,22 @@ const ShelvesExpandedSection: React.FC = () => {
           Ayarlanabilir Raf
         </button>
         <button className="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Raf Ayarları
+          Cam Raf Ekle
+        </button>
+        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Tel Raf Ekle
+        </button>
+        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Raf Desteği Ekle
+        </button>
+        <button className="w-full bg-yellow-600/90 hover:bg-yellow-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Raf Pozisyonu
+        </button>
+        <button className="w-full bg-pink-600/90 hover:bg-pink-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Raf Kalınlığı
+        </button>
+        <button className="w-full bg-gray-600/90 hover:bg-gray-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Rafları Temizle
         </button>
       </div>
     </div>
@@ -670,7 +568,25 @@ const DoorsExpandedSection: React.FC = () => {
           Çift Kapı Ekle
         </button>
         <button className="w-full bg-amber-600/90 hover:bg-amber-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
-          Kapı Ayarları
+          Cam Kapı Ekle
+        </button>
+        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Sürgülü Kapı
+        </button>
+        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Menteşe Ekle
+        </button>
+        <button className="w-full bg-purple-600/90 hover:bg-purple-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Kulp Ekle
+        </button>
+        <button className="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Kapı Boyutu
+        </button>
+        <button className="w-full bg-pink-600/90 hover:bg-pink-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Açılış Yönü
+        </button>
+        <button className="w-full bg-gray-600/90 hover:bg-gray-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Kapıları Temizle
         </button>
       </div>
     </div>
@@ -923,6 +839,30 @@ const ModuleExpandedSection: React.FC<{ editedShape: Shape }> = ({ editedShape }
 
   return (
     <div className="p-2 space-y-2 text-gray-200">
+      {/* Ana Aksiyon Butonları */}
+      <div className="grid grid-cols-1 gap-1">
+        <button className="w-full bg-violet-600/90 hover:bg-violet-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Boyut Düzenle
+        </button>
+        <button className="w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Pozisyon Düzenle
+        </button>
+        <button className="w-full bg-green-600/90 hover:bg-green-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Modül Kopyala
+        </button>
+        <button className="w-full bg-orange-600/90 hover:bg-orange-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Döndür
+        </button>
+        <button className="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Ölçekle
+        </button>
+        <button className="w-full bg-pink-600/90 hover:bg-pink-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Malzeme Değiştir
+        </button>
+        <button className="w-full bg-red-600/90 hover:bg-red-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
+          Modülü Sil
+        </button>
+      </div>
       {/* Ana Aksiyon Butonları */}
       <div className="grid grid-cols-1 gap-1">
         <button className="w-full bg-violet-600/90 hover:bg-violet-500 text-white text-xs py-2 px-3 rounded transition-colors font-medium">
