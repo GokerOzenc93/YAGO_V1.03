@@ -670,13 +670,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
           {/* Boyutları Göster Butonu - Gizli olduğunda görünür */}
           {!showDimensions && (
-            <div className="w-6 bg-gray-700/30 border-l border-gray-600/50 flex items-center justify-center">
+            <div className="w-8 bg-gray-700/30 border-l border-gray-600/50 flex items-center justify-center">
               <button
                 onClick={() => setShowDimensions(true)}
-                className="text-gray-400 hover:text-white p-1 rounded transition-colors rotate-90"
+                className="text-gray-400 hover:text-white hover:bg-gray-600/50 p-2 rounded transition-colors"
                 title="Boyutları Tekrar Göster"
               >
-                <ChevronDown size={10} />
+                <ChevronDown size={14} />
               </button>
             </div>
           )}
