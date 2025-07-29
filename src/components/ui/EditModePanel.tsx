@@ -369,62 +369,65 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
 
           {/* Bileşen Menü Çubuğu - Kaydırılabilir */}
-          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-12 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-12">
             {editedShape.type === 'box' && (
-              <div className="flex flex-col gap-1 px-2">
-                {furnitureComponents.slice(0, 4).map((component) => {
-                  const isActive = activeComponent === component.id;
-                  return (
-                    <button
-                      key={component.id}
-                      onClick={() => handleComponentClick(component.id)}
-                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                      title={component.label}
-                    >
-                      <div className="flex-shrink-0">
-                        {React.cloneElement(component.icon, { size: 12 })}
-                      </div>
-                      <span className="text-xs font-medium truncate">
-                        {component.label}
-                      </span>
-                      {isActive && (
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+              <>
+                {/* İlk 4 düğme - Sabit görünür */}
+                <div className="flex flex-col gap-1 px-2">
+                  {furnitureComponents.slice(0, 4).map((component) => {
+                    const isActive = activeComponent === component.id;
+                    return (
+                      <button
+                        key={component.id}
+                        onClick={() => handleComponentClick(component.id)}
+                        className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                        title={component.label}
+                      >
+                        <div className="flex-shrink-0">
+                          {React.cloneElement(component.icon, { size: 12 })}
                         </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            
-            {/* Additional buttons - scrollable area */}
-            {furnitureComponents.length > 4 && (
-              <div className="flex flex-col gap-1 px-2 mt-2 pt-2 border-t border-gray-600/30">
-                {furnitureComponents.slice(4).map((component) => {
-                  const isActive = activeComponent === component.id;
-                  return (
-                    <button
-                      key={component.id}
-                      onClick={() => handleComponentClick(component.id)}
-                      className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                      title={component.label}
-                    >
-                      <div className="flex-shrink-0">
-                        {React.cloneElement(component.icon, { size: 12 })}
-                      </div>
-                      <span className="text-xs font-medium truncate">
-                        {component.label}
-                      </span>
-                      {isActive && (
-                        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                        <span className="text-xs font-medium truncate">
+                          {component.label}
+                        </span>
+                        {isActive && (
+                          <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* 5. düğmeden itibaren - Kaydırılabilir alan */}
+                {furnitureComponents.length > 4 && (
+                  <div className="flex flex-col gap-1 px-2 mt-2 pt-2 border-t border-gray-600/30 max-h-20 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                    {furnitureComponents.slice(4).map((component) => {
+                      const isActive = activeComponent === component.id;
+                      return (
+                        <button
+                          key={component.id}
+                          onClick={() => handleComponentClick(component.id)}
+                          className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                          title={component.label}
+                        >
+                          <div className="flex-shrink-0">
+                            {React.cloneElement(component.icon, { size: 12 })}
+                          </div>
+                          <span className="text-xs font-medium truncate">
+                            {component.label}
+                          </span>
+                          {isActive && (
+                            <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
 
             {/* Modül Detayları - Sol Panel İçinde */}
