@@ -388,11 +388,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
             {/* Modül Detayları - Sol Panel İçinde */}
             {activeComponent === 'module' && (
-              <div className="px-2 mt-4 border-t border-gray-600/30 pt-4">
+              <div className="px-2 mt-4 border-t-2 border-gray-500/60 pt-4 bg-gray-700/20 rounded-b-lg">
                 <div className="flex items-center gap-2 mb-3">
                   <Puzzle size={14} className="text-violet-400" />
                   <span className="text-white font-medium text-sm">Modül</span>
                 </div>
+                
+                {/* Belirgin ayırıcı çizgi */}
+                <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-400/60 to-transparent mb-3"></div>
                 
                 <div className="space-y-3">
                   <div className="space-y-1">
