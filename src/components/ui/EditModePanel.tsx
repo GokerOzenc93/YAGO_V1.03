@@ -86,16 +86,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [panelHeightValue, setPanelHeightValue] = useState(0); // Hesaplamalar için sayısal yükseklik
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
-  // Window management
-  interface OpenWindow {
-    id: string;
-    title: string;
-    component: string;
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  }
-
-  const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
   const [isCollapsed, setIsCollapsed] = useState(false); // Tek collapse kontrolü
 
   const {
@@ -210,25 +200,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         setIsAddPanelMode(false);
         setIsPanelEditMode(true);
         console.log('Panel Düzenleme modu etkinleştirildi - Boyutları düzenlemek için panellere tıklayın');
-      } else if (componentType === 'module') {
-        // Modül penceresi aç
-        const newWindow: OpenWindow = {
-          id: 'module-window',
-          title: 'Modül',
-          component: 'module',
-          position: { x: 192, y: parseInt(panelTop) },
-          size: { width: 220, height: parseInt(panelHeight.replace('px', '')) }
-        };
-        setOpenWindows(prev => {
-          // Eğer zaten açıksa, kapat
-          const existing = prev.find(w => w.id === 'module-window');
-          if (existing) {
-            return prev.filter(w => w.id !== 'module-window');
-          }
-          // Yoksa aç
-          return [...prev, newWindow];
-        });
-        console.log('Modül bilgi penceresi açıldı');
       } else {
         setIsAddPanelMode(false);
         setIsPanelEditMode(false);
@@ -371,29 +342,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     }
   };
 
-  const closeWindow = (windowId: string) => {
-    setOpenWindows(prev => prev.filter(window => window.id !== windowId));
-  };
-
-  const updateWindowPosition = (windowId: string, position: { x: number; y: number }) => {
-    setOpenWindows(prev => prev.map(window =>
-      window.id === windowId ? { ...window, position } : window
-    ));
-  };
-
-  const updateWindowSize = (windowId: string, size: { width: number; height: number }) => {
-    setOpenWindows(prev => prev.map(window =>
-      window.id === windowId ? { ...window, size } : window
-    ));
-  };
-
-  const renderWindowContent = (componentType: string) => {
-    if (componentType === 'module') {
-      return <ModuleWindow editedShape={editedShape} />;
-    }
-    return <div className="p-4 text-gray-300">{componentType} İçeriği</div>;
-  };
-
   // Panel genişliğini duruma göre belirler
   const getPanelWidthClass = () => {
     // Collapsed mod kontrolü
@@ -498,6 +446,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         </div>
 
+        {/* Modül Bilgileri - Panelin altında genişletilir */}
+        {activeComponent === 'module' && (
+          <div className="border-t border-gray-600/30 bg-gray-700/30">
+            <ModuleExpandedSection editedShape={editedShape} />
+          </div>
+        )}
+
         {/* Alt Bilgi - Her zaman altta */}
         <div className={`flex-shrink-0 p-2 border-t border-gray-600/30 bg-gray-700/30 ${isCollapsed ? 'hidden' : ''}`}>
           {/* Collapse düğmesi */}
@@ -526,7 +481,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           )}
           {activeComponent === 'module' && (
             <div className="text-xs text-violet-400 text-center mt-1">
-              Modül bilgi penceresi açıldı
+              Modül bilgileri gösteriliyor
             </div>
           )}
           {activeComponent &&
@@ -551,29 +506,12 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         </button>
       )} */}
 
-      {/* Sürüklenebilir Pencereler */}
-      {openWindows.map((window) => (
-        <DraggableWindow
-          key={window.id}
-          id={window.id}
-          title={window.title}
-          position={window.position}
-          size={window.size}
-          onClose={() => closeWindow(window.id)}
-          onPositionChange={(position) => updateWindowPosition(window.id, position)}
-         onSizeChange={(size) => updateWindowSize(window.id, size)}
-        >
-          {renderWindowContent(window.component)}
-        </DraggableWindow>
-      ))}
-
-      {/* Yeni PanelEditor modalı */}
     </>
   );
 };
 
-// Modül penceresi bileşeni
-const ModuleWindow: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
+// Modül genişletilmiş bölüm bileşeni
+const ModuleExpandedSection: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
   const { measurementUnit, convertToDisplayUnit } = useAppStore();
   
   const getDimensionValue = (paramName: string) => {
@@ -582,10 +520,11 @@ const ModuleWindow: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
   };
 
   return (
-    <div className="p-2 space-y-2 bg-gray-800/95 text-gray-200 h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+    <div className="p-3 space-y-3 text-gray-200">
 
       {/* Boyutlar */}
       <div className="space-y-1">
+        <div className="text-xs text-gray-400 font-medium">Boyutlar</div>
         {editedShape.type === 'box' && (
           <div className="space-y-1">
             <div className="flex justify-between items-center bg-gray-700/30 rounded px-2 py-1 text-xs">
@@ -652,30 +591,6 @@ const ModuleWindow: React.FC<{ editedShape: Shape }> = ({ editedShape }) => {
         </div>
       </div>
 
-      {/* Ölçek */}
-      <div className="space-y-1">
-        <div className="text-xs text-gray-400 font-medium">Ölçek</div>
-        <div className="grid grid-cols-3 gap-1 text-xs">
-          <div className="bg-gray-700/30 rounded px-1 py-1 text-center">
-            <div className="text-gray-400">X</div>
-            <div className="text-white font-mono">
-              {editedShape.scale[0].toFixed(2)}
-            </div>
-          </div>
-          <div className="bg-gray-700/30 rounded px-1 py-1 text-center">
-            <div className="text-gray-400">Y</div>
-            <div className="text-white font-mono">
-              {editedShape.scale[1].toFixed(2)}
-            </div>
-          </div>
-          <div className="bg-gray-700/30 rounded px-1 py-1 text-center">
-            <div className="text-gray-400">Z</div>
-            <div className="text-white font-mono">
-              {editedShape.scale[2].toFixed(2)}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
