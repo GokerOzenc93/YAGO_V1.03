@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Minimize2,
+  Maximize,
   ChevronUp, // Boyut panelini daraltmak için
   ChevronDown, // Boyut panelini genişletmek için
   Box,
