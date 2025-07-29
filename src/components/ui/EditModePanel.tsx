@@ -521,8 +521,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`, // Ana düğmelerin altında başlar
-            height: `${panelHeightValue - 200}px`, // Kalan yüksekliği kullanır
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon - 4 düğme + header
+            height: `${panelHeightValue - 180}px`, // Kalan yüksekliği kullanır
           }}
         >
           {/* Başlık */}
@@ -551,8 +551,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`,
-            height: `${panelHeightValue - 200}px`,
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon
+            height: `${panelHeightValue - 180}px`,
           }}
         >
           <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
@@ -742,8 +742,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`,
-            height: `${panelHeightValue - 200}px`,
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon
+            height: `${panelHeightValue - 180}px`,
           }}
         >
           <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
@@ -932,8 +932,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`,
-            height: `${panelHeightValue - 200}px`,
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon
+            height: `${panelHeightValue - 180}px`,
           }}
         >
           <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
@@ -958,8 +958,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`,
-            height: `${panelHeightValue - 200}px`,
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon
+            height: `${panelHeightValue - 180}px`,
           }}
         >
           <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
@@ -984,8 +984,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`,
-            height: `${panelHeightValue - 200}px`,
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon
+            height: `${panelHeightValue - 180}px`,
           }}
         >
           <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
@@ -1010,8 +1010,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         <div 
           className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
           style={{
-            top: `${panelTopValue + 200}px`,
-            height: `${panelHeightValue - 200}px`,
+            top: `${panelTopValue + 180}px`, // Sabit pozisyon
+            height: `${panelHeightValue - 180}px`,
           }}
         >
           <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
