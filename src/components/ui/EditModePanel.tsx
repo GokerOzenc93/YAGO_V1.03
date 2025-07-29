@@ -347,7 +347,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               <ChevronRight size={16} />
             </button>
           </div>
-          </>
         )}
 
         {/* İçerik - Sol (butonlar) ve Sağ (boyutlar/diğer) olarak bölünmüş */}
@@ -624,6 +623,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               </div>
             )}
           </div>
+          </>
           )}
         </div>
 
