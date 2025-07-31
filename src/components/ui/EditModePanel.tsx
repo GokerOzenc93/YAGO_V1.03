@@ -91,9 +91,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const deltaX = e.clientX - startX.current;
-      const newWidth = Math.max(40, Math.min(startWidth.current + deltaX, 100));
+      if (!isResizing || !panelRef.current) return;
+      const newWidth = Math.max(40, Math.min(startWidth.current + (e.clientX - startX.current), 400));
       setPanelWidth(newWidth);
     };
 
@@ -513,7 +512,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         )}
         <div
-          className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors"
+          className="absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors"
           onMouseDown={handleResizeMouseDown}
         />
       </div>
