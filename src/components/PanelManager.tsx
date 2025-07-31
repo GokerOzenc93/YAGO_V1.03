@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
@@ -67,6 +68,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   setFaceCycleState,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
+  const { camera, raycaster, gl } = useThree();
 
   const { viewMode } = useAppStore();
 
@@ -429,14 +431,106 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
+  // Dinamik face detection - mouse pozisyonuna göre hangi face'lerin altında olduğunu bul
+  const detectFacesAtMousePosition = useCallback((event: MouseEvent): number[] => {
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera({ x, y }, camera);
+    
+    // Box'ın tüm face'lerini test et
+    const detectedFaces: { faceIndex: number; distance: number }[] = [];
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    // Face geometrileri ve pozisyonları
+    const faceData = [
+      // Front face (0) - Z+
+      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, hd], rotation: [0, 0, 0] },
+      // Back face (1) - Z-
+      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
+      // Top face (2) - Y+
+      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
+      // Bottom face (3) - Y-
+      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
+      // Right face (4) - X+
+      { geometry: new THREE.PlaneGeometry(depth, height), position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
+      // Left face (5) - X-
+      { geometry: new THREE.PlaneGeometry(depth, height), position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+    ];
+
+    faceData.forEach((face, faceIndex) => {
+      const mesh = new THREE.Mesh(face.geometry);
+      mesh.position.set(
+        shape.position[0] + face.position[0],
+        shape.position[1] + face.position[1],
+        shape.position[2] + face.position[2]
+      );
+      mesh.rotation.set(
+        shape.rotation[0] + face.rotation[0],
+        shape.rotation[1] + face.rotation[1],
+        shape.rotation[2] + face.rotation[2]
+      );
+      mesh.scale.set(...shape.scale);
+      mesh.updateMatrixWorld();
+
+      const intersects = raycaster.intersectObject(mesh);
+      if (intersects.length > 0) {
+        detectedFaces.push({
+          faceIndex,
+          distance: intersects[0].distance
+        });
+      }
+    });
+
+    // Mesafeye göre sırala (en yakından en uzağa)
+    detectedFaces.sort((a, b) => a.distance - b.distance);
+    return detectedFaces.map(f => f.faceIndex);
+  }, [camera, raycaster, gl, shape]);
+
+  // Mouse pozisyonunu güncelle
+  const updateMousePosition = useCallback((event: MouseEvent) => {
+    setFaceCycleState(prev => ({
+      ...prev,
+      mousePosition: { x: event.clientX, y: event.clientY }
+    }));
+  }, [setFaceCycleState]);
+
   // Wrap handleClick with useCallback to ensure stable function reference
   const handleClick = useCallback((e: any, faceIndex: number) => {
     e.stopPropagation();
+    
+    // Mouse pozisyonunu güncelle
+    updateMousePosition(e.nativeEvent);
 
     if (isAddPanelMode && e.nativeEvent.button === 0) {
-      // Sol tık ile yüzü seç veya seçimi kaldır
-      const isSelected = selectedFaces.includes(faceIndex);
-      onFaceSelect(faceIndex);
+      // Dinamik face detection
+      const detectedFaces = detectFacesAtMousePosition(e.nativeEvent);
+      
+      if (detectedFaces.length === 0) return;
+
+      // Eğer cycle state boşsa, yeni cycle başlat
+      if (faceCycleState.availableFaces.length === 0) {
+        setFaceCycleState({
+          availableFaces: detectedFaces,
+          currentIndex: 0,
+          selectedFace: detectedFaces[0],
+          mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+        });
+        console.log(`🎯 Face cycle started: ${detectedFaces.length} faces detected`);
+      } else {
+        // Cycle içinde bir sonraki face'e geç
+        const nextIndex = (faceCycleState.currentIndex + 1) % faceCycleState.availableFaces.length;
+        setFaceCycleState(prev => ({
+          ...prev,
+          currentIndex: nextIndex,
+          selectedFace: prev.availableFaces[nextIndex]
+        }));
+        console.log(`🎯 Face cycled to: ${faceCycleState.availableFaces[nextIndex]} (${nextIndex + 1}/${faceCycleState.availableFaces.length})`);
+      }
     } else if (isPanelEditMode && e.nativeEvent.button === 0) {
       // Edit modunda sol tık ile paneli seç
       const panelData = smartPanelData.find(
@@ -451,17 +545,30 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         });
       }
     }
-  }, [isAddPanelMode, isPanelEditMode, selectedFaces, onFaceSelect, smartPanelData, onPanelSelect]);
+  }, [isAddPanelMode, isPanelEditMode, selectedFaces, onFaceSelect, smartPanelData, onPanelSelect, detectFacesAtMousePosition, faceCycleState, setFaceCycleState, updateMousePosition]);
 
   const handleContextMenu = useCallback((e: any, faceIndex: number) => {
-    // Sağ tık ile panel yerleştirme
+    // Sağ tık ile panel yerleştirmeyi onayla
     if (!isAddPanelMode) return;
 
     e.stopPropagation();
     e.nativeEvent.preventDefault();
 
-    onFaceSelect(faceIndex);
-  }, [isAddPanelMode, onFaceSelect]);
+    // Eğer cycle state'de seçili face varsa, onu onayla
+    if (faceCycleState.selectedFace !== null) {
+      onFaceSelect(faceCycleState.selectedFace);
+      
+      // Cycle state'i sıfırla
+      setFaceCycleState({
+        availableFaces: [],
+        currentIndex: 0,
+        selectedFace: null,
+        mousePosition: null
+      });
+      
+      console.log(`🎯 Panel confirmed on face: ${faceCycleState.selectedFace}`);
+    }
+  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState]);
 
 
   const handleFaceHover = useCallback((faceIndex: number | null) => {
@@ -574,22 +681,22 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         })}
 
       {/* 🎯 HAYALİ PANEL - Yüzeye yaklaştığında gösterilecek */}
-      {isAddPanelMode && hoveredFace !== null && !selectedFaces.includes(hoveredFace) && (
+      {isAddPanelMode && faceCycleState.selectedFace !== null && !selectedFaces.includes(faceCycleState.selectedFace) && (
         <mesh
-          key={`ghost-panel-${hoveredFace}`}
+          key={`ghost-panel-${faceCycleState.selectedFace}`}
           geometry={new THREE.PlaneGeometry(
-            hoveredFace === 2 || hoveredFace === 3 ? shape.parameters.width : (hoveredFace === 4 || hoveredFace === 5 ? shape.parameters.depth : shape.parameters.width),
-            hoveredFace === 2 || hoveredFace === 3 ? shape.parameters.depth : shape.parameters.height
+            faceCycleState.selectedFace === 2 || faceCycleState.selectedFace === 3 ? shape.parameters.width : (faceCycleState.selectedFace === 4 || faceCycleState.selectedFace === 5 ? shape.parameters.depth : shape.parameters.width),
+            faceCycleState.selectedFace === 2 || faceCycleState.selectedFace === 3 ? shape.parameters.depth : shape.parameters.height
           )}
           position={[
-            shape.position[0] + faceTransforms[hoveredFace].position[0],
-            shape.position[1] + faceTransforms[hoveredFace].position[1],
-            shape.position[2] + faceTransforms[hoveredFace].position[2],
+            shape.position[0] + faceTransforms[faceCycleState.selectedFace].position[0],
+            shape.position[1] + faceTransforms[faceCycleState.selectedFace].position[1],
+            shape.position[2] + faceTransforms[faceCycleState.selectedFace].position[2],
           ]}
           rotation={[
-            shape.rotation[0] + faceTransforms[hoveredFace].rotation[0],
-            shape.rotation[1] + faceTransforms[hoveredFace].rotation[1],
-            shape.rotation[2] + faceTransforms[hoveredFace].rotation[2],
+            shape.rotation[0] + faceTransforms[faceCycleState.selectedFace].rotation[0],
+            shape.rotation[1] + faceTransforms[faceCycleState.selectedFace].rotation[1],
+            shape.rotation[2] + faceTransforms[faceCycleState.selectedFace].rotation[2],
           ]}
           scale={shape.scale}
           material={ghostPanelMaterial}
