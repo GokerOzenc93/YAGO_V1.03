@@ -237,7 +237,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (screenWidth < 1024) return 1.5;
     return 2.0;
   };
-
+  
   const handleClick = useCallback((e: any, faceIndex: number) => {
     e.stopPropagation();
     if (isAddPanelMode && e.nativeEvent.button === 0) {
@@ -251,6 +251,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       newRaycaster.setFromCamera({ x, y }, camera);
 
       const detectedFaces: { faceIndex: number; distance: number }[] = [];
+      const tempObjects: THREE.Mesh[] = [];
+
       faceTransforms.forEach((transform, fIndex) => {
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(
           fIndex === 2 || fIndex === 3 ? shape.parameters.width : (fIndex === 4 || fIndex === 5 ? shape.parameters.depth : shape.parameters.width),
@@ -258,16 +260,13 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         ));
         mesh.position.copy(transform.position);
         mesh.rotation.copy(transform.rotation);
-        const intersects = newRaycaster.intersectObject(mesh);
-        if (intersects.length > 0) {
-          detectedFaces.push({ faceIndex: fIndex, distance: intersects[0].distance });
-        }
+        mesh.updateMatrixWorld();
+        tempObjects.push(mesh);
       });
+      
+      const intersects = newRaycaster.intersectObjects(tempObjects);
 
-      detectedFaces.sort((a, b) => a.distance - b.distance);
-      const uniqueDetectedFaces = detectedFaces.map(f => f.faceIndex);
-
-      if (uniqueDetectedFaces.length === 0) {
+      if (intersects.length === 0) {
         setFaceCycleState({
           availableFaces: [],
           currentIndex: 0,
@@ -277,11 +276,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         return;
       }
 
-      const isSamePosition = faceCycleState.mousePosition &&
-        Math.abs(faceCycleState.mousePosition.x - mouseX) < 5 &&
-        Math.abs(faceCycleState.mousePosition.y - mouseY) < 5;
+      const uniqueDetectedFaces = intersects.map(i => tempObjects.findIndex(obj => obj === i.object));
 
-      if (!isSamePosition || JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(uniqueDetectedFaces)) {
+      if (faceCycleState.selectedFace === null || JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(uniqueDetectedFaces)) {
         setFaceCycleState({
           availableFaces: uniqueDetectedFaces,
           currentIndex: 0,
@@ -359,7 +356,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (selectedFaces.includes(faceIndex)) return 0.0;
     return 0.001;
   };
-  
+
   if ((!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) || shape.type !== 'box') {
     return null;
   }
@@ -389,7 +386,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             transparent
             opacity={0.001}
             side={THREE.DoubleSide}
-            depthTest={false} // This is the key change
+            depthTest={false}
           />
         </mesh>
       ))}
