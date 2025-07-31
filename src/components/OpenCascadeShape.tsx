@@ -290,14 +290,8 @@ const OpenCascadeShape: React.FC<Props> = ({
         onFaceSelect={onFaceSelect || (() => {})}
         onFaceHover={onFaceHover || (() => {})}
         onFaceCycleUpdate={onFaceCycleUpdate}
-        faceCycleState={faceCycleState}
-        setFaceCycleState={setFaceCycleState}
-        alwaysShowPanels={true} // 🎯 NEW PROP - Always show panels
-        selectedFaceCenters={selectedFaceCenters}
-        setSelectedFaceCenters={setSelectedFaceCenters}
-        // 🔴 NEW: Panel Edit Mode props
-        isPanelEditMode={isPanelEditMode}
-        onPanelSelect={onPanelSelect}
+        isPanelEditMode={isPanelEditMode && isBeingEdited}
+        onPanelSelect={onPanelSelect || (() => {})}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}

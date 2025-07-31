@@ -8,8 +8,18 @@ import { ViewMode, useAppStore } from '../store/appStore';
 interface PanelManagerProps {
   shape: Shape;
   isAddPanelMode: boolean;
-  onPanelAdd: (faceIndex: number) => void;
   selectedFaces: number[];
+  onFaceSelect?: (faceIndex: number) => void;
+  onFaceHover?: (faceIndex: number | null) => void;
+  hoveredFace?: number | null;
+  showEdges?: boolean;
+  showFaces?: boolean;
+  onFaceCycleUpdate?: (cycleState: {
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  }) => void;
   isPanelEditMode?: boolean;
   onPanelSelect?: (panelData: {
     faceIndex: number;
@@ -29,8 +39,13 @@ interface SmartPanelBounds {
 const PanelManager: React.FC<PanelManagerProps> = ({
   shape,
   isAddPanelMode,
-  onPanelAdd,
   selectedFaces,
+  onFaceSelect,
+  onFaceHover,
+  hoveredFace,
+  showEdges = true,
+  showFaces = true,
+  onFaceCycleUpdate,
   isPanelEditMode = false,
   onPanelSelect,
 }) => {
@@ -238,28 +253,86 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const handleClick = useCallback((e: any) => {
     e.stopPropagation();
-    if (isAddPanelMode && e.nativeEvent.button === 0 && hoveredFaceInfo) {
-      // Sol tık ile seçimi onayla
-      onPanelAdd(hoveredFaceInfo.faceIndex);
-      setHoveredFaceInfo(null);
+    
+    if (isAddPanelMode && e.nativeEvent.button === 0) {
+      // Sol tık - Face cycle başlat veya devam ettir
+      const detectedFaces = detectFacesAtMousePosition(e.nativeEvent);
+      
+      if (detectedFaces.length > 0) {
+        if (faceCycleState.availableFaces.length === 0) {
+          // İlk tık - cycle başlat
+          setFaceCycleState({
+            availableFaces: detectedFaces,
+            currentIndex: 0,
+            selectedFace: detectedFaces[0],
+            mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+          });
+          console.log(`🎯 Face cycle started with ${detectedFaces.length} faces:`, detectedFaces);
+        } else {
+          // Sonraki tık - cycle devam ettir
+          const nextIndex = (faceCycleState.currentIndex + 1) % faceCycleState.availableFaces.length;
+          setFaceCycleState(prev => ({
+            ...prev,
+            currentIndex: nextIndex,
+            selectedFace: prev.availableFaces[nextIndex],
+            mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+          }));
+          console.log(`🎯 Face cycle: ${nextIndex + 1}/${faceCycleState.availableFaces.length} - Face ${faceCycleState.availableFaces[nextIndex]}`);
+        }
+      }
+    } else if (isAddPanelMode && e.nativeEvent.button === 2 && faceCycleState.selectedFace !== null) {
+      // Sağ tık - Panel yerleştir
+      if (onFaceSelect) {
+        onFaceSelect(faceCycleState.selectedFace);
+        console.log(`🎯 Panel placed on face ${faceCycleState.selectedFace}`);
+      }
+      
+      // Cycle'ı sıfırla
+      setFaceCycleState({
+        availableFaces: [],
+        currentIndex: 0,
+        selectedFace: null,
+        mousePosition: null
+      });
     } else if (isPanelEditMode) {
-      // Edit mode logic
+      // Panel edit mode logic burada olacak
     }
-  }, [isAddPanelMode, onPanelAdd, isPanelEditMode, hoveredFaceInfo]);
+  }, [isAddPanelMode, isPanelEditMode, faceCycleState, onFaceSelect, detectFacesAtMousePosition]);
 
   const handleContextMenu = useCallback((e: any) => {
     e.stopPropagation();
     e.nativeEvent.preventDefault();
-    // Context menu click can also place a panel, if you want.
-    // For now, it just clears the hover state
-    setHoveredFaceInfo(null);
+    
+    if (isAddPanelMode && faceCycleState.selectedFace !== null) {
+      // Sağ tık - Panel yerleştir
+      if (onFaceSelect) {
+        onFaceSelect(faceCycleState.selectedFace);
+        console.log(`🎯 Panel placed on face ${faceCycleState.selectedFace} (right-click)`);
+      }
+      
+      // Cycle'ı sıfırla
+      setFaceCycleState({
+        availableFaces: [],
+        currentIndex: 0,
+        selectedFace: null,
+        mousePosition: null
+      });
+    }
   }, []);
 
+  // Ghost panel için cycle'daki seçili face'i kullan
   const ghostPanelData = useMemo(() => {
-    if (!isAddPanelMode || !hoveredFaceInfo) return null;
+    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
     const panelOrder = selectedFaces.length;
-    return calculateSmartPanelBounds(hoveredFaceInfo.faceIndex, selectedFaces, panelOrder);
-  }, [isAddPanelMode, hoveredFaceInfo, selectedFaces, shape.parameters]);
+    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
+  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
+
+  // Face cycle state'ini parent'a bildir
+  useEffect(() => {
+    if (onFaceCycleUpdate) {
+      onFaceCycleUpdate(faceCycleState);
+    }
+  }, [faceCycleState, onFaceCycleUpdate]);
 
   return (
     <group>
@@ -318,7 +391,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           <mesh>
             <circleGeometry args={[30, 16]} />
             <meshBasicMaterial
-              color={selectedFaces.includes(faceIndex) ? '#10b981' : '#3b82f6'}
+              color={
+                selectedFaces.includes(faceIndex) ? '#10b981' : 
+                faceCycleState.selectedFace === faceIndex ? '#fbbf24' :
+                '#3b82f6'
+              }
               transparent
               opacity={0.9}
               depthTest={false}
