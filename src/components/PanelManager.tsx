@@ -22,6 +22,21 @@ interface PanelManagerProps {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
+  // Yeniden eklenen prop'lar
+  faceCycleState: {
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  };
+  setFaceCycleState: React.Dispatch<
+    React.SetStateAction<{
+      selectedFace: number | null;
+      currentIndex: number;
+      availableFaces: number[];
+      mousePosition: { x: number; y: number } | null;
+    }>
+  >;
 }
 
 interface SmartPanelBounds {
@@ -48,6 +63,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
+  faceCycleState,
+  setFaceCycleState,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
 
@@ -412,12 +429,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
+  // Yeni handleClick fonksiyonu, yüz seçme döngüsünü kaldırıp direkt yüzü seçer
   const handleClick = (e: any, faceIndex: number) => {
-    if (isAddPanelMode) {
-      e.stopPropagation();
+    e.stopPropagation();
+
+    if (isAddPanelMode && e.nativeEvent.button === 0) {
+      // Sol tık ile yüzü seç veya seçimi kaldır
+      const isSelected = selectedFaces.includes(faceIndex);
       onFaceSelect(faceIndex);
-    } else if (isPanelEditMode) {
-      e.stopPropagation();
+    } else if (isPanelEditMode && e.nativeEvent.button === 0) {
+      // Edit modunda sol tık ile paneli seç
       const panelData = smartPanelData.find(
         (panel) => panel.faceIndex === faceIndex
       );
@@ -432,22 +453,42 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
+  const handleContextMenu = (e: any, faceIndex: number) => {
+    // Sağ tık ile panel yerleştirme
+    if (!isAddPanelMode) return;
+
+    e.stopPropagation();
+    e.nativeEvent.preventDefault();
+
+    onFaceSelect(faceIndex);
+  };
+
+
   const handleFaceHover = (faceIndex: number | null) => {
     if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
       onFaceHover(faceIndex);
     }
   };
+  
+  // Hayali panel için material
+  const ghostPanelMaterial = new THREE.MeshBasicMaterial({
+    color: '#fbbf24', // Sarı
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    depthTest: false,
+  });
 
   const getFaceColor = (faceIndex: number) => {
-    if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
-    if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
-    return '#3b82f6'; // Blue for default
+    if (selectedFaces.includes(faceIndex)) return '#10b981';
+    if (hoveredFace === faceIndex) return '#eeeeee';
+    return '#3b82f6';
   };
 
   const getFaceOpacity = (faceIndex: number) => {
+    if (isAddPanelMode && hoveredFace === faceIndex) return 0.0; // Hoverlanan yüzü görünmez yap
     if (selectedFaces.includes(faceIndex)) return 0.0;
-    if (hoveredFace === faceIndex) return 0.0;
-    return 0.001;
+    return 0.001; // Diğer yüzeyleri neredeyse görünmez yapar
   };
 
   const getPanelEdgeLineWidth = () => {
@@ -517,6 +558,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               ]}
               scale={shape.scale}
               onClick={(e) => handleClick(e, faceIndex)}
+              onContextMenu={(e) => handleContextMenu(e, faceIndex)} // Sağ tık eklendi
               onPointerEnter={() => handleFaceHover(faceIndex)}
               onPointerLeave={() => handleFaceHover(null)}
             >
@@ -530,6 +572,29 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             </mesh>
           );
         })}
+
+      {/* 🎯 HAYALİ PANEL - Yüzeye yaklaştığında gösterilecek */}
+      {isAddPanelMode && hoveredFace !== null && !selectedFaces.includes(hoveredFace) && (
+        <mesh
+          key={`ghost-panel-${hoveredFace}`}
+          geometry={new THREE.PlaneGeometry(
+            hoveredFace === 2 || hoveredFace === 3 ? shape.parameters.width : (hoveredFace === 4 || hoveredFace === 5 ? shape.parameters.depth : shape.parameters.width),
+            hoveredFace === 2 || hoveredFace === 3 ? shape.parameters.depth : shape.parameters.height
+          )}
+          position={[
+            shape.position[0] + faceTransforms[hoveredFace].position[0],
+            shape.position[1] + faceTransforms[hoveredFace].position[1],
+            shape.position[2] + faceTransforms[hoveredFace].position[2],
+          ]}
+          rotation={[
+            shape.rotation[0] + faceTransforms[hoveredFace].rotation[0],
+            shape.rotation[1] + faceTransforms[hoveredFace].rotation[1],
+            shape.rotation[2] + faceTransforms[hoveredFace].rotation[2],
+          ]}
+          scale={shape.scale}
+          material={ghostPanelMaterial}
+        />
+      )}
 
       {/* 🎯 GUARANTEED LAST PANEL SHRINKS - Wood panels with guaranteed sizing */}
       {smartPanelData.map((panelData) => (
