@@ -359,13 +359,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (selectedFaces.includes(faceIndex)) return 0.0;
     return 0.001;
   };
-  
-  const getPanelEdgeLineWidth = () => {
-    const screenWidth = window.innerWidth;
-    if (screenWidth < 768) return 1.0;
-    if (screenWidth < 1024) return 1.5;
-    return 2.0;
-  };
 
   if ((!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) || shape.type !== 'box') {
     return null;
