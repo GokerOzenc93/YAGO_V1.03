@@ -90,6 +90,9 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const startX = useRef(0);
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Access store functions
+  const appStore = useAppStore();
 
   useEffect(() => {
     // Farenin hareketini ve tıklamayı dinler
@@ -414,15 +417,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                         <span className="text-gray-300 text-xs w-4">W:</span>
                         <input
                           type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
+                          value={appStore.convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
                           onChange={(e) => {
-                            const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                            const newWidth = appStore.convertToBaseUnit(parseFloat(e.target.value) || 0);
                             const newGeometry = new THREE.BoxGeometry(
                               newWidth,
                               editedShape.parameters.height || 500,
                               editedShape.parameters.depth || 500
                             );
-                            updateShape(editedShape.id, {
+                            appStore.updateShape(editedShape.id, {
                               parameters: { ...editedShape.parameters, width: newWidth },
                               geometry: newGeometry
                             });
@@ -436,15 +439,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                         <span className="text-gray-300 text-xs w-4">H:</span>
                         <input
                           type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
+                          value={appStore.convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
                           onChange={(e) => {
-                            const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                            const newHeight = appStore.convertToBaseUnit(parseFloat(e.target.value) || 0);
                             const newGeometry = new THREE.BoxGeometry(
                               editedShape.parameters.width || 500,
                               newHeight,
                               editedShape.parameters.depth || 500
                             );
-                            updateShape(editedShape.id, {
+                            appStore.updateShape(editedShape.id, {
                               parameters: { ...editedShape.parameters, height: newHeight },
                               geometry: newGeometry
                             });
@@ -458,15 +461,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                         <span className="text-gray-300 text-xs w-4">D:</span>
                         <input
                           type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
+                          value={appStore.convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
                           onChange={(e) => {
-                            const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                            const newDepth = appStore.convertToBaseUnit(parseFloat(e.target.value) || 0);
                             const newGeometry = new THREE.BoxGeometry(
                               editedShape.parameters.width || 500,
                               editedShape.parameters.height || 500,
                               newDepth
                             );
-                            updateShape(editedShape.id, {
+                            appStore.updateShape(editedShape.id, {
                               parameters: { ...editedShape.parameters, depth: newDepth },
                               geometry: newGeometry
                             });
