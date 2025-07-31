@@ -17,12 +17,16 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
   } = useAppStore();
 
   const toggleAddPanelMode = () => {
+    // Panel Ekleme modunu açarken Panel Düzenleme modunu kapat
     setIsAddPanelMode(!isAddPanelMode);
+    setIsPanelEditMode(false);
     console.log(`Panel add mode: ${!isAddPanelMode ? 'ON' : 'OFF'}`);
   };
 
   const togglePanelEditMode = () => {
+    // Panel Düzenleme modunu açarken Panel Ekleme modunu kapat
     setIsPanelEditMode(!isPanelEditMode);
+    setIsAddPanelMode(false);
     console.log(`Panel edit mode: ${!isPanelEditMode ? 'ON' : 'OFF'}`);
   };
 
@@ -51,8 +55,8 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
           <button
             onClick={toggleAddPanelMode}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-medium transition-colors ${
-              isAddPanelMode 
-                ? 'bg-green-600/90 text-white' 
+              isAddPanelMode
+                ? 'bg-green-600/90 text-white'
                 : 'bg-gray-600/50 text-gray-300 hover:bg-gray-600/70'
             }`}
           >
@@ -63,8 +67,8 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
           <button
             onClick={togglePanelEditMode}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-medium transition-colors ${
-              isPanelEditMode 
-                ? 'bg-red-600/90 text-white' 
+              isPanelEditMode
+                ? 'bg-red-600/90 text-white'
                 : 'bg-gray-600/50 text-gray-300 hover:bg-gray-600/70'
             }`}
           >
