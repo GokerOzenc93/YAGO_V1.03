@@ -82,6 +82,9 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  // Yeni boyutlandırma limitleri (mm cinsinden ve px'e dönüştürülmüş)
+  const MIN_WIDTH_PX = 170; // 45mm ≈ 170px
+  const MAX_WIDTH_PX = 604; // 160mm ≈ 604px
   const [panelWidth, setPanelWidth] = useState(192);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -89,13 +92,11 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
-
   useEffect(() => {
     // Farenin hareketini ve tıklamayı dinler
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
-      const newWidth = Math.max(40, Math.min(startWidth.current + (e.clientX - startX.current), 400));
+      const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
       // DOM'u doğrudan güncelleyerek anlık tepki verir
       panelRef.current.style.width = `${newWidth}px`;
     };
