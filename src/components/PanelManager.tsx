@@ -228,8 +228,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const handleContextMenu = useCallback((e: any, faceIndex: number) => {
     e.stopPropagation();
     e.nativeEvent.preventDefault();
-    if (isAddPanelMode) {
+    if (isAddPanelMode && onPanelAdd) {
       onPanelAdd(faceIndex);
+      console.log(`🎯 Panel placed on face ${faceIndex} via RIGHT CLICK`);
+      // Clear scanning state after placement
+      setScannedFace(null);
     }
   }, [isAddPanelMode, onPanelAdd]);
   
@@ -272,8 +275,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           rotation={transform.rotation}
           onClick={(e) => handleClick(e, faceIndex)}
           onContextMenu={(e) => handleContextMenu(e, faceIndex)}
-          onPointerEnter={() => handleFaceHover(faceIndex)}
-          onPointerLeave={() => handleFaceHover(null)}
+          onPointerMove={handlePointerMove}
+          onContextMenu={handleRightClick}
         >
           <meshBasicMaterial
             color={getFaceColor(faceIndex)}
@@ -285,20 +288,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       ))}
       
-      {isAddPanelMode && hoveredFaceFromMouse !== null && (
+      {isAddPanelMode && scannedFace !== null && (
         <mesh
-          key={`ghost-panel-${hoveredFaceFromMouse}`}
+          key={`ghost-panel-${scannedFace}`}
           geometry={new THREE.BoxGeometry(
-            hoveredFaceFromMouse === 2 || hoveredFaceFromMouse === 3 ? shape.parameters.width : (hoveredFaceFromMouse === 4 || hoveredFaceFromMouse === 5 ? shape.parameters.depth : shape.parameters.width),
-            hoveredFaceFromMouse === 2 || hoveredFaceFromMouse === 3 ? shape.parameters.depth : shape.parameters.height,
+            scannedFace === 2 || scannedFace === 3 ? shape.parameters.width : (scannedFace === 4 || scannedFace === 5 ? shape.parameters.depth : shape.parameters.width),
+            scannedFace === 2 || scannedFace === 3 ? shape.parameters.depth : shape.parameters.height,
             panelThickness
           )}
           position={[
-            shape.position[0] + faceTransforms[hoveredFaceFromMouse].position.x,
-            shape.position[1] + faceTransforms[hoveredFaceFromMouse].position.y,
-            shape.position[2] + faceTransforms[hoveredFaceFromMouse].position.z,
+            shape.position[0] + faceTransforms[scannedFace].position.x,
+            shape.position[1] + faceTransforms[scannedFace].position.y,
+            shape.position[2] + faceTransforms[scannedFace].position.z,
           ]}
-          rotation={faceTransforms[hoveredFaceFromMouse].rotation}
+          rotation={faceTransforms[scannedFace].rotation}
           material={ghostPanelMaterial}
         />
       )}
