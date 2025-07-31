@@ -17,9 +17,16 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
   } = useAppStore();
 
   const toggleAddPanelMode = () => {
-    setIsAddPanelMode(!isAddPanelMode);
+    const newMode = !isAddPanelMode;
+    setIsAddPanelMode(newMode);
     setIsPanelEditMode(false);
-    console.log(`Panel add mode: ${!isAddPanelMode ? 'ON' : 'OFF'}`);
+    
+    if (newMode) {
+      console.log('🎯 Panel Add Mode ACTIVATED - Click on faces to add panels');
+      console.log('Instructions: Left click to cycle through overlapping faces, Right click to confirm panel placement');
+    } else {
+      console.log('🎯 Panel Add Mode DEACTIVATED');
+    }
   };
 
   const togglePanelEditMode = () => {

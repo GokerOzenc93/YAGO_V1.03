@@ -568,6 +568,11 @@ const Scene: React.FC = () => {
 
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
   const handleFaceSelect = (faceIndex: number) => {
+    if (!isAddPanelMode) {
+      console.log('Panel add mode is not active');
+      return;
+    }
+    
     setSelectedFaces((prev) => {
       const newFaces = prev.includes(faceIndex)
         ? prev.filter((f) => f !== faceIndex) // Remove if already selected
@@ -580,9 +585,9 @@ const Scene: React.FC = () => {
           [editingShapeId]: [...newFaces],
         }));
         console.log(
-          `Panel ${faceIndex} ${
+          `🎯 GUARANTEED SYSTEM - Panel ${faceIndex} ${
             prev.includes(faceIndex) ? 'removed from' : 'added to'
-          } shape ${editingShapeId}`
+          } shape ${editingShapeId} - Previous panels stay full size, last panel shrinks`
         );
       }
 
