@@ -38,6 +38,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const { viewMode } = useAppStore();
   const boxMeshRef = useRef<THREE.Mesh>(null);
   const [hoveredFaceFromMouse, setHoveredFaceFromMouse] = useState<number | null>(null);
+  const [scannedFace, setScannedFace] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -242,14 +243,39 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, [isAddPanelMode]);
 
+  const handlePointerMove = useCallback((e: any) => {
+    if (!isAddPanelMode) return;
+    
+    e.stopPropagation();
+    const faceIndex = e.object.userData?.faceIndex;
+    if (faceIndex !== undefined) {
+      setScannedFace(faceIndex);
+      console.log(`🔍 Scanning face ${faceIndex}`);
+    }
+  }, [isAddPanelMode]);
+
+  const handleRightClick = useCallback((e: any) => {
+    if (!isAddPanelMode) return;
+    
+    e.stopPropagation();
+    e.nativeEvent.preventDefault();
+    
+    const faceIndex = e.object.userData?.faceIndex;
+    if (faceIndex !== undefined && onPanelAdd) {
+      onPanelAdd(faceIndex);
+      console.log(`🎯 Panel placed on face ${faceIndex} via RIGHT CLICK`);
+      setScannedFace(null);
+    }
+  }, [isAddPanelMode, onPanelAdd]);
+
   const getFaceColor = (faceIndex: number) => {
     if (selectedFaces.includes(faceIndex)) return '#10b981';
-    if (hoveredFaceFromMouse === faceIndex) return '#fbbf24';
+    if (scannedFace === faceIndex) return '#fbbf24';
     return '#3b82f6';
   };
 
   const getFaceOpacity = (faceIndex: number) => {
-    if (isAddPanelMode && hoveredFaceFromMouse === faceIndex) return 0.5;
+    if (isAddPanelMode && scannedFace === faceIndex) return 0.5;
     if (selectedFaces.includes(faceIndex)) return 0.0;
     return 0.001;
   };
@@ -277,6 +303,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           onContextMenu={(e) => handleContextMenu(e, faceIndex)}
           onPointerMove={handlePointerMove}
           onContextMenu={handleRightClick}
+          userData={{ faceIndex }}
         >
           <meshBasicMaterial
             color={getFaceColor(faceIndex)}
