@@ -352,4 +352,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   // Çizgiyi oluşturmak için useMemo kullan
   const lineGeometry = useMemo(() => {
     if (selectedFaceCenters.length < 2) return null;
-    const points = selectedFaceCenters
+    const points = selectedFaceCenters;
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    return geometry;
+  }, [selectedFaceCenters]);
