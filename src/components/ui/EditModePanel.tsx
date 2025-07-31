@@ -90,13 +90,19 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Farenin hareketini ve tıklamayı dinler
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
       const newWidth = Math.max(40, Math.min(startWidth.current + (e.clientX - startX.current), 400));
-      setPanelWidth(newWidth);
+      // DOM'u doğrudan güncelleyerek anlık tepki verir
+      panelRef.current.style.width = `${newWidth}px`;
     };
 
     const handleMouseUp = () => {
+      if (panelRef.current) {
+        // İşlem bittiğinde state'i günceller
+        setPanelWidth(panelRef.current.clientWidth);
+      }
       setIsResizing(false);
     };
 
@@ -320,7 +326,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     e.stopPropagation();
     setIsResizing(true);
     startX.current = e.clientX;
-    startWidth.current = panelRef.current?.clientWidth || 100;
+    startWidth.current = panelRef.current?.clientWidth || 192;
   };
 
   return (
