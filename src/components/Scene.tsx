@@ -742,7 +742,7 @@ const Scene: React.FC = () => {
         )}
 
         {/* 🎯 BALANCED LIGHTING SYSTEM - Bright but no blooms */}
-        <Environment preset="apartment" intensity={0.4} blur={0.4} />
+        <Environment preset="studio" intensity={0.4} blur={0.4} />
 
         <directionalLight
           position={[2000, 3000, 2000]}
