@@ -95,11 +95,10 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
   useEffect(() => {
-    // Farenin hareketini ve tıklamayı dinler
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
+      // Panelin sol tarafta olması nedeniyle genişlik hesaplama mantığı değişti
       const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
-      // State'i doğrudan güncelleyerek React'in yeniden render etmesini sağlar
       setPanelWidth(newWidth);
     };
 
@@ -325,7 +324,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault(); // Metin seçimini ve varsayılan sürükleme davranışını engelle
+    e.preventDefault();
     setIsResizing(true);
     startX.current = e.clientX;
     startWidth.current = panelRef.current?.clientWidth || 250;
@@ -379,15 +378,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   <span className="text-gray-300 text-xs w-4">W:</span>
                   <input
                     type="number"
-                    value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
+                    value={appStore.convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
                     onChange={(e) => {
-                      const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                      const newWidth = appStore.convertToBaseUnit(parseFloat(e.target.value) || 0);
                       const newGeometry = new THREE.BoxGeometry(
                         newWidth,
                         editedShape.parameters.height || 500,
                         editedShape.parameters.depth || 500
                       );
-                      updateShape(editedShape.id, {
+                      appStore.updateShape(editedShape.id, {
                         parameters: { ...editedShape.parameters, width: newWidth },
                         geometry: newGeometry
                       });
@@ -401,15 +400,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   <span className="text-gray-300 text-xs w-4">H:</span>
                   <input
                     type="number"
-                    value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
+                    value={appStore.convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
                     onChange={(e) => {
-                      const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                      const newHeight = appStore.convertToBaseUnit(parseFloat(e.target.value) || 0);
                       const newGeometry = new THREE.BoxGeometry(
                         editedShape.parameters.width || 500,
                         newHeight,
                         editedShape.parameters.depth || 500
                       );
-                      updateShape(editedShape.id, {
+                      appStore.updateShape(editedShape.id, {
                         parameters: { ...editedShape.parameters, height: newHeight },
                         geometry: newGeometry
                       });
@@ -423,15 +422,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   <span className="text-gray-300 text-xs w-4">D:</span>
                   <input
                     type="number"
-                    value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
+                    value={appStore.convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
                     onChange={(e) => {
-                      const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                      const newDepth = appStore.convertToBaseUnit(parseFloat(e.target.value) || 0);
                       const newGeometry = new THREE.BoxGeometry(
                         editedShape.parameters.width || 500,
                         editedShape.parameters.height || 500,
                         newDepth
                       );
-                      updateShape(editedShape.id, {
+                      appStore.updateShape(editedShape.id, {
                         parameters: { ...editedShape.parameters, depth: newDepth },
                         geometry: newGeometry
                       });
@@ -559,101 +558,205 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   };
 
   return (
-    <div
-      ref={panelRef}
-      className={`fixed right-0 bg-gray-900/95 backdrop-blur-sm border-l border-gray-700/50 shadow-2xl transition-all duration-300 ease-in-out z-40 flex flex-col ${
-        isCollapsed ? 'translate-x-full' : 'translate-x-0'
-      }`}
-      style={{
-        top: panelTop,
-        height: panelHeight,
-        width: `${panelWidth}px`,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Resize Handle - Sol kenar */}
+    <>
       <div
-        className="absolute left-0 top-0 w-1 h-full cursor-ew-resize hover:bg-blue-500/50 transition-colors z-50"
-        onMouseDown={handleResizeMouseDown}
-        title="Resize panel"
-      />
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-800/50 border-b border-gray-700/50 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {getShapeIcon()}
-          <span className="text-white font-medium text-sm">
-            {editedShape.type.charAt(0).toUpperCase() + editedShape.type.slice(1)} Edit
-          </span>
-          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" title="Edit Mode Active" />
-        </div>
-
-        <div className="flex items-center gap-1">
-          {/* Lock/Unlock Button */}
+        ref={panelRef}
+        className={`fixed left-0 z-50 bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+        style={{
+          top: panelTop,
+          height: panelHeight,
+          width: isCollapsed ? '4px' : `${panelWidth}px`,
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onSelectStart={(e) => e.preventDefault()} // Metin seçimini engeller
+        onDragStart={(e) => e.preventDefault()} // Sürüklemeyi engeller
+      >
+        {isCollapsed && (
           <button
-            onClick={toggleLock}
-            className={`p-1 rounded transition-colors ${
-              isLocked 
-                ? 'text-blue-400 hover:text-blue-300 bg-blue-500/20' 
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-            title={isLocked ? "Unlock panel" : "Lock panel"}
+            onClick={handleExpand}
+            className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
+            title="Paneli Genişlet"
           >
-            {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
+            <ChevronRight size={16} className="text-white group-hover:text-blue-300" />
           </button>
+        )}
 
-          {/* Collapse Button */}
-          <button
-            onClick={handleCollapse}
-            className="text-gray-400 hover:text-gray-300 p-1 rounded transition-colors"
-            title="Collapse panel"
-          >
-            <ChevronRight size={12} />
-          </button>
-
-          {/* Close Button */}
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-            title="Exit Edit Mode"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {renderComponentContent()}
-      </div>
-
-      {/* Status Bar */}
-      <div className="px-3 py-1.5 bg-gray-800/30 border-t border-gray-700/50 flex-shrink-0">
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-gray-400">
-            <span>Panels: {selectedFaces.length}</span>
-            {hoveredFace !== null && (
-              <span className="text-yellow-400">Hover: Face {hoveredFace}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            {isAddPanelMode && (
-              <div className="flex items-center gap-1 text-blue-400">
-                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
-                <span>Panel Mode</span>
+        {!isCollapsed && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-2 pt-4 border-b border-gray-700">
+              <span className="text-white font-inter text-base font-bold opacity-90">
+                AD06072
+              </span>
+              <div className="flex items-center gap-1">
+                {isLocked && (
+                  <button
+                    onClick={handleCollapse}
+                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    title="Arayüzü Küçült"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                )}
+                
+                <button
+                  onClick={toggleLock}
+                  className={`p-1 rounded transition-colors ${
+                    isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
+                  } bg-gray-800/80 backdrop-blur-sm`}
+                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
+                >
+                  {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
+                </button>
+                
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Düzenleme Modundan Çık"
+                >
+                  <X size={12} />
+                </button>
               </div>
-            )}
-            {isPanelEditMode && (
-              <div className="flex items-center gap-1 text-red-400">
-                <div className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
-                <span>Edit Mode</span>
-              </div>
-            )}
+            </div>
+            
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {renderComponentContent()}
+            </div>
+          </div>
+        )}
+        <div
+          className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/30' : 'hover:bg-blue-500/30'}`}
+          onMouseDown={handleResizeMouseDown}
+        />
+      </div>
+
+      {activeComponent === 'panels' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 180}px`,
+            height: `${panelHeightValue - 180}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Layers size={14} className="text-blue-400" />
+              <span className="text-white font-medium text-sm">Paneller</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Panel detayları burada gösterilecek...
+              <br /><br />
+              Burada çok içerik olursa aşağıya kaydırılabilir olacak.
+              <br /><br />
+              Örnek içerik: Panel ekleme, düzenleme, ayarlar vs.
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {activeComponent === 'edgeband' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 180}px`,
+            height: `${panelHeightValue - 180}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <RectangleHorizontal size={14} className="text-amber-400" />
+              <span className="text-white font-medium text-sm">Edgeband</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Edgeband details will be shown here...
+              <br /><br />
+              Edge thickness, material, color options etc.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeComponent === 'parameter' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 180}px`,
+            height: `${panelHeightValue - 180}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Sliders size={14} className="text-cyan-400" />
+              <span className="text-white font-medium text-sm">Parameter</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Parameter details will be shown here...
+              <br /><br />
+              Custom parameters, variables, formulas etc.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeComponent === 'shelves' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 180}px`,
+            height: `${panelHeightValue - 180}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <Shelf size={14} className="text-green-400" />
+              <span className="text-white font-medium text-sm">Raflar</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Raf detayları burada gösterilecek...
+              <br /><br />
+              Sabit raf, ayarlanabilir raf, raf pozisyonları vs.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeComponent === 'doors' && (
+        <div 
+          className="fixed left-0 z-40 w-48 bg-gray-700/30 backdrop-blur-sm border-r border-gray-600/30 flex flex-col overflow-hidden"
+          style={{
+            top: `${panelTopValue + 180}px`,
+            height: `${panelHeightValue - 180}px`,
+          }}
+        >
+          <div className="flex items-center px-3 py-2 border-b border-gray-600/30 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <DoorOpen size={14} className="text-orange-400" />
+              <span className="text-white font-medium text-sm">Kapılar</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-3 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="text-gray-400 text-xs text-center py-8">
+              Kapı detayları burada gösterilecek...
+              <br /><br />
+              Tek kapı, çift kapı, menteşe ayarları, kulp seçimi vs.
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
