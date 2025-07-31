@@ -556,5 +556,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         );
     }
-  })();
-</div>
+  };
+
+  return (
+    <div>
+      {renderComponentContent()}
+    </div>
+  );
+};
+
+export default EditModePanel;
