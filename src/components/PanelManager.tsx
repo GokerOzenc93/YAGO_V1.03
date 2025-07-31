@@ -68,6 +68,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const { viewMode } = useAppStore();
 
+  const ghostPanelMaterial = useMemo(() => {
+    return new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+  }, []);
+
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
     const woodTexture = textureLoader.load(
