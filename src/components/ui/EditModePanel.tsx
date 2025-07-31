@@ -83,8 +83,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const MIN_WIDTH_PX = 170; // 45mm ≈ 170px
-  const MAX_WIDTH_PX = 604; // 160mm ≈ 604px
-  const [panelWidth, setPanelWidth] = useState(192);
+  const MAX_WIDTH_PX = 453; // 120mm ≈ 453px
+  const [panelWidth, setPanelWidth] = useState(250); // Başlangıç genişliğini biraz artırdım
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -96,11 +96,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
       const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
-      // State'i doğrudan güncelleyerek React'in yeniden render etmesini sağlar
-      setPanelWidth(newWidth);
+      // DOM'u doğrudan güncelleyerek anlık tepki verir
+      panelRef.current.style.width = `${newWidth}px`;
     };
 
     const handleMouseUp = () => {
+      if (panelRef.current) {
+        // İşlem bittiğinde state'i günceller
+        setPanelWidth(panelRef.current.clientWidth);
+      }
       setIsResizing(false);
     };
 
@@ -324,7 +328,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     e.stopPropagation();
     setIsResizing(true);
     startX.current = e.clientX;
-    startWidth.current = panelRef.current?.clientWidth || 192;
+    startWidth.current = panelRef.current?.clientWidth || 250;
   };
 
   return (
