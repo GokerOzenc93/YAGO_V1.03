@@ -441,11 +441,10 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             ) : (
             <>
               {/* Şık ve ortalanmış kabin kodu başlığı */}
-              <div className="flex flex-col items-center justify-center p-2 border-b border-gray-700">
-                <span className="text-white font-inter text-lg font-bold tracking-wider opacity-90">
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+                <span className="text-white font-mono text-lg font-bold tracking-wider opacity-90">
                   AD06072
                 </span>
-                <span className="text-gray-400 text-xs mt-1">Cabinet Code</span>
               </div>
 
               <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
