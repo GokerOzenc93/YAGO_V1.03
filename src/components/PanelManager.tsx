@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useState } from 'react';
+import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
@@ -57,6 +57,19 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     faceIndex: number;
     point: THREE.Vector3;
   } | null>(null);
+
+  // Face cycle state
+  const [faceCycleState, setFaceCycleState] = useState<{
+    availableFaces: number[];
+    currentIndex: number;
+    selectedFace: number | null;
+    mousePosition: { x: number; y: number } | null;
+  }>({
+    availableFaces: [],
+    currentIndex: 0,
+    selectedFace: null,
+    mousePosition: null
+  });
 
   // UseMemo ile materyalleri bir kez oluştur
   const woodMaterials = useMemo(() => {
@@ -199,6 +212,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     );
   }, [shape.type, shape.parameters, selectedFaces]);
 
+  // Detect faces at mouse position using raycasting
+  const detectFacesAtMousePosition = useCallback((event: any): number[] => {
+    if (!boxMeshRef.current) return [];
+
+    const rect = gl.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(boxMeshRef.current);
+
+    if (intersects.length > 0) {
+      return [intersects[0].faceIndex as number];
+    }
+    return [];
+  }, [camera, raycaster, gl]);
+
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) return woodMaterials.horizontal;
     return woodMaterials.vertical;
@@ -228,28 +259,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     side: THREE.DoubleSide,
     depthTest: false,
   }), []);
-
-  // UseFrame ile her frame'de raycaster'ı güncelle
-  useFrame(() => {
-    if (!isAddPanelMode || !boxMeshRef.current) return;
-
-    const mouse = new THREE.Vector2();
-    const rect = gl.domElement.getBoundingClientRect();
-    const x = ((gl.domElement.width / rect.width) * (gl.domElement.getBoundingClientRect().left - window.innerWidth / 2) + gl.domElement.width / 2) / gl.domElement.width * 2 - 1;
-    const y = -((gl.domElement.height / rect.height) * (gl.domElement.getBoundingClientRect().top - window.innerHeight / 2) + gl.domElement.height / 2) / gl.domElement.height * 2 + 1;
-    mouse.set(x, y);
-
-    raycaster.setFromCamera(mouse, camera);
-
-    const intersects = raycaster.intersectObject(boxMeshRef.current);
-
-    if (intersects.length > 0) {
-      const { faceIndex, point } = intersects[0];
-      setHoveredFaceInfo({ faceIndex: faceIndex as number, point });
-    } else {
-      setHoveredFaceInfo(null);
-    }
-  });
 
   const handleClick = useCallback((e: any) => {
     e.stopPropagation();
@@ -320,19 +329,19 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, []);
 
-  // Ghost panel için cycle'daki seçili face'i kullan
-  const ghostPanelData = useMemo(() => {
-    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
-    const panelOrder = selectedFaces.length;
-    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
-  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
-
   // Face cycle state'ini parent'a bildir
   useEffect(() => {
     if (onFaceCycleUpdate) {
       onFaceCycleUpdate(faceCycleState);
     }
   }, [faceCycleState, onFaceCycleUpdate]);
+
+  // Ghost panel için cycle'daki seçili face'i kullan
+  const ghostPanelData = useMemo(() => {
+    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
+    const panelOrder = selectedFaces.length;
+    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
+  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
 
   return (
     <group>
