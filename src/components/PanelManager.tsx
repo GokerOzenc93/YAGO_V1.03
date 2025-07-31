@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
@@ -429,8 +429,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
-  // Yeni handleClick fonksiyonu, yüz seçme döngüsünü kaldırıp direkt yüzü seçer
-  const handleClick = (e: any, faceIndex: number) => {
+  // Wrap handleClick with useCallback to ensure stable function reference
+  const handleClick = useCallback((e: any, faceIndex: number) => {
     e.stopPropagation();
 
     if (isAddPanelMode && e.nativeEvent.button === 0) {
@@ -451,9 +451,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         });
       }
     }
-  };
+  }, [isAddPanelMode, isPanelEditMode, selectedFaces, onFaceSelect, smartPanelData, onPanelSelect]);
 
-  const handleContextMenu = (e: any, faceIndex: number) => {
+  const handleContextMenu = useCallback((e: any, faceIndex: number) => {
     // Sağ tık ile panel yerleştirme
     if (!isAddPanelMode) return;
 
@@ -461,14 +461,14 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     e.nativeEvent.preventDefault();
 
     onFaceSelect(faceIndex);
-  };
+  }, [isAddPanelMode, onFaceSelect]);
 
 
-  const handleFaceHover = (faceIndex: number | null) => {
+  const handleFaceHover = useCallback((faceIndex: number | null) => {
     if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
       onFaceHover(faceIndex);
     }
-  };
+  }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
   
   // Hayali panel için material
   const ghostPanelMaterial = new THREE.MeshBasicMaterial({
