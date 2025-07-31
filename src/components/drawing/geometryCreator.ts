@@ -43,6 +43,10 @@ export const createPolylineGeometry = (
     // Rotate around X-axis to align with XZ plane (no mirroring)
     geometry.rotateX(-Math.PI / 2);
     
+    // Compute bounding volumes to prevent rendering errors
+    geometry.computeBoundingSphere();
+    geometry.computeBoundingBox();
+    
     console.log('Polygon geometry created correctly - no mirroring, same orientation as drawn');
     
     return geometry;
@@ -51,10 +55,16 @@ export const createPolylineGeometry = (
     const bounds = new THREE.Box3();
     points.forEach(point => bounds.expandByPoint(point));
     const size = bounds.getSize(new THREE.Vector3());
-    return new THREE.BoxGeometry(
+    const fallbackGeometry = new THREE.BoxGeometry(
       Math.max(size.x, gridSize), 
       height, 
       Math.max(size.z, gridSize)
     );
+    
+    // Compute bounding volumes for fallback geometry too
+    fallbackGeometry.computeBoundingSphere();
+    fallbackGeometry.computeBoundingBox();
+    
+    return fallbackGeometry;
   }
 };
