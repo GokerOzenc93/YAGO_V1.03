@@ -12,71 +12,71 @@ import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
 
 interface PanelManagerProps {
 
-  shape: Shape;
+  shape: Shape;
 
-  isAddPanelMode: boolean;
+  isAddPanelMode: boolean;
 
-  selectedFaces: number[];
+  selectedFaces: number[];
 
-  hoveredFace: number | null;
+  hoveredFace: number | null;
 
-  showEdges: boolean;
+  showEdges: boolean;
 
-  showFaces: boolean;
+  showFaces: boolean;
 
-  onFaceSelect: (faceIndex: number) => void;
+  onFaceSelect: (faceIndex: number) => void;
 
-  onFaceHover: (faceIndex: number | null) => void;
+  onFaceHover: (faceIndex: number | null) => void;
 
-  // 🎯 NEW PROP - Always show panels
+  // 🎯 NEW PROP - Always show panels
 
-  alwaysShowPanels?: boolean;
+  alwaysShowPanels?: boolean;
 
-  // 🔴 NEW: Panel Edit Mode props
+  // 🔴 NEW: Panel Edit Mode props
 
-  isPanelEditMode?: boolean;
+  isPanelEditMode?: boolean;
 
-  onPanelSelect?: (panelData: {
+  onPanelSelect?: (panelData: {
 
-    faceIndex: number;
+    faceIndex: number;
 
-    position: THREE.Vector3;
+    position: THREE.Vector3;
 
-    size: THREE.Vector3;
+    size: THREE.Vector3;
 
-    panelOrder: number;
+    panelOrder: number;
 
-  }) => void;
+  }) => void;
 
-  // Yeniden eklenen prop'lar
+  // Yeniden eklenen prop'lar
 
-  faceCycleState: {
+  faceCycleState: {
 
-    selectedFace: number | null;
+    selectedFace: number | null;
 
-    currentIndex: number;
+    currentIndex: number;
 
-    availableFaces: number[];
+    availableFaces: number[];
 
-    mousePosition: { x: number; y: number } | null;
+    mousePosition: { x: number; y: number } | null;
 
-  };
+  };
 
-  setFaceCycleState: React.Dispatch<
+  setFaceCycleState: React.Dispatch<
 
-    React.SetStateAction<{
+    React.SetStateAction<{
 
-      selectedFace: number | null;
+      selectedFace: number | null;
 
-      currentIndex: number;
+      currentIndex: number;
 
-      availableFaces: number[];
+      availableFaces: number[];
 
-      mousePosition: { x: number; y: number } | null;
+      mousePosition: { x: number; y: number } | null;
 
-    }>
+    }>
 
-  >;
+  >;
 
 }
 
@@ -84,23 +84,23 @@ interface PanelManagerProps {
 
 interface SmartPanelBounds {
 
-  faceIndex: number;
+  faceIndex: number;
 
-  originalBounds: THREE.Box3;
+  originalBounds: THREE.Box3;
 
-  expandedBounds: THREE.Box3;
+  expandedBounds: THREE.Box3;
 
-  finalPosition: THREE.Vector3;
+  finalPosition: THREE.Vector3;
 
-  finalSize: THREE.Vector3;
+  finalSize: THREE.Vector3;
 
-  thickness: number;
+  thickness: number;
 
-  cuttingSurfaces: number[];
+  cuttingSurfaces: number[];
 
-  isLastPanel: boolean;
+  isLastPanel: boolean;
 
-  panelOrder: number;
+  panelOrder: number;
 
 }
 
@@ -108,1479 +108,1479 @@ interface SmartPanelBounds {
 
 const PanelManager: React.FC<PanelManagerProps> = ({
 
-  shape,
+  shape,
 
-  isAddPanelMode,
+  isAddPanelMode,
 
-  selectedFaces,
+  selectedFaces,
 
-  hoveredFace,
+  hoveredFace,
 
-  showEdges,
+  showEdges,
 
-  showFaces,
+  showFaces,
 
-  onFaceSelect,
+  onFaceSelect,
 
-  onFaceHover,
+  onFaceHover,
 
-  alwaysShowPanels = false,
+  alwaysShowPanels = false,
 
-  isPanelEditMode = false,
+  isPanelEditMode = false,
 
-  onPanelSelect,
+  onPanelSelect,
 
-  faceCycleState,
+  faceCycleState,
 
-  setFaceCycleState,
+  setFaceCycleState,
 
 }) => {
 
-  const panelThickness = 18; // 18mm panel thickness
+  const panelThickness = 18; // 18mm panel thickness
 
-  const { camera, raycaster, gl } = useThree();
+  const { camera, raycaster, gl } = useThree();
 
 
 
-  const { viewMode } = useAppStore();
+  const { viewMode } = useAppStore();
 
 
 
-  const woodMaterials = useMemo(() => {
+  const woodMaterials = useMemo(() => {
 
-    const textureLoader = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader();
 
 
 
-    const woodTexture = textureLoader.load(
+    const woodTexture = textureLoader.load(
 
-      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
+      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
 
-    );
+    );
 
-    woodTexture.wrapS = THREE.RepeatWrapping;
+    woodTexture.wrapS = THREE.RepeatWrapping;
 
-    woodTexture.wrapT = THREE.RepeatWrapping;
+    woodTexture.wrapT = THREE.RepeatWrapping;
 
-    woodTexture.repeat.set(0.64, 0.64);
+    woodTexture.repeat.set(0.64, 0.64);
 
-    woodTexture.anisotropy = 8;
+    woodTexture.anisotropy = 8;
 
 
 
-    const woodNormalMap = textureLoader.load(
+    const woodNormalMap = textureLoader.load(
 
-      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
+      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
 
-    );
+    );
 
-    woodNormalMap.wrapS = THREE.RepeatWrapping;
+    woodNormalMap.wrapS = THREE.RepeatWrapping;
 
-    woodNormalMap.wrapT = THREE.RepeatWrapping;
+    woodNormalMap.wrapT = THREE.RepeatWrapping;
 
-    woodNormalMap.repeat.set(0.6, 0.6);
+    woodNormalMap.repeat.set(0.6, 0.6);
 
-    woodNormalMap.anisotropy = 108;
+    woodNormalMap.anisotropy = 108;
 
 
 
-    const baseMaterialProps = {
+    const baseMaterialProps = {
 
-      metalness: 0.02,
+      metalness: 0.02,
 
-      roughness: 1.1,
+      roughness: 1.1,
 
-      clearcoat: 0.4,
+      clearcoat: 0.4,
 
-      clearcoatRoughness: 0.1,
+      clearcoatRoughness: 0.1,
 
-      reflectivity: 0.1,
+      reflectivity: 0.1,
 
-      envMapIntensity: 0.4,
+      envMapIntensity: 0.4,
 
-      emissive: new THREE.Color(0x000000),
+      emissive: new THREE.Color(0x000000),
 
-      emissiveIntensity: 0.0,
+      emissiveIntensity: 0.0,
 
-      side: THREE.DoubleSide,
+      side: THREE.DoubleSide,
 
-      map: woodTexture,
+      map: woodTexture,
 
-      normalMap: woodNormalMap,
+      normalMap: woodNormalMap,
 
-      normalScale: new THREE.Vector2(0.4, 0.4),
+      normalScale: new THREE.Vector2(0.4, 0.4),
 
-      color: new THREE.Color(0xf3f6f4),
+      color: new THREE.Color(0xf3f6f4),
 
-      transparent: false,
+      transparent: false,
 
-      opacity: 1.0,
+      opacity: 1.0,
 
-      alphaTest: 0,
+      alphaTest: 0,
 
-      depthWrite: true,
+      depthWrite: true,
 
-      depthTest: true,
+      depthTest: true,
 
-      premultipliedAlpha: false,
+      premultipliedAlpha: false,
 
-      vertexColors: false,
+      vertexColors: false,
 
-      fog: true,
+      fog: true,
 
-      flatShading: false,
+      flatShading: false,
 
-      iridescence: 0.0,
+      iridescence: 0.0,
 
-      iridescenceIOR: 1.0,
+      iridescenceIOR: 1.0,
 
-      sheen: 0.1,
+      sheen: 0.1,
 
-      sheenRoughness: 0.9,
+      sheenRoughness: 0.9,
 
-      sheenColor: new THREE.Color(0xffffff),
+      sheenColor: new THREE.Color(0xffffff),
 
-      specularIntensity: 0.3,
+      specularIntensity: 0.3,
 
-      specularColor: new THREE.Color(0xffffff),
+      specularColor: new THREE.Color(0xffffff),
 
-      transmission: 0.0,
+      transmission: 0.0,
 
-      thickness: 0.0,
+      thickness: 0.0,
 
-      attenuationDistance: Infinity,
+      attenuationDistance: Infinity,
 
-      attenuationColor: new THREE.Color(0xffffff),
+      attenuationColor: new THREE.Color(0xffffff),
 
-      ior: 1.2,
+      ior: 1.2,
 
-    };
+    };
 
 
 
-    const verticalMaterial = new THREE.MeshPhysicalMaterial(baseMaterialProps);
+    const verticalMaterial = new THREE.MeshPhysicalMaterial(baseMaterialProps);
 
 
 
-    const horizontalMaterial = new THREE.MeshPhysicalMaterial({
+    const horizontalMaterial = new THREE.MeshPhysicalMaterial({
 
-      ...baseMaterialProps,
+      ...baseMaterialProps,
 
-      map: woodTexture.clone(),
+      map: woodTexture.clone(),
 
-      normalMap: woodNormalMap.clone(),
+      normalMap: woodNormalMap.clone(),
 
-    });
+    });
 
-    horizontalMaterial.map!.rotation = Math.PI / 2;
+    horizontalMaterial.map!.rotation = Math.PI / 2;
 
-    horizontalMaterial.normalMap!.rotation = Math.PI / 2;
+    horizontalMaterial.normalMap!.rotation = Math.PI / 2;
 
 
 
-    return {
+    return {
 
-      vertical: verticalMaterial,
+      vertical: verticalMaterial,
 
-      horizontal: horizontalMaterial,
+      horizontal: horizontalMaterial,
 
-    };
+    };
 
-  }, []);
+  }, []);
 
 
 
-  const calculateSmartPanelBounds = (
+  const calculateSmartPanelBounds = (
 
-    faceIndex: number,
+    faceIndex: number,
 
-    allPanels: number[],
+    allPanels: number[],
 
-    panelOrder: number
+    panelOrder: number
 
-  ): SmartPanelBounds => {
+  ): SmartPanelBounds => {
 
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
 
-    const hw = width / 2;
+    const hw = width / 2;
 
-    const hh = height / 2;
+    const hh = height / 2;
 
-    const hd = depth / 2;
+    const hd = depth / 2;
 
-    const previousPanels = allPanels.slice(0, panelOrder);
+    const previousPanels = allPanels.slice(0, panelOrder);
 
-    const isLastPanel = panelOrder === allPanels.length - 1;
+    const isLastPanel = panelOrder === allPanels.length - 1;
 
 
 
-    let originalBounds: THREE.Box3;
+    let originalBounds: THREE.Box3;
 
-    let expandedBounds: THREE.Box3;
+    let expandedBounds: THREE.Box3;
 
-    let finalPosition: THREE.Vector3;
+    let finalPosition: THREE.Vector3;
 
-    let finalSize: THREE.Vector3;
+    let finalSize: THREE.Vector3;
 
 
 
-    switch (faceIndex) {
+    switch (faceIndex) {
 
-      case 0: // Front face
+      case 0: // Front face
 
-        originalBounds = new THREE.Box3(
+        originalBounds = new THREE.Box3(
 
-          new THREE.Vector3(-hw, -hh, hd - panelThickness),
+          new THREE.Vector3(-hw, -hh, hd - panelThickness),
 
-          new THREE.Vector3(hw, hh, hd)
+          new THREE.Vector3(hw, hh, hd)
 
-        );
+        );
 
-        expandedBounds = originalBounds.clone();
+        expandedBounds = originalBounds.clone();
 
-        previousPanels.forEach((previousPanel) => {
+        previousPanels.forEach((previousPanel) => {
 
-          if (previousPanel === 4) {
+          if (previousPanel === 4) {
 
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 5) {
+          if (previousPanel === 5) {
 
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 2) {
+          if (previousPanel === 2) {
 
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 3) {
+          if (previousPanel === 3) {
 
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
 
-          }
+          }
 
-        });
+        });
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          expandedBounds.max.x - expandedBounds.min.x,
+          expandedBounds.max.x - expandedBounds.min.x,
 
-          expandedBounds.max.y - expandedBounds.min.y,
+          expandedBounds.max.y - expandedBounds.min.y,
 
-          panelThickness
+          panelThickness
 
-        );
+        );
 
-        finalPosition = new THREE.Vector3(
+        finalPosition = new THREE.Vector3(
 
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
 
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
 
-          hd - panelThickness / 2
+          hd - panelThickness / 2
 
-        );
+        );
 
-        break;
+        break;
 
 
 
-      case 1: // Back face
+      case 1: // Back face
 
-        originalBounds = new THREE.Box3(
+        originalBounds = new THREE.Box3(
 
-          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd),
 
-          new THREE.Vector3(hw, hh, -hd + panelThickness)
+          new THREE.Vector3(hw, hh, -hd + panelThickness)
 
-        );
+        );
 
-        expandedBounds = originalBounds.clone();
+        expandedBounds = originalBounds.clone();
 
-        previousPanels.forEach((previousPanel) => {
+        previousPanels.forEach((previousPanel) => {
 
-          if (previousPanel === 4) {
+          if (previousPanel === 4) {
 
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 5) {
+          if (previousPanel === 5) {
 
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 2) {
+          if (previousPanel === 2) {
 
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 3) {
+          if (previousPanel === 3) {
 
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
 
-          }
+          }
 
-        });
+        });
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          expandedBounds.max.x - expandedBounds.min.x,
+          expandedBounds.max.x - expandedBounds.min.x,
 
-          expandedBounds.max.y - expandedBounds.min.y,
+          expandedBounds.max.y - expandedBounds.min.y,
 
-          panelThickness
+          panelThickness
 
-        );
+        );
 
-        finalPosition = new THREE.Vector3(
+        finalPosition = new THREE.Vector3(
 
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
 
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
 
-          -hd + panelThickness / 2
+          -hd + panelThickness / 2
 
-        );
+        );
 
-        break;
+        break;
 
 
 
-      case 2: // Top face
+      case 2: // Top face
 
-        originalBounds = new THREE.Box3(
+        originalBounds = new THREE.Box3(
 
-          new THREE.Vector3(-hw, hh - panelThickness, -hd),
+          new THREE.Vector3(-hw, hh - panelThickness, -hd),
 
-          new THREE.Vector3(hw, hh, hd)
+          new THREE.Vector3(hw, hh, hd)
 
-        );
+        );
 
-        expandedBounds = originalBounds.clone();
+        expandedBounds = originalBounds.clone();
 
-        previousPanels.forEach((previousPanel) => {
+        previousPanels.forEach((previousPanel) => {
 
-          if (previousPanel === 4) {
+          if (previousPanel === 4) {
 
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 5) {
+          if (previousPanel === 5) {
 
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 0) {
+          if (previousPanel === 0) {
 
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 1) {
+          if (previousPanel === 1) {
 
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
 
-          }
+          }
 
-        });
+        });
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          expandedBounds.max.x - expandedBounds.min.x,
+          expandedBounds.max.x - expandedBounds.min.x,
 
-          panelThickness,
+          panelThickness,
 
-          expandedBounds.max.z - expandedBounds.min.z
+          expandedBounds.max.z - expandedBounds.min.z
 
-        );
+        );
 
-        finalPosition = new THREE.Vector3(
+        finalPosition = new THREE.Vector3(
 
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
 
-          hh - panelThickness / 2,
+          hh - panelThickness / 2,
 
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
 
-        );
+        );
 
-        break;
+        break;
 
 
 
-      case 3: // Bottom face
+      case 3: // Bottom face
 
-        originalBounds = new THREE.Box3(
+        originalBounds = new THREE.Box3(
 
-          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd),
 
-          new THREE.Vector3(hw, -hh + panelThickness, hd)
+          new THREE.Vector3(hw, -hh + panelThickness, hd)
 
-        );
+        );
 
-        expandedBounds = originalBounds.clone();
+        expandedBounds = originalBounds.clone();
 
-        previousPanels.forEach((previousPanel) => {
+        previousPanels.forEach((previousPanel) => {
 
-          if (previousPanel === 4) {
+          if (previousPanel === 4) {
 
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 5) {
+          if (previousPanel === 5) {
 
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 0) {
+          if (previousPanel === 0) {
 
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 1) {
+          if (previousPanel === 1) {
 
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
 
-          }
+          }
 
-        });
+        });
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          expandedBounds.max.x - expandedBounds.min.x,
+          expandedBounds.max.x - expandedBounds.min.x,
 
-          panelThickness,
+          panelThickness,
 
-          expandedBounds.max.z - expandedBounds.min.z
+          expandedBounds.max.z - expandedBounds.min.z
 
-        );
+        );
 
-        finalPosition = new THREE.Vector3(
+        finalPosition = new THREE.Vector3(
 
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
 
-          -hh + panelThickness / 2,
+          -hh + panelThickness / 2,
 
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
 
-        );
+        );
 
-        break;
+        break;
 
 
 
-      case 4: // Right face
+      case 4: // Right face
 
-        originalBounds = new THREE.Box3(
+        originalBounds = new THREE.Box3(
 
-          new THREE.Vector3(hw - panelThickness, -hh, -hd),
+          new THREE.Vector3(hw - panelThickness, -hh, -hd),
 
-          new THREE.Vector3(hw, hh, hd)
+          new THREE.Vector3(hw, hh, hd)
 
-        );
+        );
 
-        expandedBounds = originalBounds.clone();
+        expandedBounds = originalBounds.clone();
 
-        previousPanels.forEach((previousPanel) => {
+        previousPanels.forEach((previousPanel) => {
 
-          if (previousPanel === 2) {
+          if (previousPanel === 2) {
 
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 3) {
+          if (previousPanel === 3) {
 
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 0) {
+          if (previousPanel === 0) {
 
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 1) {
+          if (previousPanel === 1) {
 
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
 
-          }
+          }
 
-        });
+        });
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          panelThickness,
+          panelThickness,
 
-          expandedBounds.max.y - expandedBounds.min.y,
+          expandedBounds.max.y - expandedBounds.min.y,
 
-          expandedBounds.max.z - expandedBounds.min.z
+          expandedBounds.max.z - expandedBounds.min.z
 
-        );
+        );
 
-        finalPosition = new THREE.Vector3(
+        finalPosition = new THREE.Vector3(
 
-          hw - panelThickness / 2,
+          hw - panelThickness / 2,
 
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
 
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
 
-        );
+        );
 
-        break;
+        break;
 
 
 
-      case 5: // Left face
+      case 5: // Left face
 
-        originalBounds = new THREE.Box3(
+        originalBounds = new THREE.Box3(
 
-          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd),
 
-          new THREE.Vector3(-hw + panelThickness, hh, hd)
+          new THREE.Vector3(-hw + panelThickness, hh, hd)
 
-        );
+        );
 
-        expandedBounds = originalBounds.clone();
+        expandedBounds = originalBounds.clone();
 
-        previousPanels.forEach((previousPanel) => {
+        previousPanels.forEach((previousPanel) => {
 
-          if (previousPanel === 2) {
+          if (previousPanel === 2) {
 
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 3) {
+          if (previousPanel === 3) {
 
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 0) {
+          if (previousPanel === 0) {
 
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
 
-          }
+          }
 
-          if (previousPanel === 1) {
+          if (previousPanel === 1) {
 
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
 
-          }
+          }
 
-        });
+        });
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          panelThickness,
+          panelThickness,
 
-          expandedBounds.max.y - expandedBounds.min.y,
+          expandedBounds.max.y - expandedBounds.min.y,
 
-          expandedBounds.max.z - expandedBounds.min.z
+          expandedBounds.max.z - expandedBounds.min.z
 
-        );
+        );
 
-        finalPosition = new THREE.Vector3(
+        finalPosition = new THREE.Vector3(
 
-          -hw + panelThickness / 2,
+          -hw + panelThickness / 2,
 
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
 
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
 
-        );
+        );
 
-        break;
+        break;
 
 
 
-      default:
+      default:
 
-        originalBounds = new THREE.Box3();
+        originalBounds = new THREE.Box3();
 
-        expandedBounds = new THREE.Box3();
+        expandedBounds = new THREE.Box3();
 
-        finalPosition = new THREE.Vector3();
+        finalPosition = new THREE.Vector3();
 
-        finalSize = new THREE.Vector3(
+        finalSize = new THREE.Vector3(
 
-          panelThickness,
+          panelThickness,
 
-          panelThickness,
+          panelThickness,
 
-          panelThickness
+          panelThickness
 
-        );
+        );
 
-    }
+    }
 
 
 
-    return {
+    return {
 
-      faceIndex,
+      faceIndex,
 
-      originalBounds,
+      originalBounds,
 
-      expandedBounds,
+      expandedBounds,
 
-      finalPosition,
+      finalPosition,
 
-      finalSize,
+      finalSize,
 
-      thickness: panelThickness,
+      thickness: panelThickness,
 
-      cuttingSurfaces: previousPanels,
+      cuttingSurfaces: previousPanels,
 
-      isLastPanel,
+      isLastPanel,
 
-      panelOrder,
+      panelOrder,
 
-    };
+    };
 
-  };
+  };
 
 
 
-  const smartPanelData = useMemo(() => {
+  const smartPanelData = useMemo(() => {
 
-    if (shape.type !== 'box' || selectedFaces.length === 0) return [];
+    if (shape.type !== 'box' || selectedFaces.length === 0) return [];
 
-    return selectedFaces.map((faceIndex, index) => {
+    return selectedFaces.map((faceIndex, index) => {
 
-      const panelOrder = index;
+      const panelOrder = index;
 
-      const smartBounds = calculateSmartPanelBounds(
+      const smartBounds = calculateSmartPanelBounds(
 
-        faceIndex,
+        faceIndex,
 
-        selectedFaces,
+        selectedFaces,
 
-        panelOrder
+        panelOrder
 
-      );
+      );
 
 
 
-      const geometry = new THREE.BoxGeometry(
+      const geometry = new THREE.BoxGeometry(
 
-        smartBounds.finalSize.x,
+        smartBounds.finalSize.x,
 
-        smartBounds.finalSize.y,
+        smartBounds.finalSize.y,
 
-        smartBounds.finalSize.z
+        smartBounds.finalSize.z
 
-      );
+      );
 
 
 
-      return {
+      return {
 
-        faceIndex,
+        faceIndex,
 
-        geometry,
+        geometry,
 
-        position: smartBounds.finalPosition,
+        position: smartBounds.finalPosition,
 
-        size: smartBounds.finalSize,
+        size: smartBounds.finalSize,
 
-        panelOrder: smartBounds.panelOrder,
+        panelOrder: smartBounds.panelOrder,
 
-      };
+      };
 
-    });
+    });
 
-  }, [shape.type, shape.parameters, selectedFaces]);
+  }, [shape.type, shape.parameters, selectedFaces]);
 
 
 
-  const getPanelMaterial = (faceIndex: number) => {
+  const getPanelMaterial = (faceIndex: number) => {
 
-    if (faceIndex === 2 || faceIndex === 3) {
+    if (faceIndex === 2 || faceIndex === 3) {
 
-      return woodMaterials.horizontal;
+      return woodMaterials.horizontal;
 
-    }
+    }
 
-    return woodMaterials.vertical;
+    return woodMaterials.vertical;
 
-  };
+  };
 
 
 
-  const getPanelColor = (faceIndex: number) => {
+  const getPanelColor = (faceIndex: number) => {
 
-    if (isPanelEditMode && selectedFaces.includes(faceIndex)) {
+    if (isPanelEditMode && selectedFaces.includes(faceIndex)) {
 
-      return '#dc2626'; // RED for panels in edit mode
+      return '#dc2626'; // RED for panels in edit mode
 
-    }
+    }
 
-    return getPanelMaterial(faceIndex);
+    return getPanelMaterial(faceIndex);
 
-  };
+  };
 
 
 
-  const getPanelEdgeColor = () => {
+  const getPanelEdgeColor = () => {
 
-    switch (viewMode) {
+    switch (viewMode) {
 
-      case ViewMode.WIREFRAME:
+      case ViewMode.WIREFRAME:
 
-        return '#ffffff'; // White edges in wireframe mode
+        return '#ffffff'; // White edges in wireframe mode
 
-      case ViewMode.TRANSPARENT:
+      case ViewMode.TRANSPARENT:
 
-        return '#000000'; // Black edges in transparent mode
+        return '#000000'; // Black edges in transparent mode
 
-      case ViewMode.SOLID:
+      case ViewMode.SOLID:
 
-        return '#2a2a2a'; // Dark gray in solid mode
+        return '#2a2a2a'; // Dark gray in solid mode
 
-      default:
+      default:
 
-        return '#2a2a2a';
+        return '#2a2a2a';
 
-    }
+    }
 
-  };
+  };
 
 
 
-  // Dinamik face detection - mouse pozisyonuna göre hangi face'lerin altında olduğunu bul
+  // Dinamik face detection - mouse pozisyonuna göre hangi face'lerin altında olduğunu bul
 
-  const detectFacesAtMousePosition = useCallback((event: MouseEvent): number[] => {
+  const detectFacesAtMousePosition = useCallback((event: MouseEvent): number[] => {
 
-    const rect = gl.domElement.getBoundingClientRect();
+    const rect = gl.domElement.getBoundingClientRect();
 
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
 
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
 
 
-    raycaster.setFromCamera({ x, y }, camera);
+    raycaster.setFromCamera({ x, y }, camera);
 
-    
+    
 
-    // Box'ın tüm face'lerini test et
+    // Box'ın tüm face'lerini test et
 
-    const detectedFaces: { faceIndex: number; distance: number }[] = [];
+    const detectedFaces: { faceIndex: number; distance: number }[] = [];
 
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
 
-    const hw = width / 2;
+    const hw = width / 2;
 
-    const hh = height / 2;
+    const hh = height / 2;
 
-    const hd = depth / 2;
+    const hd = depth / 2;
 
 
 
-    // Face geometrileri ve pozisyonları
+    // Face geometrileri ve pozisyonları
 
-    const faceData = [
+    const faceData = [
 
-      // Front face (0) - Z+
+      // Front face (0) - Z+
 
-      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, hd], rotation: [0, 0, 0] },
+      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, hd + 1], rotation: [0, 0, 0] },
 
-      // Back face (1) - Z-
+      // Back face (1) - Z-
 
-      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
+      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, -hd - 1], rotation: [0, Math.PI, 0] },
 
-      // Top face (2) - Y+
+      // Top face (2) - Y+
 
-      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
+      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, hh + 1, 0], rotation: [-Math.PI / 2, 0, 0] },
 
-      // Bottom face (3) - Y-
+      // Bottom face (3) - Y-
 
-      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
+      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, -hh - 1, 0], rotation: [Math.PI / 2, 0, 0] },
 
-      // Right face (4) - X+
+      // Right face (4) - X+
 
-      { geometry: new THREE.PlaneGeometry(depth, height), position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
+      { geometry: new THREE.PlaneGeometry(depth, height), position: [hw + 1, 0, 0], rotation: [0, Math.PI / 2, 0] },
 
-      // Left face (5) - X-
+      // Left face (5) - X-
 
-      { geometry: new THREE.PlaneGeometry(depth, height), position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+      { geometry: new THREE.PlaneGeometry(depth, height), position: [-hw - 1, 0, 0], rotation: [0, -Math.PI / 2, 0] },
 
-    ];
+    ];
 
 
 
-    faceData.forEach((face, faceIndex) => {
+    faceData.forEach((face, faceIndex) => {
 
-      const mesh = new THREE.Mesh(face.geometry);
+      const mesh = new THREE.Mesh(face.geometry);
 
-      mesh.position.set(
+      mesh.position.set(
 
-        shape.position[0] + face.position[0],
+        shape.position[0] + face.position[0],
 
-        shape.position[1] + face.position[1],
+        shape.position[1] + face.position[1],
 
-        shape.position[2] + face.position[2]
+        shape.position[2] + face.position[2]
 
-      );
+      );
 
-      mesh.rotation.set(
+      mesh.rotation.set(
 
-        shape.rotation[0] + face.rotation[0],
+        shape.rotation[0] + face.rotation[0],
 
-        shape.rotation[1] + face.rotation[1],
+        shape.rotation[1] + face.rotation[1],
 
-        shape.rotation[2] + face.rotation[2]
+        shape.rotation[2] + face.rotation[2]
 
-      );
+      );
 
-      mesh.scale.set(...shape.scale);
+      mesh.scale.set(...shape.scale);
 
-      mesh.updateMatrixWorld();
+      mesh.updateMatrixWorld();
 
 
 
-      const intersects = raycaster.intersectObject(mesh);
+      const intersects = raycaster.intersectObject(mesh);
 
-      if (intersects.length > 0) {
+      if (intersects.length > 0) {
 
-        detectedFaces.push({
+        detectedFaces.push({
 
-          faceIndex,
+          faceIndex,
 
-          distance: intersects[0].distance
+          distance: intersects[0].distance
 
-        });
+        });
 
-      }
+      }
 
-    });
+    });
 
 
 
-    // Mesafeye göre sırala (en yakından en uzağa)
+    // Mesafeye göre sırala (en yakından en uzağa)
 
-    detectedFaces.sort((a, b) => a.distance - b.distance);
+    detectedFaces.sort((a, b) => a.distance - b.distance);
 
-    return detectedFaces.map(f => f.faceIndex);
+    console.log(`🎯 Detected faces at mouse position:`, detectedFaces.map(f => `Face ${f.faceIndex} (dist: ${f.distance.toFixed(1)})`));
 
-  }, [camera, raycaster, gl, shape]);
+    return detectedFaces.map(f => f.faceIndex);
 
+  }, [camera, raycaster, gl, shape]);
 
 
-  // Mouse pozisyonunu güncelle
 
-  const updateMousePosition = useCallback((event: MouseEvent) => {
+  // Mouse pozisyonunu güncelle
 
-    setFaceCycleState(prev => ({
+  const updateMousePosition = useCallback((event: MouseEvent) => {
 
-      ...prev,
+    setFaceCycleState(prev => ({
 
-      mousePosition: { x: event.clientX, y: event.clientY }
+      ...prev,
 
-    }));
+      mousePosition: { x: event.clientX, y: event.clientY }
 
-  }, [setFaceCycleState]);
+    }));
 
+  }, [setFaceCycleState]);
 
 
-  // Wrap handleClick with useCallback to ensure stable function reference
 
-  const handleClick = useCallback((e: any, faceIndex: number) => {
+  // Wrap handleClick with useCallback to ensure stable function reference
 
-    e.stopPropagation();
+  const handleClick = useCallback((e: any, faceIndex: number) => {
 
-    
+    e.stopPropagation();
 
-    // Mouse pozisyonunu güncelle
+    
 
-    updateMousePosition(e.nativeEvent);
+    // Mouse pozisyonunu güncelle
 
+    updateMousePosition(e.nativeEvent);
 
 
-    if (isAddPanelMode && e.nativeEvent.button === 0) {
 
-      // Dinamik face detection
+    if (isAddPanelMode && e.nativeEvent.button === 0) {
 
-      const detectedFaces = detectFacesAtMousePosition(e.nativeEvent);
+      // Dinamik face detection
 
-      
+      const detectedFaces = detectFacesAtMousePosition(e.nativeEvent);
 
-      if (detectedFaces.length === 0) return;
+      
 
+      if (detectedFaces.length === 0) return;
 
 
-      // Eğer cycle state boşsa veya farklı bir pozisyonda tıklandıysa, yeni cycle başlat
 
-      if (faceCycleState.availableFaces.length === 0 || 
+      // Eğer cycle state boşsa, yeni cycle başlat
 
-          JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(detectedFaces)) {
+      if (faceCycleState.availableFaces.length === 0) {
 
-        setFaceCycleState({
+        setFaceCycleState({
 
-          availableFaces: detectedFaces,
+          availableFaces: detectedFaces,
 
-          currentIndex: 0,
+          currentIndex: 0,
 
-          selectedFace: detectedFaces[0],
+          selectedFace: detectedFaces[0],
 
-          mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+          mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
 
-        });
+        });
 
-        console.log(`🎯 Face cycle started: ${detectedFaces.length} faces detected`);
+        console.log(`🎯 Face cycle started: ${detectedFaces.length} faces detected`, detectedFaces);
 
-      } else {
+      } else {
 
-        // Cycle içinde bir sonraki face'e geç
+        // Cycle içinde bir sonraki face'e geç
 
-        const nextIndex = (faceCycleState.currentIndex + 1) % faceCycleState.availableFaces.length;
+        const nextIndex = (faceCycleState.currentIndex + 1) % faceCycleState.availableFaces.length;
 
-        setFaceCycleState(prev => ({
+        setFaceCycleState(prev => ({
 
-          ...prev,
+          ...prev,
 
-          currentIndex: nextIndex,
+          currentIndex: nextIndex,
 
-          selectedFace: prev.availableFaces[nextIndex]
+          selectedFace: prev.availableFaces[nextIndex]
 
-        }));
+        }));
 
-        console.log(`🎯 Face cycled to: ${faceCycleState.availableFaces[nextIndex]} (${nextIndex + 1}/${faceCycleState.availableFaces.length})`);
+        console.log(`🎯 Face cycled to: Face ${faceCycleState.availableFaces[nextIndex]} (${nextIndex + 1}/${faceCycleState.availableFaces.length})`);
 
-      }
+      }
 
-    } else if (isPanelEditMode && e.nativeEvent.button === 0) {
+    } else if (isPanelEditMode && e.nativeEvent.button === 0) {
 
-      // Edit modunda sol tık ile paneli seç
+      // Edit modunda sol tık ile paneli seç
 
-      const panelData = smartPanelData.find(
+      const panelData = smartPanelData.find(
 
-        (panel) => panel.faceIndex === faceIndex
+        (panel) => panel.faceIndex === faceIndex
 
-      );
+      );
 
-      if (panelData && onPanelSelect) {
+      if (panelData && onPanelSelect) {
 
-        onPanelSelect({
+        onPanelSelect({
 
-          faceIndex: panelData.faceIndex,
+          faceIndex: panelData.faceIndex,
 
-          position: panelData.position,
+          position: panelData.position,
 
-          size: panelData.size,
+          size: panelData.size,
 
-          panelOrder: panelData.panelOrder,
+          panelOrder: panelData.panelOrder,
 
-        });
+        });
 
-      }
+      }
 
-    }
+    }
 
-  }, [isAddPanelMode, isPanelEditMode, selectedFaces, onFaceSelect, smartPanelData, onPanelSelect, detectFacesAtMousePosition, faceCycleState, setFaceCycleState, updateMousePosition]);
+  }, [isAddPanelMode, isPanelEditMode, onFaceSelect, smartPanelData, onPanelSelect, detectFacesAtMousePosition, faceCycleState, setFaceCycleState, updateMousePosition]);
 
 
 
-  const handleContextMenu = useCallback((e: any, faceIndex: number) => {
+  const handleContextMenu = useCallback((e: any, faceIndex: number) => {
 
-    // Sağ tık ile panel yerleştirmeyi onayla
+    // Sağ tık ile panel yerleştirmeyi onayla
 
-    if (!isAddPanelMode) return;
+    if (!isAddPanelMode) return;
 
 
 
-    e.stopPropagation();
+    e.stopPropagation();
 
-    e.nativeEvent.preventDefault();
+    e.nativeEvent.preventDefault();
 
 
 
-    // Eğer cycle state'de seçili face varsa, onu onayla
+    // Eğer cycle state'de seçili face varsa, onu onayla
 
-    if (faceCycleState.selectedFace !== null) {
+    if (faceCycleState.selectedFace !== null) {
 
-      onFaceSelect(faceCycleState.selectedFace);
+      onFaceSelect(faceCycleState.selectedFace);
 
-      
+      
 
-      // Cycle state'i sıfırla
+      // Cycle state'i sıfırla
 
-      setFaceCycleState({
+      setFaceCycleState({
 
-        availableFaces: [],
+        availableFaces: [],
 
-        currentIndex: 0,
+        currentIndex: 0,
 
-        selectedFace: null,
+        selectedFace: null,
 
-        mousePosition: null
+        mousePosition: null
 
-      });
+      });
 
-      
+      
 
-      console.log(`🎯 Panel confirmed on face: ${faceCycleState.selectedFace}`);
+      console.log(`🎯 Panel confirmed on face: ${faceCycleState.selectedFace}`);
 
-    }
+    }
 
-  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState]);
+  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState]);
 
 
 
 
 
-  const handleFaceHover = useCallback((faceIndex: number | null) => {
+  const handleFaceHover = useCallback((faceIndex: number | null) => {
 
-    if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
+    if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
 
-      onFaceHover(faceIndex);
+      onFaceHover(faceIndex);
 
-    }
+    }
 
-  }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
+  }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
 
-  
+  
 
-  // Hayali panel için material
+  // Hayali panel için material
 
-  const ghostPanelMaterial = new THREE.MeshBasicMaterial({
+  const ghostPanelMaterial = new THREE.MeshBasicMaterial({
 
-    color: '#fbbf24', // Sarı
+    color: '#fbbf24', // Sarı
 
-    transparent: true,
+    transparent: true,
 
-    opacity: 0.5,
+    opacity: 0.5,
 
-    side: THREE.DoubleSide,
+    side: THREE.DoubleSide,
 
-    depthTest: false,
+    depthTest: false,
 
-  });
+  });
 
 
 
-  const getFaceColor = (faceIndex: number) => {
+  const getFaceColor = (faceIndex: number) => {
 
-    if (selectedFaces.includes(faceIndex)) return '#10b981';
+    if (selectedFaces.includes(faceIndex)) return '#10b981';
 
-    if (hoveredFace === faceIndex) return '#eeeeee';
+    if (hoveredFace === faceIndex) return '#eeeeee';
 
-    return '#3b82f6';
+    return '#3b82f6';
 
-  };
+  };
 
 
 
-  const getFaceOpacity = (faceIndex: number) => {
+  const getFaceOpacity = (faceIndex: number) => {
 
-    if (isAddPanelMode && hoveredFace === faceIndex) return 0.0; // Hoverlanan yüzü görünmez yap
+    if (isAddPanelMode && hoveredFace === faceIndex) return 0.0; // Hoverlanan yüzü görünmez yap
 
-    if (selectedFaces.includes(faceIndex)) return 0.0;
+    if (selectedFaces.includes(faceIndex)) return 0.0;
 
-    return 0.001; // Diğer yüzeyleri neredeyse görünmez yapar
+    return 0.001; // Diğer yüzeyleri neredeyse görünmez yapar
 
-  };
+  };
 
 
 
-  const getPanelEdgeLineWidth = () => {
+  const getPanelEdgeLineWidth = () => {
 
-    const screenWidth = window.innerWidth;
+    const screenWidth = window.innerWidth;
 
-    if (screenWidth < 768) {
+    if (screenWidth < 768) {
 
-      return 1.0;
+      return 1.0;
 
-    } else if (screenWidth < 1024) {
+    } else if (screenWidth < 1024) {
 
-      return 1.5;
+      return 1.5;
 
-    } else {
+    } else {
 
-      return 2.0;
+      return 2.0;
 
-    }
+    }
 
-  };
+  };
 
 
 
-  if (
+  if (
 
-    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
+    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
 
-    shape.type !== 'box'
+    shape.type !== 'box'
 
-  ) {
+  ) {
 
-    return null;
+    return null;
 
-  }
+  }
 
 
 
-  // Face positions and rotations for box
+  // Face positions and rotations for box
 
-  const faceTransforms = useMemo(() => {
+  const faceTransforms = useMemo(() => {
 
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
 
-    const hw = width / 2;
+    const hw = width / 2;
 
-    const hh = height / 2;
+    const hh = height / 2;
 
-    const hd = depth / 2;
+    const hd = depth / 2;
 
 
 
-    return [
+    return [
 
-      // Front face (0) - Z+
+      // Front face (0) - Z+
 
-      { position: [0, 0, hd], rotation: [0, 0, 0] },
+      { position: [0, 0, hd], rotation: [0, 0, 0] },
 
-      // Back face (1) - Z-
+      // Back face (1) - Z-
 
-      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
+      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
 
-      // Top face (2) - Y+
+      // Top face (2) - Y+
 
-      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
+      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
 
-      // Bottom face (3) - Y-
+      // Bottom face (3) - Y-
 
-      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
+      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
 
-      // Right face (4) - X+
+      // Right face (4) - X+
 
-      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
+      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
 
-      // Left face (5) - X-
+      // Left face (5) - X-
 
-      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
 
-    ];
+    ];
 
-  }, [shape.parameters]);
+  }, [shape.parameters]);
 
 
 
-  return (
+  return (
 
-    <group>
+    <group>
 
-      {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
+      {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
 
-      {showFaces &&
+      {showFaces &&
 
-        faceTransforms.map((transform, faceIndex) => {
+        faceTransforms.map((transform, faceIndex) => {
 
-          const opacity = getFaceOpacity(faceIndex);
+          const opacity = getFaceOpacity(faceIndex);
 
 
 
-          return (
+          return (
 
-            <mesh
+            <mesh
 
-              key={`face-${faceIndex}`}
+              key={`face-${faceIndex}`}
 
-              geometry={new THREE.PlaneGeometry(
+              geometry={new THREE.PlaneGeometry(
 
-                faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
+                faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
 
-                faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
+                faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
 
-              )}
+              )}
 
-              position={[
+              position={[
 
-                shape.position[0] + transform.position[0],
+                shape.position[0] + transform.position[0],
 
-                shape.position[1] + transform.position[1],
+                shape.position[1] + transform.position[1],
 
-                shape.position[2] + transform.position[2],
+                shape.position[2] + transform.position[2],
 
-              ]}
+              ]}
 
-              rotation={[
+              rotation={[
 
-                shape.rotation[0] + transform.rotation[0],
+                shape.rotation[0] + transform.rotation[0],
 
-                shape.rotation[1] + transform.rotation[1],
+                shape.rotation[1] + transform.rotation[1],
 
-                shape.rotation[2] + transform.rotation[2],
+                shape.rotation[2] + transform.rotation[2],
 
-              ]}
+              ]}
 
-              scale={shape.scale}
+              scale={shape.scale}
 
-              onClick={(e) => handleClick(e, faceIndex)}
+              onClick={(e) => handleClick(e, faceIndex)}
 
-              onContextMenu={(e) => handleContextMenu(e, faceIndex)} // Sağ tık eklendi
+              onContextMenu={(e) => handleContextMenu(e, faceIndex)} // Sağ tık eklendi
 
-              onPointerEnter={() => handleFaceHover(faceIndex)}
+              onPointerEnter={() => handleFaceHover(faceIndex)}
 
-              onPointerLeave={() => handleFaceHover(null)}
+              onPointerLeave={() => handleFaceHover(null)}
 
-            >
+            >
 
-              <meshBasicMaterial
+              <meshBasicMaterial
 
-                color={getFaceColor(faceIndex)}
+                color={getFaceColor(faceIndex)}
 
-                transparent
+                transparent
 
-                opacity={opacity}
+                opacity={opacity}
 
-                side={THREE.DoubleSide}
+                side={THREE.DoubleSide}
 
-                depthTest={false}
+                depthTest={false}
 
-              />
+              />
 
-            </mesh>
+            </mesh>
 
-          );
+          );
 
-        })}
+        })}
 
 
 
-      {/* 🎯 HAYALİ PANEL - Yüzeye yaklaştığında gösterilecek */}
+      {/* 🎯 HAYALİ PANEL - Yüzeye yaklaştığında gösterilecek */}
 
-      {isAddPanelMode && faceCycleState.selectedFace !== null && !selectedFaces.includes(faceCycleState.selectedFace) && (
+      {isAddPanelMode && faceCycleState.selectedFace !== null && !selectedFaces.includes(faceCycleState.selectedFace) && (
 
-        <mesh
+        <mesh
 
-          key={`ghost-panel-${faceCycleState.selectedFace}`}
+          key={`ghost-panel-${faceCycleState.selectedFace}`}
 
-          geometry={new THREE.PlaneGeometry(
+          geometry={new THREE.PlaneGeometry(
 
-            faceCycleState.selectedFace === 2 || faceCycleState.selectedFace === 3 ? shape.parameters.width : (faceCycleState.selectedFace === 4 || faceCycleState.selectedFace === 5 ? shape.parameters.depth : shape.parameters.width),
+            faceCycleState.selectedFace === 2 || faceCycleState.selectedFace === 3 ? shape.parameters.width : (faceCycleState.selectedFace === 4 || faceCycleState.selectedFace === 5 ? shape.parameters.depth : shape.parameters.width),
 
-            faceCycleState.selectedFace === 2 || faceCycleState.selectedFace === 3 ? shape.parameters.depth : shape.parameters.height
+            faceCycleState.selectedFace === 2 || faceCycleState.selectedFace === 3 ? shape.parameters.depth : shape.parameters.height
 
-          )}
+          )}
 
-          position={[
+          position={[
 
-            shape.position[0] + faceTransforms[faceCycleState.selectedFace].position[0],
+            shape.position[0] + faceTransforms[faceCycleState.selectedFace].position[0],
 
-            shape.position[1] + faceTransforms[faceCycleState.selectedFace].position[1],
+            shape.position[1] + faceTransforms[faceCycleState.selectedFace].position[1],
 
-            shape.position[2] + faceTransforms[faceCycleState.selectedFace].position[2],
+            shape.position[2] + faceTransforms[faceCycleState.selectedFace].position[2],
 
-          ]}
+          ]}
 
-          rotation={[
+          rotation={[
 
-            shape.rotation[0] + faceTransforms[faceCycleState.selectedFace].rotation[0],
+            shape.rotation[0] + faceTransforms[faceCycleState.selectedFace].rotation[0],
 
-            shape.rotation[1] + faceTransforms[faceCycleState.selectedFace].rotation[1],
+            shape.rotation[1] + faceTransforms[faceCycleState.selectedFace].rotation[1],
 
-            shape.rotation[2] + faceTransforms[faceCycleState.selectedFace].rotation[2],
+            shape.rotation[2] + faceTransforms[faceCycleState.selectedFace].rotation[2],
 
-          ]}
+          ]}
 
-          scale={shape.scale}
+          scale={shape.scale}
 
-          material={ghostPanelMaterial}
+          material={ghostPanelMaterial}
 
-        />
+        />
 
-      )}
+      )}
 
 
 
-      {/* 🎯 GUARANTEED LAST PANEL SHRINKS - Wood panels with guaranteed sizing */}
+      {/* 🎯 GUARANTEED LAST PANEL SHRINKS - Wood panels with guaranteed sizing */}
 
-      {smartPanelData.map((panelData) => (
+      {smartPanelData.map((panelData) => (
 
-        <mesh
+        <mesh
 
-          key={`guaranteed-panel-${panelData.faceIndex}`}
+          key={`guaranteed-panel-${panelData.faceIndex}`}
 
-          geometry={panelData.geometry}
+          geometry={panelData.geometry}
 
-          position={[
+          position={[
 
-            shape.position[0] + panelData.position.x,
+            shape.position[0] + panelData.position.x,
 
-            shape.position[1] + panelData.position.y,
+            shape.position[1] + panelData.position.y,
 
-            shape.position[2] + panelData.position.z,
+            shape.position[2] + panelData.position.z,
 
-          ]}
+          ]}
 
-          rotation={shape.rotation}
+          rotation={shape.rotation}
 
-          scale={shape.scale}
+          scale={shape.scale}
 
-          castShadow
+          castShadow
 
-          receiveShadow
+          receiveShadow
 
-          // Hide mesh in wireframe mode
+          // Hide mesh in wireframe mode
 
-          visible={viewMode !== ViewMode.WIREFRAME}
+          visible={viewMode !== ViewMode.WIREFRAME}
 
-          // 🔴 NEW: Click handler for panel edit mode
+          // 🔴 NEW: Click handler for panel edit mode
 
-          onClick={(e) => {
+          onClick={(e) => {
 
-            if (isPanelEditMode) {
+            if (isPanelEditMode) {
 
-              e.stopPropagation();
+              e.stopPropagation();
 
-              if (onPanelSelect) {
+              if (onPanelSelect) {
 
-                onPanelSelect({
+                onPanelSelect({
 
-                  faceIndex: panelData.faceIndex,
+                  faceIndex: panelData.faceIndex,
 
-                  position: panelData.position,
+                  position: panelData.position,
 
-                  size: panelData.size,
+                  size: panelData.size,
 
-                  panelOrder: panelData.panelOrder,
+                  panelOrder: panelData.panelOrder,
 
-                });
+                });
 
-                console.log(
+                console.log(
 
-                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
+                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
 
-                );
+                );
 
-              }
+              }
 
-            }
+            }
 
-          }}
+          }}
 
-        >
+        >
 
-          {isPanelEditMode ? (
+          {isPanelEditMode ? (
 
-            <meshPhysicalMaterial
+            <meshPhysicalMaterial
 
-              color="#dc2626"
+              color="#dc2626"
 
-              roughness={0.6}
+              roughness={0.6}
 
-              metalness={0.02}
+              metalness={0.02}
 
-              transparent={viewMode === ViewMode.TRANSPARENT}
+              transparent={viewMode === ViewMode.TRANSPARENT}
 
-              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
 
-              depthWrite={viewMode === ViewMode.SOLID}
+              depthWrite={viewMode === ViewMode.SOLID}
 
-            />
+            />
 
-          ) : (
+          ) : (
 
-            <meshPhysicalMaterial
+            <meshPhysicalMaterial
 
-              {...getPanelMaterial(panelData.faceIndex).parameters}
+              {...getPanelMaterial(panelData.faceIndex).parameters}
 
-              transparent={viewMode === ViewMode.TRANSPARENT}
+              transparent={viewMode === ViewMode.TRANSPARENT}
 
-              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
 
-              depthWrite={viewMode === ViewMode.SOLID}
+              depthWrite={viewMode === ViewMode.SOLID}
 
-            />
+            />
 
-          )}
+          )}
 
-        </mesh>
+        </mesh>
 
-      ))}
+      ))}
 
 
 
-      {/* 🎨 PROFESSIONAL SHARP EDGES - Clear black outlines */}
+      {/* 🎨 PROFESSIONAL SHARP EDGES - Clear black outlines */}
 
-      {smartPanelData.map((panelData) => (
+      {smartPanelData.map((panelData) => (
 
-        <lineSegments
+        <lineSegments
 
-          key={`guaranteed-panel-edges-${panelData.faceIndex}`}
+          key={`guaranteed-panel-edges-${panelData.faceIndex}`}
 
-          geometry={new THREE.EdgesGeometry(panelData.geometry)}
+          geometry={new THREE.EdgesGeometry(panelData.geometry)}
 
-          position={[
+          position={[
 
-            shape.position[0] + panelData.position.x,
+            shape.position[0] + panelData.position.x,
 
-            shape.position[1] + panelData.position.y,
+            shape.position[1] + panelData.position.y,
 
-            shape.position[2] + panelData.position.z,
+            shape.position[2] + panelData.position.z,
 
-          ]}
+          ]}
 
-          rotation={shape.rotation}
+          rotation={shape.rotation}
 
-          scale={shape.scale}
+          scale={shape.scale}
 
-          visible={
+          visible={
 
-            viewMode === ViewMode.WIREFRAME ||
+            viewMode === ViewMode.WIREFRAME ||
 
-            isPanelEditMode ||
+            isPanelEditMode ||
 
-            selectedFaces.includes(panelData.faceIndex)
+            selectedFaces.includes(panelData.faceIndex)
 
-          }
+          }
 
-        >
+        >
 
-          <lineBasicMaterial
+          <lineBasicMaterial
 
-            color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()}
+            color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()}
 
-            linewidth={getPanelEdgeLineWidth()}
+            linewidth={getPanelEdgeLineWidth()}
 
-            transparent={
+            transparent={
 
-              viewMode === ViewMode.TRANSPARENT ||
+              viewMode === ViewMode.TRANSPARENT ||
 
-              viewMode === ViewMode.WIREFRAME
+              viewMode === ViewMode.WIREFRAME
 
-            }
+            }
 
-            opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
+            opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
 
-            depthTest={viewMode === ViewMode.SOLID}
+            depthTest={viewMode === ViewMode.SOLID}
 
-          />
+          />
 
-        </lineSegments>
+        </lineSegments>
 
-      ))}
+      ))}
 
-    </group>
+    </group>
 
-  );
+  );
 
 };
 
