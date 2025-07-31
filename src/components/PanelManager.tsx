@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useRef, useState } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
+import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
@@ -333,6 +334,44 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             />
           )}
         </mesh>
+      ))}
+
+      {/* 🎯 FACE NUMBERS - Panel modunda yüzey numaraları */}
+      {isAddPanelMode && faceTransforms.map((transform, faceIndex) => (
+        <Billboard
+          key={`face-number-${faceIndex}`}
+          follow={true}
+          lockX={false}
+          lockY={false}
+          lockZ={false}
+          position={[
+            shape.position[0] + transform.position.x + transform.normal.x * 30,
+            shape.position[1] + transform.position.y + transform.normal.y * 30,
+            shape.position[2] + transform.position.z + transform.normal.z * 30,
+          ]}
+        >
+          <mesh>
+            <circleGeometry args={[25, 16]} />
+            <meshBasicMaterial
+              color={selectedFaces.includes(faceIndex) ? '#10b981' : '#3b82f6'}
+              transparent
+              opacity={0.8}
+              depthTest={false}
+            />
+          </mesh>
+          <Text
+            position={[0, 0, 1]}
+            fontSize={20}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+            font="/fonts/inter-bold.woff"
+            outlineWidth={2}
+            outlineColor="#000000"
+          >
+            {faceIndex}
+          </Text>
+        </Billboard>
       ))}
 
       {smartPanelData.map((panelData, index) => (
