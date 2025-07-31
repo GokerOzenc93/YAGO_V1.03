@@ -6,15 +6,20 @@ import { Shape } from '../../types/shapes';
 interface PanelProps {
   editedShape: Shape;
   onClose: () => void;
+  isAddPanelMode: boolean;
+  setIsAddPanelMode: (mode: boolean) => void;
+  isPanelEditMode: boolean;
+  setIsPanelEditMode: (mode: boolean) => void;
 }
 
-const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
-  const { 
-    isAddPanelMode,
-    setIsAddPanelMode,
-    isPanelEditMode,
-    setIsPanelEditMode
-  } = useAppStore();
+const Panel: React.FC<PanelProps> = ({ 
+  editedShape, 
+  onClose,
+  isAddPanelMode,
+  setIsAddPanelMode,
+  isPanelEditMode,
+  setIsPanelEditMode
+}) => {
 
   const toggleAddPanelMode = () => {
     const newMode = !isAddPanelMode;

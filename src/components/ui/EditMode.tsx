@@ -202,7 +202,16 @@ const EditMode: React.FC<EditModeProps> = ({
       case 'module':
         return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
       case 'panel':
-        return <Panel editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
+        return (
+          <Panel 
+            editedShape={editedShape} 
+            onClose={() => setActiveComponent(null)}
+            isAddPanelMode={isAddPanelMode}
+            setIsAddPanelMode={setIsAddPanelMode}
+            isPanelEditMode={isPanelEditMode}
+            setIsPanelEditMode={setIsPanelEditMode}
+          />
+        );
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
