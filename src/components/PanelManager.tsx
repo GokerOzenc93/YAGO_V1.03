@@ -301,6 +301,43 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       )}
 
+      {/* 🎯 FACE NUMBERS - Panel modunda yüzey numaraları */}
+      {isAddPanelMode && faceTransforms.map((transform, faceIndex) => (
+        <Billboard
+          key={`face-number-${faceIndex}`}
+          follow={true}
+          lockX={false}
+          lockY={false}
+          lockZ={false}
+          position={[
+            shape.position[0] + transform.position.x + transform.normal.x * 50,
+            shape.position[1] + transform.position.y + transform.normal.y * 50,
+            shape.position[2] + transform.position.z + transform.normal.z * 50,
+          ]}
+        >
+          <mesh>
+            <circleGeometry args={[30, 16]} />
+            <meshBasicMaterial
+              color={selectedFaces.includes(faceIndex) ? '#10b981' : '#3b82f6'}
+              transparent
+              opacity={0.9}
+              depthTest={false}
+            />
+          </mesh>
+          <Text
+            position={[0, 0, 1]}
+            fontSize={25}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={3}
+            outlineColor="#000000"
+          >
+            {faceIndex}
+          </Text>
+        </Billboard>
+      ))}
+
       {/* Yerleştirilen paneller */}
       {smartPanelData.map((panelData, index) => (
         <mesh
