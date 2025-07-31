@@ -6,9 +6,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Puzzle,
+  Grid3X3,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
+import Panel from './Panel';
 
 interface EditModeProps {
   editedShape: Shape;
@@ -199,6 +201,8 @@ const EditMode: React.FC<EditModeProps> = ({
     switch (activeComponent) {
       case 'module':
         return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
+      case 'panel':
+        return <Panel editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
@@ -214,6 +218,22 @@ const EditMode: React.FC<EditModeProps> = ({
                   </div>
                   <span className="text-xs font-medium truncate">Module</span>
                   {activeComponent === 'module' && (
+                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    </div>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => handleComponentClick('panel')}
+                  className={`${getIconButtonColorClasses('blue', activeComponent === 'panel')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  title="Panel"
+                >
+                  <div className="flex-shrink-0">
+                    <Grid3X3 size={12} />
+                  </div>
+                  <span className="text-xs font-medium truncate">Panel</span>
+                  {activeComponent === 'panel' && (
                     <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     </div>
