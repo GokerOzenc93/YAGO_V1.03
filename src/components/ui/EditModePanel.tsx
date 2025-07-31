@@ -82,35 +82,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(192);
-  const [isResizing, setIsResizing] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const deltaX = e.clientX - startX.current;
-      const newWidth = Math.max(40, Math.min(startWidth.current + deltaX, 100));
-      setPanelWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
+  const {
+    measurementUnit,
+    convertToDisplayUnit,
+    convertToBaseUnit,
+    updateShape,
+  } = useAppStore();
 
   useEffect(() => {
     const calculatePanelPositionAndHeight = () => {
@@ -127,8 +106,10 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
       if (terminalElement) {
         bottomOffset = terminalElement.clientHeight;
+        console.log('Terminal height detected:', terminalElement.clientHeight);
       } else if (statusBarElement) {
         bottomOffset = statusBarElement.clientHeight;
+        console.log('Status bar height detected:', statusBarElement.clientHeight);
       } else {
         bottomOffset = 20;
       }
@@ -141,6 +122,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       setPanelTop(`${newTop}px`);
       setPanelHeightValue(newHeight);
       setPanelTopValue(newTop);
+
+      console.log('Panel position and height calculated:', {
+        windowHeight: window.innerHeight,
+        topOffset,
+        bottomOffset,
+        availableHeight,
+        newHeight,
+        newTop,
+      });
     };
 
     calculatePanelPositionAndHeight();
@@ -152,6 +142,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     };
 
     window.addEventListener('resize', debouncedCalculate);
+
     const observer = new MutationObserver(debouncedCalculate);
     observer.observe(document.body, {
       childList: true,
@@ -179,18 +170,22 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       setActiveComponent(null);
       setIsAddPanelMode(false);
       setIsPanelEditMode(false);
+      console.log(`${componentType} mode disabled`);
     } else {
       setActiveComponent(componentType);
 
       if (componentType === 'panels') {
         setIsAddPanelMode(true);
         setIsPanelEditMode(false);
+        console.log('Panel mode activated');
       } else if (componentType === 'panel-edit') {
         setIsAddPanelMode(false);
         setIsPanelEditMode(true);
+        console.log('Panel Edit mode activated');
       } else {
         setIsAddPanelMode(false);
         setIsPanelEditMode(false);
+        console.log(`${componentType} mode activated`);
       }
     }
   };
@@ -285,17 +280,24 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     }
   };
 
+  const getPanelWidthClass = () => {
+    if (isCollapsed) {
+      return 'w-1';
+    }
+    return 'w-48';
+  };
+
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    if (!isLocked && !isResizing) {
+    if (!isLocked) {
       setIsCollapsed(false);
     }
   };
 
   const handleMouseLeave = () => {
-    if (!isLocked && !isResizing) {
+    if (!isLocked) {
       hoverTimeoutRef.current = setTimeout(() => {
         setIsCollapsed(true);
       }, 300);
@@ -305,7 +307,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const toggleLock = () => {
     setIsLocked(!isLocked);
     if (!isLocked) {
-      setIsCollapsed(false);
+      setIsCollapsed(false); // Kilitlendiğinde panelin açık kalması için
     }
   };
 
@@ -317,27 +319,19 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     setIsCollapsed(false);
   };
 
-  const handleResizeMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    startX.current = e.clientX;
-    startWidth.current = panelRef.current?.clientWidth || 100;
-  };
-
   return (
     <>
       <div
-        ref={panelRef}
-        className={`fixed left-0 z-50 bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+        className={`fixed left-0 z-50 ${getPanelWidthClass()} bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
         style={{
           top: panelTop,
           height: panelHeight,
-          width: isCollapsed ? '4px' : `${panelWidth}px`,
         }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {isCollapsed && (
+          // Daraltılmış paneldeki açma butonu
           <button
             onClick={handleExpand}
             className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
@@ -348,22 +342,122 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         )}
 
         {!isCollapsed && (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Üst başlık ve düğmeler için yeni düzen */}
-            <div className="flex items-center justify-between p-2 pt-4 border-b border-gray-700">
-              <span className="text-white font-inter text-base font-bold opacity-90">
-                AD06072
-              </span>
-              <div className="flex items-center gap-1">
-                {isLocked && (
+          <div className="flex-1 flex flex-row overflow-hidden">
+            {activeComponent === 'module' ? (
+              <div className="w-full flex flex-col">
+                <div className="flex items-center justify-between px-3 py-2 bg-violet-600/20 border-b border-violet-500/30">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-6 h-6 bg-violet-600/30 rounded">
+                      <Puzzle size={12} className="text-violet-300" />
+                    </div>
+                    <span className="text-white font-medium text-sm">Module</span>
+                  </div>
                   <button
-                    onClick={handleCollapse}
-                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                    title="Arayüzü Küçült"
+                    onClick={() => setActiveComponent(null)}
+                    className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+                    title="Geri"
                   >
-                    <ChevronLeft size={12} />
+                    <X size={12} />
                   </button>
-                )}
+                </div>
+                <div className="flex-1 p-3 space-y-3">
+                  <div className="h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent mb-3"></div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 text-xs w-4">W:</span>
+                      <input
+                        type="number"
+                        value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
+                        onChange={(e) => {
+                          const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                          const newGeometry = new THREE.BoxGeometry(
+                            newWidth,
+                            editedShape.parameters.height || 500,
+                            editedShape.parameters.depth || 500
+                          );
+                          updateShape(editedShape.id, {
+                            parameters: { ...editedShape.parameters, width: newWidth },
+                            geometry: newGeometry
+                          });
+                        }}
+                        className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                        step="0.1"
+                        min="1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 text-xs w-4">H:</span>
+                      <input
+                        type="number"
+                        value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
+                        onChange={(e) => {
+                          const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                          const newGeometry = new THREE.BoxGeometry(
+                            editedShape.parameters.width || 500,
+                            newHeight,
+                            editedShape.parameters.depth || 500
+                          );
+                          updateShape(editedShape.id, {
+                            parameters: { ...editedShape.parameters, height: newHeight },
+                            geometry: newGeometry
+                          });
+                        }}
+                        className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                        step="0.1"
+                        min="1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 text-xs w-4">D:</span>
+                      <input
+                        type="number"
+                        value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
+                        onChange={(e) => {
+                          const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
+                          const newGeometry = new THREE.BoxGeometry(
+                            editedShape.parameters.width || 500,
+                            editedShape.parameters.height || 500,
+                            newDepth
+                          );
+                          updateShape(editedShape.id, {
+                            parameters: { ...editedShape.parameters, depth: newDepth },
+                            geometry: newGeometry
+                          });
+                        }}
+                        className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+                        step="0.1"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+            <>
+              <div className="absolute top-2 left-2 right-16 z-10">
+                <input
+                  type="text"
+                  placeholder="Cabinet Code (e.g: CAB-001)"
+                  className="w-full bg-gray-700/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50"
+                />
+              </div>
+
+              <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Düzenleme Modundan Çık"
+                >
+                  <X size={12} />
+                </button>
+                
+                <button
+                  onClick={handleCollapse}
+                  className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Arayüzü Küçült"
+                >
+                  <ChevronLeft size={12} />
+                </button>
                 
                 <button
                   onClick={toggleLock}
@@ -374,149 +468,43 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                 >
                   {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
                 </button>
-                
-                <button
-                  onClick={handleClose}
-                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Düzenleme Modundan Çık"
-                >
-                  <X size={12} />
-                </button>
               </div>
-            </div>
-            
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {activeComponent === 'module' ? (
-                <div className="w-full flex flex-col">
-                  <div className="flex items-center justify-between px-3 py-2 bg-violet-600/20 border-b border-violet-500/30">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center w-6 h-6 bg-violet-600/30 rounded">
-                        <Puzzle size={12} className="text-violet-300" />
-                      </div>
-                      <span className="text-white font-medium text-sm">Module</span>
-                    </div>
-                    <button
-                      onClick={() => setActiveComponent(null)}
-                      className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-                      title="Geri"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                  <div className="flex-1 p-3 space-y-3">
-                    <div className="h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent mb-3"></div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-300 text-xs w-4">W:</span>
-                        <input
-                          type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.width || 500).toFixed(1)}
-                          onChange={(e) => {
-                            const newWidth = convertToBaseUnit(parseFloat(e.target.value) || 0);
-                            const newGeometry = new THREE.BoxGeometry(
-                              newWidth,
-                              editedShape.parameters.height || 500,
-                              editedShape.parameters.depth || 500
-                            );
-                            updateShape(editedShape.id, {
-                              parameters: { ...editedShape.parameters, width: newWidth },
-                              geometry: newGeometry
-                            });
-                          }}
-                          className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
-                          step="0.1"
-                          min="1"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-300 text-xs w-4">H:</span>
-                        <input
-                          type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.height || 500).toFixed(1)}
-                          onChange={(e) => {
-                            const newHeight = convertToBaseUnit(parseFloat(e.target.value) || 0);
-                            const newGeometry = new THREE.BoxGeometry(
-                              editedShape.parameters.width || 500,
-                              newHeight,
-                              editedShape.parameters.depth || 500
-                            );
-                            updateShape(editedShape.id, {
-                              parameters: { ...editedShape.parameters, height: newHeight },
-                              geometry: newGeometry
-                            });
-                          }}
-                          className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
-                          step="0.1"
-                          min="1"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-300 text-xs w-4">D:</span>
-                        <input
-                          type="number"
-                          value={convertToDisplayUnit(editedShape.parameters.depth || 500).toFixed(1)}
-                          onChange={(e) => {
-                            const newDepth = convertToBaseUnit(parseFloat(e.target.value) || 0);
-                            const newGeometry = new THREE.BoxGeometry(
-                              editedShape.parameters.width || 500,
-                              editedShape.parameters.height || 500,
-                              newDepth
-                            );
-                            updateShape(editedShape.id, {
-                              parameters: { ...editedShape.parameters, depth: newDepth },
-                              geometry: newGeometry
-                            });
-                          }}
-                          className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
-                          step="0.1"
-                          min="1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-              <>
-                <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
-                  {editedShape.type === 'box' && (
-                    <>
-                      <div className="flex flex-col gap-1 px-2">
-                        {furnitureComponents.map((component) => {
-                          const isActive = activeComponent === component.id;
-                          return (
-                            <button
-                              key={component.id}
-                              onClick={() => handleComponentClick(component.id)}
-                              className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                              title={component.label}
-                            >
-                              <div className="flex-shrink-0">
-                                {React.cloneElement(component.icon, { size: 12 })}
+
+              <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-12">
+                {editedShape.type === 'box' && (
+                  <>
+                    <div className="flex flex-col gap-1 px-2">
+                      {furnitureComponents.map((component) => {
+                        const isActive = activeComponent === component.id;
+                        return (
+                          <button
+                            key={component.id}
+                            onClick={() => handleComponentClick(component.id)}
+                            className={`${getIconButtonColorClasses(component.color, isActive)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                            title={component.label}
+                          >
+                            <div className="flex-shrink-0">
+                              {React.cloneElement(component.icon, { size: 12 })}
+                            </div>
+                            <span className="text-xs font-medium truncate">
+                              {component.label}
+                            </span>
+                            {isActive && (
+                              <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                               </div>
-                              <span className="text-xs font-medium truncate">
-                                {component.label}
-                              </span>
-                              {isActive && (
-                                <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </>
-              )}
-            </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+            )}
           </div>
         )}
-        <div
-          className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors"
-          onMouseDown={handleResizeMouseDown}
-        />
       </div>
 
       {activeComponent === 'panels' && (
