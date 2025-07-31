@@ -65,61 +65,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     isActive: false,
   });
 
-  // 🎯 GEOMETRIK FACE DETECTION - Raycasting ile fare pozisyonundaki face'leri algıla
-  const detectFacesAtMousePosition = useCallback((event: any): number[] => {
-    const rect = gl.domElement.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycaster.setFromCamera({ x, y }, camera);
-    
-    // Her face için invisible mesh oluştur ve intersection test et
-    const detectedFaces: { faceIndex: number; distance: number }[] = [];
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const hw = width / 2;
-    const hh = height / 2;
-    const hd = depth / 2;
-
-    // Face geometrileri ve pozisyonları
-    const faceData = [
-      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, hd], rotation: [0, 0, 0] }, // Front
-      { geometry: new THREE.PlaneGeometry(width, height), position: [0, 0, -hd], rotation: [0, Math.PI, 0] }, // Back
-      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] }, // Top
-      { geometry: new THREE.PlaneGeometry(width, depth), position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] }, // Bottom
-      { geometry: new THREE.PlaneGeometry(depth, height), position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] }, // Right
-      { geometry: new THREE.PlaneGeometry(depth, height), position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] }, // Left
-    ];
-
-    faceData.forEach((face, faceIndex) => {
-      const mesh = new THREE.Mesh(face.geometry);
-      mesh.position.set(face.position[0], face.position[1], face.position[2]);
-      mesh.rotation.set(face.rotation[0], face.rotation[1], face.rotation[2]);
-      
-      // Shape'in transform'unu uygula
-      mesh.position.add(new THREE.Vector3(...shape.position));
-      mesh.rotation.x += shape.rotation[0];
-      mesh.rotation.y += shape.rotation[1];
-      mesh.rotation.z += shape.rotation[2];
-      mesh.scale.set(...shape.scale);
-      
-      mesh.updateMatrixWorld();
-      
-      const intersects = raycaster.intersectObject(mesh);
-      if (intersects.length > 0) {
-        detectedFaces.push({
-          faceIndex,
-          distance: intersects[0].distance
-        });
-      }
-    });
-
-    // Mesafeye göre sırala (en yakından en uzağa)
-    detectedFaces.sort((a, b) => a.distance - b.distance);
-    const sortedFaces = detectedFaces.map(f => f.faceIndex);
-    
-    console.log(`🎯 Geometrik algılama: ${sortedFaces.length} face bulundu:`, sortedFaces);
-    return sortedFaces;
-  }, [camera, raycaster, gl, shape]);
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
     const woodTexture = textureLoader.load('https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg');
@@ -223,8 +168,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
     let finalSize;
     let finalPosition;
-    const positionOffset = faceTransforms[faceIndex].normal.clone().multiplyScalar(panelThickness / 2);
-
+    
+    // Konum hesaplaması, artık expandedBounds'un merkezini kullanıyor
     switch (faceIndex) {
       case 0: // Front
       case 1: // Back
@@ -233,7 +178,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           expandedBounds.max.y - expandedBounds.min.y,
           panelThickness
         );
-        finalPosition = new THREE.Vector3(0, 0, faceTransforms[faceIndex].position.z).add(positionOffset);
+        finalPosition = new THREE.Vector3(
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          faceTransforms[faceIndex].position.z + faceTransforms[faceIndex].normal.z * (panelThickness / 2)
+        );
         break;
       case 2: // Top
       case 3: // Bottom
@@ -242,7 +191,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           panelThickness,
           expandedBounds.max.z - expandedBounds.min.z
         );
-        finalPosition = new THREE.Vector3(0, faceTransforms[faceIndex].position.y, 0).add(positionOffset);
+        finalPosition = new THREE.Vector3(
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          faceTransforms[faceIndex].position.y + faceTransforms[faceIndex].normal.y * (panelThickness / 2),
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
+        );
         break;
       case 4: // Right
       case 5: // Left
@@ -251,7 +204,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           expandedBounds.max.y - expandedBounds.min.y,
           expandedBounds.max.z - expandedBounds.min.z
         );
-        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x, 0, 0).add(positionOffset);
+        finalPosition = new THREE.Vector3(
+          faceTransforms[faceIndex].position.x + faceTransforms[faceIndex].normal.x * (panelThickness / 2),
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
+        );
         break;
       default:
         finalSize = new THREE.Vector3(100, 100, 10);
@@ -273,6 +230,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       calculateSmartPanelBounds(faceIndex, selectedFaces, index)
     );
   }, [shape.type, shape.parameters, selectedFaces]);
+  
+  const ghostPanelData = useMemo(() => {
+    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
+    const panelOrder = selectedFaces.length;
+    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
+  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
+
+  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#fbbf24',
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    depthTest: false,
+  }), []);
 
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) return woodMaterials.horizontal;
@@ -294,86 +265,73 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (screenWidth < 1024) return 1.5;
     return 2.0;
   };
-  
-  // Hayali panel için material
-  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#fbbf24',
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide,
-    depthTest: false,
-  }), []);
 
-  const getFaceColor = (faceIndex: number) => {
-    if (selectedFaces.includes(faceIndex)) return '#10b981';
-    if (hoveredFace === faceIndex) return '#eeeeee';
-    return '#3b82f6';
-  };
-
-  const getFaceOpacity = (faceIndex: number) => {
-    if (isAddPanelMode && hoveredFace === faceIndex) return 0.0;
-    if (selectedFaces.includes(faceIndex)) return 0.0;
-    return 0.001;
-  };
-
-  // 🎯 YENİ CLICK HANDLER - Geometrik algılama ile face cycle
-  const handleClick = useCallback((e: any, faceIndex: number) => {
+  const handleClick = useCallback((e: any) => {
     e.stopPropagation();
     if (isAddPanelMode && e.nativeEvent.button === 0) {
-      // Geometrik algılama yap
-      const detectedFaces = detectFacesAtMousePosition(e.nativeEvent);
+      const mouseX = e.nativeEvent.clientX;
+      const mouseY = e.nativeEvent.clientY;
+      const rect = gl.domElement.getBoundingClientRect();
+      const x = ((mouseX - rect.left) / rect.width) * 2 - 1;
+      const y = -((mouseY - rect.top) / rect.height) * 2 + 1;
       
-      if (!faceCycleState.isActive) {
-        // İlk tık: Algılanan face'lerle cycle başlat
-        if (detectedFaces.length === 0) {
-          console.log('🎯 Hiç face algılanmadı');
-          return;
-        }
-        
+      const newRaycaster = new THREE.Raycaster();
+      newRaycaster.setFromCamera({ x, y }, camera);
+
+      const tempObjects: THREE.Mesh[] = [];
+      faceTransforms.forEach((transform, fIndex) => {
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(
+          fIndex === 2 || fIndex === 3 ? shape.parameters.width : (fIndex === 4 || fIndex === 5 ? shape.parameters.depth : shape.parameters.width),
+          fIndex === 2 || fIndex === 3 ? shape.parameters.depth : shape.parameters.height
+        ));
+        mesh.position.copy(transform.position);
+        mesh.rotation.copy(transform.rotation);
+        mesh.updateMatrixWorld();
+        tempObjects.push(mesh);
+      });
+      
+      const intersects = newRaycaster.intersectObjects(tempObjects);
+
+      if (intersects.length === 0) {
         setFaceCycleState({
-          availableFaces: detectedFaces,
+          availableFaces: [],
           currentIndex: 0,
-          selectedFace: detectedFaces[0],
-          mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY },
+          selectedFace: null,
+          mousePosition: null,
+          isActive: false,
+        });
+        return;
+      }
+      
+      const uniqueDetectedFaces = intersects.map(i => tempObjects.findIndex(obj => obj === i.object));
+
+      if (!faceCycleState.isActive || JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(uniqueDetectedFaces)) {
+        setFaceCycleState({
+          availableFaces: uniqueDetectedFaces,
+          currentIndex: 0,
+          selectedFace: uniqueDetectedFaces[0],
+          mousePosition: { x: mouseX, y: mouseY },
           isActive: true,
         });
-        console.log(`🎯 Face cycle başladı: Face ${detectedFaces[0]} seçildi (1/${detectedFaces.length})`);
       } else {
-        // Sonraki tıklar: Mevcut listede cycle devam et
-        const nextIndex = (faceCycleState.currentIndex + 1) % faceCycleState.availableFaces.length;
+        const nextIndex = (faceCycleState.currentIndex + 1) % uniqueDetectedFaces.length;
         setFaceCycleState(prev => ({
           ...prev,
           currentIndex: nextIndex,
-          selectedFace: prev.availableFaces[nextIndex],
-          mousePosition: { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY },
+          selectedFace: uniqueDetectedFaces[nextIndex],
+          mousePosition: { x: mouseX, y: mouseY },
         }));
-        console.log(`🎯 Face değişti: Face ${faceCycleState.availableFaces[nextIndex]} (${nextIndex + 1}/${faceCycleState.availableFaces.length})`);
       }
     } else if (isPanelEditMode) {
-      const panelData = smartPanelData.find(
-        (panel) => panel.faceIndex === faceIndex
-      );
-      if (panelData && onPanelSelect) {
-        onPanelSelect({
-          faceIndex: panelData.faceIndex,
-          position: panelData.finalPosition,
-          size: panelData.finalSize,
-          panelOrder: panelData.panelOrder,
-        });
-      }
+      // Edit mode logic is simplified for now
     }
-  }, [isAddPanelMode, isPanelEditMode, onPanelSelect, smartPanelData, faceCycleState, detectFacesAtMousePosition]);
+  }, [isAddPanelMode, isPanelEditMode, onPanelSelect, smartPanelData, faceCycleState, setFaceCycleState, camera, gl, faceTransforms, shape.parameters]);
 
-  // 🎯 SAĞ TIK HANDLER - Panel yerleştirme
   const handleContextMenu = useCallback((e: any) => {
     e.stopPropagation();
     e.nativeEvent.preventDefault();
     if (isAddPanelMode && faceCycleState.isActive && faceCycleState.selectedFace !== null) {
-      // Panel yerleştir
       onFaceSelect(faceCycleState.selectedFace);
-      console.log(`🎯 Panel yerleştirildi: Face ${faceCycleState.selectedFace}`);
-      
-      // Cycle'ı sıfırla
       setFaceCycleState({
         availableFaces: [],
         currentIndex: 0,
@@ -382,8 +340,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         isActive: false,
       });
     }
-  }, [isAddPanelMode, faceCycleState, onFaceSelect]);
-
+  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState]);
 
   const handleFaceHover = useCallback((faceIndex: number | null) => {
     if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
@@ -391,19 +348,80 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
 
-
   if ((!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) || shape.type !== 'box') {
     return null;
   }
 
   return (
     <group>
-      {/* 🎯 MEVCUT PANELLER - Yerleştirilmiş paneller */}
-      {smartPanelData.map((panelData, index) => (
-        <group key={`panel-${panelData.faceIndex}-${index}`}>
-          <mesh
-            position={panelData.finalPosition}
-            onClick={isPanelEditMode ? (e) => {
+      {faceTransforms.map((transform, faceIndex) => (
+        <mesh
+          key={`face-overlay-${faceIndex}`}
+          geometry={new THREE.PlaneGeometry(
+            faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
+            faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
+          )}
+          position={[
+            shape.position[0] + transform.position.x,
+            shape.position[1] + transform.position.y,
+            shape.position[2] + transform.position.z,
+          ]}
+          rotation={transform.rotation}
+          onClick={(e) => {
+            if (isAddPanelMode) handleClick(e);
+            else if (isPanelEditMode) handleClick(e, faceIndex);
+          }}
+          onContextMenu={(e) => handleContextMenu(e)}
+          onPointerEnter={() => handleFaceHover(faceIndex)}
+          onPointerLeave={() => handleFaceHover(null)}
+        >
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.001}
+            side={THREE.DoubleSide}
+            depthTest={false}
+          />
+        </mesh>
+      ))}
+      
+      {isAddPanelMode && faceCycleState.selectedFace !== null && ghostPanelData && (
+        <mesh
+          key={`ghost-panel-${ghostPanelData.faceIndex}`}
+          geometry={new THREE.BoxGeometry(
+            ghostPanelData.finalSize.x,
+            ghostPanelData.finalSize.y,
+            ghostPanelData.finalSize.z
+          )}
+          position={[
+            shape.position[0] + ghostPanelData.finalPosition.x,
+            shape.position[1] + ghostPanelData.finalPosition.y,
+            shape.position[2] + ghostPanelData.finalPosition.z,
+          ]}
+          rotation={faceTransforms[ghostPanelData.faceIndex].rotation}
+          material={ghostPanelMaterial}
+        />
+      )}
+
+      {smartPanelData.map((panelData) => (
+        <mesh
+          key={`guaranteed-panel-${panelData.faceIndex}`}
+          geometry={new THREE.BoxGeometry(
+            panelData.finalSize.x,
+            panelData.finalSize.y,
+            panelData.finalSize.z
+          )}
+          position={[
+            shape.position[0] + panelData.finalPosition.x,
+            shape.position[1] + panelData.finalPosition.y,
+            shape.position[2] + panelData.finalPosition.z,
+          ]}
+          rotation={faceTransforms[panelData.faceIndex].rotation}
+          castShadow
+          receiveShadow
+          visible={viewMode !== ViewMode.WIREFRAME}
+          onClick={(e) => {
+            if (isPanelEditMode) {
               e.stopPropagation();
               if (onPanelSelect) {
                 onPanelSelect({
@@ -413,70 +431,59 @@ const PanelManager: React.FC<PanelManagerProps> = ({
                   panelOrder: panelData.panelOrder,
                 });
               }
-            } : undefined}
-          >
-            <boxGeometry args={[panelData.finalSize.x, panelData.finalSize.y, panelData.finalSize.z]} />
-            <primitive object={getPanelMaterial(panelData.faceIndex)} />
-          </mesh>
-          
-          {showEdges && (
-            <lineSegments position={panelData.finalPosition}>
-              <edgesGeometry args={[new THREE.BoxGeometry(panelData.finalSize.x, panelData.finalSize.y, panelData.finalSize.z)]} />
-              <lineBasicMaterial
-                color={getPanelEdgeColor()}
-                linewidth={getPanelEdgeLineWidth()}
-                transparent
-                opacity={0.8}
-              />
-            </lineSegments>
+            }
+          }}
+        >
+          {isPanelEditMode ? (
+            <meshPhysicalMaterial
+              color="#dc2626"
+              roughness={0.6}
+              metalness={0.02}
+              transparent={viewMode === ViewMode.TRANSPARENT}
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+              depthWrite={viewMode === ViewMode.SOLID}
+            />
+          ) : (
+            <meshPhysicalMaterial
+              {...getPanelMaterial(panelData.faceIndex).parameters}
+              transparent={viewMode === ViewMode.TRANSPARENT}
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+              depthWrite={viewMode === ViewMode.SOLID}
+            />
           )}
-        </group>
+        </mesh>
       ))}
 
-      {/* 🎯 GHOST PANEL - Cycle sırasında gösterilen sarı panel */}
-      {isAddPanelMode && faceCycleState.isActive && faceCycleState.selectedFace !== null && (
-        <group>
-          {(() => {
-            const ghostPanelData = calculateSmartPanelBounds(
-              faceCycleState.selectedFace,
-              selectedFaces,
-              selectedFaces.length
-            );
-            return (
-              <mesh position={ghostPanelData.finalPosition}>
-                <boxGeometry args={[ghostPanelData.finalSize.x, ghostPanelData.finalSize.y, ghostPanelData.finalSize.z]} />
-                <primitive object={ghostPanelMaterial} />
-              </mesh>
-            );
-          })()}
-        </group>
-      )}
-
-      {/* 🎯 INVISIBLE FACE MESHES - Click detection için */}
-      {isAddPanelMode && faceTransforms.map((transform, faceIndex) => (
-        <mesh
-          key={`face-${faceIndex}`}
-          position={transform.position}
-          rotation={transform.rotation}
-          onClick={(e) => handleClick(e, faceIndex)}
-          onContextMenu={handleContextMenu}
-          onPointerEnter={() => handleFaceHover(faceIndex)}
-          onPointerLeave={() => handleFaceHover(null)}
+      {smartPanelData.map((panelData) => (
+        <lineSegments
+          key={`guaranteed-panel-edges-${panelData.faceIndex}`}
+          geometry={new THREE.EdgesGeometry(new THREE.BoxGeometry(
+            panelData.finalSize.x,
+            panelData.finalSize.y,
+            panelData.finalSize.z
+          ))}
+          position={[
+            shape.position[0] + panelData.finalPosition.x,
+            shape.position[1] + panelData.finalPosition.y,
+            shape.position[2] + panelData.finalPosition.z,
+          ]}
+          rotation={faceTransforms[panelData.faceIndex].rotation}
+          visible={
+            viewMode === ViewMode.WIREFRAME ||
+            isPanelEditMode ||
+            selectedFaces.includes(panelData.faceIndex)
+          }
         >
-          {faceIndex === 0 || faceIndex === 1 ? (
-            <planeGeometry args={[shape.parameters.width || 500, shape.parameters.height || 500]} />
-          ) : faceIndex === 2 || faceIndex === 3 ? (
-            <planeGeometry args={[shape.parameters.width || 500, shape.parameters.depth || 500]} />
-          ) : (
-            <planeGeometry args={[shape.parameters.depth || 500, shape.parameters.height || 500]} />
-          )}
-          <meshBasicMaterial
-            color={getFaceColor(faceIndex)}
-            transparent
-            opacity={getFaceOpacity(faceIndex)}
-            side={THREE.DoubleSide}
+          <lineBasicMaterial
+            color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()}
+            linewidth={getPanelEdgeLineWidth()}
+            transparent={
+              viewMode === ViewMode.TRANSPARENT || viewMode === ViewMode.WIREFRAME
+            }
+            opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
+            depthTest={viewMode === ViewMode.SOLID}
           />
-        </mesh>
+        </lineSegments>
       ))}
     </group>
   );
