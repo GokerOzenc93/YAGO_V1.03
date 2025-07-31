@@ -316,7 +316,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const getPanelWidthClass = () => {
     // Collapsed mod kontrolü
     if (isCollapsed) {
-      return 'w-12'; // Daha ince ve zarif bir görünüm için genişlik 12 birime ayarlandı
+      return 'w-1'; // Ultra ince şerit için genişlik 1 birime ayarlandı (4px)
     }
     
     // Normal mod - sadece buton modu
