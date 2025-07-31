@@ -80,6 +80,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [panelHeightValue, setPanelHeightValue] = useState(0);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   // Yeni boyutlandırma limitleri (mm cinsinden ve px'e dönüştürülmüş)
