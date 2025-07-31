@@ -139,6 +139,11 @@ interface AppState {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   cycleViewMode: () => void;
+  // Panel mode states
+  isAddPanelMode: boolean;
+  setIsAddPanelMode: (enabled: boolean) => void;
+  isPanelEditMode: boolean;
+  setIsPanelEditMode: (enabled: boolean) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -224,6 +229,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ viewMode: nextMode });
     console.log(`🎯 View mode cycled from ${viewMode} to ${nextMode}`);
   },
+  
+  // Panel mode states
+  isAddPanelMode: false,
+  setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
+  
+  isPanelEditMode: false,
+  setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
   
   // Snap settings - all enabled by default
   snapSettings: {
