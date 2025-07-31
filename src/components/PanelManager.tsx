@@ -316,21 +316,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     return 0.001;
   };
 
-  const detectFacesAtMousePosition = useCallback((event: any): number[] => {
-    // Basit bir yaklaşım: Tıklanan pozisyona göre hangi face'lerin olabileceğini hesapla
-    const rect = gl.domElement.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycaster.setFromCamera({ x, y }, camera);
-    
-    // Tüm face'leri mesafeye göre sırala
-    const allFaces = [0, 1, 2, 3, 4, 5]; // Front, Back, Top, Bottom, Right, Left
-    
-    console.log(`🎯 All available faces for cycling:`, allFaces);
-    return allFaces;
-  }, [camera, raycaster, gl]);
-
   // 🎯 YENİ CLICK HANDLER - Geometrik algılama ile face cycle
   const handleClick = useCallback((e: any, faceIndex: number) => {
     e.stopPropagation();
