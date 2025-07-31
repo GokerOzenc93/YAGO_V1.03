@@ -34,6 +34,8 @@ import DraggableWindow from './DraggableWindow';
 import PanelEditor from './PanelEditor';
 import * as THREE from 'three';
 
+const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
+
 interface PanelData {
   faceIndex: number;
   position: THREE.Vector3;
@@ -88,6 +90,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const startX = useRef(0);
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
   useEffect(() => {
     // Farenin hareketini ve tıklamayı dinler
