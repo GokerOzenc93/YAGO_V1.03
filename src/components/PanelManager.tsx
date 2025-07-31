@@ -36,8 +36,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const panelThickness = 18;
   const { camera, raycaster, gl } = useThree();
   const { viewMode } = useAppStore();
-  const boxMeshRef = useRef<THREE.Mesh>(null);
-  const [hoveredFaceFromMouse, setHoveredFaceFromMouse] = useState<number | null>(null);
+
   const [scannedFace, setScannedFace] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
@@ -147,15 +146,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     switch (faceIndex) {
       case 0: case 1:
         finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, expandedBounds.max.y - expandedBounds.min.y, panelThickness);
-        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, (expandedBounds.max.y + expandedBounds.min.y) / 2, faceTransforms[faceIndex].position.z);
+        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, (expandedBounds.max.y + expandedBounds.min.y) / 2, faceTransforms[faceIndex].position.z + faceTransforms[faceIndex].normal.z * (panelThickness / 2));
         break;
       case 2: case 3:
         finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, panelThickness, expandedBounds.max.z - expandedBounds.min.z);
-        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, faceTransforms[faceIndex].position.y, (expandedBounds.max.z + expandedBounds.min.z) / 2);
+        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, faceTransforms[faceIndex].position.y + faceTransforms[faceIndex].normal.y * (panelThickness / 2), (expandedBounds.max.z + expandedBounds.min.z) / 2);
         break;
       case 4: case 5:
         finalSize = new THREE.Vector3(panelThickness, expandedBounds.max.y - expandedBounds.min.y, expandedBounds.max.z - expandedBounds.min.z);
-        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x, (expandedBounds.max.y + expandedBounds.min.y) / 2, (expandedBounds.max.z + expandedBounds.min.z) / 2);
+        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x + faceTransforms[faceIndex].normal.x * (panelThickness / 2), (expandedBounds.max.y + expandedBounds.min.y) / 2, (expandedBounds.max.z + expandedBounds.min.z) / 2);
         break;
       default:
         finalSize = new THREE.Vector3(100, 100, 10);
@@ -198,7 +197,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (screenWidth < 1024) return 1.5;
     return 2.0;
   };
-  
+
   const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
     color: '#fbbf24',
     transparent: true,
@@ -207,13 +206,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     depthTest: false,
   }), []);
 
-  const handleClick = useCallback((e: any, faceIndex: number) => {
+  const handleClick = useCallback((e: any) => {
     e.stopPropagation();
     if (isAddPanelMode && e.nativeEvent.button === 0) {
-      onPanelAdd(faceIndex);
+      const faceIndex = e.object.userData.faceIndex;
+      if (faceIndex !== undefined) {
+        setScannedFace(faceIndex);
+      }
     } else if (isPanelEditMode) {
       const panelData = smartPanelData.find(
-        (panel) => panel.faceIndex === faceIndex
+        (panel) => panel.faceIndex === e.object.userData.faceIndex
       );
       if (panelData && onPanelSelect) {
         onPanelSelect({
@@ -226,51 +228,32 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, [isAddPanelMode, onPanelAdd, isPanelEditMode, onPanelSelect, smartPanelData]);
 
-  const handleContextMenu = useCallback((e: any, faceIndex: number) => {
+  const handleContextMenu = useCallback((e: any) => {
     e.stopPropagation();
     e.nativeEvent.preventDefault();
-    if (isAddPanelMode && onPanelAdd) {
-      onPanelAdd(faceIndex);
-      console.log(`🎯 Panel placed on face ${faceIndex} via RIGHT CLICK`);
-      // Clear scanning state after placement
+    if (isAddPanelMode && scannedFace !== null) {
+      onPanelAdd(scannedFace);
       setScannedFace(null);
     }
-  }, [isAddPanelMode, onPanelAdd]);
-  
-  const handleFaceHover = useCallback((faceIndex: number | null) => {
-    if (isAddPanelMode) {
-      setHoveredFaceFromMouse(faceIndex);
-    }
-  }, [isAddPanelMode]);
+  }, [isAddPanelMode, onPanelAdd, scannedFace]);
 
   const handlePointerMove = useCallback((e: any) => {
     if (!isAddPanelMode) return;
-    
-    e.stopPropagation();
-    const faceIndex = e.object.userData?.faceIndex;
-    if (faceIndex !== undefined) {
+    const faceIndex = e.object.userData.faceIndex;
+    if (faceIndex !== undefined && scannedFace !== faceIndex) {
       setScannedFace(faceIndex);
-      console.log(`🔍 Scanning face ${faceIndex}`);
+    }
+  }, [isAddPanelMode, scannedFace]);
+
+  const handlePointerOut = useCallback(() => {
+    if (isAddPanelMode) {
+      setScannedFace(null);
     }
   }, [isAddPanelMode]);
 
-  const handleRightClick = useCallback((e: any) => {
-    if (!isAddPanelMode) return;
-    
-    e.stopPropagation();
-    e.nativeEvent.preventDefault();
-    
-    const faceIndex = e.object.userData?.faceIndex;
-    if (faceIndex !== undefined && onPanelAdd) {
-      onPanelAdd(faceIndex);
-      console.log(`🎯 Panel placed on face ${faceIndex} via RIGHT CLICK`);
-      setScannedFace(null);
-    }
-  }, [isAddPanelMode, onPanelAdd]);
-
   const getFaceColor = (faceIndex: number) => {
+    if (isAddPanelMode && scannedFace === faceIndex) return '#fbbf24';
     if (selectedFaces.includes(faceIndex)) return '#10b981';
-    if (scannedFace === faceIndex) return '#fbbf24';
     return '#3b82f6';
   };
 
@@ -299,10 +282,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[2] + transform.position.z,
           ]}
           rotation={transform.rotation}
-          onClick={(e) => handleClick(e, faceIndex)}
-          onContextMenu={(e) => handleContextMenu(e, faceIndex)}
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
           onPointerMove={handlePointerMove}
-          onContextMenu={handleRightClick}
+          onPointerOut={handlePointerOut}
           userData={{ faceIndex }}
         >
           <meshBasicMaterial
