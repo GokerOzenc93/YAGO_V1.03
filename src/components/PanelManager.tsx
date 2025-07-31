@@ -145,21 +145,27 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     switch (faceIndex) {
       case 0: case 1:
         finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, expandedBounds.max.y - expandedBounds.min.y, panelThickness);
-        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, (expandedBounds.max.y + expandedBounds.min.y) / 2, faceTransforms[faceIndex].position.z + faceTransforms[faceIndex].normal.z * (panelThickness / 2));
+        finalPosition = new THREE.Vector3(0, 0, faceTransforms[faceIndex].position.z + faceTransforms[faceIndex].normal.z * (panelThickness / 2));
         break;
       case 2: case 3:
         finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, panelThickness, expandedBounds.max.z - expandedBounds.min.z);
-        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, faceTransforms[faceIndex].position.y + faceTransforms[faceIndex].normal.y * (panelThickness / 2), (expandedBounds.max.z + expandedBounds.min.z) / 2);
+        finalPosition = new THREE.Vector3(0, faceTransforms[faceIndex].position.y + faceTransforms[faceIndex].normal.y * (panelThickness / 2), 0);
         break;
       case 4: case 5:
         finalSize = new THREE.Vector3(panelThickness, expandedBounds.max.y - expandedBounds.min.y, expandedBounds.max.z - expandedBounds.min.z);
-        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x + faceTransforms[faceIndex].normal.x * (panelThickness / 2), (expandedBounds.max.y + expandedBounds.min.y) / 2, (expandedBounds.max.z + expandedBounds.min.z) / 2);
+        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x + faceTransforms[faceIndex].normal.x * (panelThickness / 2), 0, 0);
         break;
       default:
         finalSize = new THREE.Vector3(100, 100, 10);
         finalPosition = new THREE.Vector3(0, 0, 0);
         break;
     }
+    
+    // Panelin rotasyonunu dikkate alarak boyutu ayarla
+    const finalRotatedSize = new THREE.Vector3();
+    const euler = faceTransforms[faceIndex].rotation;
+    const quaternion = new THREE.Quaternion().setFromEuler(euler);
+    finalRotatedSize.copy(finalSize).applyQuaternion(quaternion);
 
     return {
       faceIndex,
@@ -175,6 +181,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       calculateSmartPanelBounds(faceIndex, selectedFaces, index)
     );
   }, [shape.type, shape.parameters, selectedFaces]);
+  
+  const ghostPanelData = useMemo(() => {
+    if (!isAddPanelMode || scannedFace === null) return null;
+    const panelOrder = selectedFaces.length;
+    return calculateSmartPanelBounds(scannedFace, selectedFaces, panelOrder);
+  }, [isAddPanelMode, scannedFace, selectedFaces, shape.parameters]);
+
+  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#fbbf24',
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    depthTest: false,
+  }), []);
 
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) return woodMaterials.horizontal;
@@ -196,15 +216,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (screenWidth < 1024) return 1.5;
     return 2.0;
   };
-
-  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#fbbf24',
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide,
-    depthTest: false,
-  }), []);
-
+  
   const handleClick = useCallback((e: any) => {
     e.stopPropagation();
     if (isAddPanelMode && e.nativeEvent.button === 0) {
