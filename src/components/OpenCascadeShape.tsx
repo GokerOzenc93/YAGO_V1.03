@@ -78,6 +78,9 @@ const OpenCascadeShape: React.FC<Props> = ({
     mousePosition: null,
   });
 
+  // Add selectedFaceCenters state
+  const [selectedFaceCenters, setSelectedFaceCenters] = useState<THREE.Vector3[]>([]);
+
   const shapeGeometry = useMemo(() => shape.geometry, [shape.geometry]);
   const edgesGeometry = useMemo(
     () => new THREE.EdgesGeometry(shapeGeometry),
@@ -290,6 +293,8 @@ const OpenCascadeShape: React.FC<Props> = ({
         faceCycleState={faceCycleState}
         setFaceCycleState={setFaceCycleState}
         alwaysShowPanels={true} // 🎯 NEW PROP - Always show panels
+        selectedFaceCenters={selectedFaceCenters}
+        setSelectedFaceCenters={setSelectedFaceCenters}
         // 🔴 NEW: Panel Edit Mode props
         isPanelEditMode={isPanelEditMode}
         onPanelSelect={onPanelSelect}
