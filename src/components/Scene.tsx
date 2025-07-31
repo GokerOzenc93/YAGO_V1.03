@@ -20,7 +20,7 @@ import {
 import OpenCascadeShape from './OpenCascadeShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
-import EditModePanel from './ui/EditModePanel';
+import EditMode from './ui/EditMode';
 import PanelEditor from './ui/PanelEditor'; // 🔴 NEW: Import Panel Editor
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
@@ -670,7 +670,7 @@ const Scene: React.FC = () => {
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
       {isEditMode && editedShape && (
-        <EditModePanel
+        <EditMode
           editedShape={editedShape}
           onExit={exitEditMode}
           isAddPanelMode={isAddPanelMode}

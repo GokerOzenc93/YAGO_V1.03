@@ -1,15 +1,15 @@
 import React from 'react';
 import { X, Puzzle } from 'lucide-react';
-import { useAppStore } from '../../../store/appStore';
-import { Shape } from '../../../types/shapes';
+import { useAppStore } from '../../store/appStore';
+import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
 
-interface ModulePanelProps {
+interface ModuleProps {
   editedShape: Shape;
   onClose: () => void;
 }
 
-const ModulePanel: React.FC<ModulePanelProps> = ({ editedShape, onClose }) => {
+const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
   return (
@@ -108,4 +108,4 @@ const ModulePanel: React.FC<ModulePanelProps> = ({ editedShape, onClose }) => {
   );
 };
 
-export default ModulePanel;
+export default Module;

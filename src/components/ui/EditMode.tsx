@@ -8,9 +8,9 @@ import {
   Puzzle,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
-import ModulePanel from './panels/ModulePanel';
+import Module from './Module';
 
-interface EditModePanelProps {
+interface EditModeProps {
   editedShape: Shape;
   onExit: () => void;
   isAddPanelMode: boolean;
@@ -27,7 +27,7 @@ interface EditModePanelProps {
   setIsPanelEditMode: (mode: boolean) => void;
 }
 
-const EditModePanel: React.FC<EditModePanelProps> = ({
+const EditMode: React.FC<EditModeProps> = ({
   editedShape,
   onExit,
   isAddPanelMode,
@@ -198,7 +198,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const renderComponentContent = () => {
     switch (activeComponent) {
       case 'module':
-        return <ModulePanel editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
+        return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
@@ -301,4 +301,4 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   );
 };
 
-export default EditModePanel;
+export default EditMode;
