@@ -440,14 +440,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               </div>
             ) : (
             <>
-              <div className="absolute top-2 left-2 z-10">
-                <span className="text-blue-400 font-mono text-xs font-bold tracking-wider opacity-90">
+              {/* Şık ve ortalanmış kabin kodu başlığı */}
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+                <span className="text-white font-mono text-lg font-bold tracking-wider opacity-90">
                   AD06072
                 </span>
               </div>
 
               <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-                {/* Sadece kilitli (isLocked) ise göster */}
                 {isLocked && (
                   <button
                     onClick={handleCollapse}
