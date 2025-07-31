@@ -25,6 +25,8 @@ import {
   Sliders,
   Edit3,
   Puzzle,
+  Pin,
+  PinOff // Sabitleme düğmesi için yeni ikon
 } from 'lucide-react';
 import { useAppStore, MeasurementUnit } from '../../store/appStore.ts';
 import { Shape } from '../../types/shapes';
@@ -79,8 +81,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  // Fazladan modül penceresi için kullanılan state'i kaldırdım
-  // const [isModuleMode, setIsModuleMode] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // Yeni kilit durumu
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -165,14 +166,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   };
 
   const handleComponentClick = (componentType: string) => {
-    // Fazladan modül penceresi mantığı kaldırıldı
-    // if (componentType === 'module') {
-    //   setIsModuleMode(true);
-    //   setActiveComponent('module');
-    //   console.log('Module mode activated');
-    //   return;
-    // }
-
     if (activeComponent === componentType) {
       setActiveComponent(null);
       setIsAddPanelMode(false);
@@ -196,13 +189,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       }
     }
   };
-
-  // handleModuleBack fonksiyonu kaldırıldı
-  // const handleModuleBack = () => {
-  //   setIsModuleMode(false);
-  //   setActiveComponent(null);
-  //   console.log('Returned from module mode');
-  // };
 
   const getShapeIcon = () => {
     switch (editedShape.type) {
@@ -295,27 +281,46 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   };
 
   const getPanelWidthClass = () => {
-    if (isCollapsed) {
-      return 'w-1'; // Ultra ince şerit için genişlik 1 birim (4px)
+    // Kilitli moddaysa her zaman geniş kalır
+    if (isLocked) {
+      return 'w-48';
     }
+    // Kilitli değilse ve daraltıldıysa ince şerit görünür
+    if (isCollapsed) {
+      return 'w-1';
+    }
+    // Normal durumda geniş
     return 'w-48';
   };
 
+  // Otomatik açılma ve kapanma işlevleri
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    if (isCollapsed) {
+    // Sadece kilitli değilse ve daraltıldıysa açılır
+    if (isCollapsed && !isLocked) {
       setIsCollapsed(false);
     }
   };
 
   const handleMouseLeave = () => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setIsCollapsed(true);
-    }, 300); // 300ms gecikme ile kapanır
+    // Sadece kilitli değilse kapanır
+    if (!isLocked) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setIsCollapsed(true);
+      }, 300); // 300ms gecikme ile kapanır
+    }
   };
 
+  const toggleLock = () => {
+    setIsLocked(!isLocked);
+    // Kilit açıldığında otomatik olarak genişlemesini sağlarız
+    if (!isLocked) {
+      setIsCollapsed(false);
+    }
+  };
+  
   return (
     <>
       <div
@@ -334,7 +339,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         )}
 
         <div className={`flex-1 flex flex-row overflow-hidden ${isCollapsed ? 'hidden' : ''}`}>
-          {/* Modül Modu artık ayrı bir pencere değil, ana panelin içeriği */}
           {activeComponent === 'module' ? (
             <div className="w-full flex flex-col">
               <div className="flex items-center justify-between px-3 py-2 bg-violet-600/20 border-b border-violet-500/30">
@@ -345,7 +349,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   <span className="text-white font-medium text-sm">Module</span>
                 </div>
                 <button
-                  onClick={() => setActiveComponent(null)} // Geri dönme düğmesi
+                  onClick={() => setActiveComponent(null)}
                   className="text-gray-400 hover:text-white p-1 rounded transition-colors"
                   title="Back"
                 >
@@ -449,6 +453,17 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                 title="Minimize Interface"
               >
                 <ChevronLeft size={12} />
+              </button>
+              
+              {/* Yeni sabitleme düğmesi */}
+              <button
+                onClick={toggleLock}
+                className={`p-1 rounded transition-colors ${
+                  isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
+                } bg-gray-800/80 backdrop-blur-sm`}
+                title={isLocked ? 'Unpin Panel' : 'Pin Panel'}
+              >
+                {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
               </button>
             </div>
 
