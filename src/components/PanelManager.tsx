@@ -357,3 +357,5 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     return geometry;
   }, [selectedFaceCenters]);
 }
+
+export default PanelManager;
