@@ -80,13 +80,11 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [panelHeightValue, setPanelHeightValue] = useState(0);
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
-
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const MIN_WIDTH_PX = 170; // 45mm ≈ 170px
   const MAX_WIDTH_PX = 453; // 120mm ≈ 453px
-  const [panelWidth, setPanelWidth] = useState(250); // Başlangıç genişliğini biraz artırdım
+  const [panelWidth, setPanelWidth] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -96,14 +94,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   useEffect(() => {
     // Farenin hareketini ve tıklamayı dinler
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !panelRef.current) return; // Fare tuşuna basılı değilse veya yeniden boyutlandırma yapılmıyorsa işlem yapma
+      if (!isResizing || !panelRef.current) return;
       const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
-      // State'i doğrudan güncelleyerek React'in yeniden render etmesini sağlar
       setPanelWidth(newWidth);
     };
 
     const handleMouseUp = () => {
-      setIsResizing(false); // Fare tuşu bırakıldığında yeniden boyutlandırma durumunu kapat
+      setIsResizing(false);
     };
 
     if (isResizing) {
@@ -324,6 +321,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Metin seçimini ve varsayılan sürükleme davranışını engelle
     setIsResizing(true);
     startX.current = e.clientX;
     startWidth.current = panelRef.current?.clientWidth || 250;
@@ -341,6 +339,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onSelectStart={(e) => e.preventDefault()} // Metin seçimini engeller
+        onDragStart={(e) => e.preventDefault()} // Sürüklemeyi engeller
       >
         {isCollapsed && (
           <button
