@@ -21,7 +21,6 @@ import OpenCascadeShape from './OpenCascadeShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
-import PanelEditor from './ui/PanelEditor'; // 🔴 NEW: Import Panel Editor
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
@@ -234,13 +233,6 @@ const Scene: React.FC = () => {
 
   // 🔴 NEW: Panel Edit Mode State
   const [isPanelEditMode, setIsPanelEditMode] = useState(false);
-  const [selectedPanel, setSelectedPanel] = useState<{
-    faceIndex: number;
-    position: THREE.Vector3;
-    size: THREE.Vector3;
-    panelOrder: number;
-  } | null>(null);
-  const [isPanelEditorOpen, setIsPanelEditorOpen] = useState(false);
 
   // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
   const [shapePanels, setShapePanels] = useState<{
@@ -480,8 +472,6 @@ const Scene: React.FC = () => {
 
     // 🔴 NEW: Reset panel edit mode
     setIsPanelEditMode(false);
-    setSelectedPanel(null);
-    setIsPanelEditorOpen(false);
 
     // Reset face cycle state
     setFaceCycleState({
@@ -611,34 +601,12 @@ const Scene: React.FC = () => {
     size: THREE.Vector3;
     panelOrder: number;
   }) => {
-    setSelectedPanel(panelData);
-    setIsPanelEditorOpen(true);
     console.log(`🔴 Panel selected for editing:`, {
       faceIndex: panelData.faceIndex,
       position: panelData.position.toArray().map((v) => v.toFixed(1)),
       size: panelData.size.toArray().map((v) => v.toFixed(1)),
       panelOrder: panelData.panelOrder,
     });
-  };
-
-  // 🔴 NEW: Handle panel updates from editor
-  const handlePanelUpdate = (
-    faceIndex: number,
-    updates: Partial<{
-      faceIndex: number;
-      position: THREE.Vector3;
-      size: THREE.Vector3;
-      panelOrder: number;
-    }>
-  ) => {
-    // Update the panel data in the system
-    // This would typically update the panel in the PanelManager
-    console.log(`🔴 Panel ${faceIndex} updated:`, updates);
-
-    // Update selected panel if it's the same one
-    if (selectedPanel && selectedPanel.faceIndex === faceIndex) {
-      setSelectedPanel((prev) => (prev ? { ...prev, ...updates } : null));
-    }
   };
 
   // Handle face cycle updates from OpenCascadeShape
@@ -687,18 +655,6 @@ const Scene: React.FC = () => {
           setIsPanelEditMode={setIsPanelEditMode}
         />
       )}
-
-      {/* 🔴 NEW: Panel Editor Modal */}
-      <PanelEditor
-        isOpen={isPanelEditorOpen}
-        onClose={() => {
-          setIsPanelEditorOpen(false);
-          setSelectedPanel(null);
-        }}
-        selectedPanel={selectedPanel}
-        onPanelUpdate={handlePanelUpdate}
-        editingShapeId={editingShapeId}
-      />
 
       <Canvas
         ref={canvasRef}
