@@ -26,7 +26,7 @@ import {
   Edit3,
   Puzzle,
   Pin,
-  PinOff // Sabitleme düğmesi için yeni ikon
+  PinOff
 } from 'lucide-react';
 import { useAppStore, MeasurementUnit } from '../../store/appStore.ts';
 import { Shape } from '../../types/shapes';
@@ -81,7 +81,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLocked, setIsLocked] = useState(false); // Yeni kilit durumu
+  const [isLocked, setIsLocked] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -281,25 +281,20 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   };
 
   const getPanelWidthClass = () => {
-    // Kilitli moddaysa her zaman geniş kalır
-    if (isLocked) {
+    // Kilitli moddaysa veya kilitli olmasa bile açık kalıyorsa geniş kalır
+    if (isLocked || !isCollapsed) {
       return 'w-48';
     }
     // Kilitli değilse ve daraltıldıysa ince şerit görünür
-    if (isCollapsed) {
-      return 'w-1';
-    }
-    // Normal durumda geniş
-    return 'w-48';
+    return 'w-1';
   };
 
-  // Otomatik açılma ve kapanma işlevleri
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    // Sadece kilitli değilse ve daraltıldıysa açılır
-    if (isCollapsed && !isLocked) {
+    // Sadece kilitli değilse açılır
+    if (!isLocked) {
       setIsCollapsed(false);
     }
   };
@@ -309,7 +304,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     if (!isLocked) {
       hoverTimeoutRef.current = setTimeout(() => {
         setIsCollapsed(true);
-      }, 300); // 300ms gecikme ile kapanır
+      }, 300);
     }
   };
 
@@ -320,7 +315,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       setIsCollapsed(false);
     }
   };
-  
+
   return (
     <>
       <div
@@ -455,7 +450,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                 <ChevronLeft size={12} />
               </button>
               
-              {/* Yeni sabitleme düğmesi */}
               <button
                 onClick={toggleLock}
                 className={`p-1 rounded transition-colors ${
