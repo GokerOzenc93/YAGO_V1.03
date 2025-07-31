@@ -94,18 +94,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   useEffect(() => {
     // Farenin hareketini ve tıklamayı dinler
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !panelRef.current) return;
+      if (!isResizing || !panelRef.current) return; // Fare tuşuna basılı değilse veya yeniden boyutlandırma yapılmıyorsa işlem yapma
       const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
-      // DOM'u doğrudan güncelleyerek anlık tepki verir
-      panelRef.current.style.width = `${newWidth}px`;
+      // State'i doğrudan güncelleyerek React'in yeniden render etmesini sağlar
+      setPanelWidth(newWidth);
     };
 
     const handleMouseUp = () => {
-      if (panelRef.current) {
-        // İşlem bittiğinde state'i günceller
-        setPanelWidth(panelRef.current.clientWidth);
-      }
-      setIsResizing(false);
+      setIsResizing(false); // Fare tuşu bırakıldığında yeniden boyutlandırma durumunu kapat
     };
 
     if (isResizing) {
@@ -520,7 +516,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         )}
         <div
-          className="absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors"
+          className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/30' : 'hover:bg-blue-500/30'}`}
           onMouseDown={handleResizeMouseDown}
         />
       </div>
