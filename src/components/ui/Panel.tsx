@@ -17,14 +17,12 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
   } = useAppStore();
 
   const toggleAddPanelMode = () => {
-    // Panel Ekleme modunu açarken Panel Düzenleme modunu kapat
     setIsAddPanelMode(!isAddPanelMode);
     setIsPanelEditMode(false);
     console.log(`Panel add mode: ${!isAddPanelMode ? 'ON' : 'OFF'}`);
   };
 
   const togglePanelEditMode = () => {
-    // Panel Düzenleme modunu açarken Panel Ekleme modunu kapat
     setIsPanelEditMode(!isPanelEditMode);
     setIsAddPanelMode(false);
     console.log(`Panel edit mode: ${!isPanelEditMode ? 'ON' : 'OFF'}`);
@@ -61,7 +59,7 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
             }`}
           >
             <Box size={12} />
-            {isAddPanelMode ? 'Panel Ekleme Modu: AÇIK' : 'Panel Ekle'}
+            Panel Ekle
           </button>
 
           <button
@@ -73,7 +71,7 @@ const Panel: React.FC<PanelProps> = ({ editedShape, onClose }) => {
             }`}
           >
             <Edit3 size={12} />
-            {isPanelEditMode ? 'Panel Düzenleme Modu: AÇIK' : 'Panel Düzenle'}
+            Panel Düzenle
           </button>
         </div>
       </div>
