@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
@@ -62,6 +62,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const panelThickness = 18;
   const { camera, raycaster, gl } = useThree();
   const { viewMode } = useAppStore();
+
+  // Mouse hover face detection state
+  const [hoveredFaceFromMouse, setHoveredFaceFromMouse] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -238,6 +241,33 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     return 2.0;
   };
 
+  // Detect face under mouse cursor
+  const detectFaceUnderMouse = useCallback((mouseX: number, mouseY: number) => {
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = ((mouseX - rect.left) / rect.width) * 2 - 1;
+    const y = -((mouseY - rect.top) / rect.height) * 2 + 1;
+    
+    const newRaycaster = new THREE.Raycaster();
+    newRaycaster.setFromCamera({ x, y }, camera);
+
+    const detectedFaces: { faceIndex: number; distance: number }[] = [];
+    faceTransforms.forEach((transform, fIndex) => {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(
+        fIndex === 2 || fIndex === 3 ? shape.parameters.width : (fIndex === 4 || fIndex === 5 ? shape.parameters.depth : shape.parameters.width),
+        fIndex === 2 || fIndex === 3 ? shape.parameters.depth : shape.parameters.height
+      ));
+      mesh.position.copy(transform.position);
+      mesh.rotation.copy(transform.rotation);
+      const intersects = newRaycaster.intersectObject(mesh);
+      if (intersects.length > 0) {
+        detectedFaces.push({ faceIndex: fIndex, distance: intersects[0].distance });
+      }
+    });
+
+    detectedFaces.sort((a, b) => a.distance - b.distance);
+    return detectedFaces.length > 0 ? detectedFaces[0].faceIndex : null;
+  }, [camera, gl, faceTransforms, shape.parameters]);
+
   const handleClick = useCallback((e: any, faceIndex: number) => {
     e.stopPropagation();
     if (isAddPanelMode && e.nativeEvent.button === 0) {
@@ -316,17 +346,21 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     e.stopPropagation();
     e.nativeEvent.preventDefault();
     if (isAddPanelMode) {
-      if (faceCycleState.selectedFace !== null) {
-        onFaceSelect(faceCycleState.selectedFace);
+      // Use hovered face from mouse if available, otherwise use cycle state
+      const faceToSelect = hoveredFaceFromMouse !== null ? hoveredFaceFromMouse : faceCycleState.selectedFace;
+      if (faceToSelect !== null) {
+        onFaceSelect(faceToSelect);
         setFaceCycleState({
           availableFaces: [],
           currentIndex: 0,
           selectedFace: null,
           mousePosition: null,
         });
+        setHoveredFaceFromMouse(null);
+        console.log(`🎯 Panel confirmed on face ${faceToSelect} with right-click`);
       }
     }
-  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState]);
+  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState, hoveredFaceFromMouse]);
 
   const handleFaceHover = useCallback((faceIndex: number | null) => {
     if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
@@ -334,11 +368,28 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
 
+  // Handle mouse move for face detection
+  const handleMouseMove = useCallback((e: any) => {
+    if (!isAddPanelMode) return;
+    
+    const mouseX = e.nativeEvent.clientX;
+    const mouseY = e.nativeEvent.clientY;
+    
+    const detectedFace = detectFaceUnderMouse(mouseX, mouseY);
+    setHoveredFaceFromMouse(detectedFace);
+    
+    if (detectedFace !== null) {
+      console.log(`🎯 Mouse hovering over face ${detectedFace}`);
+    }
+  }, [isAddPanelMode, detectFaceUnderMouse]);
+
   const ghostPanelData = useMemo(() => {
-    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
+    // Use hovered face from mouse if available, otherwise use cycle state
+    const targetFace = hoveredFaceFromMouse !== null ? hoveredFaceFromMouse : faceCycleState.selectedFace;
+    if (!isAddPanelMode || targetFace === null) return null;
     const panelOrder = selectedFaces.length;
-    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
-  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
+    return calculateSmartPanelBounds(targetFace, selectedFaces, panelOrder);
+  }, [isAddPanelMode, hoveredFaceFromMouse, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
 
   const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
     color: '#fbbf24',
@@ -350,7 +401,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const getFaceColor = (faceIndex: number) => {
     if (selectedFaces.includes(faceIndex)) return '#10b981';
-    if (hoveredFace === faceIndex) return '#eeeeee';
+    if (hoveredFace === faceIndex || hoveredFaceFromMouse === faceIndex) return '#fbbf24'; // Yellow for hovered
     return '#3b82f6';
   };
 
@@ -383,6 +434,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           onContextMenu={(e) => handleContextMenu(e, faceIndex)}
           onPointerEnter={() => handleFaceHover(faceIndex)}
           onPointerLeave={() => handleFaceHover(null)}
+          onPointerMove={handleMouseMove}
         >
           <meshBasicMaterial
             color="#ffffff"
