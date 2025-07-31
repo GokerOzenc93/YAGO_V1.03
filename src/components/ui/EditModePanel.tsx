@@ -281,10 +281,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   };
 
   const getPanelWidthClass = () => {
-    // Panel genişliği sadece daraltılmış (isCollapsed) durumuna göre belirlenir
-    // (This is the fix: the width should not depend on isLocked)
     if (isCollapsed) {
-      return 'w-1'; // Ultra ince şerit
+      return 'w-1';
     }
     return 'w-48';
   };
@@ -293,14 +291,12 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    // Sadece kilitli değilse açılır
     if (!isLocked) {
       setIsCollapsed(false);
     }
   };
 
   const handleMouseLeave = () => {
-    // Sadece kilitli değilse kapanır
     if (!isLocked) {
       hoverTimeoutRef.current = setTimeout(() => {
         setIsCollapsed(true);
@@ -310,10 +306,17 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const toggleLock = () => {
     setIsLocked(!isLocked);
-    // Kilitlendiğinde panelin açık kalması için daraltma durumunu sıfırla
     if (!isLocked) {
-      setIsCollapsed(false);
+      setIsCollapsed(false); // Kilitlendiğinde panelin açık kalması için
     }
+  };
+
+  const handleCollapse = () => {
+    setIsCollapsed(true);
+  };
+  
+  const handleExpand = () => {
+    setIsCollapsed(false);
   };
 
   return (
@@ -328,12 +331,16 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
         onMouseLeave={handleMouseLeave}
       >
         {isCollapsed && (
-          <div className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2">
+          // Daraltılmış paneldeki açma butonu
+          <button
+            onClick={handleExpand}
+            className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
+            title="Paneli Genişlet"
+          >
             <ChevronRight size={16} className="text-white group-hover:text-blue-300" />
-          </div>
+          </button>
         )}
 
-        {/* Panel içeriği sadece isCollapsed false olduğunda gösterilir */}
         {!isCollapsed && (
           <div className="flex-1 flex flex-row overflow-hidden">
             {activeComponent === 'module' ? (
@@ -348,7 +355,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   <button
                     onClick={() => setActiveComponent(null)}
                     className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-                    title="Back"
+                    title="Geri"
                   >
                     <X size={12} />
                   </button>
@@ -439,15 +446,15 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                 <button
                   onClick={handleClose}
                   className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Exit Edit Mode"
+                  title="Düzenleme Modundan Çık"
                 >
                   <X size={12} />
                 </button>
                 
                 <button
-                  onClick={() => setIsCollapsed(true)}
+                  onClick={handleCollapse}
                   className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Minimize Interface"
+                  title="Arayüzü Küçült"
                 >
                   <ChevronLeft size={12} />
                 </button>
@@ -457,7 +464,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   className={`p-1 rounded transition-colors ${
                     isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
                   } bg-gray-800/80 backdrop-blur-sm`}
-                  title={isLocked ? 'Unpin Panel' : 'Pin Panel'}
+                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
                 >
                   {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
                 </button>
