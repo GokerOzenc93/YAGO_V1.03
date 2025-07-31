@@ -356,3 +356,4 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     return geometry;
   }, [selectedFaceCenters]);
+}
