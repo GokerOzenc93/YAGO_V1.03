@@ -447,13 +447,16 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               </div>
 
               <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-                <button
-                  onClick={handleCollapse}
-                  className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Arayüzü Küçült"
-                >
-                  <ChevronLeft size={12} />
-                </button>
+                {/* Sadece kilitli (isLocked) ise göster */}
+                {isLocked && (
+                  <button
+                    onClick={handleCollapse}
+                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    title="Arayüzü Küçült"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                )}
                 
                 <button
                   onClick={toggleLock}
