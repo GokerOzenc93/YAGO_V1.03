@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useState } from 'react';
-import { useThree } from '@react-three/fiber';
+import React, { useMemo, useCallback, useRef, useState } from 'react';
+import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
@@ -7,13 +7,8 @@ import { ViewMode, useAppStore } from '../store/appStore';
 interface PanelManagerProps {
   shape: Shape;
   isAddPanelMode: boolean;
+  onPanelAdd: (faceIndex: number) => void;
   selectedFaces: number[];
-  hoveredFace: number | null;
-  showEdges: boolean;
-  showFaces: boolean;
-  onFaceSelect: (faceIndex: number) => void;
-  onFaceHover: (faceIndex: number | null) => void;
-  alwaysShowPanels?: boolean;
   isPanelEditMode?: boolean;
   onPanelSelect?: (panelData: {
     faceIndex: number;
@@ -21,8 +16,6 @@ interface PanelManagerProps {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
-  selectedFaceCenters: THREE.Vector3[];
-  setSelectedFaceCenters: React.Dispatch<React.SetStateAction<THREE.Vector3[]>>;
 }
 
 interface SmartPanelBounds {
@@ -35,36 +28,21 @@ interface SmartPanelBounds {
 const PanelManager: React.FC<PanelManagerProps> = ({
   shape,
   isAddPanelMode,
+  onPanelAdd,
   selectedFaces,
-  hoveredFace,
-  showEdges,
-  showFaces,
-  onFaceSelect,
-  onFaceHover,
-  alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
-  selectedFaceCenters,
-  setSelectedFaceCenters,
 }) => {
   const panelThickness = 18;
   const { camera, raycaster, gl } = useThree();
   const { viewMode } = useAppStore();
+  const boxMeshRef = useRef<THREE.Mesh>(null);
+  const [hoveredFaceInfo, setHoveredFaceInfo] = useState<{
+    faceIndex: number;
+    point: THREE.Vector3;
+  } | null>(null);
 
-  const [faceCycleState, setFaceCycleState] = useState<{
-    availableFaces: number[];
-    currentIndex: number;
-    selectedFace: number | null;
-    mousePosition: { x: number; y: number } | null;
-    isActive: boolean;
-  }>({
-    availableFaces: [],
-    currentIndex: 0,
-    selectedFace: null,
-    mousePosition: null,
-    isActive: false,
-  });
-
+  // UseMemo ile materyalleri bir kez oluştur
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
     const woodTexture = textureLoader.load('https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg');
@@ -124,6 +102,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     return { vertical: verticalMaterial, horizontal: horizontalMaterial };
   }, []);
 
+  // Yüzey rotasyonları ve pozisyonları
   const faceTransforms = useMemo(() => {
     const { width = 500, height = 500, depth = 500 } = shape.parameters;
     const hw = width / 2;
@@ -139,6 +118,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     ];
   }, [shape.parameters]);
 
+  // Akıllı panel boyutlandırma mantığı
   const calculateSmartPanelBounds = (
     faceIndex: number,
     allPanels: number[],
@@ -169,46 +149,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     let finalSize;
     let finalPosition;
     
-    // Konum hesaplaması, artık expandedBounds'un merkezini kullanıyor
     switch (faceIndex) {
-      case 0: // Front
-      case 1: // Back
-        finalSize = new THREE.Vector3(
-          expandedBounds.max.x - expandedBounds.min.x,
-          expandedBounds.max.y - expandedBounds.min.y,
-          panelThickness
-        );
-        finalPosition = new THREE.Vector3(
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
-          faceTransforms[faceIndex].position.z + faceTransforms[faceIndex].normal.z * (panelThickness / 2)
-        );
+      case 0: case 1:
+        finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, expandedBounds.max.y - expandedBounds.min.y, panelThickness);
+        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, (expandedBounds.max.y + expandedBounds.min.y) / 2, faceTransforms[faceIndex].position.z);
         break;
-      case 2: // Top
-      case 3: // Bottom
-        finalSize = new THREE.Vector3(
-          expandedBounds.max.x - expandedBounds.min.x,
-          panelThickness,
-          expandedBounds.max.z - expandedBounds.min.z
-        );
-        finalPosition = new THREE.Vector3(
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
-          faceTransforms[faceIndex].position.y + faceTransforms[faceIndex].normal.y * (panelThickness / 2),
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
-        );
+      case 2: case 3:
+        finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, panelThickness, expandedBounds.max.z - expandedBounds.min.z);
+        finalPosition = new THREE.Vector3((expandedBounds.max.x + expandedBounds.min.x) / 2, faceTransforms[faceIndex].position.y, (expandedBounds.max.z + expandedBounds.min.z) / 2);
         break;
-      case 4: // Right
-      case 5: // Left
-        finalSize = new THREE.Vector3(
-          panelThickness,
-          expandedBounds.max.y - expandedBounds.min.y,
-          expandedBounds.max.z - expandedBounds.min.z
-        );
-        finalPosition = new THREE.Vector3(
-          faceTransforms[faceIndex].position.x + faceTransforms[faceIndex].normal.x * (panelThickness / 2),
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
-        );
+      case 4: case 5:
+        finalSize = new THREE.Vector3(panelThickness, expandedBounds.max.y - expandedBounds.min.y, expandedBounds.max.z - expandedBounds.min.z);
+        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x, (expandedBounds.max.y + expandedBounds.min.y) / 2, (expandedBounds.max.z + expandedBounds.min.z) / 2);
         break;
       default:
         finalSize = new THREE.Vector3(100, 100, 10);
@@ -230,20 +182,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       calculateSmartPanelBounds(faceIndex, selectedFaces, index)
     );
   }, [shape.type, shape.parameters, selectedFaces]);
-  
-  const ghostPanelData = useMemo(() => {
-    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
-    const panelOrder = selectedFaces.length;
-    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
-  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
-
-  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#fbbf24',
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide,
-    depthTest: false,
-  }), []);
 
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) return woodMaterials.horizontal;
@@ -265,134 +203,91 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (screenWidth < 1024) return 1.5;
     return 2.0;
   };
+  
+  // Hayali panel için material
+  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#fbbf24',
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    depthTest: false,
+  }), []);
+
+  // UseFrame ile her frame'de raycaster'ı güncelle
+  useFrame(() => {
+    if (!isAddPanelMode || !boxMeshRef.current) return;
+
+    const mouse = new THREE.Vector2();
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = ((gl.domElement.width / rect.width) * (gl.domElement.getBoundingClientRect().left - window.innerWidth / 2) + gl.domElement.width / 2) / gl.domElement.width * 2 - 1;
+    const y = -((gl.domElement.height / rect.height) * (gl.domElement.getBoundingClientRect().top - window.innerHeight / 2) + gl.domElement.height / 2) / gl.domElement.height * 2 + 1;
+    mouse.set(x, y);
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObject(boxMeshRef.current);
+
+    if (intersects.length > 0) {
+      const { faceIndex, point } = intersects[0];
+      setHoveredFaceInfo({ faceIndex: faceIndex as number, point });
+    } else {
+      setHoveredFaceInfo(null);
+    }
+  });
 
   const handleClick = useCallback((e: any) => {
     e.stopPropagation();
-    if (isAddPanelMode && e.nativeEvent.button === 0) {
-      const mouseX = e.nativeEvent.clientX;
-      const mouseY = e.nativeEvent.clientY;
-      const rect = gl.domElement.getBoundingClientRect();
-      const x = ((mouseX - rect.left) / rect.width) * 2 - 1;
-      const y = -((mouseY - rect.top) / rect.height) * 2 + 1;
-      
-      const newRaycaster = new THREE.Raycaster();
-      newRaycaster.setFromCamera({ x, y }, camera);
-
-      const tempObjects: THREE.Mesh[] = [];
-      faceTransforms.forEach((transform, fIndex) => {
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(
-          fIndex === 2 || fIndex === 3 ? shape.parameters.width : (fIndex === 4 || fIndex === 5 ? shape.parameters.depth : shape.parameters.width),
-          fIndex === 2 || fIndex === 3 ? shape.parameters.depth : shape.parameters.height
-        ));
-        mesh.position.copy(transform.position);
-        mesh.rotation.copy(transform.rotation);
-        mesh.updateMatrixWorld();
-        tempObjects.push(mesh);
-      });
-      
-      const intersects = newRaycaster.intersectObjects(tempObjects);
-
-      if (intersects.length === 0) {
-        setFaceCycleState({
-          availableFaces: [],
-          currentIndex: 0,
-          selectedFace: null,
-          mousePosition: null,
-          isActive: false,
-        });
-        return;
-      }
-      
-      const uniqueDetectedFaces = intersects.map(i => tempObjects.findIndex(obj => obj === i.object));
-
-      if (!faceCycleState.isActive || JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(uniqueDetectedFaces)) {
-        setFaceCycleState({
-          availableFaces: uniqueDetectedFaces,
-          currentIndex: 0,
-          selectedFace: uniqueDetectedFaces[0],
-          mousePosition: { x: mouseX, y: mouseY },
-          isActive: true,
-        });
-      } else {
-        const nextIndex = (faceCycleState.currentIndex + 1) % uniqueDetectedFaces.length;
-        setFaceCycleState(prev => ({
-          ...prev,
-          currentIndex: nextIndex,
-          selectedFace: uniqueDetectedFaces[nextIndex],
-          mousePosition: { x: mouseX, y: mouseY },
-        }));
-      }
+    if (isAddPanelMode && e.nativeEvent.button === 0 && hoveredFaceInfo) {
+      // Sol tık ile seçimi onayla
+      onPanelAdd(hoveredFaceInfo.faceIndex);
+      setHoveredFaceInfo(null);
     } else if (isPanelEditMode) {
-      // Edit mode logic is simplified for now
+      // Edit mode logic
     }
-  }, [isAddPanelMode, isPanelEditMode, onPanelSelect, smartPanelData, faceCycleState, setFaceCycleState, camera, gl, faceTransforms, shape.parameters]);
+  }, [isAddPanelMode, onPanelAdd, isPanelEditMode, hoveredFaceInfo]);
 
   const handleContextMenu = useCallback((e: any) => {
     e.stopPropagation();
     e.nativeEvent.preventDefault();
-    if (isAddPanelMode && faceCycleState.isActive && faceCycleState.selectedFace !== null) {
-      onFaceSelect(faceCycleState.selectedFace);
-      setFaceCycleState({
-        availableFaces: [],
-        currentIndex: 0,
-        selectedFace: null,
-        mousePosition: null,
-        isActive: false,
-      });
-    }
-  }, [isAddPanelMode, onFaceSelect, faceCycleState, setFaceCycleState]);
+    // Context menu click can also place a panel, if you want.
+    // For now, it just clears the hover state
+    setHoveredFaceInfo(null);
+  }, []);
 
-  const handleFaceHover = useCallback((faceIndex: number | null) => {
-    if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
-      onFaceHover(faceIndex);
-    }
-  }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
-
-  if ((!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) || shape.type !== 'box') {
-    return null;
-  }
+  const ghostPanelData = useMemo(() => {
+    if (!isAddPanelMode || !hoveredFaceInfo) return null;
+    const panelOrder = selectedFaces.length;
+    return calculateSmartPanelBounds(hoveredFaceInfo.faceIndex, selectedFaces, panelOrder);
+  }, [isAddPanelMode, hoveredFaceInfo, selectedFaces, shape.parameters]);
 
   return (
     <group>
-      {faceTransforms.map((transform, faceIndex) => (
-        <mesh
-          key={`face-overlay-${faceIndex}`}
-          geometry={new THREE.PlaneGeometry(
-            faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
-            faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
-          )}
-          position={[
-            shape.position[0] + transform.position.x,
-            shape.position[1] + transform.position.y,
-            shape.position[2] + transform.position.z,
-          ]}
-          rotation={transform.rotation}
-          onClick={(e) => {
-            if (isAddPanelMode) handleClick(e);
-            else if (isPanelEditMode) handleClick(e, faceIndex);
-          }}
-          onContextMenu={(e) => handleContextMenu(e)}
-          onPointerEnter={() => handleFaceHover(faceIndex)}
-          onPointerLeave={() => handleFaceHover(null)}
-        >
-          <meshBasicMaterial
-            color="#ffffff"
-            transparent
-            opacity={0.001}
-            side={THREE.DoubleSide}
-            depthTest={false}
-          />
-        </mesh>
-      ))}
+      {/* Asıl kutu mesh'i - Görsel panellerin yerleşimi için bir referans olarak kullanılır */}
+      <mesh
+        ref={boxMeshRef}
+        visible={isAddPanelMode || isPanelEditMode || selectedFaces.length === 0}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onPointerMove={(e) => {
+          if (isAddPanelMode) {
+            e.stopPropagation();
+            const { faceIndex, point } = e.intersections[0];
+            setHoveredFaceInfo({ faceIndex: faceIndex as number, point });
+          }
+        }}
+        onPointerOut={() => {
+          if (isAddPanelMode) {
+            setHoveredFaceInfo(null);
+          }
+        }}
+      >
+        <boxGeometry args={[shape.parameters.width, shape.parameters.height, shape.parameters.depth]} />
+        <meshStandardMaterial transparent opacity={0.0} />
+      </mesh>
       
-      {isAddPanelMode && faceCycleState.selectedFace !== null && ghostPanelData && (
+      {/* Hayali panel - Hover durumuna göre gösterilir */}
+      {isAddPanelMode && ghostPanelData && (
         <mesh
-          key={`ghost-panel-${ghostPanelData.faceIndex}`}
-          geometry={new THREE.BoxGeometry(
-            ghostPanelData.finalSize.x,
-            ghostPanelData.finalSize.y,
-            ghostPanelData.finalSize.z
-          )}
           position={[
             shape.position[0] + ghostPanelData.finalPosition.x,
             shape.position[1] + ghostPanelData.finalPosition.y,
@@ -400,17 +295,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           ]}
           rotation={faceTransforms[ghostPanelData.faceIndex].rotation}
           material={ghostPanelMaterial}
-        />
+        >
+          <boxGeometry args={[ghostPanelData.finalSize.x, ghostPanelData.finalSize.y, ghostPanelData.finalSize.z]} />
+        </mesh>
       )}
 
-      {smartPanelData.map((panelData) => (
+      {/* Yerleştirilen paneller */}
+      {smartPanelData.map((panelData, index) => (
         <mesh
-          key={`guaranteed-panel-${panelData.faceIndex}`}
-          geometry={new THREE.BoxGeometry(
-            panelData.finalSize.x,
-            panelData.finalSize.y,
-            panelData.finalSize.z
-          )}
+          key={`panel-${panelData.faceIndex}-${index}`}
           position={[
             shape.position[0] + panelData.finalPosition.x,
             shape.position[1] + panelData.finalPosition.y,
@@ -420,20 +313,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           castShadow
           receiveShadow
           visible={viewMode !== ViewMode.WIREFRAME}
-          onClick={(e) => {
-            if (isPanelEditMode) {
-              e.stopPropagation();
-              if (onPanelSelect) {
-                onPanelSelect({
-                  faceIndex: panelData.faceIndex,
-                  position: panelData.finalPosition,
-                  size: panelData.finalSize,
-                  panelOrder: panelData.panelOrder,
-                });
-              }
-            }
-          }}
         >
+          <boxGeometry args={[panelData.finalSize.x, panelData.finalSize.y, panelData.finalSize.z]} />
           {isPanelEditMode ? (
             <meshPhysicalMaterial
               color="#dc2626"
@@ -454,9 +335,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       ))}
 
-      {smartPanelData.map((panelData) => (
+      {smartPanelData.map((panelData, index) => (
         <lineSegments
-          key={`guaranteed-panel-edges-${panelData.faceIndex}`}
+          key={`guaranteed-panel-edges-${panelData.faceIndex}-${index}`}
           geometry={new THREE.EdgesGeometry(new THREE.BoxGeometry(
             panelData.finalSize.x,
             panelData.finalSize.y,
