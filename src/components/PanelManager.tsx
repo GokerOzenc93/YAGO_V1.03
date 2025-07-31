@@ -238,7 +238,35 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     return 2.0;
   };
   
-  const handleClick = useCallback((e: any, faceIndex: number) => {
+  // 🎯 GÜNCELLENDİ: Hayali panel verisi, faceCycleState.selectedFace'e bağlı
+  const ghostPanelData = useMemo(() => {
+    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
+    const panelOrder = selectedFaces.length;
+    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
+  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
+
+  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#fbbf24',
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    depthTest: false,
+  }), []);
+
+  const getFaceColor = (faceIndex: number) => {
+    if (selectedFaces.includes(faceIndex)) return '#10b981';
+    if (hoveredFace === faceIndex) return '#eeeeee';
+    return '#3b82f6';
+  };
+
+  const getFaceOpacity = (faceIndex: number) => {
+    if (isAddPanelMode && hoveredFace === faceIndex) return 0.0;
+    if (selectedFaces.includes(faceIndex)) return 0.0;
+    return 0.001;
+  };
+
+  // 🎯 GÜNCELLENDİ: Tıklandığında yüzü doğrudan seçme mantığı
+  const handleClick = useCallback((e: any) => {
     e.stopPropagation();
     if (isAddPanelMode && e.nativeEvent.button === 0) {
       const mouseX = e.nativeEvent.clientX;
@@ -250,9 +278,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       const newRaycaster = new THREE.Raycaster();
       newRaycaster.setFromCamera({ x, y }, camera);
 
-      const detectedFaces: { faceIndex: number; distance: number }[] = [];
       const tempObjects: THREE.Mesh[] = [];
-
       faceTransforms.forEach((transform, fIndex) => {
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(
           fIndex === 2 || fIndex === 3 ? shape.parameters.width : (fIndex === 4 || fIndex === 5 ? shape.parameters.depth : shape.parameters.width),
@@ -275,7 +301,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         });
         return;
       }
-
+      
       const uniqueDetectedFaces = intersects.map(i => tempObjects.findIndex(obj => obj === i.object));
 
       if (faceCycleState.selectedFace === null || JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(uniqueDetectedFaces)) {
@@ -294,7 +320,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           mousePosition: { x: mouseX, y: mouseY },
         }));
       }
-    } else if (isPanelEditMode && e.nativeEvent.button === 0) {
+    } else if (isPanelEditMode) {
       const panelData = smartPanelData.find(
         (panel) => panel.faceIndex === faceIndex
       );
@@ -331,32 +357,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, [isAddPanelMode, isPanelEditMode, onFaceHover]);
 
-  const ghostPanelData = useMemo(() => {
-    if (!isAddPanelMode || faceCycleState.selectedFace === null) return null;
-    const panelOrder = selectedFaces.length;
-    return calculateSmartPanelBounds(faceCycleState.selectedFace, selectedFaces, panelOrder);
-  }, [isAddPanelMode, faceCycleState.selectedFace, selectedFaces, shape.parameters]);
-
-  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#fbbf24',
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide,
-    depthTest: false,
-  }), []);
-
-  const getFaceColor = (faceIndex: number) => {
-    if (selectedFaces.includes(faceIndex)) return '#10b981';
-    if (hoveredFace === faceIndex) return '#eeeeee';
-    return '#3b82f6';
-  };
-
-  const getFaceOpacity = (faceIndex: number) => {
-    if (isAddPanelMode && hoveredFace === faceIndex) return 0.0;
-    if (selectedFaces.includes(faceIndex)) return 0.0;
-    return 0.001;
-  };
-
   if ((!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) || shape.type !== 'box') {
     return null;
   }
@@ -376,7 +376,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[2] + transform.position.z,
           ]}
           rotation={transform.rotation}
-          onClick={(e) => handleClick(e, faceIndex)}
+          onPointerDown={handleClick} // onPointerDown olarak değiştirildi
           onContextMenu={(e) => handleContextMenu(e, faceIndex)}
           onPointerEnter={() => handleFaceHover(faceIndex)}
           onPointerLeave={() => handleFaceHover(null)}
