@@ -34,8 +34,6 @@ import DraggableWindow from './DraggableWindow';
 import PanelEditor from './PanelEditor';
 import * as THREE from 'three';
 
-const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
-
 interface PanelData {
   faceIndex: number;
   position: THREE.Vector3;
