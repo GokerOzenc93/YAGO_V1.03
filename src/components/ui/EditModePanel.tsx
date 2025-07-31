@@ -440,44 +440,43 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               </div>
             ) : (
             <>
-              {/* Şık ve ortalanmış kabin kodu başlığı */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
-                <span className="text-white font-mono text-lg font-bold tracking-wider opacity-90">
+              {/* Üst başlık ve düğmeler için yeni düzen */}
+              <div className="flex items-center justify-between p-2 pt-4">
+                <span className="text-white font-inter text-base font-bold opacity-90">
                   AD06072
                 </span>
-              </div>
-
-              <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-                {isLocked && (
+                <div className="flex items-center gap-1">
+                  {isLocked && (
+                    <button
+                      onClick={handleCollapse}
+                      className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                      title="Arayüzü Küçült"
+                    >
+                      <ChevronLeft size={12} />
+                    </button>
+                  )}
+                  
                   <button
-                    onClick={handleCollapse}
-                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                    title="Arayüzü Küçült"
+                    onClick={toggleLock}
+                    className={`p-1 rounded transition-colors ${
+                      isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
+                    } bg-gray-800/80 backdrop-blur-sm`}
+                    title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
                   >
-                    <ChevronLeft size={12} />
+                    {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
                   </button>
-                )}
-                
-                <button
-                  onClick={toggleLock}
-                  className={`p-1 rounded transition-colors ${
-                    isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
-                  } bg-gray-800/80 backdrop-blur-sm`}
-                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
-                >
-                  {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
-                </button>
-                
-                <button
-                  onClick={handleClose}
-                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Düzenleme Modundan Çık"
-                >
-                  <X size={12} />
-                </button>
+                  
+                  <button
+                    onClick={handleClose}
+                    className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    title="Düzenleme Modundan Çık"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2 pt-12">
+              <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
                 {editedShape.type === 'box' && (
                   <>
                     <div className="flex flex-col gap-1 px-2">
