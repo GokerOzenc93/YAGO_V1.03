@@ -35,6 +35,19 @@ interface Props {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
+  // Face cycle state props
+  faceCycleState?: {
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  };
+  setFaceCycleState?: React.Dispatch<React.SetStateAction<{
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  }>>;
 }
 
 const OpenCascadeShape: React.FC<Props> = ({
@@ -53,6 +66,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode = false,
   onPanelSelect,
+  faceCycleState,
+  setFaceCycleState,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -64,19 +79,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode, // 🎯 NEW: Get current view mode
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
-
-  // Face cycling state for panel placement
-  const [faceCycleState, setFaceCycleState] = useState<{
-    availableFaces: number[];
-    currentIndex: number;
-    selectedFace: number | null;
-    mousePosition: { x: number; y: number } | null;
-  }>({
-    availableFaces: [],
-    currentIndex: 0,
-    selectedFace: null,
-    mousePosition: null,
-  });
 
   // Add selectedFaceCenters state
   const [selectedFaceCenters, setSelectedFaceCenters] = useState<THREE.Vector3[]>([]);
@@ -140,19 +142,26 @@ const OpenCascadeShape: React.FC<Props> = ({
   // Reset face cycle state when panel mode is disabled
   useEffect(() => {
     if (!isAddPanelMode) {
-      setFaceCycleState({
+      if (setFaceCycleState) {
+        setFaceCycleState({
+          availableFaces: [],
+          currentIndex: 0,
+          selectedFace: null,
+          mousePosition: null,
+        });
+      }
+    }
+  }, [isAddPanelMode, setFaceCycleState]);
+
+  // Update parent component with face cycle state changes
+  useEffect(() => {
+    if (onFaceCycleUpdate) {
+      onFaceCycleUpdate(faceCycleState || {
         availableFaces: [],
         currentIndex: 0,
         selectedFace: null,
         mousePosition: null,
       });
-    }
-  }, [isAddPanelMode]);
-
-  // Update parent component with face cycle state changes
-  useEffect(() => {
-    if (onFaceCycleUpdate) {
-      onFaceCycleUpdate(faceCycleState);
     }
   }, [faceCycleState, onFaceCycleUpdate]);
 
@@ -292,6 +301,13 @@ const OpenCascadeShape: React.FC<Props> = ({
         onFaceCycleUpdate={onFaceCycleUpdate}
         isPanelEditMode={isPanelEditMode && isBeingEdited}
         onPanelSelect={onPanelSelect || (() => {})}
+        faceCycleState={faceCycleState || {
+          availableFaces: [],
+          currentIndex: 0,
+          selectedFace: null,
+          mousePosition: null,
+        }}
+        setFaceCycleState={setFaceCycleState || (() => {})}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}

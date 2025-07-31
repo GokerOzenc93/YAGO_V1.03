@@ -782,6 +782,8 @@ const Scene: React.FC = () => {
               // 🔴 NEW: Panel Edit Mode props
               isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
               onPanelSelect={handlePanelSelect}
+              faceCycleState={faceCycleState}
+              setFaceCycleState={setFaceCycleState}
             />
           );
         })}
