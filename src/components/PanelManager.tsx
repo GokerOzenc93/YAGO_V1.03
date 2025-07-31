@@ -36,7 +36,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const panelThickness = 18;
   const { camera, raycaster, gl } = useThree();
   const { viewMode } = useAppStore();
-
   const [scannedFace, setScannedFace] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
@@ -252,8 +251,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   }, [isAddPanelMode]);
 
   const getFaceColor = (faceIndex: number) => {
-    if (isAddPanelMode && scannedFace === faceIndex) return '#fbbf24';
     if (selectedFaces.includes(faceIndex)) return '#10b981';
+    if (scannedFace === faceIndex) return '#fbbf24';
     return '#3b82f6';
   };
 
@@ -282,7 +281,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[2] + transform.position.z,
           ]}
           rotation={transform.rotation}
-          onClick={handleClick}
+          onClick={(e) => handleClick(e, faceIndex)}
           onContextMenu={handleContextMenu}
           onPointerMove={handlePointerMove}
           onPointerOut={handlePointerOut}
