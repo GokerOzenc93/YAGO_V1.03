@@ -556,5 +556,5 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
           </div>
         );
     }
-  })()}
+  })();
 </div>
