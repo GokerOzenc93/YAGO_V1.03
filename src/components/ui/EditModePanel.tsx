@@ -82,14 +82,37 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(192); // Panel genişliği için yeni state
+  const [isResizing, setIsResizing] = useState(false); // Yeniden boyutlandırma durumu
+  const panelRef = useRef<HTMLDivElement>(null);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const {
-    measurementUnit,
-    convertToDisplayUnit,
-    convertToBaseUnit,
-    updateShape,
-  } = useAppStore();
+  // Yeniden boyutlandırma olaylarını dinler
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const deltaX = e.clientX - startX.current;
+      // Genişliği 40px ve 100px arasında sınırlar
+      const newWidth = Math.max(40, Math.min(startWidth.current + deltaX, 100));
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   useEffect(() => {
     const calculatePanelPositionAndHeight = () => {
@@ -106,10 +129,8 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
       if (terminalElement) {
         bottomOffset = terminalElement.clientHeight;
-        console.log('Terminal height detected:', terminalElement.clientHeight);
       } else if (statusBarElement) {
         bottomOffset = statusBarElement.clientHeight;
-        console.log('Status bar height detected:', statusBarElement.clientHeight);
       } else {
         bottomOffset = 20;
       }
@@ -122,15 +143,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       setPanelTop(`${newTop}px`);
       setPanelHeightValue(newHeight);
       setPanelTopValue(newTop);
-
-      console.log('Panel position and height calculated:', {
-        windowHeight: window.innerHeight,
-        topOffset,
-        bottomOffset,
-        availableHeight,
-        newHeight,
-        newTop,
-      });
     };
 
     calculatePanelPositionAndHeight();
@@ -142,7 +154,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     };
 
     window.addEventListener('resize', debouncedCalculate);
-
     const observer = new MutationObserver(debouncedCalculate);
     observer.observe(document.body, {
       childList: true,
@@ -170,22 +181,18 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
       setActiveComponent(null);
       setIsAddPanelMode(false);
       setIsPanelEditMode(false);
-      console.log(`${componentType} mode disabled`);
     } else {
       setActiveComponent(componentType);
 
       if (componentType === 'panels') {
         setIsAddPanelMode(true);
         setIsPanelEditMode(false);
-        console.log('Panel mode activated');
       } else if (componentType === 'panel-edit') {
         setIsAddPanelMode(false);
         setIsPanelEditMode(true);
-        console.log('Panel Edit mode activated');
       } else {
         setIsAddPanelMode(false);
         setIsPanelEditMode(false);
-        console.log(`${componentType} mode activated`);
       }
     }
   };
@@ -280,24 +287,17 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     }
   };
 
-  const getPanelWidthClass = () => {
-    if (isCollapsed) {
-      return 'w-1';
-    }
-    return 'w-48';
-  };
-
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    if (!isLocked) {
+    if (!isLocked && !isResizing) {
       setIsCollapsed(false);
     }
   };
 
   const handleMouseLeave = () => {
-    if (!isLocked) {
+    if (!isLocked && !isResizing) {
       hoverTimeoutRef.current = setTimeout(() => {
         setIsCollapsed(true);
       }, 300);
@@ -307,7 +307,7 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
   const toggleLock = () => {
     setIsLocked(!isLocked);
     if (!isLocked) {
-      setIsCollapsed(false); // Kilitlendiğinde panelin açık kalması için
+      setIsCollapsed(false);
     }
   };
 
@@ -319,19 +319,27 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
     setIsCollapsed(false);
   };
 
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    startX.current = e.clientX;
+    startWidth.current = panelRef.current?.clientWidth || 100;
+  };
+
   return (
     <>
       <div
-        className={`fixed left-0 z-50 ${getPanelWidthClass()} bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+        ref={panelRef}
+        className={`fixed left-0 z-50 bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
         style={{
           top: panelTop,
           height: panelHeight,
+          width: isCollapsed ? '4px' : `${panelWidth}px`,
         }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {isCollapsed && (
-          // Daraltılmış paneldeki açma butonu
           <button
             onClick={handleExpand}
             className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
@@ -437,8 +445,9 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               <div className="absolute top-2 left-2 right-16 z-10">
                 <input
                   type="text"
-                  placeholder="Cabinet Code (e.g: CAB-001)"
-                  className="w-full bg-gray-700/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50"
+                  value="AD06072"
+                  readOnly
+                  className="w-full bg-gray-700/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50 font-mono tracking-wider text-center"
                 />
               </div>
 
@@ -505,6 +514,11 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             )}
           </div>
         )}
+        {/* Yeniden boyutlandırma tutamacı */}
+        <div
+          className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors"
+          onMouseDown={handleResizeMouseDown}
+        />
       </div>
 
       {activeComponent === 'panels' && (
