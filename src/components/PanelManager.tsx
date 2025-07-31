@@ -512,8 +512,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       
       if (detectedFaces.length === 0) return;
 
-      // Eğer cycle state boşsa, yeni cycle başlat
-      if (faceCycleState.availableFaces.length === 0) {
+      // Eğer cycle state boşsa veya farklı bir pozisyonda tıklandıysa, yeni cycle başlat
+      if (faceCycleState.availableFaces.length === 0 || 
+          JSON.stringify(faceCycleState.availableFaces) !== JSON.stringify(detectedFaces)) {
         setFaceCycleState({
           availableFaces: detectedFaces,
           currentIndex: 0,
