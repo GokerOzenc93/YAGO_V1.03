@@ -82,19 +82,17 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(192); // Panel genişliği için yeni state
-  const [isResizing, setIsResizing] = useState(false); // Yeniden boyutlandırma durumu
+  const [panelWidth, setPanelWidth] = useState(192);
+  const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Yeniden boyutlandırma olaylarını dinler
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
       const deltaX = e.clientX - startX.current;
-      // Genişliği 40px ve 100px arasında sınırlar
       const newWidth = Math.max(40, Math.min(startWidth.current + deltaX, 100));
       setPanelWidth(newWidth);
     };
@@ -442,24 +440,13 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
               </div>
             ) : (
             <>
-              <div className="absolute top-2 left-2 right-16 z-10">
-                <input
-                  type="text"
-                  value="AD06072"
-                  readOnly
-                  className="w-full bg-gray-700/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50 font-mono tracking-wider text-center"
-                />
+              <div className="absolute top-2 left-2 z-10">
+                <span className="text-blue-400 font-mono text-xs font-bold tracking-wider opacity-90">
+                  AD06072
+                </span>
               </div>
 
               <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-                <button
-                  onClick={handleClose}
-                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Düzenleme Modundan Çık"
-                >
-                  <X size={12} />
-                </button>
-                
                 <button
                   onClick={handleCollapse}
                   className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
@@ -476,6 +463,14 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
                   title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
                 >
                   {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
+                </button>
+                
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Düzenleme Modundan Çık"
+                >
+                  <X size={12} />
                 </button>
               </div>
 
@@ -514,7 +509,6 @@ const EditModePanel: React.FC<EditModePanelProps> = ({
             )}
           </div>
         )}
-        {/* Yeniden boyutlandırma tutamacı */}
         <div
           className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors"
           onMouseDown={handleResizeMouseDown}
