@@ -853,17 +853,17 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           onClick={(e) => {
             if (isPanelEditMode) {
               e.stopPropagation();
-              if (onPanelSelect) {
-                onPanelSelect({
+              // Dispatch custom event for panel selection
+              const panelSelectEvent = new CustomEvent('panelSelected', {
+                detail: {
                   faceIndex: panelData.faceIndex,
                   position: panelData.position,
                   size: panelData.size,
                   panelOrder: panelData.panelOrder,
-                });
-                console.log(
-                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
-                );
-              }
+                }
+              });
+              window.dispatchEvent(panelSelectEvent);
+              console.log(`🔴 Panel ${panelData.faceIndex} selected for editing`);
             }
           }}
         >
