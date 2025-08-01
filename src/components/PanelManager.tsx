@@ -604,7 +604,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
     
     e.stopPropagation();
-    e.preventDefault();
+    e.nativeEvent.preventDefault();
     
     console.log(`Right-clicked on face ${faceIndex} - generating depth options`);
     
