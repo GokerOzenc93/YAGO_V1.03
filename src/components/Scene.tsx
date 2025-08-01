@@ -27,6 +27,33 @@ import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { DepthPlacementOption } from './PanelManager';
 import * as THREE from 'three';
 
+const CameraPositionUpdater = () => {
+  const { camera } = useThree();
+  const { setCameraPosition } = useAppStore();
+
+  useEffect(() => {
+    const updatePosition = () => {
+      setCameraPosition([
+        camera.position.x,
+        camera.position.y,
+        camera.position.z,
+      ]);
+    };
+
+    // Update position initially
+    updatePosition();
+
+    // Listen for camera changes
+    const controls = (window as any).cameraControls;
+    if (controls) {
+      controls.addEventListener('change', updatePosition);
+      return () => controls.removeEventListener('change', updatePosition);
+    }
+  }, [camera, setCameraPosition]);
+
+  return null;
+};
+
 interface MeasurementOverlayProps {
   position: { x: number; y: number };
   value: string;
