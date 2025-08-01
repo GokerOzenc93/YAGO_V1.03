@@ -106,48 +106,6 @@ const PlacementPopup: React.FC<PlacementPopupProps> = ({
                       </div>
                     </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-600/50 flex justify-between items-center">
-        <div className="text-xs text-gray-400">
-          {options.length} seçenek mevcut
-        </div>
-        <button
-          onClick={onCancel}
-          className="px-3 py-1.5 text-xs bg-gray-600/50 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-        >
-          İptal
-        </button>
-      </div>
-    </div>
-  );
-};
-                </div>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-600/50 flex justify-end gap-2">
-        <button
-          onClick={onCancel}
-          className="px-3 py-1.5 text-xs bg-gray-600/50 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
   const { setCameraPosition } = useAppStore();
