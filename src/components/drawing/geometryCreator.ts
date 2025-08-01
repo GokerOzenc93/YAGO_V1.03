@@ -41,10 +41,6 @@ export const createPolylineGeometry = (
     // Create the extruded geometry
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
-    // Rotate geometry to keep it horizontal (lying flat on XZ plane)
-    // ExtrudeGeometry creates vertical extrusion, we need horizontal
-    geometry.rotateX(-Math.PI / 2);
-    
     // Compute bounding volumes (critical for Three.js rendering)
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
