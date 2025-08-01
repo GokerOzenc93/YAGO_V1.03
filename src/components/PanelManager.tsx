@@ -761,10 +761,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceOpacity = (faceIndex: number) => {
-    // Dynamic selection visibility (always active in panel mode)
-    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
-      return 0.7; // More visible for selected face
-    }
+    // Hide all face overlays in panel mode - only show blue panel preview
     if (selectedFaces.includes(faceIndex)) return 0.0;
     if (hoveredFace === faceIndex) return 0.0;
     return 0.001;
