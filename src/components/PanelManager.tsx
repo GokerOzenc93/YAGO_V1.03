@@ -646,20 +646,183 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       selectedFaces.length // This would be the panel order
     );
 
-    const geometry = new THREE.BoxGeometry(
-      smartBounds.finalSize.x,
-      smartBounds.finalSize.y,
-      smartBounds.finalSize.z
+    // 🎯 NEW: Create cut panel geometry (kesilmiş panel simülasyonu)
+    const cutPanelGeometry = createCutPanelGeometry(
+      smartBounds.finalSize,
+      faceIndex,
+      selectedFaces,
+      shape.parameters
     );
 
     return {
       faceIndex,
-      geometry,
+      geometry: cutPanelGeometry,
       position: smartBounds.finalPosition,
       size: smartBounds.finalSize,
       panelOrder: selectedFaces.length,
+      isCutPreview: true,
     };
   }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.type, shape.parameters]);
+
+  // 🎯 NEW: Create cut panel geometry with notches and cuts
+  const createCutPanelGeometry = (
+    panelSize: THREE.Vector3,
+    faceIndex: number,
+    existingPanels: number[],
+    shapeParams: any
+  ): THREE.BufferGeometry => {
+    const { width = 500, height = 500, depth = 500 } = shapeParams;
+    
+    // Create base panel shape
+    const shape = new THREE.Shape();
+    const hw = panelSize.x / 2;
+    const hh = panelSize.y / 2;
+    const hd = panelSize.z / 2;
+    
+    // Define panel rectangle based on face orientation
+    let panelWidth, panelHeight;
+    
+    switch (faceIndex) {
+      case 0: // Front
+      case 1: // Back
+        panelWidth = panelSize.x;
+        panelHeight = panelSize.y;
+        break;
+      case 2: // Top
+      case 3: // Bottom
+        panelWidth = panelSize.x;
+        panelHeight = panelSize.z;
+        break;
+      case 4: // Right
+      case 5: // Left
+        panelWidth = panelSize.z;
+        panelHeight = panelSize.y;
+        break;
+      default:
+        panelWidth = panelSize.x;
+        panelHeight = panelSize.y;
+    }
+    
+    const pw = panelWidth / 2;
+    const ph = panelHeight / 2;
+    
+    // Create main panel rectangle
+    shape.moveTo(-pw, -ph);
+    shape.lineTo(pw, -ph);
+    shape.lineTo(pw, ph);
+    shape.lineTo(-pw, ph);
+    shape.closePath();
+    
+    // 🎯 ADD NOTCHES for intersecting panels (kesilmiş yerler)
+    const notchDepth = panelThickness;
+    const notchWidth = panelThickness;
+    
+    existingPanels.forEach((existingPanel) => {
+      // Calculate where this panel would intersect with existing panels
+      const intersection = calculatePanelIntersection(faceIndex, existingPanel, shapeParams);
+      
+      if (intersection) {
+        // Create notch (kesik) at intersection point
+        const notch = new THREE.Path();
+        
+        // Position notch based on intersection
+        const notchX = intersection.x * (panelWidth / width);
+        const notchY = intersection.y * (panelHeight / height);
+        
+        // Create rectangular notch
+        notch.moveTo(notchX - notchWidth/2, notchY - notchDepth/2);
+        notch.lineTo(notchX + notchWidth/2, notchY - notchDepth/2);
+        notch.lineTo(notchX + notchWidth/2, notchY + notchDepth/2);
+        notch.lineTo(notchX - notchWidth/2, notchY + notchDepth/2);
+        notch.closePath();
+        
+        // Add notch as hole in main shape
+        shape.holes.push(notch);
+      }
+    });
+    
+    // Create extruded geometry
+    const extrudeSettings = {
+      depth: panelSize.z,
+      bevelEnabled: false,
+      steps: 1,
+    };
+    
+    try {
+      const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      
+      // Rotate geometry to match face orientation
+      switch (faceIndex) {
+        case 2: // Top
+        case 3: // Bottom
+          geometry.rotateX(-Math.PI / 2);
+          break;
+        case 4: // Right
+        case 5: // Left
+          geometry.rotateY(Math.PI / 2);
+          break;
+      }
+      
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      
+      return geometry;
+    } catch (error) {
+      console.warn('Failed to create cut panel geometry, using simple box:', error);
+      return new THREE.BoxGeometry(panelSize.x, panelSize.y, panelSize.z);
+    }
+  };
+  
+  // 🎯 NEW: Calculate panel intersection points
+  const calculatePanelIntersection = (
+    faceIndex: number,
+    existingPanelFace: number,
+    shapeParams: any
+  ): { x: number; y: number } | null => {
+    const { width = 500, height = 500, depth = 500 } = shapeParams;
+    
+    // Define intersection logic between different faces
+    const intersections: { [key: string]: { x: number; y: number } | null } = {
+      // Front face intersections
+      '0-2': { x: 0, y: height/2 - panelThickness/2 }, // Front-Top
+      '0-3': { x: 0, y: -height/2 + panelThickness/2 }, // Front-Bottom
+      '0-4': { x: width/2 - panelThickness/2, y: 0 }, // Front-Right
+      '0-5': { x: -width/2 + panelThickness/2, y: 0 }, // Front-Left
+      
+      // Back face intersections
+      '1-2': { x: 0, y: height/2 - panelThickness/2 }, // Back-Top
+      '1-3': { x: 0, y: -height/2 + panelThickness/2 }, // Back-Bottom
+      '1-4': { x: width/2 - panelThickness/2, y: 0 }, // Back-Right
+      '1-5': { x: -width/2 + panelThickness/2, y: 0 }, // Back-Left
+      
+      // Top face intersections
+      '2-0': { x: 0, y: depth/2 - panelThickness/2 }, // Top-Front
+      '2-1': { x: 0, y: -depth/2 + panelThickness/2 }, // Top-Back
+      '2-4': { x: width/2 - panelThickness/2, y: 0 }, // Top-Right
+      '2-5': { x: -width/2 + panelThickness/2, y: 0 }, // Top-Left
+      
+      // Bottom face intersections
+      '3-0': { x: 0, y: depth/2 - panelThickness/2 }, // Bottom-Front
+      '3-1': { x: 0, y: -depth/2 + panelThickness/2 }, // Bottom-Back
+      '3-4': { x: width/2 - panelThickness/2, y: 0 }, // Bottom-Right
+      '3-5': { x: -width/2 + panelThickness/2, y: 0 }, // Bottom-Left
+      
+      // Right face intersections
+      '4-0': { x: depth/2 - panelThickness/2, y: 0 }, // Right-Front
+      '4-1': { x: -depth/2 + panelThickness/2, y: 0 }, // Right-Back
+      '4-2': { x: 0, y: height/2 - panelThickness/2 }, // Right-Top
+      '4-3': { x: 0, y: -height/2 + panelThickness/2 }, // Right-Bottom
+      
+      // Left face intersections
+      '5-0': { x: -depth/2 + panelThickness/2, y: 0 }, // Left-Front
+      '5-1': { x: depth/2 - panelThickness/2, y: 0 }, // Left-Back
+      '5-2': { x: 0, y: height/2 - panelThickness/2 }, // Left-Top
+      '5-3': { x: 0, y: -height/2 + panelThickness/2 }, // Left-Bottom
+    };
+    
+    const key = `${faceIndex}-${existingPanelFace}`;
+    return intersections[key] || null;
+  };
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
@@ -905,7 +1068,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           visible={viewMode !== ViewMode.WIREFRAME}
         >
           <meshPhysicalMaterial
-            color="#fbbf24" // Yellow preview color
+            color="#fbbf24" // Sarı kesilmiş panel rengi
             roughness={0.6}
             metalness={0.02}
             transparent
@@ -929,7 +1092,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           scale={shape.scale}
         >
           <lineBasicMaterial
-            color="#f59e0b" // Darker yellow for edges
+            color="#f59e0b" // Koyu sarı kesilmiş panel kenarları
             linewidth={2.0}
             transparent
             opacity={0.9}
