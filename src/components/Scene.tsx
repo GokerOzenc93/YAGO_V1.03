@@ -744,55 +744,46 @@ const Scene: React.FC = () => {
         { index: 5, center: new THREE.Vector3(-hw, 0, 0), normal: new THREE.Vector3(-1, 0, 0), name: 'Left' },
       ];
       
-      let closestFace = -1;
-      let minDistance = Infinity;
-      
-      faces.forEach((face) => {
-        // Calculate distance from clicked point to face center
+      // Calculate distances from click point to all face centers and sort by distance
+      const faceDistances = faces.map(face => {
         const distanceToCenter = localPoint.distanceTo(face.center);
-        
-        // Project point onto face plane to check if it's actually on the face
         const pointToCenter = localPoint.clone().sub(face.center);
         const projectionDistance = Math.abs(pointToCenter.dot(face.normal));
         
-        // Check if point is close to the face plane (within reasonable threshold)
-        const isOnFacePlane = projectionDistance < 50; // 50mm threshold
+        console.log(`🎯 Face ${face.index} (${face.name}): Distance to center: ${distanceToCenter.toFixed(1)}, Projection distance: ${projectionDistance.toFixed(1)}`);
         
-        console.log(`🎯 Face ${face.index} (${face.name}): Distance to center: ${distanceToCenter.toFixed(1)}, Projection distance: ${projectionDistance.toFixed(1)}, On plane: ${isOnFacePlane}`);
-        
-        if (isOnFacePlane && distanceToCenter < minDistance) {
-          minDistance = distanceToCenter;
-          closestFace = face.index;
-        }
-      });
+        return {
+          index: face.index,
+          name: face.name,
+          distance: distanceToCenter,
+          projectionDistance: projectionDistance,
+          isOnPlane: projectionDistance < 50 // 50mm threshold
+        };
+      }).sort((a, b) => a.distance - b.distance); // Sort by distance to center
       
-      console.log(`🎯 Final result: Closest face is ${closestFace} with distance ${minDistance.toFixed(1)}`);
-      return closestFace !== -1 ? closestFace : null;
+      console.log(`🎯 Faces sorted by distance:`, faceDistances.map(f => 
+        `${f.name}(${f.index}): ${f.distance.toFixed(1)}mm ${f.isOnPlane ? '✓' : '✗'}`
+      ).join(', '));
+      
+      // First try to find a face that the point is actually on
+      const faceOnPlane = faceDistances.find(f => f.isOnPlane);
+      if (faceOnPlane) {
+        console.log(`🎯 Point is on face: ${faceOnPlane.name} (${faceOnPlane.index})`);
+        return faceOnPlane.index;
+      }
+      
+      // If no face is directly under the point, return the closest one
+      const closestFace = faceDistances[0];
+      console.log(`🎯 Closest face: ${closestFace.name} (${closestFace.index}) at ${closestFace.distance.toFixed(1)}mm`);
+      
+      return closestFace.index;
     };
     
-    // Global function to find next adjacent face
+    // Global function to find next face based on distance to last click point
     (window as any).findNextAdjacentFace = (currentFace: number, shape: Shape): number => {
-      if (shape.type !== 'box') return (currentFace + 1) % 6;
-      
-      // Define adjacent faces for each face of a cube
-      const adjacentFaces: { [key: number]: number[] } = {
-        0: [2, 3, 4, 5], // Front -> Top, Bottom, Right, Left
-        1: [2, 3, 4, 5], // Back -> Top, Bottom, Right, Left
-        2: [0, 1, 4, 5], // Top -> Front, Back, Right, Left
-        3: [0, 1, 4, 5], // Bottom -> Front, Back, Right, Left
-        4: [0, 1, 2, 3], // Right -> Front, Back, Top, Bottom
-        5: [0, 1, 2, 3], // Left -> Front, Back, Top, Bottom
-      };
-      
-      const adjacent = adjacentFaces[currentFace] || [];
-      if (adjacent.length === 0) return (currentFace + 1) % 6;
-      
-      // Find current index in adjacent array and move to next
-      const currentIndex = adjacent.indexOf(currentFace);
-      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % adjacent.length;
-      
-      console.log(`🎯 Face ${currentFace} -> Next adjacent face: ${adjacent[nextIndex]}`);
-      return adjacent[nextIndex];
+      // This function is now handled by PanelManager's findNextFace method
+      // which uses the stored click position for distance-based sorting
+      return (currentFace + 1) % 6; // Fallback
     };
     
     return () => {

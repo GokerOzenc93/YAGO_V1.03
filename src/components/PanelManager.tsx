@@ -233,32 +233,45 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const findNextFace = useCallback((currentFace: number): number => {
     if (geometricFaces.length === 0) return currentFace;
     
-    const currentFaceData = geometricFaces.find(f => f.index === currentFace);
-    if (!currentFaceData) return (currentFace + 1) % 6;
-    
-    // Find adjacent faces (faces that share edges/vertices)
-    const adjacentFaces: number[] = [];
-    
-    geometricFaces.forEach((face) => {
-      if (face.index === currentFace) return;
-      
-      // Check if faces are adjacent by comparing normals
-      const dotProduct = Math.abs(currentFaceData.normal.dot(face.normal));
-      
-      // Adjacent faces have perpendicular normals (dot product ≈ 0)
-      if (dotProduct < 0.1) {
-        adjacentFaces.push(face.index);
-      }
-    });
-    
-    // If no adjacent faces found, just cycle to next face
-    if (adjacentFaces.length === 0) {
+    // Get the last click position from global state
+    const lastClickPosition = (window as any).lastClickPosition;
+    if (!lastClickPosition) {
       return (currentFace + 1) % 6;
     }
     
-    // Return first adjacent face
-    return adjacentFaces[0];
+    // Convert world point to local space
+    const shapePosition = new THREE.Vector3(...shape.position);
+    const localPoint = lastClickPosition.clone().sub(shapePosition);
+    
+    // Calculate distances from click point to all face centers
+    const faceDistances = geometricFaces
+      .filter(face => face.index !== currentFace) // Exclude current face
+      .map(face => ({
+        index: face.index,
+        distance: localPoint.distanceTo(face.center),
+        name: getFaceName(face.index)
+      }))
+      .sort((a, b) => a.distance - b.distance); // Sort by distance (closest first)
+    
+    console.log(`🎯 Face distances from click point:`, faceDistances.map(f => 
+      `${f.name}(${f.index}): ${f.distance.toFixed(1)}mm`
+    ).join(', '));
+    
+    // Find current face in the sorted list and get next one
+    const currentIndex = faceDistances.findIndex(f => f.index === currentFace);
+    const nextIndex = (currentIndex + 1) % faceDistances.length;
+    
+    const nextFace = faceDistances[nextIndex]?.index || faceDistances[0]?.index || (currentFace + 1) % 6;
+    
+    console.log(`🎯 Current face: ${currentFace}, Next closest face: ${nextFace}`);
+    return nextFace;
   }, [geometricFaces]);
+
+  // Helper function to get face name
+  const getFaceName = (faceIndex: number): string => {
+    const names = ['Front', 'Back', 'Top', 'Bottom', 'Right', 'Left'];
+    return names[faceIndex] || `Face ${faceIndex}`;
+  };
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();

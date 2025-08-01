@@ -106,6 +106,9 @@ const OpenCascadeShape: React.FC<Props> = ({
     
     e.stopPropagation();
     
+    // Store click position globally for distance calculations
+    (window as any).lastClickPosition = e.point.clone();
+    
     if (e.nativeEvent.button === 0) {
       // Left click - cycle through faces geometrically
       const intersectionPoint = e.point; // Get 3D intersection point from raycaster
