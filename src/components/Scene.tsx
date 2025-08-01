@@ -58,6 +58,19 @@ const PlacementPopup: React.FC<PlacementPopupProps> = ({
     return acc;
   }, {} as Record<number, DepthPlacementOption[]>);
 
+  // Face names in Turkish
+  const getFaceName = (faceIndex: number): string => {
+    const faceNames: { [key: number]: string } = {
+      0: 'Ön Yüzey',
+      1: 'Arka Yüzey', 
+      2: 'Üst Yüzey',
+      3: 'Alt Yüzey',
+      4: 'Sağ Yüzey',
+      5: 'Sol Yüzey',
+    };
+    return faceNames[faceIndex] || `Yüzey ${faceIndex}`;
+  };
+
   return (
     <div
       className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[320px] max-w-[450px]"
@@ -79,7 +92,7 @@ const PlacementPopup: React.FC<PlacementPopupProps> = ({
             {/* Face Header */}
             <div className="px-4 py-2 bg-gray-700/30">
               <h4 className="text-blue-300 text-sm font-medium">
-                {faceOptions[0]?.faceName || `Yüzey ${faceIndex}`}
+                {getFaceName(parseInt(faceIndex))}
               </h4>
             </div>
             
@@ -106,27 +119,30 @@ const PlacementPopup: React.FC<PlacementPopupProps> = ({
                       </div>
                     </div>
                   </div>
-const CameraPositionUpdater = () => {
-  const { camera } = useThree();
-  const { setCameraPosition } = useAppStore();
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
 
-  useEffect(() => {
-    const updateCameraPosition = () => {
-      setCameraPosition([
-        camera.position.x,
-        camera.position.y,
-        camera.position.z,
-      ]);
-    };
-
-    updateCameraPosition();
-    camera.addEventListener('change', updateCameraPosition);
-    return () => camera.removeEventListener('change', updateCameraPosition);
-  }, [camera, setCameraPosition]);
-
-  return null;
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-gray-600/50 bg-gray-700/20">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400 text-xs">
+            {options.length} seçenek mevcut
+          </span>
+          <button
+            onClick={onCancel}
+            className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
+          >
+            İptal
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
-
 interface CameraControllerProps {
   isAddPanelMode: boolean;
 }
