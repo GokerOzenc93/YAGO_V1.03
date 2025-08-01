@@ -52,6 +52,10 @@ interface Props {
     availableFaces: number[];
     mousePosition: { x: number; y: number } | null;
   }>>;
+  // NEW: Dynamic face selection props
+  onDynamicFaceSelect?: (faceIndex: number) => void;
+  selectedDynamicFace?: number | null;
+  isCurrentlyEditing?: boolean;
 }
 
 const OpenCascadeShape: React.FC<Props> = ({
@@ -78,6 +82,7 @@ const OpenCascadeShape: React.FC<Props> = ({
   // NEW: Dynamic face selection props
   onDynamicFaceSelect,
   selectedDynamicFace,
+  isCurrentlyEditing,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -132,12 +137,11 @@ const OpenCascadeShape: React.FC<Props> = ({
     } else if (e.nativeEvent.button === 2) {
       // Right click - add panel to currently selected face
       if (selectedDynamicFace !== null) {
-        onFaceSelect(selectedDynamicFace);
+        onFaceSelect?.(selectedDynamicFace);
         console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
       }
     }
-  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
-  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect]);
+  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, shape]);
 
   useEffect(() => {
     const controls = transformRef.current;
