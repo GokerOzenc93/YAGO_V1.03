@@ -563,10 +563,6 @@ const Scene: React.FC = () => {
     // 🔴 NEW: Reset panel edit mode
     setIsPanelEditMode(false);
 
-    // NEW: Reset dynamic selection mode
-    setIsDynamicSelectionMode(false);
-    setSelectedDynamicFace(null);
-
     // Reset face cycle state
     setFaceCycleState({
       selectedFace: null,
