@@ -352,8 +352,8 @@ const OpenCascadeShape: React.FC<Props> = ({
         showFaces={showFaces}
         onFaceSelect={onFaceSelect || (() => {})}
         onFaceHover={onFaceHover || (() => {})}
-        onPanelAdd={onFaceSelect || (() => {})}
         onFaceCycleUpdate={onFaceCycleUpdate}
+        alwaysShowPanels={true} // 🎯 ALWAYS SHOW PANELS
         isPanelEditMode={isPanelEditMode && isBeingEdited}
         onPanelSelect={onPanelSelect || (() => {})}
         faceCycleState={faceCycleState || {

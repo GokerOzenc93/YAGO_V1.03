@@ -632,6 +632,35 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
+  // 🎯 NEW: Create preview panel for dynamically selected face
+  const previewPanelData = useMemo(() => {
+    if (!isAddPanelMode || selectedDynamicFace === null || shape.type !== 'box') return null;
+    
+    // Don't show preview if face already has a panel
+    if (selectedFaces.includes(selectedDynamicFace)) return null;
+    
+    const faceIndex = selectedDynamicFace;
+    const smartBounds = calculateSmartPanelBounds(
+      faceIndex,
+      [...selectedFaces, faceIndex], // Include current face in calculation
+      selectedFaces.length // This would be the panel order
+    );
+
+    const geometry = new THREE.BoxGeometry(
+      smartBounds.finalSize.x,
+      smartBounds.finalSize.y,
+      smartBounds.finalSize.z
+    );
+
+    return {
+      faceIndex,
+      geometry,
+      position: smartBounds.finalPosition,
+      size: smartBounds.finalSize,
+      panelOrder: selectedFaces.length,
+    };
+  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.type, shape.parameters]);
+
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
     const { width = 500, height = 500, depth = 500 } = shape.parameters;
@@ -752,17 +781,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
-  if (
-    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
-    shape.type !== 'box'
-  ) {
+  // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
+  if (shape.type !== 'box') {
     return null;
   }
 
   return (
     <group>
       {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
-      {showFaces &&
+      {(showFaces || isAddPanelMode) &&
         faceTransforms.map((transform, faceIndex) => {
           const opacity = getFaceOpacity(faceIndex);
 
@@ -862,6 +889,54 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           )}
         </mesh>
       ))}
+
+      {/* 🎯 NEW: Preview panel for dynamically selected face (YELLOW) */}
+      {previewPanelData && (
+        <mesh
+          key={`preview-panel-${previewPanelData.faceIndex}`}
+          geometry={previewPanelData.geometry}
+          position={[
+            shape.position[0] + previewPanelData.position.x,
+            shape.position[1] + previewPanelData.position.y,
+            shape.position[2] + previewPanelData.position.z,
+          ]}
+          rotation={shape.rotation}
+          scale={shape.scale}
+          visible={viewMode !== ViewMode.WIREFRAME}
+        >
+          <meshPhysicalMaterial
+            color="#fbbf24" // Yellow preview color
+            roughness={0.6}
+            metalness={0.02}
+            transparent
+            opacity={0.7}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {/* Preview panel edges */}
+      {previewPanelData && (
+        <lineSegments
+          key={`preview-panel-edges-${previewPanelData.faceIndex}`}
+          geometry={new THREE.EdgesGeometry(previewPanelData.geometry)}
+          position={[
+            shape.position[0] + previewPanelData.position.x,
+            shape.position[1] + previewPanelData.position.y,
+            shape.position[2] + previewPanelData.position.z,
+          ]}
+          rotation={shape.rotation}
+          scale={shape.scale}
+        >
+          <lineBasicMaterial
+            color="#f59e0b" // Darker yellow for edges
+            linewidth={2.0}
+            transparent
+            opacity={0.9}
+            depthTest={false}
+          />
+        </lineSegments>
+      )}
 
       {/* Panel edges */}
       {smartPanelData.map((panelData) => (
