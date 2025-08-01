@@ -378,7 +378,7 @@ const OpenCascadeShape: React.FC<Props> = ({
           position={shape.position}
           rotation={shape.rotation}
           scale={shape.scale}
-          visible={selectedFaces.length === 0} // Hide outline when panels exist
+          visible={selectedFaces.length === 0 || (isAddPanelMode && isBeingEdited)} // Show outline when no panels OR when adding panels
         >
           <lineBasicMaterial
             color={getEdgeColor()}
