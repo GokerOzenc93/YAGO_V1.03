@@ -22,6 +22,14 @@ interface PanelManagerProps {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
+  // NEW: Face selection callbacks
+  onShowFaceSelection?: (faces: FaceSelectionOption[], position: { x: number; y: number }) => void;
+  onHideFaceSelection?: () => void;
+  onSelectFace?: (faceIndex: number) => void;
+  // NEW: Dynamic face selection props
+  onDynamicFaceSelect?: (faceIndex: number) => void;
+  selectedDynamicFace?: number | null;
+  isDynamicSelectionMode?: boolean;
 }
 
 // NEW: Geometric face detection system
@@ -58,6 +66,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
+  onShowFaceSelection,
+  onHideFaceSelection,
+  onSelectFace,
+  onDynamicFaceSelect,
+  selectedDynamicFace,
+  isDynamicSelectionMode = false,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
 
@@ -179,6 +193,85 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     
     return faces;
   }, [shape.parameters]);
+
+  // NEW: Find closest face to a 3D point using geometric calculations
+  const findClosestFace = useCallback((worldPoint: THREE.Vector3): number | null => {
+    if (geometricFaces.length === 0) return null;
+    
+    // Convert world point to local space (shape coordinate system)
+    const shapePosition = new THREE.Vector3(...shape.position);
+    const localPoint = worldPoint.clone().sub(shapePosition);
+    
+    let closestFace = -1;
+    let minDistance = Infinity;
+    
+    geometricFaces.forEach((face) => {
+      // Calculate distance from clicked point to face center
+      const distanceToFaceCenter = localPoint.distanceTo(face.center);
+      
+      // Project point onto face plane
+      const pointToFaceCenter = localPoint.clone().sub(face.center);
+      const projectionDistance = pointToFaceCenter.dot(face.normal);
+      const projectedPoint = localPoint.clone().sub(face.normal.clone().multiplyScalar(projectionDistance));
+      
+      // Check if projected point is within face bounds
+      const isWithinBounds = face.bounds.containsPoint(projectedPoint);
+      
+      // Use distance to face center for closest face determination
+      if (isWithinBounds && distanceToFaceCenter < minDistance) {
+        minDistance = distanceToFaceCenter;
+        closestFace = face.index;
+        console.log(`🎯 Face ${face.index} - Distance: ${distanceToFaceCenter.toFixed(1)}, Within bounds: ${isWithinBounds}`);
+      }
+    });
+    
+    console.log(`🎯 Closest face found: ${closestFace} with distance: ${minDistance.toFixed(1)}`);
+    return closestFace !== -1 ? closestFace : null;
+  }, [geometricFaces, shape.position]);
+
+  // NEW: Find next face in sequence (cycling through faces)
+  const findNextFace = useCallback((currentFace: number): number => {
+    if (geometricFaces.length === 0) return currentFace;
+    
+    // Get the last click position from global state
+    const lastClickPosition = (window as any).lastClickPosition;
+    if (!lastClickPosition) {
+      return (currentFace + 1) % 6;
+    }
+    
+    // Convert world point to local space
+    const shapePosition = new THREE.Vector3(...shape.position);
+    const localPoint = lastClickPosition.clone().sub(shapePosition);
+    
+    // Calculate distances from click point to all face centers
+    const faceDistances = geometricFaces
+      .filter(face => face.index !== currentFace) // Exclude current face
+      .map(face => ({
+        index: face.index,
+        distance: localPoint.distanceTo(face.center),
+        name: getFaceName(face.index)
+      }))
+      .sort((a, b) => a.distance - b.distance); // Sort by distance (closest first)
+    
+    console.log(`🎯 Face distances from click point:`, faceDistances.map(f => 
+      `${f.name}(${f.index}): ${f.distance.toFixed(1)}mm`
+    ).join(', '));
+    
+    // Find current face in the sorted list and get next one
+    const currentIndex = faceDistances.findIndex(f => f.index === currentFace);
+    const nextIndex = (currentIndex + 1) % faceDistances.length;
+    
+    const nextFace = faceDistances[nextIndex]?.index || faceDistances[0]?.index || (currentFace + 1) % 6;
+    
+    console.log(`🎯 Current face: ${currentFace}, Next closest face: ${nextFace}`);
+    return nextFace;
+  }, [geometricFaces]);
+
+  // Helper function to get face name
+  const getFaceName = (faceIndex: number): string => {
+    const names = ['Front', 'Back', 'Top', 'Bottom', 'Right', 'Left'];
+    return names[faceIndex] || `Face ${faceIndex}`;
+  };
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -539,8 +632,100 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
+  // 🎯 NEW: Create preview panel for dynamically selected face
+  const previewPanelData = useMemo(() => {
+    if (!isAddPanelMode || selectedDynamicFace === null || shape.type !== 'box') return null;
+    
+    // Don't show preview if face already has a panel
+    if (selectedFaces.includes(selectedDynamicFace)) return null;
+    
+    const faceIndex = selectedDynamicFace;
+    const smartBounds = calculateSmartPanelBounds(
+      faceIndex,
+      [...selectedFaces, faceIndex], // Include current face in calculation
+      selectedFaces.length // This would be the panel order
+    );
+
+    const geometry = new THREE.BoxGeometry(
+      smartBounds.finalSize.x,
+      smartBounds.finalSize.y,
+      smartBounds.finalSize.z
+    );
+
+    return {
+      faceIndex,
+      geometry,
+      position: smartBounds.finalPosition,
+      size: smartBounds.finalSize,
+      panelOrder: selectedFaces.length,
+    };
+  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.type, shape.parameters]);
+
+  // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
+  const faceTransforms = useMemo(() => {
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    return [
+      // Front face (0) - Z+
+      { position: [0, 0, hd], rotation: [0, 0, 0] },
+      // Back face (1) - Z-
+      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
+      // Top face (2) - Y+
+      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
+      // Bottom face (3) - Y-
+      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
+      // Right face (4) - X+
+      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
+      // Left face (5) - X-
+      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+    ];
+  }, [shape.parameters]);
+
+  // NEW: Handle dynamic face selection with geometric detection
+  const handleDynamicClick = useCallback((e: any) => {
+    if (!isAddPanelMode) return;
+    
+    e.stopPropagation();
+    
+    if (e.nativeEvent.button === 0) {
+      // Left click - cycle through faces geometrically
+      const intersectionPoint = e.point; // Get 3D intersection point
+      
+      if (selectedDynamicFace === null) {
+        // First click - find closest face
+        const closestFace = findClosestFace(intersectionPoint);
+        if (closestFace !== null && onDynamicFaceSelect) {
+          onDynamicFaceSelect(closestFace);
+          console.log(`🎯 First click: Selected face ${closestFace} geometrically`);
+        }
+      } else {
+        // Subsequent clicks - find next adjacent face
+        const nextFace = findNextFace(selectedDynamicFace);
+        if (onDynamicFaceSelect) {
+          onDynamicFaceSelect(nextFace);
+          console.log(`🎯 Next click: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
+        }
+      }
+    } else if (e.nativeEvent.button === 2) {
+      // Right click - add panel to currently selected face
+      if (selectedDynamicFace !== null) {
+        onFaceSelect(selectedDynamicFace);
+        console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
+      }
+    }
+  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
+
   const handleClick = (e: any, faceIndex: number) => {
+    // Dynamic selection is always active in panel mode
     if (isAddPanelMode) {
+      handleDynamicClick(e);
+      return;
+    }
+    
+    if (isAddPanelMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       onFaceSelect(faceIndex);
     } else if (isPanelEditMode) {
@@ -566,25 +751,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceColor = (faceIndex: number) => {
+    // Dynamic selection highlighting (always active in panel mode)
+    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
+      return '#fbbf24'; // Yellow for dynamically selected face
+    }
     if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
     if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
-    return '#ffffff'; // White for default
+    return '#3b82f6'; // Blue for default
   };
 
   const getFaceOpacity = (faceIndex: number) => {
-    if (isAddPanelMode) {
-      // In add panel mode, faces are transparent but can be hovered
-      if (hoveredFace === faceIndex) {
-        return 0.1;
-      }
-      // Hide faces that already have a panel
-      if (selectedFaces.includes(faceIndex)) {
-        return 0;
-      }
-      // All other faces are transparent
-      return 0.001;
-    }
-    return 0; // Hide faces in other modes
+    // Hide all face overlays in panel mode - only show blue panel preview
+    if (selectedFaces.includes(faceIndex)) return 0.0;
+    if (hoveredFace === faceIndex) return 0.0;
+    return 0.001;
   };
 
   const getPanelEdgeLineWidth = () => {
@@ -603,33 +783,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     return null;
   }
 
-  // Face positions and rotations for box
-  const faceTransforms = useMemo(() => {
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const hw = width / 2;
-    const hh = height / 2;
-    const hd = depth / 2;
-
-    return [
-      // Front face (0) - Z+
-      { position: [0, 0, hd], rotation: [0, 0, 0] },
-      // Back face (1) - Z-
-      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
-      // Top face (2) - Y+
-      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
-      // Bottom face (3) - Y-
-      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
-      // Right face (4) - X+
-      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
-      // Left face (5) - X-
-      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
-    ];
-  }, [shape.parameters]);
-  
   return (
     <group>
-      {/* Individual face overlays for panel mode */}
-      {isAddPanelMode &&
+      {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
+      {(showFaces || isAddPanelMode) &&
         faceTransforms.map((transform, faceIndex) => {
           const opacity = getFaceOpacity(faceIndex);
 
@@ -652,6 +809,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               ]}
               scale={shape.scale}
               onClick={(e) => handleClick(e, faceIndex)}
+              onContextMenu={(e) => {
+                if (isAddPanelMode) {
+                  handleDynamicClick(e);
+                } else {
+                  // Original right-click behavior for non-dynamic mode
+                  e.stopPropagation();
+                  e.nativeEvent.preventDefault();
+                }
+              }}
               onPointerEnter={() => handleFaceHover(faceIndex)}
               onPointerLeave={() => handleFaceHover(null)}
               userData={{ faceIndex }}
@@ -687,17 +853,17 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           onClick={(e) => {
             if (isPanelEditMode) {
               e.stopPropagation();
-              // Dispatch custom event for panel selection
-              const panelSelectEvent = new CustomEvent('panelSelected', {
-                detail: {
+              if (onPanelSelect) {
+                onPanelSelect({
                   faceIndex: panelData.faceIndex,
                   position: panelData.position,
                   size: panelData.size,
                   panelOrder: panelData.panelOrder,
-                }
-              });
-              window.dispatchEvent(panelSelectEvent);
-              console.log(`🔴 Panel ${panelData.faceIndex} selected for editing`);
+                });
+                console.log(
+                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
+                );
+              }
             }
           }}
         >
@@ -720,6 +886,67 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           )}
         </mesh>
       ))}
+
+      {/* 🎯 NEW: Preview panel for dynamically selected face (YELLOW) */}
+      {previewPanelData && (
+        <mesh
+          key={`preview-panel-${previewPanelData.faceIndex}`}
+          geometry={previewPanelData.geometry}
+          position={[
+            shape.position[0] + previewPanelData.position.x,
+            shape.position[1] + previewPanelData.position.y,
+            shape.position[2] + previewPanelData.position.z,
+          ]}
+          rotation={shape.rotation}
+          scale={shape.scale}
+          visible={viewMode !== ViewMode.WIREFRAME}
+          castShadow
+          receiveShadow
+        >
+          <meshPhysicalMaterial
+            color="#3b82f6" // Blue preview color
+            roughness={0.3}
+            metalness={0.1}
+            clearcoat={0.8}
+            clearcoatRoughness={0.1}
+            reflectivity={0.3}
+            envMapIntensity={0.8}
+            transparent
+            opacity={0.85}
+            depthWrite={false}
+            iridescence={0.2}
+            iridescenceIOR={1.3}
+            sheen={0.3}
+            sheenRoughness={0.2}
+            sheenColor="#60a5fa"
+            transmission={0.1}
+            thickness={2}
+          />
+        </mesh>
+      )}
+
+      {/* Preview panel edges */}
+      {previewPanelData && (
+        <lineSegments
+          key={`preview-panel-edges-${previewPanelData.faceIndex}`}
+          geometry={new THREE.EdgesGeometry(previewPanelData.geometry)}
+          position={[
+            shape.position[0] + previewPanelData.position.x,
+            shape.position[1] + previewPanelData.position.y,
+            shape.position[2] + previewPanelData.position.z,
+          ]}
+          rotation={shape.rotation}
+          scale={shape.scale}
+        >
+          <lineBasicMaterial
+            color="#1d4ed8" // Darker blue for edges
+            linewidth={2.0}
+            transparent
+            opacity={1.0}
+            depthTest={false}
+          />
+        </lineSegments>
+      )}
 
       {/* Panel edges */}
       {smartPanelData.map((panelData) => (
