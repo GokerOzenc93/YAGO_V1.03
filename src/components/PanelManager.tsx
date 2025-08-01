@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
 
@@ -23,12 +22,14 @@ interface PanelManagerProps {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
-  // NEW: Multi-depth placement props
-  onMultiDepthSelect?: (options: DepthPlacementOption[]) => void;
+  // NEW: Placement popup callbacks
+  onShowPlacementPopup?: (options: DepthPlacementOption[], position: { x: number; y: number }) => void;
+  onHidePlacementPopup?: () => void;
+  onSelectDepthOption?: (option: DepthPlacementOption) => void;
 }
 
 // NEW: Interface for depth placement options
-interface DepthPlacementOption {
+export interface DepthPlacementOption {
   id: string;
   faceIndex: number;
   depth: number;
@@ -37,75 +38,6 @@ interface DepthPlacementOption {
   label: string;
   description: string;
 }
-
-// NEW: Interface for placement popup
-interface PlacementPopupProps {
-  options: DepthPlacementOption[];
-  position: { x: number; y: number };
-  onSelect: (option: DepthPlacementOption) => void;
-  onCancel: () => void;
-}
-
-// NEW: Placement selection popup component
-const PlacementPopup: React.FC<PlacementPopupProps> = ({
-  options,
-  position,
-  onSelect,
-  onCancel,
-}) => {
-  return (
-    <div
-      className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[280px] max-w-[400px]"
-      style={{
-        left: Math.min(position.x, window.innerWidth - 300),
-        top: Math.min(position.y, window.innerHeight - 200),
-      }}
-    >
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-600/50">
-        <h3 className="text-white font-medium text-sm">Panel Placement Options</h3>
-        <p className="text-gray-400 text-xs mt-1">Choose where to place the panel</p>
-      </div>
-
-      {/* Options List */}
-      <div className="max-h-64 overflow-y-auto">
-        {options.map((option, index) => (
-          <button
-            key={option.id}
-            onClick={() => onSelect(option)}
-            className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-700/30 last:border-b-0"
-          >
-            <div className="flex items-center gap-3">
-              {/* Option Number */}
-              <div className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                {index + 1}
-              </div>
-              
-              {/* Option Details */}
-              <div className="flex-1">
-                <div className="text-white text-sm font-medium">{option.label}</div>
-                <div className="text-gray-400 text-xs">{option.description}</div>
-                <div className="text-green-400 text-xs mt-1">
-                  Depth: {option.depth.toFixed(1)}mm
-                </div>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-600/50 flex justify-end gap-2">
-        <button
-          onClick={onCancel}
-          className="px-3 py-1.5 text-xs bg-gray-600/50 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-};
 
 interface SmartPanelBounds {
   faceIndex: number;
@@ -131,7 +63,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
-  onMultiDepthSelect,
+  onShowPlacementPopup,
+  onHidePlacementPopup,
+  onSelectDepthOption,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
 
@@ -140,8 +74,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   // NEW: State for multi-depth placement
   const [scannedFace, setScannedFace] = useState<number | null>(null);
   const [depthOptions, setDepthOptions] = useState<DepthPlacementOption[]>([]);
-  const [showPlacementPopup, setShowPlacementPopup] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [highlightedOptions, setHighlightedOptions] = useState<DepthPlacementOption[]>([]);
   const [clickedFace, setClickedFace] = useState<number | null>(null);
 
@@ -620,9 +552,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     setClickedFace(faceIndex);
     setDepthOptions(options);
     setHighlightedOptions(options);
-    setPopupPosition({ x: mouseX, y: mouseY });
-    setShowPlacementPopup(true);
     setScannedFace(null); // Clear yellow scanning
+    
+    // Show popup via callback
+    if (onShowPlacementPopup) {
+      onShowPlacementPopup(options, { x: mouseX, y: mouseY });
+    }
     
     console.log(`Generated ${options.length} depth placement options for face ${faceIndex}`);
     console.log('Options:', options.map(opt => `${opt.label} (${opt.depth}mm)`));
@@ -635,21 +570,39 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     onFaceSelect(option.faceIndex);
     
     // Clean up
-    setShowPlacementPopup(false);
     setDepthOptions([]);
     setHighlightedOptions([]);
     
+    // Hide popup via callback
+    if (onHidePlacementPopup) {
+      onHidePlacementPopup();
+    }
+    
     console.log(`Panel placed: ${option.label} at depth ${option.depth}mm`);
-  }, [onFaceSelect]);
+  }, [onFaceSelect, onHidePlacementPopup]);
 
   // NEW: Handle popup cancel
   const handlePopupCancel = useCallback(() => {
     setClickedFace(null);
-    setShowPlacementPopup(false);
     setDepthOptions([]);
     setHighlightedOptions([]);
+    
+    // Hide popup via callback
+    if (onHidePlacementPopup) {
+      onHidePlacementPopup();
+    }
+    
     console.log('Panel placement cancelled');
-  }, []);
+  }, [onHidePlacementPopup]);
+
+  // Expose selection handler for external use
+  React.useEffect(() => {
+    if (onSelectDepthOption) {
+      // This allows Scene.tsx to call the selection handler
+      (window as any).handleDepthOptionSelect = handleDepthOptionSelect;
+      (window as any).handlePopupCancel = handlePopupCancel;
+    }
+  }, [handleDepthOptionSelect, handlePopupCancel, onSelectDepthOption]);
 
   const handleClick = (e: any, faceIndex: number) => {
     if (isAddPanelMode && e.nativeEvent.button === 0) {
@@ -878,19 +831,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           />
         </lineSegments>
       ))}
-
-      {/* NEW: Placement popup portal */}
-      {showPlacementPopup && typeof document !== 'undefined' && (
-        createPortal(
-          <PlacementPopup
-            options={depthOptions}
-            position={popupPosition}
-            onSelect={handleDepthOptionSelect}
-            onCancel={handlePopupCancel}
-          />,
-          document.body
-        )
-      )}
     </group>
   );
 };

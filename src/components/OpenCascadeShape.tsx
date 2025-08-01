@@ -36,7 +36,9 @@ interface Props {
     panelOrder: number;
   }) => void;
   // NEW: Multi-depth placement props
-  onMultiDepthSelect?: (options: any[]) => void;
+  onShowPlacementPopup?: (options: any[], position: { x: number; y: number }) => void;
+  onHidePlacementPopup?: () => void;
+  onSelectDepthOption?: (option: any) => void;
   // Face cycle state props
   faceCycleState?: {
     selectedFace: number | null;
@@ -68,7 +70,9 @@ const OpenCascadeShape: React.FC<Props> = ({
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode = false,
   onPanelSelect,
-  onMultiDepthSelect,
+  onShowPlacementPopup,
+  onHidePlacementPopup,
+  onSelectDepthOption,
   faceCycleState,
   setFaceCycleState,
 }) => {
@@ -312,7 +316,9 @@ const OpenCascadeShape: React.FC<Props> = ({
           mousePosition: null,
         }}
         setFaceCycleState={setFaceCycleState || (() => {})}
-        onMultiDepthSelect={onMultiDepthSelect}
+        onShowPlacementPopup={onShowPlacementPopup}
+        onHidePlacementPopup={onHidePlacementPopup}
+        onSelectDepthOption={onSelectDepthOption}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}

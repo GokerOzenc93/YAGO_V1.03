@@ -24,6 +24,7 @@ import EditMode from './ui/EditMode';
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
+import { DepthPlacementOption } from './PanelManager';
 import * as THREE from 'three';
 
 interface MeasurementOverlayProps {
@@ -32,6 +33,75 @@ interface MeasurementOverlayProps {
   unit: MeasurementUnit;
   onSubmit: (value: number) => void;
 }
+
+// NEW: Interface for placement popup
+interface PlacementPopupProps {
+  options: DepthPlacementOption[];
+  position: { x: number; y: number };
+  onSelect: (option: DepthPlacementOption) => void;
+  onCancel: () => void;
+}
+
+// NEW: Placement selection popup component
+const PlacementPopup: React.FC<PlacementPopupProps> = ({
+  options,
+  position,
+  onSelect,
+  onCancel,
+}) => {
+  return (
+    <div
+      className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[280px] max-w-[400px]"
+      style={{
+        left: Math.min(position.x, window.innerWidth - 300),
+        top: Math.min(position.y, window.innerHeight - 200),
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-600/50">
+        <h3 className="text-white font-medium text-sm">Panel Placement Options</h3>
+        <p className="text-gray-400 text-xs mt-1">Choose where to place the panel</p>
+      </div>
+
+      {/* Options List */}
+      <div className="max-h-64 overflow-y-auto">
+        {options.map((option, index) => (
+          <button
+            key={option.id}
+            onClick={() => onSelect(option)}
+            className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-700/30 last:border-b-0"
+          >
+            <div className="flex items-center gap-3">
+              {/* Option Number */}
+              <div className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                {index + 1}
+              </div>
+              
+              {/* Option Details */}
+              <div className="flex-1">
+                <div className="text-white text-sm font-medium">{option.label}</div>
+                <div className="text-gray-400 text-xs">{option.description}</div>
+                <div className="text-green-400 text-xs mt-1">
+                  Depth: {option.depth.toFixed(1)}mm
+                </div>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-gray-600/50 flex justify-end gap-2">
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-xs bg-gray-600/50 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
@@ -233,6 +303,11 @@ const Scene: React.FC = () => {
 
   // 🔴 NEW: Panel Edit Mode State
   const [isPanelEditMode, setIsPanelEditMode] = useState(false);
+
+  // NEW: Placement popup state
+  const [showPlacementPopup, setShowPlacementPopup] = useState(false);
+  const [placementOptions, setPlacementOptions] = useState<DepthPlacementOption[]>([]);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
 
   // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
   const [shapePanels, setShapePanels] = useState<{
@@ -614,9 +689,37 @@ const Scene: React.FC = () => {
     });
   };
 
-  // NEW: Handle multi-depth panel selection
-  const handleMultiDepthSelect = (options: any[]) => {
-    console.log(`Multi-depth placement options generated:`, options);
+  // NEW: Handle placement popup show
+  const handleShowPlacementPopup = (options: DepthPlacementOption[], position: { x: number; y: number }) => {
+    setPlacementOptions(options);
+    setPopupPosition(position);
+    setShowPlacementPopup(true);
+    console.log(`Placement popup shown with ${options.length} options`);
+  };
+
+  // NEW: Handle placement popup hide
+  const handleHidePlacementPopup = () => {
+    setShowPlacementPopup(false);
+    setPlacementOptions([]);
+    console.log('Placement popup hidden');
+  };
+
+  // NEW: Handle depth option selection
+  const handleSelectDepthOption = (option: DepthPlacementOption) => {
+    // Call the global handler set by PanelManager
+    if ((window as any).handleDepthOptionSelect) {
+      (window as any).handleDepthOptionSelect(option);
+    }
+    handleHidePlacementPopup();
+  };
+
+  // NEW: Handle popup cancel
+  const handlePopupCancel = () => {
+    // Call the global handler set by PanelManager
+    if ((window as any).handlePopupCancel) {
+      (window as any).handlePopupCancel();
+    }
+    handleHidePlacementPopup();
   };
 
   // Handle face cycle updates from OpenCascadeShape
@@ -787,7 +890,9 @@ const Scene: React.FC = () => {
               // 🔴 NEW: Panel Edit Mode props
               isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
               onPanelSelect={handlePanelSelect}
-              onMultiDepthSelect={handleMultiDepthSelect}
+              onShowPlacementPopup={handleShowPlacementPopup}
+              onHidePlacementPopup={handleHidePlacementPopup}
+              onSelectDepthOption={handleSelectDepthOption}
               faceCycleState={faceCycleState}
               setFaceCycleState={setFaceCycleState}
             />
@@ -893,6 +998,19 @@ const Scene: React.FC = () => {
               Click on panels to edit dimensions
             </div>
           </div>,
+          document.body
+        )}
+
+      {/* NEW: Placement popup - Rendered outside Canvas */}
+      {showPlacementPopup &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <PlacementPopup
+            options={placementOptions}
+            position={popupPosition}
+            onSelect={handleSelectDepthOption}
+            onCancel={handlePopupCancel}
+          />,
           document.body
         )}
 
