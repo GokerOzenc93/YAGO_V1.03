@@ -42,6 +42,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [draggedNodeIndex, setDraggedNodeIndex] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previousCameraType, setPreviousCameraType] = useState<CameraType | null>(null);
+  const [showExtrudeInput, setShowExtrudeInput] = useState(false);
+  const [extrudeHeight, setExtrudeHeight] = useState('');
+  const [pendingShape, setPendingShape] = useState<CompletedShape | null>(null);
   
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
@@ -179,18 +182,49 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   // Expose measurement input handler globally
   useEffect(() => {
     (window as any).handlePolylineMeasurement = handleMeasurementInput;
+    
+    // Expose extrude height handler globally
+    (window as any).handleExtrudeHeight = (height: number) => {
+      setExtrudeHeight(height.toString());
+      handleExtrudeSubmit();
+    };
+    
     return () => {
       delete (window as any).handlePolylineMeasurement;
+      delete (window as any).handleExtrudeHeight;
     };
-  }, [drawingState.currentPoint, drawingState.currentDirection, drawingState.isDrawing, activeTool]);
+  }, [drawingState.currentPoint, drawingState.currentDirection, drawingState.isDrawing, activeTool, extrudeHeight, pendingShape]);
+
+  // Handle keyboard input for extrude height
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (showExtrudeInput) {
+        if (event.key === 'Enter' && extrudeHeight) {
+          handleExtrudeSubmit();
+        } else if (event.key === 'Escape') {
+          handleExtrudeCancel();
+        } else if (event.key >= '0' && event.key <= '9' || event.key === '.' || event.key === 'Backspace') {
+          if (event.key === 'Backspace') {
+            setExtrudeHeight(prev => prev.slice(0, -1));
+          } else if (event.key !== '.') {
+            setExtrudeHeight(prev => prev + event.key);
+          } else if (!extrudeHeight.includes('.')) {
+            setExtrudeHeight(prev => prev + event.key);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showExtrudeInput, extrudeHeight]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
-    setTimeout(() => {
-      convertTo3DShape(shape, addShape, selectShape, gridSize);
-      setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
-      console.log(`${shape.type} 2D shape removed after 3D conversion`);
-    }, 100);
+    // Show extrude input dialog instead of immediate conversion
+    setPendingShape(shape);
+    setShowExtrudeInput(true);
+    console.log(`${shape.type} completed, asking for extrude height`);
   };
 
   // UNIFIED: Finish drawing function
@@ -450,6 +484,35 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTool, drawingState.isDrawing, drawingState.points, setActiveTool, drawingState.waitingForMeasurement, addShape, selectShape, gridSize, setEditingPolylineId]);
 
+  // Handle extrude height input
+  const handleExtrudeSubmit = () => {
+    if (!pendingShape || !extrudeHeight) return;
+    
+    const height = convertToBaseUnit(parseFloat(extrudeHeight));
+    if (isNaN(height) || height <= 0) {
+      console.log('Invalid extrude height');
+      return;
+    }
+    
+    // Create extruded 3D shape
+    extrudeShape(pendingShape, addShape, height, gridSize);
+    
+    // Cleanup
+    setCompletedShapes(prev => prev.filter(s => s.id !== pendingShape.id));
+    setPendingShape(null);
+    setExtrudeHeight('');
+    setShowExtrudeInput(false);
+    
+    console.log(`${pendingShape.type} extruded with height: ${height}mm`);
+  };
+  
+  const handleExtrudeCancel = () => {
+    setPendingShape(null);
+    setExtrudeHeight('');
+    setShowExtrudeInput(false);
+    console.log('Extrude cancelled');
+  };
+
   return (
     <>
       <mesh
@@ -649,6 +712,36 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
             >
               Type distance in terminal
             </Text>
+          </mesh>
+        </Billboard>
+      )}
+
+      {/* Extrude Height Input Dialog */}
+      {showExtrudeInput && pendingShape && (
+        <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+          <mesh position={[pendingShape.points[0].x, gridSize * 3, pendingShape.points[0].z]}>
+            <planeGeometry args={[gridSize * 8, gridSize * 2]} />
+            <meshBasicMaterial color="#1f2937" opacity={0.95} transparent />
+            <group position={[0, 0, 0.1]}>
+              <Text
+                position={[0, gridSize * 0.3, 0]}
+                fontSize={gridSize / 3}
+                color="white"
+                anchorX="center"
+                anchorY="middle"
+              >
+                Extrude Height: {extrudeHeight || '0'} {measurementUnit}
+              </Text>
+              <Text
+                position={[0, -gridSize * 0.3, 0]}
+                fontSize={gridSize / 4}
+                color="#9ca3af"
+                anchorX="center"
+                anchorY="middle"
+              >
+                Type in terminal or press Enter
+              </Text>
+            </group>
           </mesh>
         </Billboard>
       )}

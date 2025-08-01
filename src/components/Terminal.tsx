@@ -210,11 +210,17 @@ const Terminal: React.FC = () => {
       if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && commandInput.trim()) {
         const numericValue = parseFloat(commandInput.trim());
         if (!isNaN(numericValue)) {
-          // Convert from display unit to base unit (mm)
-          const distanceInMm = convertToBaseUnit(numericValue);
-          
+          // Check if we're waiting for extrude height
+          if ((window as any).handleExtrudeHeight) {
+            (window as any).handleExtrudeHeight(numericValue);
+            addEntry('success', `Extrude height: ${numericValue} ${measurementUnit}`, 
+              `Shape will be extruded ${convertToBaseUnit(numericValue).toFixed(1)}mm`);
+            setCommandInput('');
+            return; // Don't execute as regular command
+          }
           // Call the global measurement handler if it exists
-          if ((window as any).handlePolylineMeasurement) {
+          else if ((window as any).handlePolylineMeasurement) {
+            const distanceInMm = convertToBaseUnit(numericValue);
             (window as any).handlePolylineMeasurement(distanceInMm);
             addEntry('success', `${activeTool} segment: ${numericValue} ${measurementUnit}`, 
               `Distance set to ${distanceInMm.toFixed(1)}mm`);
@@ -487,15 +493,29 @@ const Terminal: React.FC = () => {
           onChange={(e) => setCommandInput(e.target.value)}
           onKeyDown={handleInputKeyDown}
           placeholder={
-            (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) 
-              ? "Enter distance or command..." 
-              : "Enter command..."
+            (window as any).handleExtrudeHeight
+              ? "Enter extrude height..."
+              : (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) 
+                ? "Enter distance or command..." 
+                : "Enter command..."
           }
           className="flex-1 bg-transparent text-gray-200 text-xs font-mono outline-none placeholder-gray-500"
         />
         <button
           onClick={() => {
-            if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && commandInput.trim()) {
+            // Check if we're waiting for extrude height
+            if ((window as any).handleExtrudeHeight && commandInput.trim()) {
+              const numericValue = parseFloat(commandInput.trim());
+              if (!isNaN(numericValue)) {
+                (window as any).handleExtrudeHeight(numericValue);
+                addEntry('success', `Extrude height: ${numericValue} ${measurementUnit}`, 
+                  `Shape will be extruded ${convertToBaseUnit(numericValue).toFixed(1)}mm`);
+                setCommandInput('');
+                return;
+              }
+            }
+            // Check for polyline measurement
+            else if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && commandInput.trim()) {
               const numericValue = parseFloat(commandInput.trim());
               if (!isNaN(numericValue)) {
                 const distanceInMm = convertToBaseUnit(numericValue);

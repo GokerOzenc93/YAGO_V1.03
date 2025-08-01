@@ -120,8 +120,8 @@ export const extrudeShape = (
     case 'polyline':
     case 'polygon': {
       geometry = createPolylineGeometry(shape.points, height, gridSize);
-      // Keep the shape exactly where it was drawn - don't move to center
-      // Position at ground level (Y=0) so the extruded shape sits on the drawing plane
+      // Position the extruded shape exactly where it was drawn
+      // Y position at half height so it sits on the drawing plane and extends upward
       position = [0, height / 2, 0];
       shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
       console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm`);
