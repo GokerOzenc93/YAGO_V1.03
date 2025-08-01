@@ -198,26 +198,34 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const findClosestFace = useCallback((worldPoint: THREE.Vector3): number | null => {
     if (geometricFaces.length === 0) return null;
     
-    // Convert world point to local space
-    const localPoint = worldPoint.clone().sub(new THREE.Vector3(...shape.position));
+    // Convert world point to local space (shape coordinate system)
+    const shapePosition = new THREE.Vector3(...shape.position);
+    const localPoint = worldPoint.clone().sub(shapePosition);
     
     let closestFace = -1;
     let minDistance = Infinity;
     
     geometricFaces.forEach((face) => {
-      // Calculate distance from point to face plane
-      const faceToPoint = localPoint.clone().sub(face.center);
-      const distanceToPlane = Math.abs(faceToPoint.dot(face.normal));
+      // Calculate distance from clicked point to face center
+      const distanceToFaceCenter = localPoint.distanceTo(face.center);
       
-      // Check if point projection is within face bounds
-      const projection = localPoint.clone().sub(face.normal.clone().multiplyScalar(faceToPoint.dot(face.normal)));
+      // Project point onto face plane
+      const pointToFaceCenter = localPoint.clone().sub(face.center);
+      const projectionDistance = pointToFaceCenter.dot(face.normal);
+      const projectedPoint = localPoint.clone().sub(face.normal.clone().multiplyScalar(projectionDistance));
       
-      if (face.bounds.containsPoint(projection) && distanceToPlane < minDistance) {
-        minDistance = distanceToPlane;
+      // Check if projected point is within face bounds
+      const isWithinBounds = face.bounds.containsPoint(projectedPoint);
+      
+      // Use distance to face center for closest face determination
+      if (isWithinBounds && distanceToFaceCenter < minDistance) {
+        minDistance = distanceToFaceCenter;
         closestFace = face.index;
+        console.log(`🎯 Face ${face.index} - Distance: ${distanceToFaceCenter.toFixed(1)}, Within bounds: ${isWithinBounds}`);
       }
     });
     
+    console.log(`🎯 Closest face found: ${closestFace} with distance: ${minDistance.toFixed(1)}`);
     return closestFace !== -1 ? closestFace : null;
   }, [geometricFaces, shape.position]);
 
