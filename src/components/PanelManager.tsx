@@ -1,14 +1,20 @@
-import React, { useMemo, useCallback, useRef, useState } from 'react';
-import { useThree } from '@react-three/fiber';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
-import { ViewMode, useAppStore } from '../store/appStore';
+import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
 
 interface PanelManagerProps {
   shape: Shape;
   isAddPanelMode: boolean;
   selectedFaces: number[];
-  onPanelAdd: (faceIndex: number) => void;
+  hoveredFace: number | null;
+  showEdges: boolean;
+  showFaces: boolean;
+  onFaceSelect: (faceIndex: number) => void;
+  onFaceHover: (faceIndex: number | null) => void;
+  // 🎯 NEW PROP - Always show panels
+  alwaysShowPanels?: boolean;
+  // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode?: boolean;
   onPanelSelect?: (panelData: {
     faceIndex: number;
@@ -20,36 +26,52 @@ interface PanelManagerProps {
 
 interface SmartPanelBounds {
   faceIndex: number;
+  originalBounds: THREE.Box3;
+  expandedBounds: THREE.Box3;
   finalPosition: THREE.Vector3;
   finalSize: THREE.Vector3;
+  thickness: number;
+  cuttingSurfaces: number[];
+  isLastPanel: boolean;
   panelOrder: number;
 }
 
 const PanelManager: React.FC<PanelManagerProps> = ({
   shape,
   isAddPanelMode,
-  onPanelAdd,
   selectedFaces,
+  hoveredFace,
+  showEdges,
+  showFaces,
+  onFaceSelect,
+  onFaceHover,
+  alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
 }) => {
-  const panelThickness = 18;
-  const { camera, raycaster, gl } = useThree();
+  const panelThickness = 18; // 18mm panel thickness
+
   const { viewMode } = useAppStore();
-  const [scannedFace, setScannedFace] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
-    const woodTexture = textureLoader.load('https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg');
+
+    const woodTexture = textureLoader.load(
+      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
+    );
     woodTexture.wrapS = THREE.RepeatWrapping;
     woodTexture.wrapT = THREE.RepeatWrapping;
     woodTexture.repeat.set(0.64, 0.64);
     woodTexture.anisotropy = 8;
-    const woodNormalMap = textureLoader.load('https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg');
+
+    const woodNormalMap = textureLoader.load(
+      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
+    );
     woodNormalMap.wrapS = THREE.RepeatWrapping;
     woodNormalMap.wrapT = THREE.RepeatWrapping;
     woodNormalMap.repeat.set(0.6, 0.6);
     woodNormalMap.anisotropy = 108;
+
     const baseMaterialProps = {
       metalness: 0.02,
       roughness: 1.1,
@@ -86,7 +108,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       attenuationColor: new THREE.Color(0xffffff),
       ior: 1.2,
     };
+
     const verticalMaterial = new THREE.MeshPhysicalMaterial(baseMaterialProps);
+
     const horizontalMaterial = new THREE.MeshPhysicalMaterial({
       ...baseMaterialProps,
       map: woodTexture.clone(),
@@ -94,23 +118,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     });
     horizontalMaterial.map!.rotation = Math.PI / 2;
     horizontalMaterial.normalMap!.rotation = Math.PI / 2;
-    return { vertical: verticalMaterial, horizontal: horizontalMaterial };
-  }, []);
 
-  const faceTransforms = useMemo(() => {
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const hw = width / 2;
-    const hh = height / 2;
-    const hd = depth / 2;
-    return [
-      { position: new THREE.Vector3(0, 0, hd), rotation: new THREE.Euler(0, 0, 0), normal: new THREE.Vector3(0, 0, 1) },
-      { position: new THREE.Vector3(0, 0, -hd), rotation: new THREE.Euler(0, Math.PI, 0), normal: new THREE.Vector3(0, 0, -1) },
-      { position: new THREE.Vector3(0, hh, 0), rotation: new THREE.Euler(-Math.PI / 2, 0, 0), normal: new THREE.Vector3(0, 1, 0) },
-      { position: new THREE.Vector3(0, -hh, 0), rotation: new THREE.Euler(Math.PI / 2, 0, 0), normal: new THREE.Vector3(0, -1, 0) },
-      { position: new THREE.Vector3(hw, 0, 0), rotation: new THREE.Euler(0, Math.PI / 2, 0), normal: new THREE.Vector3(1, 0, 0) },
-      { position: new THREE.Vector3(-hw, 0, 0), rotation: new THREE.Euler(0, -Math.PI / 2, 0), normal: new THREE.Vector3(-1, 0, 0) },
-    ];
-  }, [shape.parameters]);
+    return {
+      vertical: verticalMaterial,
+      horizontal: horizontalMaterial,
+    };
+  }, []);
 
   const calculateSmartPanelBounds = (
     faceIndex: number,
@@ -122,238 +135,432 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     const hh = height / 2;
     const hd = depth / 2;
     const previousPanels = allPanels.slice(0, panelOrder);
-    const bounds = new THREE.Box3(
-      new THREE.Vector3(-hw, -hh, -hd),
-      new THREE.Vector3(hw, hh, hd)
-    );
-    const expandedBounds = bounds.clone();
+    const isLastPanel = panelOrder === allPanels.length - 1;
 
-    previousPanels.forEach((previousPanelIndex) => {
-      switch (previousPanelIndex) {
-        case 0: expandedBounds.max.z -= panelThickness; break;
-        case 1: expandedBounds.min.z += panelThickness; break;
-        case 2: expandedBounds.max.y -= panelThickness; break;
-        case 3: expandedBounds.min.y += panelThickness; break;
-        case 4: expandedBounds.max.x -= panelThickness; break;
-        case 5: expandedBounds.min.x += panelThickness; break;
-      }
-    });
+    let originalBounds: THREE.Box3;
+    let expandedBounds: THREE.Box3;
+    let finalPosition: THREE.Vector3;
+    let finalSize: THREE.Vector3;
 
-    let finalSize;
-    let finalPosition;
-    
     switch (faceIndex) {
-      case 0: case 1:
-        finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, expandedBounds.max.y - expandedBounds.min.y, panelThickness);
-        finalPosition = new THREE.Vector3(0, 0, faceTransforms[faceIndex].position.z + faceTransforms[faceIndex].normal.z * (panelThickness / 2));
+      case 0: // Front face
+        originalBounds = new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, hd - panelThickness),
+          new THREE.Vector3(hw, hh, hd)
+        );
+        expandedBounds = originalBounds.clone();
+        previousPanels.forEach((previousPanel) => {
+          if (previousPanel === 4) {
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+          }
+          if (previousPanel === 5) {
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+          }
+          if (previousPanel === 2) {
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+          }
+          if (previousPanel === 3) {
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+          }
+        });
+        finalSize = new THREE.Vector3(
+          expandedBounds.max.x - expandedBounds.min.x,
+          expandedBounds.max.y - expandedBounds.min.y,
+          panelThickness
+        );
+        finalPosition = new THREE.Vector3(
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          hd - panelThickness / 2
+        );
         break;
-      case 2: case 3:
-        finalSize = new THREE.Vector3(expandedBounds.max.x - expandedBounds.min.x, panelThickness, expandedBounds.max.z - expandedBounds.min.z);
-        finalPosition = new THREE.Vector3(0, faceTransforms[faceIndex].position.y + faceTransforms[faceIndex].normal.y * (panelThickness / 2), 0);
+
+      case 1: // Back face
+        originalBounds = new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, -hd + panelThickness)
+        );
+        expandedBounds = originalBounds.clone();
+        previousPanels.forEach((previousPanel) => {
+          if (previousPanel === 4) {
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+          }
+          if (previousPanel === 5) {
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+          }
+          if (previousPanel === 2) {
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+          }
+          if (previousPanel === 3) {
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+          }
+        });
+        finalSize = new THREE.Vector3(
+          expandedBounds.max.x - expandedBounds.min.x,
+          expandedBounds.max.y - expandedBounds.min.y,
+          panelThickness
+        );
+        finalPosition = new THREE.Vector3(
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          -hd + panelThickness / 2
+        );
         break;
-      case 4: case 5:
-        finalSize = new THREE.Vector3(panelThickness, expandedBounds.max.y - expandedBounds.min.y, expandedBounds.max.z - expandedBounds.min.z);
-        finalPosition = new THREE.Vector3(faceTransforms[faceIndex].position.x + faceTransforms[faceIndex].normal.x * (panelThickness / 2), 0, 0);
+
+      case 2: // Top face
+        originalBounds = new THREE.Box3(
+          new THREE.Vector3(-hw, hh - panelThickness, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        );
+        expandedBounds = originalBounds.clone();
+        previousPanels.forEach((previousPanel) => {
+          if (previousPanel === 4) {
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+          }
+          if (previousPanel === 5) {
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+          }
+          if (previousPanel === 0) {
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+          }
+          if (previousPanel === 1) {
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+          }
+        });
+        finalSize = new THREE.Vector3(
+          expandedBounds.max.x - expandedBounds.min.x,
+          panelThickness,
+          expandedBounds.max.z - expandedBounds.min.z
+        );
+        finalPosition = new THREE.Vector3(
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          hh - panelThickness / 2,
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
+        );
         break;
+
+      case 3: // Bottom face
+        originalBounds = new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(hw, -hh + panelThickness, hd)
+        );
+        expandedBounds = originalBounds.clone();
+        previousPanels.forEach((previousPanel) => {
+          if (previousPanel === 4) {
+            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
+          }
+          if (previousPanel === 5) {
+            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
+          }
+          if (previousPanel === 0) {
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+          }
+          if (previousPanel === 1) {
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+          }
+        });
+        finalSize = new THREE.Vector3(
+          expandedBounds.max.x - expandedBounds.min.x,
+          panelThickness,
+          expandedBounds.max.z - expandedBounds.min.z
+        );
+        finalPosition = new THREE.Vector3(
+          (expandedBounds.max.x + expandedBounds.min.x) / 2,
+          -hh + panelThickness / 2,
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
+        );
+        break;
+
+      case 4: // Right face
+        originalBounds = new THREE.Box3(
+          new THREE.Vector3(hw - panelThickness, -hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        );
+        expandedBounds = originalBounds.clone();
+        previousPanels.forEach((previousPanel) => {
+          if (previousPanel === 2) {
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+          }
+          if (previousPanel === 3) {
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+          }
+          if (previousPanel === 0) {
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+          }
+          if (previousPanel === 1) {
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+          }
+        });
+        finalSize = new THREE.Vector3(
+          panelThickness,
+          expandedBounds.max.y - expandedBounds.min.y,
+          expandedBounds.max.z - expandedBounds.min.z
+        );
+        finalPosition = new THREE.Vector3(
+          hw - panelThickness / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
+        );
+        break;
+
+      case 5: // Left face
+        originalBounds = new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw + panelThickness, hh, hd)
+        );
+        expandedBounds = originalBounds.clone();
+        previousPanels.forEach((previousPanel) => {
+          if (previousPanel === 2) {
+            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
+          }
+          if (previousPanel === 3) {
+            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
+          }
+          if (previousPanel === 0) {
+            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
+          }
+          if (previousPanel === 1) {
+            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
+          }
+        });
+        finalSize = new THREE.Vector3(
+          panelThickness,
+          expandedBounds.max.y - expandedBounds.min.y,
+          expandedBounds.max.z - expandedBounds.min.z
+        );
+        finalPosition = new THREE.Vector3(
+          -hw + panelThickness / 2,
+          (expandedBounds.max.y + expandedBounds.min.y) / 2,
+          (expandedBounds.max.z + expandedBounds.min.z) / 2
+        );
+        break;
+
       default:
-        finalSize = new THREE.Vector3(100, 100, 10);
-        finalPosition = new THREE.Vector3(0, 0, 0);
-        break;
+        originalBounds = new THREE.Box3();
+        expandedBounds = new THREE.Box3();
+        finalPosition = new THREE.Vector3();
+        finalSize = new THREE.Vector3(
+          panelThickness,
+          panelThickness,
+          panelThickness
+        );
     }
-    
-    // Panelin rotasyonunu dikkate alarak boyutu ayarla
-    const finalRotatedSize = new THREE.Vector3();
-    const euler = faceTransforms[faceIndex].rotation;
-    const quaternion = new THREE.Quaternion().setFromEuler(euler);
-    finalRotatedSize.copy(finalSize).applyQuaternion(quaternion);
 
     return {
       faceIndex,
+      originalBounds,
+      expandedBounds,
       finalPosition,
       finalSize,
+      thickness: panelThickness,
+      cuttingSurfaces: previousPanels,
+      isLastPanel,
       panelOrder,
     };
   };
 
   const smartPanelData = useMemo(() => {
     if (shape.type !== 'box' || selectedFaces.length === 0) return [];
-    return selectedFaces.map((faceIndex, index) =>
-      calculateSmartPanelBounds(faceIndex, selectedFaces, index)
-    );
-  }, [shape.type, shape.parameters, selectedFaces]);
-  
-  const ghostPanelData = useMemo(() => {
-    if (!isAddPanelMode || scannedFace === null) return null;
-    const panelOrder = selectedFaces.length;
-    return calculateSmartPanelBounds(scannedFace, selectedFaces, panelOrder);
-  }, [isAddPanelMode, scannedFace, selectedFaces, shape.parameters]);
+    return selectedFaces.map((faceIndex, index) => {
+      const panelOrder = index;
+      const smartBounds = calculateSmartPanelBounds(
+        faceIndex,
+        selectedFaces,
+        panelOrder
+      );
 
-  const ghostPanelMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#fbbf24',
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide,
-    depthTest: false,
-  }), []);
+      const geometry = new THREE.BoxGeometry(
+        smartBounds.finalSize.x,
+        smartBounds.finalSize.y,
+        smartBounds.finalSize.z
+      );
+
+      return {
+        faceIndex,
+        geometry,
+        position: smartBounds.finalPosition,
+        size: smartBounds.finalSize,
+        panelOrder: smartBounds.panelOrder,
+      };
+    });
+  }, [shape.type, shape.parameters, selectedFaces]);
 
   const getPanelMaterial = (faceIndex: number) => {
-    if (faceIndex === 2 || faceIndex === 3) return woodMaterials.horizontal;
+    if (faceIndex === 2 || faceIndex === 3) {
+      return woodMaterials.horizontal;
+    }
     return woodMaterials.vertical;
+  };
+
+  const getPanelColor = (faceIndex: number) => {
+    if (isPanelEditMode && selectedFaces.includes(faceIndex)) {
+      return '#dc2626'; // RED for panels in edit mode
+    }
+    return getPanelMaterial(faceIndex);
   };
 
   const getPanelEdgeColor = () => {
     switch (viewMode) {
-      case ViewMode.WIREFRAME: return '#ffffff';
-      case ViewMode.TRANSPARENT: return '#000000';
-      case ViewMode.SOLID: return '#2a2a2a';
-      default: return '#2a2a2a';
+      case ViewMode.WIREFRAME:
+        return '#ffffff'; // White edges in wireframe mode
+      case ViewMode.TRANSPARENT:
+        return '#000000'; // Black edges in transparent mode
+      case ViewMode.SOLID:
+        return '#2a2a2a'; // Dark gray in solid mode
+      default:
+        return '#2a2a2a';
     }
   };
 
-  const getPanelEdgeLineWidth = () => {
-    const screenWidth = window.innerWidth;
-    if (screenWidth < 768) return 1.0;
-    if (screenWidth < 1024) return 1.5;
-    return 2.0;
-  };
-  
-  const handleClick = useCallback((e: any) => {
-    e.stopPropagation();
-    if (isAddPanelMode && e.nativeEvent.button === 0) {
-      const faceIndex = e.object.userData.faceIndex;
-      if (faceIndex !== undefined) {
-        setScannedFace(faceIndex);
-      }
+  const handleClick = (e: any, faceIndex: number) => {
+    if (isAddPanelMode) {
+      e.stopPropagation();
+      onFaceSelect(faceIndex);
     } else if (isPanelEditMode) {
+      e.stopPropagation();
       const panelData = smartPanelData.find(
-        (panel) => panel.faceIndex === e.object.userData.faceIndex
+        (panel) => panel.faceIndex === faceIndex
       );
       if (panelData && onPanelSelect) {
         onPanelSelect({
           faceIndex: panelData.faceIndex,
-          position: panelData.finalPosition,
-          size: panelData.finalSize,
+          position: panelData.position,
+          size: panelData.size,
           panelOrder: panelData.panelOrder,
         });
       }
     }
-  }, [isAddPanelMode, onPanelAdd, isPanelEditMode, onPanelSelect, smartPanelData]);
+  };
 
-  const handleContextMenu = useCallback((e: any) => {
-    e.stopPropagation();
-    e.nativeEvent.preventDefault();
-    if (isAddPanelMode && scannedFace !== null) {
-      onPanelAdd(scannedFace);
-      setScannedFace(null);
+  const handleFaceHover = (faceIndex: number | null) => {
+    if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
+      onFaceHover(faceIndex);
     }
-  }, [isAddPanelMode, onPanelAdd, scannedFace]);
-
-  const handlePointerMove = useCallback((e: any) => {
-    if (!isAddPanelMode) return;
-    const faceIndex = e.object.userData.faceIndex;
-    if (faceIndex !== undefined && scannedFace !== faceIndex) {
-      setScannedFace(faceIndex);
-    }
-  }, [isAddPanelMode, scannedFace]);
-
-  const handlePointerOut = useCallback(() => {
-    if (isAddPanelMode) {
-      setScannedFace(null);
-    }
-  }, [isAddPanelMode]);
+  };
 
   const getFaceColor = (faceIndex: number) => {
-    if (selectedFaces.includes(faceIndex)) return '#10b981';
-    if (scannedFace === faceIndex) return '#fbbf24';
-    return '#3b82f6';
+    if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
+    if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
+    return '#3b82f6'; // Blue for default
   };
 
   const getFaceOpacity = (faceIndex: number) => {
-    if (isAddPanelMode && scannedFace === faceIndex) return 0.5;
     if (selectedFaces.includes(faceIndex)) return 0.0;
+    if (hoveredFace === faceIndex) return 0.0;
     return 0.001;
   };
 
-  if ((!isAddPanelMode && !isPanelEditMode && selectedFaces.length === 0) || shape.type !== 'box') {
+  const getPanelEdgeLineWidth = () => {
+    const screenWidth = window.innerWidth;
+    if (screenWidth < 768) {
+      return 1.0;
+    } else if (screenWidth < 1024) {
+      return 1.5;
+    } else {
+      return 2.0;
+    }
+  };
+
+  if (
+    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
+    shape.type !== 'box'
+  ) {
     return null;
   }
 
+  // Face positions and rotations for box
+  const faceTransforms = useMemo(() => {
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    return [
+      // Front face (0) - Z+
+      { position: [0, 0, hd], rotation: [0, 0, 0] },
+      // Back face (1) - Z-
+      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
+      // Top face (2) - Y+
+      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
+      // Bottom face (3) - Y-
+      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
+      // Right face (4) - X+
+      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
+      // Left face (5) - X-
+      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+    ];
+  }, [shape.parameters]);
+
   return (
     <group>
-      {faceTransforms.map((transform, faceIndex) => (
-        <mesh
-          key={`face-overlay-${faceIndex}`}
-          geometry={new THREE.PlaneGeometry(
-            faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
-            faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
-          )}
-          position={[
-            shape.position[0] + transform.position.x,
-            shape.position[1] + transform.position.y,
-            shape.position[2] + transform.position.z,
-          ]}
-          rotation={transform.rotation}
-          onClick={(e) => handleClick(e, faceIndex)}
-          onContextMenu={handleContextMenu}
-          onPointerMove={handlePointerMove}
-          onPointerOut={handlePointerOut}
-          userData={{ faceIndex }}
-        >
-          <meshBasicMaterial
-            color={getFaceColor(faceIndex)}
-            transparent
-            opacity={getFaceOpacity(faceIndex)}
-            side={THREE.DoubleSide}
-            depthTest={false}
-          />
-        </mesh>
-      ))}
-      
-      {isAddPanelMode && scannedFace !== null && (
-        <mesh
-          key={`ghost-panel-${scannedFace}`}
-          geometry={new THREE.BoxGeometry(
-            scannedFace === 2 || scannedFace === 3 ? shape.parameters.width : (scannedFace === 4 || scannedFace === 5 ? shape.parameters.depth : shape.parameters.width),
-            scannedFace === 2 || scannedFace === 3 ? shape.parameters.depth : shape.parameters.height,
-            panelThickness
-          )}
-          position={[
-            shape.position[0] + faceTransforms[scannedFace].position.x,
-            shape.position[1] + faceTransforms[scannedFace].position.y,
-            shape.position[2] + faceTransforms[scannedFace].position.z,
-          ]}
-          rotation={faceTransforms[scannedFace].rotation}
-          material={ghostPanelMaterial}
-        />
-      )}
+      {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
+      {showFaces &&
+        faceTransforms.map((transform, faceIndex) => {
+          const opacity = getFaceOpacity(faceIndex);
 
+          return (
+            <mesh
+              key={`face-${faceIndex}`}
+              geometry={new THREE.PlaneGeometry(
+                faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
+                faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
+              )}
+              position={[
+                shape.position[0] + transform.position[0],
+                shape.position[1] + transform.position[1],
+                shape.position[2] + transform.position[2],
+              ]}
+              rotation={[
+                shape.rotation[0] + transform.rotation[0],
+                shape.rotation[1] + transform.rotation[1],
+                shape.rotation[2] + transform.rotation[2],
+              ]}
+              scale={shape.scale}
+              onClick={(e) => handleClick(e, faceIndex)}
+              onPointerEnter={() => handleFaceHover(faceIndex)}
+              onPointerLeave={() => handleFaceHover(null)}
+            >
+              <meshBasicMaterial
+                color={getFaceColor(faceIndex)}
+                transparent
+                opacity={opacity}
+                side={THREE.DoubleSide}
+                depthTest={false}
+              />
+            </mesh>
+          );
+        })}
+
+      {/* 🎯 GUARANTEED LAST PANEL SHRINKS - Wood panels with guaranteed sizing */}
       {smartPanelData.map((panelData) => (
         <mesh
           key={`guaranteed-panel-${panelData.faceIndex}`}
-          geometry={new THREE.BoxGeometry(
-            panelData.finalSize.x,
-            panelData.finalSize.y,
-            panelData.finalSize.z
-          )}
+          geometry={panelData.geometry}
           position={[
-            shape.position[0] + panelData.finalPosition.x,
-            shape.position[1] + panelData.finalPosition.y,
-            shape.position[2] + panelData.finalPosition.z,
+            shape.position[0] + panelData.position.x,
+            shape.position[1] + panelData.position.y,
+            shape.position[2] + panelData.position.z,
           ]}
-          rotation={faceTransforms[panelData.faceIndex].rotation}
+          rotation={shape.rotation}
+          scale={shape.scale}
           castShadow
           receiveShadow
+          // Hide mesh in wireframe mode
           visible={viewMode !== ViewMode.WIREFRAME}
+          // 🔴 NEW: Click handler for panel edit mode
           onClick={(e) => {
             if (isPanelEditMode) {
               e.stopPropagation();
               if (onPanelSelect) {
                 onPanelSelect({
                   faceIndex: panelData.faceIndex,
-                  position: panelData.finalPosition,
-                  size: panelData.finalSize,
+                  position: panelData.position,
+                  size: panelData.size,
                   panelOrder: panelData.panelOrder,
                 });
+                console.log(
+                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
+                );
               }
             }
           }}
@@ -378,20 +585,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       ))}
 
+      {/* 🎨 PROFESSIONAL SHARP EDGES - Clear black outlines */}
       {smartPanelData.map((panelData) => (
         <lineSegments
           key={`guaranteed-panel-edges-${panelData.faceIndex}`}
-          geometry={new THREE.EdgesGeometry(new THREE.BoxGeometry(
-            panelData.finalSize.x,
-            panelData.finalSize.y,
-            panelData.finalSize.z
-          ))}
+          geometry={new THREE.EdgesGeometry(panelData.geometry)}
           position={[
-            shape.position[0] + panelData.finalPosition.x,
-            shape.position[1] + panelData.finalPosition.y,
-            shape.position[2] + panelData.finalPosition.z,
+            shape.position[0] + panelData.position.x,
+            shape.position[1] + panelData.position.y,
+            shape.position[2] + panelData.position.z,
           ]}
-          rotation={faceTransforms[panelData.faceIndex].rotation}
+          rotation={shape.rotation}
+          scale={shape.scale}
           visible={
             viewMode === ViewMode.WIREFRAME ||
             isPanelEditMode ||
@@ -402,7 +607,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()}
             linewidth={getPanelEdgeLineWidth()}
             transparent={
-              viewMode === ViewMode.TRANSPARENT || viewMode === ViewMode.WIREFRAME
+              viewMode === ViewMode.TRANSPARENT ||
+              viewMode === ViewMode.WIREFRAME
             }
             opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
             depthTest={viewMode === ViewMode.SOLID}
