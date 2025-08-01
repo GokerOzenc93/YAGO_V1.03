@@ -121,14 +121,18 @@ export const extrudeShape = (
     }
     case 'polyline':
     case 'polygon': {
-      geometry = createPolylineGeometry(shape.points, height, gridSize);
-      // Position the extruded shape exactly where it was drawn
-      // Y position at half height so it sits on the drawing plane and extends upward
-      // Calculate the actual center of the drawn polyline to position the solid there
+      // Create geometry with original positioning
+      geometry = createPolylineGeometry(shape.points, height, gridSize, true);
+      
+      // Calculate the center of the original polyline points
       const center = calculatePolylineCenter(shape.points);
+      
+      // Position the solid at the polyline center, with base at ground level
       position = [center.x, height / 2, center.z];
+      
       shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
       console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm`);
+      console.log(`Solid positioned at polyline center: [${center.x.toFixed(1)}, ${height / 2}, ${center.z.toFixed(1)}]`);
       break;
     }
     default:

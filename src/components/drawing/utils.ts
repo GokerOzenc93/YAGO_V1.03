@@ -55,16 +55,26 @@ export const calculatePolylineCenter = (points: THREE.Vector3[]): THREE.Vector3 
   if (points.length === 0) return new THREE.Vector3(0, 0, 0);
   
   const center = new THREE.Vector3(0, 0, 0);
-  let validPoints = 0;
   
-  for (let i = 0; i < points.length - 1; i++) {
+  // Calculate the geometric center of all points
+  for (let i = 0; i < points.length; i++) {
+    // Skip the last point if it's the same as first (closed shape)
+    if (i === points.length - 1 && points[i].equals(points[0])) {
+      continue;
+    }
     center.add(points[i]);
-    validPoints++;
   }
   
-  if (validPoints > 0) {
-    center.divideScalar(validPoints);
+  // Get unique point count (excluding duplicate closing point)
+  const uniquePointCount = points.length > 2 && points[points.length - 1].equals(points[0]) 
+    ? points.length - 1 
+    : points.length;
+  
+  if (uniquePointCount > 0) {
+    center.divideScalar(uniquePointCount);
   }
+  
+  console.log(`Polyline center calculated from ${uniquePointCount} unique points: [${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}]`);
   
   return center;
 };
