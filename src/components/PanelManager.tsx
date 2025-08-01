@@ -37,6 +37,7 @@ export interface DepthPlacementOption {
   size: THREE.Vector3;
   label: string;
   description: string;
+  faceName: string; // NEW: Face name for display
 }
 
 interface SmartPanelBounds {
@@ -467,6 +468,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     // Define depth increments (in mm)
     const depthIncrements = [0, 18, 36, 54, 72, 100, 150, 200];
     
+    // Face names for display
+    const faceNames = {
+      0: 'Ön Yüzey',
+      1: 'Arka Yüzey', 
+      2: 'Üst Yüzey',
+      3: 'Alt Yüzey',
+      4: 'Sağ Yüzey',
+      5: 'Sol Yüzey'
+    };
+    
     depthIncrements.forEach((depthOffset, index) => {
       let position: THREE.Vector3;
       let size: THREE.Vector3;
@@ -477,38 +488,38 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         case 0: // Front face
           position = new THREE.Vector3(0, 0, (depth/2) - panelThickness/2 - depthOffset);
           size = new THREE.Vector3(width, height, panelThickness);
-          label = `Front Panel ${index === 0 ? '(Surface)' : `- ${depthOffset}mm`}`;
-          description = index === 0 ? 'Surface mounted panel' : `Panel recessed ${depthOffset}mm into cabinet`;
+          label = `${faceNames[0]} ${index === 0 ? '(Yüzey)' : `- ${depthOffset}mm`}`;
+          description = index === 0 ? 'Yüzeye monte panel' : `Panel ${depthOffset}mm içeri yerleştirildi`;
           break;
         case 1: // Back face
           position = new THREE.Vector3(0, 0, -(depth/2) + panelThickness/2 + depthOffset);
           size = new THREE.Vector3(width, height, panelThickness);
-          label = `Back Panel ${index === 0 ? '(Surface)' : `+ ${depthOffset}mm`}`;
-          description = index === 0 ? 'Surface mounted panel' : `Panel extended ${depthOffset}mm from back`;
+          label = `${faceNames[1]} ${index === 0 ? '(Yüzey)' : `+ ${depthOffset}mm`}`;
+          description = index === 0 ? 'Yüzeye monte panel' : `Panel arkadan ${depthOffset}mm uzatıldı`;
           break;
         case 2: // Top face
           position = new THREE.Vector3(0, (height/2) - panelThickness/2 - depthOffset, 0);
           size = new THREE.Vector3(width, panelThickness, depth);
-          label = `Top Panel ${index === 0 ? '(Surface)' : `- ${depthOffset}mm`}`;
-          description = index === 0 ? 'Surface mounted panel' : `Panel lowered ${depthOffset}mm from top`;
+          label = `${faceNames[2]} ${index === 0 ? '(Yüzey)' : `- ${depthOffset}mm`}`;
+          description = index === 0 ? 'Yüzeye monte panel' : `Panel üstten ${depthOffset}mm alçaltıldı`;
           break;
         case 3: // Bottom face
           position = new THREE.Vector3(0, -(height/2) + panelThickness/2 + depthOffset, 0);
           size = new THREE.Vector3(width, panelThickness, depth);
-          label = `Bottom Panel ${index === 0 ? '(Surface)' : `+ ${depthOffset}mm`}`;
-          description = index === 0 ? 'Surface mounted panel' : `Panel raised ${depthOffset}mm from bottom`;
+          label = `${faceNames[3]} ${index === 0 ? '(Yüzey)' : `+ ${depthOffset}mm`}`;
+          description = index === 0 ? 'Yüzeye monte panel' : `Panel alttan ${depthOffset}mm yükseltildi`;
           break;
         case 4: // Right face
           position = new THREE.Vector3((width/2) - panelThickness/2 - depthOffset, 0, 0);
           size = new THREE.Vector3(panelThickness, height, depth);
-          label = `Right Panel ${index === 0 ? '(Surface)' : `- ${depthOffset}mm`}`;
-          description = index === 0 ? 'Surface mounted panel' : `Panel moved ${depthOffset}mm inward from right`;
+          label = `${faceNames[4]} ${index === 0 ? '(Yüzey)' : `- ${depthOffset}mm`}`;
+          description = index === 0 ? 'Yüzeye monte panel' : `Panel sağdan ${depthOffset}mm içeri taşındı`;
           break;
         case 5: // Left face
           position = new THREE.Vector3(-(width/2) + panelThickness/2 + depthOffset, 0, 0);
           size = new THREE.Vector3(panelThickness, height, depth);
-          label = `Left Panel ${index === 0 ? '(Surface)' : `+ ${depthOffset}mm`}`;
-          description = index === 0 ? 'Surface mounted panel' : `Panel moved ${depthOffset}mm inward from left`;
+          label = `${faceNames[5]} ${index === 0 ? '(Yüzey)' : `+ ${depthOffset}mm`}`;
+          description = index === 0 ? 'Yüzeye monte panel' : `Panel soldan ${depthOffset}mm içeri taşındı`;
           break;
         default:
           return;
@@ -522,6 +533,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         size,
         label,
         description,
+        faceName: faceNames[faceIndex] || `Yüzey ${faceIndex}`,
       });
     });
     
