@@ -321,10 +321,9 @@ const Scene: React.FC = () => {
   // 🔴 NEW: Panel Edit Mode State
   const [isPanelEditMode, setIsPanelEditMode] = useState(false);
 
-  // NEW: Face selection popup state
-  const [showFaceSelection, setShowFaceSelection] = useState(false);
-  const [faceSelectionOptions, setFaceSelectionOptions] = useState<FaceSelectionOption[]>([]);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  // NEW: Dynamic face selection state
+  const [isDynamicSelectionMode, setIsDynamicSelectionMode] = useState(false);
+  const [selectedDynamicFace, setSelectedDynamicFace] = useState<number | null>(null);
 
   // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
   const [shapePanels, setShapePanels] = useState<{
@@ -565,6 +564,10 @@ const Scene: React.FC = () => {
     // 🔴 NEW: Reset panel edit mode
     setIsPanelEditMode(false);
 
+    // NEW: Reset dynamic selection mode
+    setIsDynamicSelectionMode(false);
+    setSelectedDynamicFace(null);
+
     // Reset face cycle state
     setFaceCycleState({
       selectedFace: null,
@@ -706,37 +709,10 @@ const Scene: React.FC = () => {
     });
   };
 
-  // NEW: Handle face selection popup show
-  const handleShowFaceSelection = (options: FaceSelectionOption[], position: { x: number; y: number }) => {
-    setFaceSelectionOptions(options);
-    setPopupPosition(position);
-    setShowFaceSelection(true);
-    console.log(`Face selection popup shown with ${options.length} options`);
-  };
-
-  // NEW: Handle face selection popup hide
-  const handleHideFaceSelection = () => {
-    setShowFaceSelection(false);
-    setFaceSelectionOptions([]);
-    console.log('Face selection popup hidden');
-  };
-
-  // NEW: Handle face option selection
-  const handleSelectFaceOption = (option: FaceSelectionOption) => {
-    // Call the global handler set by PanelManager
-    if ((window as any).handleFaceOptionSelect) {
-      (window as any).handleFaceOptionSelect(option);
-    }
-    handleHideFaceSelection();
-  };
-
-  // NEW: Handle popup cancel
-  const handlePopupCancel = () => {
-    // Call the global handler set by PanelManager
-    if ((window as any).handlePopupCancel) {
-      (window as any).handlePopupCancel();
-    }
-    handleHideFaceSelection();
+  // NEW: Handle dynamic face selection
+  const handleDynamicFaceSelect = (faceIndex: number) => {
+    setSelectedDynamicFace(faceIndex);
+    console.log(`🎯 Dynamic face selected: ${faceIndex}`);
   };
 
   // Handle face cycle updates from OpenCascadeShape
@@ -764,6 +740,19 @@ const Scene: React.FC = () => {
     return shapePanels[shapeId] || [];
   };
 
+  // NEW: Toggle dynamic selection mode
+  const toggleDynamicSelectionMode = () => {
+    const newMode = !isDynamicSelectionMode;
+    setIsDynamicSelectionMode(newMode);
+    setSelectedDynamicFace(null);
+    
+    if (newMode) {
+      console.log('🎯 Dynamic Face Selection Mode ACTIVATED');
+      console.log('Instructions: Left click to select/cycle faces, Right click to add panel');
+    } else {
+      console.log('🎯 Dynamic Face Selection Mode DEACTIVATED');
+    }
+  };
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
@@ -784,6 +773,32 @@ const Scene: React.FC = () => {
           isPanelEditMode={isPanelEditMode}
           setIsPanelEditMode={setIsPanelEditMode}
         />
+      )}
+
+      {/* NEW: Dynamic Selection Mode Toggle Button */}
+      {isEditMode && editedShape && (
+        <button
+          onClick={toggleDynamicSelectionMode}
+          className={`fixed top-32 left-4 px-4 py-2 rounded-lg shadow-lg z-40 transition-colors ${
+            isDynamicSelectionMode
+              ? 'bg-yellow-500/90 text-black'
+              : 'bg-gray-700/90 text-white hover:bg-gray-600/90'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              isDynamicSelectionMode ? 'bg-black animate-pulse' : 'bg-gray-400'
+            }`}></div>
+            <span className="text-sm font-medium">
+              {isDynamicSelectionMode ? 'Dinamik Seçim Aktif' : 'Dinamik Seçim'}
+            </span>
+          </div>
+          {isDynamicSelectionMode && (
+            <div className="text-xs mt-1">
+              Sol tık: Seç/Değiştir | Sağ tık: Panel ekle
+            </div>
+          )}
+        </button>
       )}
 
       <Canvas
@@ -907,11 +922,12 @@ const Scene: React.FC = () => {
               // 🔴 NEW: Panel Edit Mode props
               isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
               onPanelSelect={handlePanelSelect}
-              onShowFaceSelection={handleShowFaceSelection}
-              onHideFaceSelection={handleHideFaceSelection}
-              onSelectFace={handleSelectFaceOption}
               faceCycleState={faceCycleState}
               setFaceCycleState={setFaceCycleState}
+              // NEW: Dynamic face selection props
+              onDynamicFaceSelect={handleDynamicFaceSelect}
+              selectedDynamicFace={selectedDynamicFace}
+              isDynamicSelectionMode={isDynamicSelectionMode && isCurrentlyEditing}
             />
           );
         })}
@@ -1018,16 +1034,19 @@ const Scene: React.FC = () => {
           document.body
         )}
 
-      {/* NEW: Face selection popup - Rendered outside Canvas */}
-      {showFaceSelection &&
+      {/* NEW: Dynamic Selection Mode Indicator */}
+      {isDynamicSelectionMode && selectedDynamicFace !== null &&
         typeof document !== 'undefined' &&
         createPortal(
-          <FaceSelectionPopup
-            options={faceSelectionOptions}
-            position={popupPosition}
-            onSelect={handleSelectFaceOption}
-            onCancel={handlePopupCancel}
-          />,
+          <div className="fixed top-20 right-4 bg-yellow-500/90 backdrop-blur-sm text-black px-3 py-2 rounded-lg shadow-lg z-40">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Seçili Yüzey: {selectedDynamicFace}</span>
+            </div>
+            <div className="text-xs mt-1">
+              Sol tık: Sonraki yüzey | Sağ tık: Panel ekle
+            </div>
+          </div>,
           document.body
         )}
 

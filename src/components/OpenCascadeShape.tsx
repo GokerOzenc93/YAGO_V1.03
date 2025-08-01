@@ -75,6 +75,10 @@ const OpenCascadeShape: React.FC<Props> = ({
   onSelectFace,
   faceCycleState,
   setFaceCycleState,
+  // NEW: Dynamic face selection props
+  onDynamicFaceSelect,
+  selectedDynamicFace,
+  isDynamicSelectionMode,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -319,6 +323,9 @@ const OpenCascadeShape: React.FC<Props> = ({
         onShowFaceSelection={onShowFaceSelection}
         onHideFaceSelection={onHideFaceSelection}
         onSelectFace={onSelectFace}
+        onDynamicFaceSelect={onDynamicFaceSelect}
+        selectedDynamicFace={selectedDynamicFace}
+        isDynamicSelectionMode={isDynamicSelectionMode}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}

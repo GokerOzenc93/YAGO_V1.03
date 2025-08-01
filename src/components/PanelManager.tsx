@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
-import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
+import { ViewMode, useAppStore } from '../store/appStore';
 
 interface PanelManagerProps {
   shape: Shape;
@@ -26,20 +26,20 @@ interface PanelManagerProps {
   onShowFaceSelection?: (faces: FaceSelectionOption[], position: { x: number; y: number }) => void;
   onHideFaceSelection?: () => void;
   onSelectFace?: (faceIndex: number) => void;
+  // NEW: Dynamic face selection props
+  onDynamicFaceSelect?: (faceIndex: number) => void;
+  selectedDynamicFace?: number | null;
+  isDynamicSelectionMode?: boolean;
 }
 
-// NEW: Interface for face selection options
-export interface FaceSelectionOption {
-  id: string;
-  faceIndex: number;
-  position: THREE.Vector3;
-  size: THREE.Vector3;
-  name: string;
-  description: string;
+// NEW: Geometric face detection system
+interface GeometricFace {
+  index: number;
+  center: THREE.Vector3;
   normal: THREE.Vector3;
   area: number;
-  isSelected: boolean;
-  isHovered: boolean;
+  vertices: THREE.Vector3[];
+  bounds: THREE.Box3;
 }
 
 interface SmartPanelBounds {
@@ -69,16 +69,188 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   onShowFaceSelection,
   onHideFaceSelection,
   onSelectFace,
+  onDynamicFaceSelect,
+  selectedDynamicFace,
+  isDynamicSelectionMode = false,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
 
   const { viewMode } = useAppStore();
 
-  // NEW: State for face selection
-  const [scannedFace, setScannedFace] = useState<number | null>(null);
-  const [faceOptions, setFaceOptions] = useState<FaceSelectionOption[]>([]);
-  const [highlightedFaces, setHighlightedFaces] = useState<FaceSelectionOption[]>([]);
-  const [clickedFace, setClickedFace] = useState<number | null>(null);
+  // NEW: Geometric face detection
+  const geometricFaces = useMemo(() => {
+    if (shape.type !== 'box') return [];
+    
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+    
+    const faces: GeometricFace[] = [
+      // Front face (0)
+      {
+        index: 0,
+        center: new THREE.Vector3(0, 0, hd),
+        normal: new THREE.Vector3(0, 0, 1),
+        area: width * height,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, hh, hd),
+          new THREE.Vector3(-hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, hd - 1),
+          new THREE.Vector3(hw, hh, hd + 1)
+        )
+      },
+      // Back face (1)
+      {
+        index: 1,
+        center: new THREE.Vector3(0, 0, -hd),
+        normal: new THREE.Vector3(0, 0, -1),
+        area: width * height,
+        vertices: [
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd - 1),
+          new THREE.Vector3(hw, hh, -hd + 1)
+        )
+      },
+      // Top face (2)
+      {
+        index: 2,
+        center: new THREE.Vector3(0, hh, 0),
+        normal: new THREE.Vector3(0, 1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd),
+          new THREE.Vector3(-hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, hh - 1, -hd),
+          new THREE.Vector3(hw, hh + 1, hd)
+        )
+      },
+      // Bottom face (3)
+      {
+        index: 3,
+        center: new THREE.Vector3(0, -hh, 0),
+        normal: new THREE.Vector3(0, -1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh - 1, -hd),
+          new THREE.Vector3(hw, -hh + 1, hd)
+        )
+      },
+      // Right face (4)
+      {
+        index: 4,
+        center: new THREE.Vector3(hw, 0, 0),
+        normal: new THREE.Vector3(1, 0, 0),
+        area: height * depth,
+        vertices: [
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(hw - 1, -hh, -hd),
+          new THREE.Vector3(hw + 1, hh, hd)
+        )
+      },
+      // Left face (5)
+      {
+        index: 5,
+        center: new THREE.Vector3(-hw, 0, 0),
+        normal: new THREE.Vector3(-1, 0, 0),
+        area: height * depth,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(-hw, hh, hd),
+          new THREE.Vector3(-hw, hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw - 1, -hh, -hd),
+          new THREE.Vector3(-hw + 1, hh, hd)
+        )
+      }
+    ];
+    
+    return faces;
+  }, [shape.parameters]);
+
+  // NEW: Find closest face to a 3D point using geometric calculations
+  const findClosestFace = useCallback((worldPoint: THREE.Vector3): number | null => {
+    if (geometricFaces.length === 0) return null;
+    
+    // Convert world point to local space
+    const localPoint = worldPoint.clone().sub(new THREE.Vector3(...shape.position));
+    
+    let closestFace = -1;
+    let minDistance = Infinity;
+    
+    geometricFaces.forEach((face) => {
+      // Calculate distance from point to face plane
+      const faceToPoint = localPoint.clone().sub(face.center);
+      const distanceToPlane = Math.abs(faceToPoint.dot(face.normal));
+      
+      // Check if point projection is within face bounds
+      const projection = localPoint.clone().sub(face.normal.clone().multiplyScalar(faceToPoint.dot(face.normal)));
+      
+      if (face.bounds.containsPoint(projection) && distanceToPlane < minDistance) {
+        minDistance = distanceToPlane;
+        closestFace = face.index;
+      }
+    });
+    
+    return closestFace !== -1 ? closestFace : null;
+  }, [geometricFaces, shape.position]);
+
+  // NEW: Find next face in sequence (cycling through faces)
+  const findNextFace = useCallback((currentFace: number): number => {
+    if (geometricFaces.length === 0) return currentFace;
+    
+    const currentFaceData = geometricFaces.find(f => f.index === currentFace);
+    if (!currentFaceData) return (currentFace + 1) % 6;
+    
+    // Find adjacent faces (faces that share edges/vertices)
+    const adjacentFaces: number[] = [];
+    
+    geometricFaces.forEach((face) => {
+      if (face.index === currentFace) return;
+      
+      // Check if faces are adjacent by comparing normals
+      const dotProduct = Math.abs(currentFaceData.normal.dot(face.normal));
+      
+      // Adjacent faces have perpendicular normals (dot product ≈ 0)
+      if (dotProduct < 0.1) {
+        adjacentFaces.push(face.index);
+      }
+    });
+    
+    // If no adjacent faces found, just cycle to next face
+    if (adjacentFaces.length === 0) {
+      return (currentFace + 1) % 6;
+    }
+    
+    // Return first adjacent face
+    return adjacentFaces[0];
+  }, [geometricFaces]);
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -462,180 +634,50 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     ];
   }, [shape.parameters]);
 
-  // NEW: Generate face selection options (all faces except current)
-  const generateFaceOptions = useCallback((currentFaceIndex: number): FaceSelectionOption[] => {
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const hw = width / 2;
-    const hh = height / 2;
-    const hd = depth / 2;
+  // NEW: Handle dynamic face selection with geometric detection
+  const handleDynamicClick = useCallback((e: any) => {
+    if (!isDynamicSelectionMode) return;
     
-    // Face definitions with names, positions, normals, and areas - ONLY OPPOSITE FACES
-    const faceNames = {
-      0: 'Front Face',
-      1: 'Back Face', 
-      2: 'Top Face',
-      3: 'Bottom Face',
-      4: 'Right Face',
-      5: 'Left Face'
-    };
+    e.stopPropagation();
     
-    // Define opposite face pairs
-    const oppositeFaces: { [key: number]: number[] } = {
-      0: [1], // Front -> Back
-      1: [0], // Back -> Front
-      2: [3], // Top -> Bottom
-      3: [2], // Bottom -> Top
-      4: [5], // Right -> Left
-      5: [4], // Left -> Right
-    };
-    
-    const faceData = [
-      { // Front face (0)
-        position: new THREE.Vector3(0, 0, hd),
-        size: new THREE.Vector3(width, height, panelThickness),
-        normal: new THREE.Vector3(0, 0, 1),
-        area: width * height
-      },
-      { // Back face (1)
-        position: new THREE.Vector3(0, 0, -hd),
-        size: new THREE.Vector3(width, height, panelThickness),
-        normal: new THREE.Vector3(0, 0, -1),
-        area: width * height
-      },
-      { // Top face (2)
-        position: new THREE.Vector3(0, hh, 0),
-        size: new THREE.Vector3(width, panelThickness, depth),
-        normal: new THREE.Vector3(0, 1, 0),
-        area: width * depth
-      },
-      { // Bottom face (3)
-        position: new THREE.Vector3(0, -hh, 0),
-        size: new THREE.Vector3(width, panelThickness, depth),
-        normal: new THREE.Vector3(0, -1, 0),
-        area: width * depth
-      },
-      { // Right face (4)
-        position: new THREE.Vector3(hw, 0, 0),
-        size: new THREE.Vector3(panelThickness, height, depth),
-        normal: new THREE.Vector3(1, 0, 0),
-        area: height * depth
-      },
-      { // Left face (5)
-        position: new THREE.Vector3(-hw, 0, 0),
-        size: new THREE.Vector3(panelThickness, height, depth),
-        normal: new THREE.Vector3(-1, 0, 0),
-        area: height * depth
+    if (e.nativeEvent.button === 0) {
+      // Left click - cycle through faces geometrically
+      const intersectionPoint = e.point; // Get 3D intersection point
+      
+      if (selectedDynamicFace === null) {
+        // First click - find closest face
+        const closestFace = findClosestFace(intersectionPoint);
+        if (closestFace !== null && onDynamicFaceSelect) {
+          onDynamicFaceSelect(closestFace);
+          console.log(`🎯 First click: Selected face ${closestFace} geometrically`);
+        }
+      } else {
+        // Subsequent clicks - find next adjacent face
+        const nextFace = findNextFace(selectedDynamicFace);
+        if (onDynamicFaceSelect) {
+          onDynamicFaceSelect(nextFace);
+          console.log(`🎯 Next click: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
+        }
       }
-    ];
-    
-    // Generate options ONLY for opposite faces
-    const opposites = oppositeFaces[currentFaceIndex] || [];
-    const options: FaceSelectionOption[] = [];
-    
-    for (const faceIndex of opposites) {
-      
-      const face = faceData[faceIndex];
-      const option: FaceSelectionOption = {
-        id: `face-${faceIndex}`,
-        faceIndex,
-        position: face.position,
-        size: face.size,
-        name: faceNames[faceIndex] || `Face ${faceIndex}`,
-        description: `Select ${faceNames[faceIndex]?.toLowerCase() || `face ${faceIndex}`} for panel placement`,
-        normal: face.normal,
-        area: face.area,
-        isSelected: false,
-        isHovered: false
-      };
-      
-      options.push(option);
+    } else if (e.nativeEvent.button === 2) {
+      // Right click - add panel to currently selected face
+      if (selectedDynamicFace !== null) {
+        onFaceSelect(selectedDynamicFace);
+        console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
+      }
     }
-    
-    // No need to sort since we only have 1 opposite face
-    return options;
-  }, [shape.parameters]);
+  }, [isDynamicSelectionMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
 
-  // NEW: Handle right-click for face selection
-  const handleRightClick = useCallback((e: any, faceIndex: number) => {
-    if (!isAddPanelMode) {
-      console.log('Panel add mode is not active - face selection disabled');
+  const handleClick = (e: any, faceIndex: number) => {
+    // NEW: Dynamic selection mode
+    if (isDynamicSelectionMode) {
+      handleDynamicClick(e);
       return;
     }
     
-    e.stopPropagation();
-    e.nativeEvent.preventDefault();
-    
-    console.log(`Right-clicked on face ${faceIndex} - showing alternative faces`);
-    
-    // Get mouse position for popup
-    const mouseX = e.nativeEvent.clientX;
-    const mouseY = e.nativeEvent.clientY;
-    
-    // Generate face selection options (exclude current face)
-    const options = generateFaceOptions(faceIndex);
-    
-    // Show face selection options
-    setClickedFace(faceIndex);
-    setFaceOptions(options);
-    setHighlightedFaces(options);
-    setScannedFace(null); // Clear yellow scanning
-    
-    // Show popup via callback
-    if (onShowFaceSelection) {
-      onShowFaceSelection(options, { x: mouseX, y: mouseY });
-    }
-    
-    console.log(`Generated ${options.length} alternative face options for face ${faceIndex}`);
-    console.log('Options:', options.map(opt => `${opt.name} (${opt.area.toFixed(0)}mm²)`));
-    console.log('Popup position:', { x: mouseX, y: mouseY });
-  }, [isAddPanelMode, generateFaceOptions, onShowFaceSelection]);
-
-  // NEW: Handle face selection
-  const handleFaceOptionSelect = useCallback((option: FaceSelectionOption) => {
-    // Select the chosen face
-    onFaceSelect(option.faceIndex);
-    
-    // Clean up
-    setFaceOptions([]);
-    setHighlightedFaces([]);
-    
-    // Hide popup via callback
-    if (onHideFaceSelection) {
-      onHideFaceSelection();
-    }
-    
-    console.log(`Face selected: ${option.name} (${option.area.toFixed(0)}mm²)`);
-  }, [onFaceSelect, onHideFaceSelection]);
-
-  // NEW: Handle popup cancel
-  const handlePopupCancel = useCallback(() => {
-    setClickedFace(null);
-    setFaceOptions([]);
-    setHighlightedFaces([]);
-    
-    // Hide popup via callback
-    if (onHideFaceSelection) {
-      onHideFaceSelection();
-    }
-    
-    console.log('Face selection cancelled');
-  }, [onHideFaceSelection]);
-
-  // Expose selection handler for external use
-  React.useEffect(() => {
-    if (onSelectFace) {
-      // This allows Scene.tsx to call the selection handler
-      (window as any).handleFaceOptionSelect = handleFaceOptionSelect;
-      (window as any).handlePopupCancel = handlePopupCancel;
-    }
-  }, [handleFaceOptionSelect, handlePopupCancel, onSelectFace]);
-
-  const handleClick = (e: any, faceIndex: number) => {
     if (isAddPanelMode && e.nativeEvent.button === 0) {
-      // Left click - just scan/hover
       e.stopPropagation();
-      console.log(`Left-clicked on face ${faceIndex} - direct selection`);
-      onFaceSelect(faceIndex); // Direct selection on left click
+      onFaceSelect(faceIndex);
     } else if (isPanelEditMode) {
       e.stopPropagation();
       const panelData = smartPanelData.find(
@@ -659,12 +701,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceColor = (faceIndex: number) => {
+    // NEW: Dynamic selection highlighting
+    if (isDynamicSelectionMode && selectedDynamicFace === faceIndex) {
+      return '#fbbf24'; // Yellow for dynamically selected face
+    }
     if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
     if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
     return '#3b82f6'; // Blue for default
   };
 
   const getFaceOpacity = (faceIndex: number) => {
+    // NEW: Dynamic selection visibility
+    if (isDynamicSelectionMode && selectedDynamicFace === faceIndex) {
+      return 0.7; // More visible for selected face
+    }
     if (selectedFaces.includes(faceIndex)) return 0.0;
     if (hoveredFace === faceIndex) return 0.0;
     return 0.001;
@@ -682,7 +732,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   if (
-    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
+    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode && !isDynamicSelectionMode) ||
     shape.type !== 'box'
   ) {
     return null;
@@ -714,7 +764,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               ]}
               scale={shape.scale}
               onClick={(e) => handleClick(e, faceIndex)}
-              onContextMenu={(e) => handleRightClick(e, faceIndex)}
+              onContextMenu={(e) => {
+                if (isDynamicSelectionMode) {
+                  handleDynamicClick(e);
+                } else {
+                  // Original right-click behavior for non-dynamic mode
+                  e.stopPropagation();
+                  e.nativeEvent.preventDefault();
+                }
+              }}
               onPointerEnter={() => handleFaceHover(faceIndex)}
               onPointerLeave={() => handleFaceHover(null)}
               userData={{ faceIndex }}
@@ -730,7 +788,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           );
         })}
 
-      {/* 🎯 GUARANTEED LAST PANEL SHRINKS - Wood panels with guaranteed sizing */}
+      {/* Wood panels with guaranteed sizing */}
       {smartPanelData.map((panelData) => (
         <mesh
           key={`guaranteed-panel-${panelData.faceIndex}`}
@@ -784,50 +842,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       ))}
 
-      {/* NEW: Face selection option highlights */}
-      {highlightedFaces.map((option, index) => (
-        <group key={`face-option-${option.id}`}>
-          {/* Blue highlight mesh for alternative faces */}
-          <mesh
-            geometry={new THREE.BoxGeometry(option.size.x, option.size.y, option.size.z)}
-            position={[
-              shape.position[0] + option.position.x,
-              shape.position[1] + option.position.y,
-              shape.position[2] + option.position.z,
-            ]}
-            rotation={shape.rotation}
-            scale={shape.scale}
-            visible={true}
-          >
-            <meshBasicMaterial
-              color="#3b82f6"
-              transparent
-              opacity={0.6}
-              side={THREE.DoubleSide}
-              depthTest={false}
-            />
-          </mesh>
-          
-          {/* Face label */}
-          <mesh
-            position={[
-              shape.position[0] + option.position.x,
-              shape.position[1] + option.position.y + option.size.y/2 + 20,
-              shape.position[2] + option.position.z,
-            ]}
-            visible={true}
-          >
-            <sphereGeometry args={[25]} />
-            <meshBasicMaterial
-              color="#ffffff" 
-              transparent={false}
-              depthTest={false}
-            />
-          </mesh>
-        </group>
-      ))}
-
-      {/* 🎨 PROFESSIONAL SHARP EDGES - Clear black outlines */}
+      {/* Panel edges */}
       {smartPanelData.map((panelData) => (
         <lineSegments
           key={`guaranteed-panel-edges-${panelData.faceIndex}`}
