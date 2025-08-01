@@ -78,7 +78,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   // NEW: Dynamic face selection props
   onDynamicFaceSelect,
   selectedDynamicFace,
-  isDynamicSelectionMode,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -102,7 +101,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // NEW: Handle dynamic face selection with geometric detection
   const handleDynamicClick = useCallback((e: any) => {
-    if (!isDynamicSelectionMode) return;
+    if (!isAddPanelMode) return;
     
     e.stopPropagation();
     
@@ -137,7 +136,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
       }
     }
-  }, [isDynamicSelectionMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect]);
+  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
 
   useEffect(() => {
     const controls = transformRef.current;
@@ -364,7 +363,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onSelectFace={onSelectFace}
         onDynamicFaceSelect={onDynamicFaceSelect}
         selectedDynamicFace={selectedDynamicFace}
-        isDynamicSelectionMode={isDynamicSelectionMode}
+        isDynamicSelectionMode={isAddPanelMode && isCurrentlyEditing}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}

@@ -657,7 +657,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // NEW: Handle dynamic face selection with geometric detection
   const handleDynamicClick = useCallback((e: any) => {
-    if (!isDynamicSelectionMode) return;
+    if (!isAddPanelMode) return;
     
     e.stopPropagation();
     
@@ -687,11 +687,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
       }
     }
-  }, [isDynamicSelectionMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
+  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
 
   const handleClick = (e: any, faceIndex: number) => {
-    // NEW: Dynamic selection mode
-    if (isDynamicSelectionMode) {
+    // Dynamic selection is always active in panel mode
+    if (isAddPanelMode) {
       handleDynamicClick(e);
       return;
     }
@@ -722,8 +722,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceColor = (faceIndex: number) => {
-    // NEW: Dynamic selection highlighting
-    if (isDynamicSelectionMode && selectedDynamicFace === faceIndex) {
+    // Dynamic selection highlighting (always active in panel mode)
+    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
       return '#fbbf24'; // Yellow for dynamically selected face
     }
     if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
@@ -732,8 +732,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceOpacity = (faceIndex: number) => {
-    // NEW: Dynamic selection visibility
-    if (isDynamicSelectionMode && selectedDynamicFace === faceIndex) {
+    // Dynamic selection visibility (always active in panel mode)
+    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
       return 0.7; // More visible for selected face
     }
     if (selectedFaces.includes(faceIndex)) return 0.0;
@@ -753,7 +753,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   if (
-    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode && !isDynamicSelectionMode) ||
+    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
     shape.type !== 'box'
   ) {
     return null;
@@ -786,7 +786,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               scale={shape.scale}
               onClick={(e) => handleClick(e, faceIndex)}
               onContextMenu={(e) => {
-                if (isDynamicSelectionMode) {
+                if (isAddPanelMode) {
                   handleDynamicClick(e);
                 } else {
                   // Original right-click behavior for non-dynamic mode

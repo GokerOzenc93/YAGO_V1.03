@@ -322,7 +322,6 @@ const Scene: React.FC = () => {
   const [isPanelEditMode, setIsPanelEditMode] = useState(false);
 
   // NEW: Dynamic face selection state
-  const [isDynamicSelectionMode, setIsDynamicSelectionMode] = useState(false);
   const [selectedDynamicFace, setSelectedDynamicFace] = useState<number | null>(null);
 
   // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
@@ -715,7 +714,47 @@ const Scene: React.FC = () => {
     console.log(`🎯 Dynamic face selected: ${faceIndex}`);
   };
 
-  // NEW: Global face detection functions for geometric calculations
+  // Reset dynamic face selection when panel mode changes
+  useEffect(() => {
+    if (!isAddPanelMode) {
+      setSelectedDynamicFace(null);
+    }
+  }, [isAddPanelMode]);
+
+  // Reset dynamic face selection when adding a panel
+  const handleFaceSelectWithReset = (faceIndex: number) => {
+    if (!isAddPanelMode) {
+      console.log('Panel add mode is not active');
+      return;
+    }
+    
+    setSelectedFaces((prev) => {
+      const newFaces = prev.includes(faceIndex)
+        ? prev.filter((f) => f !== faceIndex) // Remove if already selected
+        : [...prev, faceIndex]; // Add to selection
+
+      // 🎯 IMMEDIATE SAVE - Hemen kaydet
+      if (editingShapeId) {
+        setShapePanels((prevPanels) => ({
+          ...prevPanels,
+          [editingShapeId]: [...newFaces],
+        }));
+        console.log(
+          `🎯 GUARANTEED SYSTEM - Panel ${faceIndex} ${
+            prev.includes(faceIndex) ? 'removed from' : 'added to'
+          } shape ${editingShapeId} - Previous panels stay full size, last panel shrinks`
+        );
+      }
+
+      return newFaces;
+    });
+    
+    // Reset dynamic selection after adding panel
+    setSelectedDynamicFace(null);
+    console.log('🎯 Dynamic selection reset after panel addition');
+  };
+
+  // Global face detection functions for geometric calculations
   useEffect(() => {
     // Global function to find closest face to a clicked point
     (window as any).findClosestFaceToPoint = (worldPoint: THREE.Vector3, shape: Shape): number | null => {
@@ -817,19 +856,6 @@ const Scene: React.FC = () => {
     return shapePanels[shapeId] || [];
   };
 
-  // NEW: Toggle dynamic selection mode
-  const toggleDynamicSelectionMode = () => {
-    const newMode = !isDynamicSelectionMode;
-    setIsDynamicSelectionMode(newMode);
-    setSelectedDynamicFace(null);
-    
-    if (newMode) {
-      console.log('🎯 Dynamic Face Selection Mode ACTIVATED');
-      console.log('Instructions: Left click to select/cycle faces, Right click to add panel');
-    } else {
-      console.log('🎯 Dynamic Face Selection Mode DEACTIVATED');
-    }
-  };
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
@@ -850,32 +876,6 @@ const Scene: React.FC = () => {
           isPanelEditMode={isPanelEditMode}
           setIsPanelEditMode={setIsPanelEditMode}
         />
-      )}
-
-      {/* NEW: Dynamic Selection Mode Toggle Button */}
-      {isEditMode && editedShape && (
-        <button
-          onClick={toggleDynamicSelectionMode}
-          className={`fixed top-32 left-4 px-4 py-2 rounded-lg shadow-lg z-40 transition-colors ${
-            isDynamicSelectionMode
-              ? 'bg-yellow-500/90 text-black'
-              : 'bg-gray-700/90 text-white hover:bg-gray-600/90'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
-              isDynamicSelectionMode ? 'bg-black animate-pulse' : 'bg-gray-400'
-            }`}></div>
-            <span className="text-sm font-medium">
-              {isDynamicSelectionMode ? 'Dinamik Seçim Aktif' : 'Dinamik Seçim'}
-            </span>
-          </div>
-          {isDynamicSelectionMode && (
-            <div className="text-xs mt-1">
-              Sol tık: Seç/Değiştir | Sağ tık: Panel ekle
-            </div>
-          )}
-        </button>
       )}
 
       <Canvas
@@ -990,7 +990,7 @@ const Scene: React.FC = () => {
               selectedFaces={
                 isCurrentlyEditing ? selectedFaces : shapePersistentPanels
               } // 🎯 PERSISTENT PANELS
-              onFaceSelect={handleFaceSelect}
+              onFaceSelect={handleFaceSelectWithReset}
               onFaceHover={handleFaceHover}
               hoveredFace={hoveredFace}
               showEdges={showEdges}
@@ -1004,7 +1004,7 @@ const Scene: React.FC = () => {
               // NEW: Dynamic face selection props
               onDynamicFaceSelect={handleDynamicFaceSelect}
               selectedDynamicFace={selectedDynamicFace}
-              isDynamicSelectionMode={isDynamicSelectionMode && isCurrentlyEditing}
+              isDynamicSelectionMode={isAddPanelMode && isCurrentlyEditing}
             />
           );
         })}
@@ -1106,22 +1106,6 @@ const Scene: React.FC = () => {
             </div>
             <div className="text-xs text-red-200 mt-1">
               Click on panels to edit dimensions
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* NEW: Dynamic Selection Mode Indicator */}
-      {isDynamicSelectionMode && selectedDynamicFace !== null &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed top-20 right-4 bg-yellow-500/90 backdrop-blur-sm text-black px-3 py-2 rounded-lg shadow-lg z-40">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Seçili Yüzey: {selectedDynamicFace}</span>
-            </div>
-            <div className="text-xs mt-1">
-              Sol tık: Sonraki yüzey | Sağ tık: Panel ekle
             </div>
           </div>,
           document.body
