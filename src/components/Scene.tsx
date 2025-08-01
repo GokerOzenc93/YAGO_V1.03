@@ -24,7 +24,7 @@ import EditMode from './ui/EditMode';
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
-import { DepthPlacementOption } from './PanelManager';
+import { FaceSelectionOption } from './PanelManager';
 import * as THREE from 'three';
 
 const CameraPositionUpdater = () => {
@@ -61,43 +61,21 @@ interface MeasurementOverlayProps {
   onSubmit: (value: number) => void;
 }
 
-// NEW: Interface for placement popup
-interface PlacementPopupProps {
-  options: DepthPlacementOption[];
+// NEW: Interface for face selection popup
+interface FaceSelectionPopupProps {
+  options: FaceSelectionOption[];
   position: { x: number; y: number };
-  onSelect: (option: DepthPlacementOption) => void;
+  onSelect: (option: FaceSelectionOption) => void;
   onCancel: () => void;
 }
 
-// NEW: Placement selection popup component
-const PlacementPopup: React.FC<PlacementPopupProps> = ({
+// NEW: Face selection popup component
+const FaceSelectionPopup: React.FC<FaceSelectionPopupProps> = ({
   options,
   position,
   onSelect,
   onCancel,
 }) => {
-  // Group options by face
-  const groupedOptions = options.reduce((acc, option) => {
-    if (!acc[option.faceIndex]) {
-      acc[option.faceIndex] = [];
-    }
-    acc[option.faceIndex].push(option);
-    return acc;
-  }, {} as Record<number, DepthPlacementOption[]>);
-
-  // Face names in Turkish
-  const getFaceName = (faceIndex: number): string => {
-    const faceNames: { [key: number]: string } = {
-      0: 'Ön Yüzey',
-      1: 'Arka Yüzey', 
-      2: 'Üst Yüzey',
-      3: 'Alt Yüzey',
-      4: 'Sağ Yüzey',
-      5: 'Sol Yüzey',
-    };
-    return faceNames[faceIndex] || `Yüzey ${faceIndex}`;
-  };
-
   return (
     <div
       className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[320px] max-w-[450px]"
@@ -108,62 +86,55 @@ const PlacementPopup: React.FC<PlacementPopupProps> = ({
     >
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-600/50">
-        <h3 className="text-white font-medium text-sm">Panel Yerleştirme Seçenekleri</h3>
-        <p className="text-gray-400 text-xs mt-1">Paneli nereye yerleştirmek istediğinizi seçin</p>
+        <h3 className="text-white font-medium text-sm">Select Alternative Face</h3>
+        <p className="text-gray-400 text-xs mt-1">Choose a different face for panel placement</p>
       </div>
 
-      {/* Face Groups */}
+      {/* Face Options */}
       <div className="max-h-80 overflow-y-auto">
-        {Object.entries(groupedOptions).map(([faceIndex, faceOptions]) => (
-          <div key={faceIndex} className="border-b border-gray-700/30 last:border-b-0">
-            {/* Face Header */}
-            <div className="px-4 py-2 bg-gray-700/30">
-              <h4 className="text-blue-300 text-sm font-medium">
-                {getFaceName(parseInt(faceIndex))}
-              </h4>
-            </div>
-            
-            {/* Face Options */}
-            <div className="space-y-0">
-              {faceOptions.map((option, index) => (
-                <button
-                  key={option.id}
-                  onClick={() => onSelect(option)}
-                  className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-800/20 last:border-b-0"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Option Number */}
-                    <div className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                      {index + 1}
+        <div className="space-y-0">
+          {options.map((option, index) => (
+            <button
+              key={option.id}
+              onClick={() => onSelect(option)}
+              className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-800/20 last:border-b-0"
+            >
+              <div className="flex items-center gap-3">
+                {/* Face Icon */}
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">
+                  {option.faceIndex}
+                </div>
+                
+                {/* Face Details */}
+                <div className="flex-1">
+                  <div className="text-white text-sm font-medium">{option.name}</div>
+                  <div className="text-gray-400 text-xs">{option.description}</div>
+                  <div className="flex items-center gap-4 mt-1">
+                    <div className="text-blue-400 text-xs">
+                      Area: {option.area.toFixed(0)}mm²
                     </div>
-                    
-                    {/* Option Details */}
-                    <div className="flex-1">
-                      <div className="text-white text-sm font-medium">{option.label}</div>
-                      <div className="text-gray-400 text-xs">{option.description}</div>
-                      <div className="text-green-400 text-xs mt-1">
-                        Derinlik: {option.depth.toFixed(1)}mm
-                      </div>
+                    <div className="text-gray-500 text-xs">
+                      Normal: [{option.normal.x}, {option.normal.y}, {option.normal.z}]
                     </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-gray-600/50 bg-gray-700/20">
         <div className="flex items-center justify-between">
           <span className="text-gray-400 text-xs">
-            {options.length} seçenek mevcut
+            {options.length} alternative faces available
           </span>
           <button
             onClick={onCancel}
             className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
           >
-            İptal
+            Cancel
           </button>
         </div>
       </div>
@@ -350,9 +321,9 @@ const Scene: React.FC = () => {
   // 🔴 NEW: Panel Edit Mode State
   const [isPanelEditMode, setIsPanelEditMode] = useState(false);
 
-  // NEW: Placement popup state
-  const [showPlacementPopup, setShowPlacementPopup] = useState(false);
-  const [placementOptions, setPlacementOptions] = useState<DepthPlacementOption[]>([]);
+  // NEW: Face selection popup state
+  const [showFaceSelection, setShowFaceSelection] = useState(false);
+  const [faceSelectionOptions, setFaceSelectionOptions] = useState<FaceSelectionOption[]>([]);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
 
   // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
@@ -735,28 +706,28 @@ const Scene: React.FC = () => {
     });
   };
 
-  // NEW: Handle placement popup show
-  const handleShowPlacementPopup = (options: DepthPlacementOption[], position: { x: number; y: number }) => {
-    setPlacementOptions(options);
+  // NEW: Handle face selection popup show
+  const handleShowFaceSelection = (options: FaceSelectionOption[], position: { x: number; y: number }) => {
+    setFaceSelectionOptions(options);
     setPopupPosition(position);
-    setShowPlacementPopup(true);
-    console.log(`Placement popup shown with ${options.length} options`);
+    setShowFaceSelection(true);
+    console.log(`Face selection popup shown with ${options.length} options`);
   };
 
-  // NEW: Handle placement popup hide
-  const handleHidePlacementPopup = () => {
-    setShowPlacementPopup(false);
-    setPlacementOptions([]);
-    console.log('Placement popup hidden');
+  // NEW: Handle face selection popup hide
+  const handleHideFaceSelection = () => {
+    setShowFaceSelection(false);
+    setFaceSelectionOptions([]);
+    console.log('Face selection popup hidden');
   };
 
-  // NEW: Handle depth option selection
-  const handleSelectDepthOption = (option: DepthPlacementOption) => {
+  // NEW: Handle face option selection
+  const handleSelectFaceOption = (option: FaceSelectionOption) => {
     // Call the global handler set by PanelManager
-    if ((window as any).handleDepthOptionSelect) {
-      (window as any).handleDepthOptionSelect(option);
+    if ((window as any).handleFaceOptionSelect) {
+      (window as any).handleFaceOptionSelect(option);
     }
-    handleHidePlacementPopup();
+    handleHideFaceSelection();
   };
 
   // NEW: Handle popup cancel
@@ -765,7 +736,7 @@ const Scene: React.FC = () => {
     if ((window as any).handlePopupCancel) {
       (window as any).handlePopupCancel();
     }
-    handleHidePlacementPopup();
+    handleHideFaceSelection();
   };
 
   // Handle face cycle updates from OpenCascadeShape
@@ -936,9 +907,9 @@ const Scene: React.FC = () => {
               // 🔴 NEW: Panel Edit Mode props
               isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
               onPanelSelect={handlePanelSelect}
-              onShowPlacementPopup={handleShowPlacementPopup}
-              onHidePlacementPopup={handleHidePlacementPopup}
-              onSelectDepthOption={handleSelectDepthOption}
+              onShowFaceSelection={handleShowFaceSelection}
+              onHideFaceSelection={handleHideFaceSelection}
+              onSelectFace={handleSelectFaceOption}
               faceCycleState={faceCycleState}
               setFaceCycleState={setFaceCycleState}
             />
@@ -1047,14 +1018,14 @@ const Scene: React.FC = () => {
           document.body
         )}
 
-      {/* NEW: Placement popup - Rendered outside Canvas */}
-      {showPlacementPopup &&
+      {/* NEW: Face selection popup - Rendered outside Canvas */}
+      {showFaceSelection &&
         typeof document !== 'undefined' &&
         createPortal(
-          <PlacementPopup
-            options={placementOptions}
+          <FaceSelectionPopup
+            options={faceSelectionOptions}
             position={popupPosition}
-            onSelect={handleSelectDepthOption}
+            onSelect={handleSelectFaceOption}
             onCancel={handlePopupCancel}
           />,
           document.body

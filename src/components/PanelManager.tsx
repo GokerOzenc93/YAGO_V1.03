@@ -22,22 +22,24 @@ interface PanelManagerProps {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
-  // NEW: Placement popup callbacks
-  onShowPlacementPopup?: (options: DepthPlacementOption[], position: { x: number; y: number }) => void;
-  onHidePlacementPopup?: () => void;
-  onSelectDepthOption?: (option: DepthPlacementOption) => void;
+  // NEW: Face selection callbacks
+  onShowFaceSelection?: (faces: FaceSelectionOption[], position: { x: number; y: number }) => void;
+  onHideFaceSelection?: () => void;
+  onSelectFace?: (faceIndex: number) => void;
 }
 
-// NEW: Interface for depth placement options
-export interface DepthPlacementOption {
+// NEW: Interface for face selection options
+export interface FaceSelectionOption {
   id: string;
   faceIndex: number;
-  depth: number;
   position: THREE.Vector3;
   size: THREE.Vector3;
-  label: string;
+  name: string;
   description: string;
-  faceName: string; // NEW: Face name for display
+  normal: THREE.Vector3;
+  area: number;
+  isSelected: boolean;
+  isHovered: boolean;
 }
 
 interface SmartPanelBounds {
@@ -64,18 +66,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
-  onShowPlacementPopup,
-  onHidePlacementPopup,
-  onSelectDepthOption,
+  onShowFaceSelection,
+  onHideFaceSelection,
+  onSelectFace,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
 
   const { viewMode } = useAppStore();
 
-  // NEW: State for multi-depth placement
+  // NEW: State for face selection
   const [scannedFace, setScannedFace] = useState<number | null>(null);
-  const [depthOptions, setDepthOptions] = useState<DepthPlacementOption[]>([]);
-  const [highlightedOptions, setHighlightedOptions] = useState<DepthPlacementOption[]>([]);
+  const [faceOptions, setFaceOptions] = useState<FaceSelectionOption[]>([]);
+  const [highlightedFaces, setHighlightedFaces] = useState<FaceSelectionOption[]>([]);
   const [clickedFace, setClickedFace] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
@@ -460,168 +462,170 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     ];
   }, [shape.parameters]);
 
-  // NEW: Generate depth placement options for a face
-  const generateDepthOptions = useCallback((faceIndex: number, clickPosition: THREE.Vector3): DepthPlacementOption[] => {
+  // NEW: Generate face selection options (all faces except current)
+  const generateFaceOptions = useCallback((currentFaceIndex: number): FaceSelectionOption[] => {
     const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const options: DepthPlacementOption[] = [];
+    const options: FaceSelectionOption[] = [];
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
     
-    // Define depth increments (in mm)
-    const depthIncrements = [0, 18, 36, 54, 72, 100, 150, 200];
-    
-    // Face names for display
+    // Face definitions with names, positions, normals, and areas
     const faceNames = {
-      0: 'Ön Yüzey',
-      1: 'Arka Yüzey', 
-      2: 'Üst Yüzey',
-      3: 'Alt Yüzey',
-      4: 'Sağ Yüzey',
-      5: 'Sol Yüzey'
+      0: 'Front Face',
+      1: 'Back Face', 
+      2: 'Top Face',
+      3: 'Bottom Face',
+      4: 'Right Face',
+      5: 'Left Face'
     };
     
-    depthIncrements.forEach((depthOffset, index) => {
-      let position: THREE.Vector3;
-      let size: THREE.Vector3;
-      let label: string;
-      let description: string;
-      
-      switch (faceIndex) {
-        case 0: // Front face
-          position = new THREE.Vector3(0, 0, (depth/2) - panelThickness/2 - depthOffset);
-          size = new THREE.Vector3(width, height, panelThickness);
-          label = `${faceNames[0]} ${index === 0 ? '(Yüzey)' : `- ${depthOffset}mm`}`;
-          description = index === 0 ? 'Yüzeye monte panel' : `Panel ${depthOffset}mm içeri yerleştirildi`;
-          break;
-        case 1: // Back face
-          position = new THREE.Vector3(0, 0, -(depth/2) + panelThickness/2 + depthOffset);
-          size = new THREE.Vector3(width, height, panelThickness);
-          label = `${faceNames[1]} ${index === 0 ? '(Yüzey)' : `+ ${depthOffset}mm`}`;
-          description = index === 0 ? 'Yüzeye monte panel' : `Panel arkadan ${depthOffset}mm uzatıldı`;
-          break;
-        case 2: // Top face
-          position = new THREE.Vector3(0, (height/2) - panelThickness/2 - depthOffset, 0);
-          size = new THREE.Vector3(width, panelThickness, depth);
-          label = `${faceNames[2]} ${index === 0 ? '(Yüzey)' : `- ${depthOffset}mm`}`;
-          description = index === 0 ? 'Yüzeye monte panel' : `Panel üstten ${depthOffset}mm alçaltıldı`;
-          break;
-        case 3: // Bottom face
-          position = new THREE.Vector3(0, -(height/2) + panelThickness/2 + depthOffset, 0);
-          size = new THREE.Vector3(width, panelThickness, depth);
-          label = `${faceNames[3]} ${index === 0 ? '(Yüzey)' : `+ ${depthOffset}mm`}`;
-          description = index === 0 ? 'Yüzeye monte panel' : `Panel alttan ${depthOffset}mm yükseltildi`;
-          break;
-        case 4: // Right face
-          position = new THREE.Vector3((width/2) - panelThickness/2 - depthOffset, 0, 0);
-          size = new THREE.Vector3(panelThickness, height, depth);
-          label = `${faceNames[4]} ${index === 0 ? '(Yüzey)' : `- ${depthOffset}mm`}`;
-          description = index === 0 ? 'Yüzeye monte panel' : `Panel sağdan ${depthOffset}mm içeri taşındı`;
-          break;
-        case 5: // Left face
-          position = new THREE.Vector3(-(width/2) + panelThickness/2 + depthOffset, 0, 0);
-          size = new THREE.Vector3(panelThickness, height, depth);
-          label = `${faceNames[5]} ${index === 0 ? '(Yüzey)' : `+ ${depthOffset}mm`}`;
-          description = index === 0 ? 'Yüzeye monte panel' : `Panel soldan ${depthOffset}mm içeri taşındı`;
-          break;
-        default:
-          return;
+    const faceData = [
+      { // Front face (0)
+        position: new THREE.Vector3(0, 0, hd),
+        size: new THREE.Vector3(width, height, panelThickness),
+        normal: new THREE.Vector3(0, 0, 1),
+        area: width * height
+      },
+      { // Back face (1)
+        position: new THREE.Vector3(0, 0, -hd),
+        size: new THREE.Vector3(width, height, panelThickness),
+        normal: new THREE.Vector3(0, 0, -1),
+        area: width * height
+      },
+      { // Top face (2)
+        position: new THREE.Vector3(0, hh, 0),
+        size: new THREE.Vector3(width, panelThickness, depth),
+        normal: new THREE.Vector3(0, 1, 0),
+        area: width * depth
+      },
+      { // Bottom face (3)
+        position: new THREE.Vector3(0, -hh, 0),
+        size: new THREE.Vector3(width, panelThickness, depth),
+        normal: new THREE.Vector3(0, -1, 0),
+        area: width * depth
+      },
+      { // Right face (4)
+        position: new THREE.Vector3(hw, 0, 0),
+        size: new THREE.Vector3(panelThickness, height, depth),
+        normal: new THREE.Vector3(1, 0, 0),
+        area: height * depth
+      },
+      { // Left face (5)
+        position: new THREE.Vector3(-hw, 0, 0),
+        size: new THREE.Vector3(panelThickness, height, depth),
+        normal: new THREE.Vector3(-1, 0, 0),
+        area: height * depth
       }
-      
-      options.push({
-        id: `${faceIndex}-${index}`,
-        faceIndex,
-        depth: depthOffset,
-        position,
-        size,
-        label,
-        description,
-        faceName: faceNames[faceIndex] || `Yüzey ${faceIndex}`,
-      });
-    });
+    ];
     
+    // Generate options for all faces except the current one
+    for (let faceIndex = 0; faceIndex < 6; faceIndex++) {
+      if (faceIndex === currentFaceIndex) continue; // Skip current face
+      
+      const face = faceData[faceIndex];
+      const option: FaceSelectionOption = {
+        id: `face-${faceIndex}`,
+        faceIndex,
+        position: face.position,
+        size: face.size,
+        name: faceNames[faceIndex] || `Face ${faceIndex}`,
+        description: `Select ${faceNames[faceIndex]?.toLowerCase() || `face ${faceIndex}`} for panel placement`,
+        normal: face.normal,
+        area: face.area,
+        isSelected: false,
+        isHovered: false
+      };
+      
+      options.push(option);
+    }
+    
+    // Sort by area (largest first) for better UX
+    options.sort((a, b) => b.area - a.area);
     return options;
-  }, [shape.parameters, panelThickness]);
+  }, [shape.parameters]);
 
-  // NEW: Handle right-click for multi-depth placement
+  // NEW: Handle right-click for face selection
   const handleRightClick = useCallback((e: any, faceIndex: number) => {
     if (!isAddPanelMode) {
-      console.log('Panel add mode is not active');
+      console.log('Panel add mode is not active - face selection disabled');
       return;
     }
     
     e.stopPropagation();
     e.nativeEvent.preventDefault();
     
-    console.log(`Right-clicked on face ${faceIndex} - generating depth options`);
+    console.log(`Right-clicked on face ${faceIndex} - showing alternative faces`);
     
     // Get mouse position for popup
     const mouseX = e.nativeEvent.clientX;
     const mouseY = e.nativeEvent.clientY;
     
-    // Generate depth options
-    const clickPosition = new THREE.Vector3(0, 0, 0); // Could be enhanced with actual click position
-    const options = generateDepthOptions(faceIndex, clickPosition);
+    // Generate face selection options (exclude current face)
+    const options = generateFaceOptions(faceIndex);
     
-    // Show placement options
+    // Show face selection options
     setClickedFace(faceIndex);
-    setDepthOptions(options);
-    setHighlightedOptions(options);
+    setFaceOptions(options);
+    setHighlightedFaces(options);
     setScannedFace(null); // Clear yellow scanning
     
     // Show popup via callback
-    if (onShowPlacementPopup) {
-      onShowPlacementPopup(options, { x: mouseX, y: mouseY });
+    if (onShowFaceSelection) {
+      onShowFaceSelection(options, { x: mouseX, y: mouseY });
     }
     
-    console.log(`Generated ${options.length} depth placement options for face ${faceIndex}`);
-    console.log('Options:', options.map(opt => `${opt.label} (${opt.depth}mm)`));
+    console.log(`Generated ${options.length} alternative face options for face ${faceIndex}`);
+    console.log('Options:', options.map(opt => `${opt.name} (${opt.area.toFixed(0)}mm²)`));
     console.log('Popup position:', { x: mouseX, y: mouseY });
-  }, [isAddPanelMode, onFaceSelect]);
+  }, [isAddPanelMode, generateFaceOptions, onShowFaceSelection]);
 
-  // NEW: Handle depth option selection
-  const handleDepthOptionSelect = useCallback((option: DepthPlacementOption) => {
-    // Place panel at selected depth
+  // NEW: Handle face selection
+  const handleFaceOptionSelect = useCallback((option: FaceSelectionOption) => {
+    // Select the chosen face
     onFaceSelect(option.faceIndex);
     
     // Clean up
-    setDepthOptions([]);
-    setHighlightedOptions([]);
+    setFaceOptions([]);
+    setHighlightedFaces([]);
     
     // Hide popup via callback
-    if (onHidePlacementPopup) {
-      onHidePlacementPopup();
+    if (onHideFaceSelection) {
+      onHideFaceSelection();
     }
     
-    console.log(`Panel placed: ${option.label} at depth ${option.depth}mm`);
-  }, [onFaceSelect, onHidePlacementPopup]);
+    console.log(`Face selected: ${option.name} (${option.area.toFixed(0)}mm²)`);
+  }, [onFaceSelect, onHideFaceSelection]);
 
   // NEW: Handle popup cancel
   const handlePopupCancel = useCallback(() => {
     setClickedFace(null);
-    setDepthOptions([]);
-    setHighlightedOptions([]);
+    setFaceOptions([]);
+    setHighlightedFaces([]);
     
     // Hide popup via callback
-    if (onHidePlacementPopup) {
-      onHidePlacementPopup();
+    if (onHideFaceSelection) {
+      onHideFaceSelection();
     }
     
-    console.log('Panel placement cancelled');
-  }, [onHidePlacementPopup]);
+    console.log('Face selection cancelled');
+  }, [onHideFaceSelection]);
 
   // Expose selection handler for external use
   React.useEffect(() => {
-    if (onSelectDepthOption) {
+    if (onSelectFace) {
       // This allows Scene.tsx to call the selection handler
-      (window as any).handleDepthOptionSelect = handleDepthOptionSelect;
+      (window as any).handleFaceOptionSelect = handleFaceOptionSelect;
       (window as any).handlePopupCancel = handlePopupCancel;
     }
-  }, [handleDepthOptionSelect, handlePopupCancel, onSelectDepthOption]);
+  }, [handleFaceOptionSelect, handlePopupCancel, onSelectFace]);
 
   const handleClick = (e: any, faceIndex: number) => {
     if (isAddPanelMode && e.nativeEvent.button === 0) {
       // Left click - just scan/hover
       e.stopPropagation();
-      console.log(`Left-clicked on face ${faceIndex} - scanning only`);
-      // Don't place panel immediately, just scan
+      console.log(`Left-clicked on face ${faceIndex} - direct selection`);
+      onFaceSelect(faceIndex); // Direct selection on left click
     } else if (isPanelEditMode) {
       e.stopPropagation();
       const panelData = smartPanelData.find(
@@ -770,10 +774,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       ))}
 
-      {/* NEW: Depth placement option highlights */}
-      {highlightedOptions.map((option, index) => (
-        <group key={`depth-option-${option.id}`}>
-          {/* Green highlight mesh */}
+      {/* NEW: Face selection option highlights */}
+      {highlightedFaces.map((option, index) => (
+        <group key={`face-option-${option.id}`}>
+          {/* Blue highlight mesh for alternative faces */}
           <mesh
             geometry={new THREE.BoxGeometry(option.size.x, option.size.y, option.size.z)}
             position={[
@@ -786,7 +790,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             visible={true}
           >
             <meshBasicMaterial
-              color="#10b981"
+              color="#3b82f6"
               transparent
               opacity={0.6}
               side={THREE.DoubleSide}
@@ -794,7 +798,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             />
           </mesh>
           
-          {/* Option number label */}
+          {/* Face label */}
           <mesh
             position={[
               shape.position[0] + option.position.x,
@@ -804,7 +808,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             visible={true}
           >
             <sphereGeometry args={[25]} />
-            <meshBasicMaterial 
+            <meshBasicMaterial
               color="#ffffff" 
               transparent={false}
               depthTest={false}

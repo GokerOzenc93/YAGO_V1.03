@@ -36,9 +36,9 @@ interface Props {
     panelOrder: number;
   }) => void;
   // NEW: Multi-depth placement props
-  onShowPlacementPopup?: (options: any[], position: { x: number; y: number }) => void;
-  onHidePlacementPopup?: () => void;
-  onSelectDepthOption?: (option: any) => void;
+  onShowFaceSelection?: (options: any[], position: { x: number; y: number }) => void;
+  onHideFaceSelection?: () => void;
+  onSelectFace?: (faceIndex: number) => void;
   // Face cycle state props
   faceCycleState?: {
     selectedFace: number | null;
@@ -70,9 +70,9 @@ const OpenCascadeShape: React.FC<Props> = ({
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode = false,
   onPanelSelect,
-  onShowPlacementPopup,
-  onHidePlacementPopup,
-  onSelectDepthOption,
+  onShowFaceSelection,
+  onHideFaceSelection,
+  onSelectFace,
   faceCycleState,
   setFaceCycleState,
 }) => {
@@ -316,9 +316,9 @@ const OpenCascadeShape: React.FC<Props> = ({
           mousePosition: null,
         }}
         setFaceCycleState={setFaceCycleState || (() => {})}
-        onShowPlacementPopup={onShowPlacementPopup}
-        onHidePlacementPopup={onHidePlacementPopup}
-        onSelectDepthOption={onSelectDepthOption}
+        onShowFaceSelection={onShowFaceSelection}
+        onHideFaceSelection={onHideFaceSelection}
+        onSelectFace={onSelectFace}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
