@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
+import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore'; // Corrected path
 
@@ -22,7 +23,89 @@ interface PanelManagerProps {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
+  // NEW: Multi-depth placement props
+  onMultiDepthSelect?: (options: DepthPlacementOption[]) => void;
 }
+
+// NEW: Interface for depth placement options
+interface DepthPlacementOption {
+  id: string;
+  faceIndex: number;
+  depth: number;
+  position: THREE.Vector3;
+  size: THREE.Vector3;
+  label: string;
+  description: string;
+}
+
+// NEW: Interface for placement popup
+interface PlacementPopupProps {
+  options: DepthPlacementOption[];
+  position: { x: number; y: number };
+  onSelect: (option: DepthPlacementOption) => void;
+  onCancel: () => void;
+}
+
+// NEW: Placement selection popup component
+const PlacementPopup: React.FC<PlacementPopupProps> = ({
+  options,
+  position,
+  onSelect,
+  onCancel,
+}) => {
+  return (
+    <div
+      className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[280px] max-w-[400px]"
+      style={{
+        left: Math.min(position.x, window.innerWidth - 300),
+        top: Math.min(position.y, window.innerHeight - 200),
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-600/50">
+        <h3 className="text-white font-medium text-sm">Panel Placement Options</h3>
+        <p className="text-gray-400 text-xs mt-1">Choose where to place the panel</p>
+      </div>
+
+      {/* Options List */}
+      <div className="max-h-64 overflow-y-auto">
+        {options.map((option, index) => (
+          <button
+            key={option.id}
+            onClick={() => onSelect(option)}
+            className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-700/30 last:border-b-0"
+          >
+            <div className="flex items-center gap-3">
+              {/* Option Number */}
+              <div className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                {index + 1}
+              </div>
+              
+              {/* Option Details */}
+              <div className="flex-1">
+                <div className="text-white text-sm font-medium">{option.label}</div>
+                <div className="text-gray-400 text-xs">{option.description}</div>
+                <div className="text-green-400 text-xs mt-1">
+                  Depth: {option.depth.toFixed(1)}mm
+                </div>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-gray-600/50 flex justify-end gap-2">
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-xs bg-gray-600/50 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
 
 interface SmartPanelBounds {
   faceIndex: number;
@@ -48,10 +131,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
+  onMultiDepthSelect,
 }) => {
   const panelThickness = 18; // 18mm panel thickness
 
   const { viewMode } = useAppStore();
+
+  // NEW: State for multi-depth placement
+  const [scannedFace, setScannedFace] = useState<number | null>(null);
+  const [depthOptions, setDepthOptions] = useState<DepthPlacementOption[]>([]);
+  const [showPlacementPopup, setShowPlacementPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [highlightedOptions, setHighlightedOptions] = useState<DepthPlacementOption[]>([]);
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -412,6 +503,145 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
+  // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
+  const faceTransforms = useMemo(() => {
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    return [
+      // Front face (0) - Z+
+      { position: [0, 0, hd], rotation: [0, 0, 0] },
+      // Back face (1) - Z-
+      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
+      // Top face (2) - Y+
+      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
+      // Bottom face (3) - Y-
+      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
+      // Right face (4) - X+
+      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
+      // Left face (5) - X-
+      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+    ];
+  }, [shape.parameters]);
+
+  // NEW: Generate depth placement options for a face
+  const generateDepthOptions = useCallback((faceIndex: number, clickPosition: THREE.Vector3): DepthPlacementOption[] => {
+    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    const options: DepthPlacementOption[] = [];
+    
+    // Define depth increments (in mm)
+    const depthIncrements = [0, 18, 36, 54, 72, 100, 150, 200];
+    
+    depthIncrements.forEach((depthOffset, index) => {
+      let position: THREE.Vector3;
+      let size: THREE.Vector3;
+      let label: string;
+      let description: string;
+      
+      switch (faceIndex) {
+        case 0: // Front face
+          position = new THREE.Vector3(0, 0, (depth/2) - panelThickness/2 - depthOffset);
+          size = new THREE.Vector3(width, height, panelThickness);
+          label = `Front Panel ${index === 0 ? '(Surface)' : `- ${depthOffset}mm`}`;
+          description = index === 0 ? 'Surface mounted panel' : `Panel recessed ${depthOffset}mm into cabinet`;
+          break;
+        case 1: // Back face
+          position = new THREE.Vector3(0, 0, -(depth/2) + panelThickness/2 + depthOffset);
+          size = new THREE.Vector3(width, height, panelThickness);
+          label = `Back Panel ${index === 0 ? '(Surface)' : `+ ${depthOffset}mm`}`;
+          description = index === 0 ? 'Surface mounted panel' : `Panel extended ${depthOffset}mm from back`;
+          break;
+        case 2: // Top face
+          position = new THREE.Vector3(0, (height/2) - panelThickness/2 - depthOffset, 0);
+          size = new THREE.Vector3(width, panelThickness, depth);
+          label = `Top Panel ${index === 0 ? '(Surface)' : `- ${depthOffset}mm`}`;
+          description = index === 0 ? 'Surface mounted panel' : `Panel lowered ${depthOffset}mm from top`;
+          break;
+        case 3: // Bottom face
+          position = new THREE.Vector3(0, -(height/2) + panelThickness/2 + depthOffset, 0);
+          size = new THREE.Vector3(width, panelThickness, depth);
+          label = `Bottom Panel ${index === 0 ? '(Surface)' : `+ ${depthOffset}mm`}`;
+          description = index === 0 ? 'Surface mounted panel' : `Panel raised ${depthOffset}mm from bottom`;
+          break;
+        case 4: // Right face
+          position = new THREE.Vector3((width/2) - panelThickness/2 - depthOffset, 0, 0);
+          size = new THREE.Vector3(panelThickness, height, depth);
+          label = `Right Panel ${index === 0 ? '(Surface)' : `- ${depthOffset}mm`}`;
+          description = index === 0 ? 'Surface mounted panel' : `Panel moved ${depthOffset}mm inward from right`;
+          break;
+        case 5: // Left face
+          position = new THREE.Vector3(-(width/2) + panelThickness/2 + depthOffset, 0, 0);
+          size = new THREE.Vector3(panelThickness, height, depth);
+          label = `Left Panel ${index === 0 ? '(Surface)' : `+ ${depthOffset}mm`}`;
+          description = index === 0 ? 'Surface mounted panel' : `Panel moved ${depthOffset}mm inward from left`;
+          break;
+        default:
+          continue;
+      }
+      
+      options.push({
+        id: `${faceIndex}-${index}`,
+        faceIndex,
+        depth: depthOffset,
+        position,
+        size,
+        label,
+        description,
+      });
+    });
+    
+    return options;
+  }, [shape.parameters, panelThickness]);
+
+  // NEW: Handle right-click for multi-depth placement
+  const handleRightClick = useCallback((e: any, faceIndex: number) => {
+    if (!isAddPanelMode) return;
+    
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Get mouse position for popup
+    const rect = e.nativeEvent.target.getBoundingClientRect();
+    const mouseX = e.nativeEvent.clientX;
+    const mouseY = e.nativeEvent.clientY;
+    
+    // Generate depth options
+    const clickPosition = new THREE.Vector3(0, 0, 0); // Could be enhanced with actual click position
+    const options = generateDepthOptions(faceIndex, clickPosition);
+    
+    // Show placement options
+    setDepthOptions(options);
+    setHighlightedOptions(options);
+    setPopupPosition({ x: mouseX, y: mouseY });
+    setShowPlacementPopup(true);
+    setScannedFace(null);
+    
+    console.log(`Generated ${options.length} depth placement options for face ${faceIndex}`);
+  }, [isAddPanelMode, onFaceSelect]);
+
+  // NEW: Handle depth option selection
+  const handleDepthOptionSelect = useCallback((option: DepthPlacementOption) => {
+    // Place panel at selected depth
+    onFaceSelect(option.faceIndex);
+    
+    // Clean up
+    setShowPlacementPopup(false);
+    setDepthOptions([]);
+    setHighlightedOptions([]);
+    
+    console.log(`Panel placed: ${option.label} at depth ${option.depth}mm`);
+  }, [onFaceSelect]);
+
+  // NEW: Handle popup cancel
+  const handlePopupCancel = useCallback(() => {
+    setShowPlacementPopup(false);
+    setDepthOptions([]);
+    setHighlightedOptions([]);
+    console.log('Panel placement cancelled');
+  }, []);
+
   const handleClick = (e: any, faceIndex: number) => {
     if (isAddPanelMode) {
       e.stopPropagation();
@@ -460,29 +690,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       return 2.0;
     }
   };
-
-  // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
-  const faceTransforms = useMemo(() => {
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const hw = width / 2;
-    const hh = height / 2;
-    const hd = depth / 2;
-
-    return [
-      // Front face (0) - Z+
-      { position: [0, 0, hd], rotation: [0, 0, 0] },
-      // Back face (1) - Z-
-      { position: [0, 0, -hd], rotation: [0, Math.PI, 0] },
-      // Top face (2) - Y+
-      { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] },
-      // Bottom face (3) - Y-
-      { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] },
-      // Right face (4) - X+
-      { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] },
-      // Left face (5) - X-
-      { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
-    ];
-  }, [shape.parameters]);
 
   if (
     (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
@@ -585,6 +792,44 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         </mesh>
       ))}
 
+      {/* NEW: Depth placement option highlights */}
+      {highlightedOptions.map((option, index) => (
+        <group key={`depth-option-${option.id}`}>
+          {/* Green highlight mesh */}
+          <mesh
+            geometry={new THREE.BoxGeometry(option.size.x, option.size.y, option.size.z)}
+            position={[
+              shape.position[0] + option.position.x,
+              shape.position[1] + option.position.y,
+              shape.position[2] + option.position.z,
+            ]}
+            rotation={shape.rotation}
+            scale={shape.scale}
+          >
+            <meshBasicMaterial
+              color="#10b981"
+              transparent
+              opacity={0.3}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          
+          {/* Option number label */}
+          <mesh
+            position={[
+              shape.position[0] + option.position.x,
+              shape.position[1] + option.position.y + option.size.y/2 + 20,
+              shape.position[2] + option.position.z,
+            ]}
+          >
+            <sphereGeometry args={[15]} />
+            <meshBasicMaterial color="#10b981" />
+          </mesh>
+          
+          {/* Number text would go here - simplified for now */}
+        </group>
+      ))}
+
       {/* 🎨 PROFESSIONAL SHARP EDGES - Clear black outlines */}
       {smartPanelData.map((panelData) => (
         <lineSegments
@@ -615,6 +860,19 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           />
         </lineSegments>
       ))}
+
+      {/* NEW: Placement popup portal */}
+      {showPlacementPopup && typeof document !== 'undefined' && (
+        createPortal(
+          <PlacementPopup
+            options={depthOptions}
+            position={popupPosition}
+            onSelect={handleDepthOptionSelect}
+            onCancel={handlePopupCancel}
+          />,
+          document.body
+        )
+      )}
     </group>
   );
 };

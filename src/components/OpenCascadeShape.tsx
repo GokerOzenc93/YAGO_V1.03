@@ -35,6 +35,8 @@ interface Props {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
+  // NEW: Multi-depth placement props
+  onMultiDepthSelect?: (options: any[]) => void;
   // Face cycle state props
   faceCycleState?: {
     selectedFace: number | null;
@@ -66,6 +68,7 @@ const OpenCascadeShape: React.FC<Props> = ({
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode = false,
   onPanelSelect,
+  onMultiDepthSelect,
   faceCycleState,
   setFaceCycleState,
 }) => {
@@ -309,6 +312,7 @@ const OpenCascadeShape: React.FC<Props> = ({
           mousePosition: null,
         }}
         setFaceCycleState={setFaceCycleState || (() => {})}
+        onMultiDepthSelect={onMultiDepthSelect}
       />
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
