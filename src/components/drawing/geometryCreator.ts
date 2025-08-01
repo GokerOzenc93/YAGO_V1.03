@@ -41,9 +41,9 @@ export const createPolylineGeometry = (
     // Create the extruded geometry
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
-    // DON'T rotate - keep it in the same orientation as drawn
-    // The polyline is drawn on XZ plane (Y=0), extrude upward in Y direction
-    // This keeps the shape exactly where it was drawn
+    // Rotate geometry to keep it horizontal (lying flat on XZ plane)
+    // ExtrudeGeometry creates vertical extrusion, we need horizontal
+    geometry.rotateX(-Math.PI / 2);
     
     // Compute bounding volumes (critical for Three.js rendering)
     geometry.computeBoundingBox();
