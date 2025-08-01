@@ -461,14 +461,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   };
 
-  if (
-    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
-    shape.type !== 'box'
-  ) {
-    return null;
-  }
-
-  // Face positions and rotations for box
+  // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
     const { width = 500, height = 500, depth = 500 } = shape.parameters;
     const hw = width / 2;
@@ -490,6 +483,13 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] },
     ];
   }, [shape.parameters]);
+
+  if (
+    (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) ||
+    shape.type !== 'box'
+  ) {
+    return null;
+  }
 
   return (
     <group>
