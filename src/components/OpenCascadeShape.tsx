@@ -137,6 +137,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
     }
   }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
+  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect]);
 
   useEffect(() => {
     const controls = transformRef.current;
