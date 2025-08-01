@@ -86,8 +86,8 @@ const FaceSelectionPopup: React.FC<FaceSelectionPopupProps> = ({
     >
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-600/50">
-        <h3 className="text-white font-medium text-sm">Select Alternative Face</h3>
-        <p className="text-gray-400 text-xs mt-1">Choose a different face for panel placement</p>
+        <h3 className="text-white font-medium text-sm">Karşı Taraf Seçimi</h3>
+        <p className="text-gray-400 text-xs mt-1">Tıkladığınız yerin arkasındaki yüzeyi seçin</p>
       </div>
 
       {/* Face Options */}
@@ -128,13 +128,13 @@ const FaceSelectionPopup: React.FC<FaceSelectionPopupProps> = ({
       <div className="px-4 py-3 border-t border-gray-600/50 bg-gray-700/20">
         <div className="flex items-center justify-between">
           <span className="text-gray-400 text-xs">
-            {options.length} alternative faces available
+            Karşı taraf yüzeyi
           </span>
           <button
             onClick={onCancel}
             className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
           >
-            Cancel
+            İptal
           </button>
         </div>
       </div>

@@ -465,12 +465,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   // NEW: Generate face selection options (all faces except current)
   const generateFaceOptions = useCallback((currentFaceIndex: number): FaceSelectionOption[] => {
     const { width = 500, height = 500, depth = 500 } = shape.parameters;
-    const options: FaceSelectionOption[] = [];
     const hw = width / 2;
     const hh = height / 2;
     const hd = depth / 2;
     
-    // Face definitions with names, positions, normals, and areas
+    // Face definitions with names, positions, normals, and areas - ONLY OPPOSITE FACES
     const faceNames = {
       0: 'Front Face',
       1: 'Back Face', 
@@ -478,6 +477,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       3: 'Bottom Face',
       4: 'Right Face',
       5: 'Left Face'
+    };
+    
+    // Define opposite face pairs
+    const oppositeFaces: { [key: number]: number[] } = {
+      0: [1], // Front -> Back
+      1: [0], // Back -> Front
+      2: [3], // Top -> Bottom
+      3: [2], // Bottom -> Top
+      4: [5], // Right -> Left
+      5: [4], // Left -> Right
     };
     
     const faceData = [
@@ -519,9 +528,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       }
     ];
     
-    // Generate options for all faces except the current one
-    for (let faceIndex = 0; faceIndex < 6; faceIndex++) {
-      if (faceIndex === currentFaceIndex) continue; // Skip current face
+    // Generate options ONLY for opposite faces
+    const opposites = oppositeFaces[currentFaceIndex] || [];
+    const options: FaceSelectionOption[] = [];
+    
+    for (const faceIndex of opposites) {
       
       const face = faceData[faceIndex];
       const option: FaceSelectionOption = {
@@ -540,8 +551,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       options.push(option);
     }
     
-    // Sort by area (largest first) for better UX
-    options.sort((a, b) => b.area - a.area);
+    // No need to sort since we only have 1 opposite face
     return options;
   }, [shape.parameters]);
 
