@@ -579,7 +579,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           description = index === 0 ? 'Surface mounted panel' : `Panel moved ${depthOffset}mm inward from left`;
           break;
         default:
-          continue;
+          return;
       }
       
       options.push({
