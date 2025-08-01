@@ -614,6 +614,11 @@ const Scene: React.FC = () => {
     });
   };
 
+  // NEW: Handle multi-depth panel selection
+  const handleMultiDepthSelect = (options: any[]) => {
+    console.log(`Multi-depth placement options generated:`, options);
+  };
+
   // Handle face cycle updates from OpenCascadeShape
   const handleFaceCycleUpdate = (cycleState: {
     selectedFace: number | null;
@@ -782,6 +787,7 @@ const Scene: React.FC = () => {
               // 🔴 NEW: Panel Edit Mode props
               isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
               onPanelSelect={handlePanelSelect}
+              onMultiDepthSelect={handleMultiDepthSelect}
               faceCycleState={faceCycleState}
               setFaceCycleState={setFaceCycleState}
             />
