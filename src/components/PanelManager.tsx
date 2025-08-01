@@ -143,6 +143,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const [showPlacementPopup, setShowPlacementPopup] = useState(false);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [highlightedOptions, setHighlightedOptions] = useState<DepthPlacementOption[]>([]);
+  const [clickedFace, setClickedFace] = useState<number | null>(null);
 
   const woodMaterials = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -597,13 +598,17 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // NEW: Handle right-click for multi-depth placement
   const handleRightClick = useCallback((e: any, faceIndex: number) => {
-    if (!isAddPanelMode) return;
+    if (!isAddPanelMode) {
+      console.log('Panel add mode is not active');
+      return;
+    }
     
     e.stopPropagation();
     e.preventDefault();
     
+    console.log(`Right-clicked on face ${faceIndex} - generating depth options`);
+    
     // Get mouse position for popup
-    const rect = e.nativeEvent.target.getBoundingClientRect();
     const mouseX = e.nativeEvent.clientX;
     const mouseY = e.nativeEvent.clientY;
     
@@ -612,13 +617,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     const options = generateDepthOptions(faceIndex, clickPosition);
     
     // Show placement options
+    setClickedFace(faceIndex);
     setDepthOptions(options);
     setHighlightedOptions(options);
     setPopupPosition({ x: mouseX, y: mouseY });
     setShowPlacementPopup(true);
-    setScannedFace(null);
+    setScannedFace(null); // Clear yellow scanning
     
     console.log(`Generated ${options.length} depth placement options for face ${faceIndex}`);
+    console.log('Options:', options.map(opt => `${opt.label} (${opt.depth}mm)`));
+    console.log('Popup position:', { x: mouseX, y: mouseY });
   }, [isAddPanelMode, onFaceSelect]);
 
   // NEW: Handle depth option selection
@@ -636,6 +644,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // NEW: Handle popup cancel
   const handlePopupCancel = useCallback(() => {
+    setClickedFace(null);
     setShowPlacementPopup(false);
     setDepthOptions([]);
     setHighlightedOptions([]);
@@ -643,9 +652,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   }, []);
 
   const handleClick = (e: any, faceIndex: number) => {
-    if (isAddPanelMode) {
+    if (isAddPanelMode && e.nativeEvent.button === 0) {
+      // Left click - just scan/hover
       e.stopPropagation();
-      onFaceSelect(faceIndex);
+      console.log(`Left-clicked on face ${faceIndex} - scanning only`);
+      // Don't place panel immediately, just scan
     } else if (isPanelEditMode) {
       e.stopPropagation();
       const panelData = smartPanelData.find(
@@ -724,8 +735,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               ]}
               scale={shape.scale}
               onClick={(e) => handleClick(e, faceIndex)}
+              onContextMenu={(e) => handleRightClick(e, faceIndex)}
               onPointerEnter={() => handleFaceHover(faceIndex)}
               onPointerLeave={() => handleFaceHover(null)}
+              userData={{ faceIndex }}
             >
               <meshBasicMaterial
                 color={getFaceColor(faceIndex)}
@@ -805,12 +818,14 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             ]}
             rotation={shape.rotation}
             scale={shape.scale}
+            visible={true}
           >
             <meshBasicMaterial
               color="#10b981"
               transparent
-              opacity={0.3}
+              opacity={0.6}
               side={THREE.DoubleSide}
+              depthTest={false}
             />
           </mesh>
           
@@ -821,12 +836,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               shape.position[1] + option.position.y + option.size.y/2 + 20,
               shape.position[2] + option.position.z,
             ]}
+            visible={true}
           >
-            <sphereGeometry args={[15]} />
-            <meshBasicMaterial color="#10b981" />
+            <sphereGeometry args={[25]} />
+            <meshBasicMaterial 
+              color="#ffffff" 
+              transparent={false}
+              depthTest={false}
+            />
           </mesh>
-          
-          {/* Number text would go here - simplified for now */}
         </group>
       ))}
 
