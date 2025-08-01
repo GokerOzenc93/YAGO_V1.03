@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -99,6 +99,42 @@ const OpenCascadeShape: React.FC<Props> = ({
     () => new THREE.EdgesGeometry(shapeGeometry),
     [shapeGeometry]
   );
+
+  // NEW: Handle dynamic face selection with geometric detection
+  const handleDynamicClick = useCallback((e: any) => {
+    if (!isDynamicSelectionMode) return;
+    
+    e.stopPropagation();
+    
+    if (e.nativeEvent.button === 0) {
+      // Left click - cycle through faces geometrically
+      const intersectionPoint = e.point; // Get 3D intersection point from raycaster
+      
+      console.log(`🎯 Mouse clicked at world position: [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
+      
+      if (selectedDynamicFace === null) {
+        // First click - find closest face
+        const closestFace = (window as any).findClosestFaceToPoint?.(intersectionPoint, shape);
+        if (closestFace !== null && onDynamicFaceSelect) {
+          onDynamicFaceSelect(closestFace);
+          console.log(`🎯 First click: Selected face ${closestFace} geometrically`);
+        }
+      } else {
+        // Subsequent clicks - find next adjacent face
+        const nextFace = (window as any).findNextAdjacentFace?.(selectedDynamicFace, shape);
+        if (onDynamicFaceSelect) {
+          onDynamicFaceSelect(nextFace);
+          console.log(`🎯 Next click: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
+        }
+      }
+    } else if (e.nativeEvent.button === 2) {
+      // Right click - add panel to currently selected face
+      if (selectedDynamicFace !== null) {
+        onFaceSelect(selectedDynamicFace);
+        console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
+      }
+    }
+  }, [isDynamicSelectionMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect]);
 
   useEffect(() => {
     const controls = transformRef.current;

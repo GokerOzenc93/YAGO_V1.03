@@ -715,6 +715,92 @@ const Scene: React.FC = () => {
     console.log(`🎯 Dynamic face selected: ${faceIndex}`);
   };
 
+  // NEW: Global face detection functions for geometric calculations
+  useEffect(() => {
+    // Global function to find closest face to a clicked point
+    (window as any).findClosestFaceToPoint = (worldPoint: THREE.Vector3, shape: Shape): number | null => {
+      if (shape.type !== 'box') return null;
+      
+      const { width = 500, height = 500, depth = 500 } = shape.parameters;
+      const hw = width / 2;
+      const hh = height / 2;
+      const hd = depth / 2;
+      
+      // Convert world point to shape's local coordinate system
+      const shapePosition = new THREE.Vector3(...shape.position);
+      const localPoint = worldPoint.clone().sub(shapePosition);
+      
+      console.log(`🎯 World point: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
+      console.log(`🎯 Shape position: [${shapePosition.x.toFixed(1)}, ${shapePosition.y.toFixed(1)}, ${shapePosition.z.toFixed(1)}]`);
+      console.log(`🎯 Local point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
+      
+      // Define face data with centers and normals
+      const faces = [
+        { index: 0, center: new THREE.Vector3(0, 0, hd), normal: new THREE.Vector3(0, 0, 1), name: 'Front' },
+        { index: 1, center: new THREE.Vector3(0, 0, -hd), normal: new THREE.Vector3(0, 0, -1), name: 'Back' },
+        { index: 2, center: new THREE.Vector3(0, hh, 0), normal: new THREE.Vector3(0, 1, 0), name: 'Top' },
+        { index: 3, center: new THREE.Vector3(0, -hh, 0), normal: new THREE.Vector3(0, -1, 0), name: 'Bottom' },
+        { index: 4, center: new THREE.Vector3(hw, 0, 0), normal: new THREE.Vector3(1, 0, 0), name: 'Right' },
+        { index: 5, center: new THREE.Vector3(-hw, 0, 0), normal: new THREE.Vector3(-1, 0, 0), name: 'Left' },
+      ];
+      
+      let closestFace = -1;
+      let minDistance = Infinity;
+      
+      faces.forEach((face) => {
+        // Calculate distance from clicked point to face center
+        const distanceToCenter = localPoint.distanceTo(face.center);
+        
+        // Project point onto face plane to check if it's actually on the face
+        const pointToCenter = localPoint.clone().sub(face.center);
+        const projectionDistance = Math.abs(pointToCenter.dot(face.normal));
+        
+        // Check if point is close to the face plane (within reasonable threshold)
+        const isOnFacePlane = projectionDistance < 50; // 50mm threshold
+        
+        console.log(`🎯 Face ${face.index} (${face.name}): Distance to center: ${distanceToCenter.toFixed(1)}, Projection distance: ${projectionDistance.toFixed(1)}, On plane: ${isOnFacePlane}`);
+        
+        if (isOnFacePlane && distanceToCenter < minDistance) {
+          minDistance = distanceToCenter;
+          closestFace = face.index;
+        }
+      });
+      
+      console.log(`🎯 Final result: Closest face is ${closestFace} with distance ${minDistance.toFixed(1)}`);
+      return closestFace !== -1 ? closestFace : null;
+    };
+    
+    // Global function to find next adjacent face
+    (window as any).findNextAdjacentFace = (currentFace: number, shape: Shape): number => {
+      if (shape.type !== 'box') return (currentFace + 1) % 6;
+      
+      // Define adjacent faces for each face of a cube
+      const adjacentFaces: { [key: number]: number[] } = {
+        0: [2, 3, 4, 5], // Front -> Top, Bottom, Right, Left
+        1: [2, 3, 4, 5], // Back -> Top, Bottom, Right, Left
+        2: [0, 1, 4, 5], // Top -> Front, Back, Right, Left
+        3: [0, 1, 4, 5], // Bottom -> Front, Back, Right, Left
+        4: [0, 1, 2, 3], // Right -> Front, Back, Top, Bottom
+        5: [0, 1, 2, 3], // Left -> Front, Back, Top, Bottom
+      };
+      
+      const adjacent = adjacentFaces[currentFace] || [];
+      if (adjacent.length === 0) return (currentFace + 1) % 6;
+      
+      // Find current index in adjacent array and move to next
+      const currentIndex = adjacent.indexOf(currentFace);
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % adjacent.length;
+      
+      console.log(`🎯 Face ${currentFace} -> Next adjacent face: ${adjacent[nextIndex]}`);
+      return adjacent[nextIndex];
+    };
+    
+    return () => {
+      delete (window as any).findClosestFaceToPoint;
+      delete (window as any).findNextAdjacentFace;
+    };
+  }, []);
+
   // Handle face cycle updates from OpenCascadeShape
   const handleFaceCycleUpdate = (cycleState: {
     selectedFace: number | null;
