@@ -903,14 +903,27 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           rotation={shape.rotation}
           scale={shape.scale}
           visible={viewMode !== ViewMode.WIREFRAME}
+          castShadow
+          receiveShadow
         >
           <meshPhysicalMaterial
-            color="#fbbf24" // Yellow preview color
-            roughness={0.6}
-            metalness={0.02}
+            color="#3b82f6" // Blue preview color
+            roughness={0.3}
+            metalness={0.1}
+            clearcoat={0.8}
+            clearcoatRoughness={0.1}
+            reflectivity={0.3}
+            envMapIntensity={0.8}
             transparent
-            opacity={0.7}
+            opacity={0.85}
             depthWrite={false}
+            iridescence={0.2}
+            iridescenceIOR={1.3}
+            sheen={0.3}
+            sheenRoughness={0.2}
+            sheenColor="#60a5fa"
+            transmission={0.1}
+            thickness={2}
           />
         </mesh>
       )}
@@ -929,10 +942,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           scale={shape.scale}
         >
           <lineBasicMaterial
-            color="#f59e0b" // Darker yellow for edges
+            color="#1d4ed8" // Darker blue for edges
             linewidth={2.0}
             transparent
-            opacity={0.9}
+            opacity={1.0}
             depthTest={false}
           />
         </lineSegments>

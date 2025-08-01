@@ -876,17 +876,20 @@ const Scene: React.FC = () => {
 
       <Canvas
         ref={canvasRef}
-        dpr={[1, 1.5]} // 🎯 REDUCED DPR - Less intensive rendering
+        dpr={[1.5, 2]} // 🎯 HIGH QUALITY DPR - Better rendering quality
         shadows
         gl={{
           antialias: true,
           alpha: true,
           preserveDrawingBuffer: true,
           logarithmicDepthBuffer: true,
-          toneMapping: THREE.LinearToneMapping, // 🎯 LINEAR TONE MAPPING - No blooms
-          toneMappingExposure: 1.0, // 🎯 NORMAL EXPOSURE - No overbrightness
+          toneMapping: THREE.ACESFilmicToneMapping, // 🎯 CINEMATIC TONE MAPPING
+          toneMappingExposure: 1.2, // 🎯 ENHANCED EXPOSURE
           outputColorSpace: THREE.SRGBColorSpace,
           powerPreference: 'high-performance',
+          stencil: true,
+          depth: true,
+          precision: 'highp',
         }}
         camera={{
           near: 1,
@@ -915,15 +918,17 @@ const Scene: React.FC = () => {
           />
         )}
 
-        {/* 🎯 BALANCED LIGHTING SYSTEM - Bright but no blooms */}
-        <Environment preset="studio" intensity={0.4} blur={0.4} />
+        {/* 🎯 HIGH QUALITY LIGHTING SYSTEM */}
+        <Environment preset="city" intensity={0.6} blur={0.2} />
 
         <directionalLight
           position={[2000, 3000, 2000]}
-          intensity={0.8}
+          intensity={1.2}
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[4096, 4096]}
           shadow-bias={-0.0001}
+          shadow-normalBias={0.02}
+          shadow-radius={4}
           color="#ffffff"
         >
           <orthographicCamera
@@ -934,11 +939,34 @@ const Scene: React.FC = () => {
 
         <directionalLight
           position={[-1500, 1500, -1500]}
-          intensity={0.3}
-          color="#f8f9fa"
+          intensity={0.5}
+          color="#e0f2fe"
         />
 
-        <ambientLight intensity={0.5} color="#ffffff" />
+        <directionalLight
+          position={[0, 2000, 1000]}
+          intensity={0.4}
+          color="#fef3c7"
+        />
+
+        <ambientLight intensity={0.3} color="#f1f5f9" />
+
+        {/* 🎯 NEW: Additional fill lights for better quality */}
+        <pointLight
+          position={[1000, 1000, 1000]}
+          intensity={0.3}
+          color="#ffffff"
+          decay={2}
+          distance={3000}
+        />
+
+        <pointLight
+          position={[-1000, 500, -1000]}
+          intensity={0.2}
+          color="#e0f2fe"
+          decay={2}
+          distance={2000}
+        />
 
         <DrawingPlane
           onShowMeasurement={setMeasurementOverlay}
