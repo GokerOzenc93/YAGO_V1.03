@@ -46,7 +46,7 @@ export const convertTo3DShape = (
       // Position at ground level (Y=0) so the extruded shape sits on the drawing plane
       // Calculate the actual center of the drawn polyline to position the solid there
       const center = calculatePolylineCenter(shape.points);
-      position = [center.x, height / 2, center.z];
+      position = [center.x, 0, center.z];
       shapeType = shape.type === 'polygon' ? 'polygon2d' : 'polyline2d';
       break;
     }
@@ -81,7 +81,7 @@ export const convertTo3DShape = (
   addShape(newShape);
   selectShape(newShape.id);
 
-  console.log(`2D shape converted to 3D selectable shape at position: [${position.join(', ')}]`);
+  console.log(`2D shape converted to 3D selectable shape at GROUND LEVEL: [${position.join(', ')}]`);
   return newShape;
 };
 
@@ -129,7 +129,7 @@ export const extrudeShape = (
       
       shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
       console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm`);
-      console.log(`Solid positioned at origin since geometry contains positioning`);
+      console.log(`Solid positioned at GROUND LEVEL (Y=0) - geometry contains positioning`);
       break;
     }
     default:

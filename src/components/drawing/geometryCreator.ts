@@ -56,7 +56,7 @@ export const createPolylineGeometry = (
     geometry.rotateX(-Math.PI / 2);
     
     // Move geometry so bottom is at Y=0
-    geometry.translate(0, height / 2, 0);
+    geometry.translate(0, 0, 0);
     
     // Now translate the geometry to the original polyline position
     geometry.translate(center.x, 0, center.z);
@@ -65,7 +65,7 @@ export const createPolylineGeometry = (
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     
-    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm - Z coordinates flipped for correct orientation`);
+    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm - GROUND LEVEL (Y=0)`);
     
     return geometry;
     
