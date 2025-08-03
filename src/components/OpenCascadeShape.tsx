@@ -95,6 +95,21 @@ const OpenCascadeShape: React.FC<Props> = ({
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
 
+  // Debug: Log shape information when selected
+  useEffect(() => {
+    if (isSelected && meshRef.current) {
+      console.log('🎯 GIZMO DEBUG - Selected shape:', {
+        id: shape.id,
+        type: shape.type,
+        shapePosition: shape.position,
+        meshPosition: meshRef.current.position.toArray(),
+        meshWorldPosition: meshRef.current.getWorldPosition(new THREE.Vector3()).toArray(),
+        geometryBoundingBox: shape.geometry.boundingBox,
+        is2DShape: shape.is2DShape
+      });
+    }
+  }, [isSelected, shape]);
+
   // Add selectedFaceCenters state
   const [selectedFaceCenters, setSelectedFaceCenters] = useState<THREE.Vector3[]>([]);
 
@@ -147,6 +162,8 @@ const OpenCascadeShape: React.FC<Props> = ({
     const controls = transformRef.current;
     if (!controls) return;
 
+    console.log('🎯 GIZMO SETUP - Transform controls initialized for shape:', shape.id);
+
     controls.translationSnap = gridSize;
     controls.rotationSnap = Math.PI / 12;
     controls.scaleSnap = 0.25;
@@ -159,7 +176,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       const rotation = mesh.rotation.toArray().slice(0, 3);
       const scale = mesh.scale.toArray();
 
-      console.log(`Shape ${shape.id} transformed:`, {
+      console.log(`🎯 GIZMO TRANSFORM - Shape ${shape.id} transformed:`, {
         position: position.map((p) => p.toFixed(1)),
         rotation: rotation.map((r) => ((r * 180) / Math.PI).toFixed(1)),
         scale: scale.map((s) => s.toFixed(2)),
@@ -187,8 +204,12 @@ const OpenCascadeShape: React.FC<Props> = ({
         meshRef.current.position.toArray() as [number, number, number]
       );
       console.log(
-        `Shape ${shape.id} selected at position:`,
-        meshRef.current.position.toArray().map((p) => p.toFixed(1))
+        `🎯 GIZMO SELECTION - Shape ${shape.id} selected:`,
+        {
+          meshPosition: meshRef.current.position.toArray().map((p) => p.toFixed(1)),
+          worldPosition: meshRef.current.getWorldPosition(new THREE.Vector3()).toArray().map((p) => p.toFixed(1)),
+          shapePosition: shape.position.map((p) => p.toFixed(1))
+        }
       );
     }
   }, [isSelected, setSelectedObjectPosition, shape.id]);
@@ -409,7 +430,10 @@ const OpenCascadeShape: React.FC<Props> = ({
                 ? 'scale'
                 : 'translate'
             }
-            size={1.2}
+            size={0.8}
+            onObjectChange={() => {
+              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
+            }}
           />
         )}
     </group>
