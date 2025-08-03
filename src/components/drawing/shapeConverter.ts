@@ -42,9 +42,11 @@ export const convertTo3DShape = (
     case 'polyline':
     case 'polygon': {
       geometry = createPolylineGeometry(shape.points, height, gridSize);
-      // Position at origin since geometry already contains the correct positioning
-      // The geometry is created with the original polyline coordinates
-      position = [0, 0, 0];
+      // Keep the shape exactly where it was drawn - don't move to center
+      // Position at ground level (Y=0) so the extruded shape sits on the drawing plane
+      // Calculate the actual center of the drawn polyline to position the solid there
+      const center = calculatePolylineCenter(shape.points);
+      position = [center.x, height / 2, center.z];
       shapeType = shape.type === 'polygon' ? 'polygon2d' : 'polyline2d';
       break;
     }

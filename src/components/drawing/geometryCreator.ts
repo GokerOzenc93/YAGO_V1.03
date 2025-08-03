@@ -27,19 +27,19 @@ export const createPolylineGeometry = (
     uniquePoints.forEach(point => center.add(point));
     center.divideScalar(uniquePoints.length);
 
-    // Create shape using original points directly (no translation to center)
-    // This preserves the original drawing orientation
+    // Create shape relative to center (translate to origin for shape creation)
+    const relativePoints = uniquePoints.map(point => point.clone().sub(center));
     
-    // Move to the first point using X and Z coordinates (Y is ignored for 2D shape)
-    shape.moveTo(uniquePoints[0].x, uniquePoints[0].z);
+    // Move to the first relative point
+    shape.moveTo(relativePoints[0].x, relativePoints[0].z);
     
-    // Add lines to subsequent points using X and Z coordinates
-    for (let i = 1; i < uniquePoints.length; i++) {
-      shape.lineTo(uniquePoints[i].x, uniquePoints[i].z);
+    // Add lines to subsequent points
+    for (let i = 1; i < relativePoints.length; i++) {
+      shape.lineTo(relativePoints[i].x, relativePoints[i].z);
     }
     
-    // Close the shape by returning to first point
-    shape.lineTo(uniquePoints[0].x, uniquePoints[0].z);
+    // Close the shape
+    shape.lineTo(relativePoints[0].x, relativePoints[0].z);
 
     // Create extrude settings
     const extrudeSettings = {
@@ -52,19 +52,20 @@ export const createPolylineGeometry = (
     // Create the extruded geometry
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
-    // DON'T rotate the geometry - keep it in original orientation
-    // The ExtrudeGeometry already creates the shape in the correct XY plane
-    // We just need to position it correctly
+    // Rotate to make it horizontal (lying on XZ plane)
+    geometry.rotateX(-Math.PI / 2);
     
-    // Move geometry so bottom is at Y=0 (ground level)
-    geometry.translate(0, 0, height / 2);
+    // Move geometry so bottom is at Y=0
+    geometry.translate(0, height / 2, 0);
+    
+    // Now translate the geometry to the original polyline position
+    geometry.translate(center.x, 0, center.z);
     
     // Compute bounding volumes
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     
-    console.log(`🎯 Polyline geometry created with original orientation, height: ${height}mm`);
-    console.log(`🎯 Points used: ${uniquePoints.length}, first point: [${uniquePoints[0].x.toFixed(1)}, ${uniquePoints[0].z.toFixed(1)}]`);
+    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm`);
     
     return geometry;
     
