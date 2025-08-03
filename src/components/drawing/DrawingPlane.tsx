@@ -224,6 +224,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingShape, extrudeHeight]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
