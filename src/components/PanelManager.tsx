@@ -77,6 +77,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const { viewMode } = useAppStore();
 
+  // 🎯 NEW: Touch long press state for panel confirmation
+  const [touchState, setTouchState] = useState<{
+    isLongPressing: boolean;
+    touchStartTime: number;
+    touchFaceIndex: number | null;
+    longPressTimer: NodeJS.Timeout | null;
+  }>({
+    isLongPressing: false,
+    touchStartTime: 0,
+    touchFaceIndex: null,
+    longPressTimer: null,
+  });
+
+  const LONG_PRESS_DURATION = 800; // 800ms for long press
   // NEW: Geometric face detection
   const geometricFaces = useMemo(() => {
     if (shape.type !== 'box') return [];
@@ -723,6 +737,115 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (isAddPanelMode) {
       handleDynamicClick(e);
       return;
+  // 🎯 NEW: Handle touch start for long press detection
+  const handleTouchStart = useCallback((e: any, faceIndex: number) => {
+    if (!isAddPanelMode) return;
+    
+    e.stopPropagation();
+    
+    // Clear any existing timer
+    if (touchState.longPressTimer) {
+      clearTimeout(touchState.longPressTimer);
+    }
+    
+    const startTime = Date.now();
+    
+    // Set up long press timer
+    const timer = setTimeout(() => {
+      // Long press detected - confirm panel placement
+      if (selectedDynamicFace !== null) {
+        onFaceSelect?.(selectedDynamicFace);
+        console.log(`🎯 TOUCH LONG PRESS: Panel confirmed on face ${selectedDynamicFace}`);
+        
+        // Visual feedback - could add haptic feedback here if available
+        if (navigator.vibrate) {
+          navigator.vibrate(100); // Short vibration feedback
+        }
+        
+        setTouchState(prev => ({
+          ...prev,
+          isLongPressing: false,
+          longPressTimer: null,
+        }));
+      }
+    }, LONG_PRESS_DURATION);
+    
+    setTouchState({
+      isLongPressing: true,
+      touchStartTime: startTime,
+      touchFaceIndex: faceIndex,
+      longPressTimer: timer,
+    });
+    
+    console.log(`🎯 TOUCH START: Long press detection started for face ${faceIndex}`);
+  }, [isAddPanelMode, selectedDynamicFace, onFaceSelect, touchState.longPressTimer, LONG_PRESS_DURATION]);
+
+  // 🎯 NEW: Handle touch end - cancel long press if released early
+  const handleTouchEnd = useCallback((e: any) => {
+    if (!touchState.isLongPressing) return;
+    
+    e.stopPropagation();
+    
+    const touchDuration = Date.now() - touchState.touchStartTime;
+    
+    // Clear the timer
+    if (touchState.longPressTimer) {
+      clearTimeout(touchState.longPressTimer);
+    }
+    
+    if (touchDuration < LONG_PRESS_DURATION) {
+      // Short touch - cycle through faces (same as click)
+      const intersectionPoint = e.point || (window as any).lastClickPosition;
+      
+      if (selectedDynamicFace === null && intersectionPoint) {
+        // First touch - find closest face
+        const closestFace = (window as any).findClosestFaceToPoint?.(intersectionPoint, shape);
+        if (closestFace !== null && onDynamicFaceSelect) {
+          onDynamicFaceSelect(closestFace);
+          console.log(`🎯 SHORT TOUCH: Selected face ${closestFace} geometrically`);
+        }
+      } else if (selectedDynamicFace !== null) {
+        // Subsequent touches - find next adjacent face
+        const nextFace = (window as any).findNextAdjacentFace?.(selectedDynamicFace, shape);
+        if (onDynamicFaceSelect) {
+          onDynamicFaceSelect(nextFace);
+          console.log(`🎯 SHORT TOUCH: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
+        }
+      }
+    }
+    
+    setTouchState({
+      isLongPressing: false,
+      touchStartTime: 0,
+      touchFaceIndex: null,
+      longPressTimer: null,
+    });
+  }, [touchState, selectedDynamicFace, onDynamicFaceSelect, shape, LONG_PRESS_DURATION]);
+
+  // 🎯 NEW: Handle touch move - cancel long press if finger moves too much
+  const handleTouchMove = useCallback((e: any) => {
+    if (!touchState.isLongPressing) return;
+    
+    // Cancel long press if finger moves (to prevent accidental confirmations)
+    if (touchState.longPressTimer) {
+      clearTimeout(touchState.longPressTimer);
+      setTouchState(prev => ({
+        ...prev,
+        isLongPressing: false,
+        longPressTimer: null,
+      }));
+      console.log(`🎯 TOUCH MOVE: Long press cancelled due to finger movement`);
+    }
+  }, [touchState]);
+
+  // 🎯 NEW: Cleanup touch timers on unmount
+  useEffect(() => {
+    return () => {
+      if (touchState.longPressTimer) {
+        clearTimeout(touchState.longPressTimer);
+      }
+    };
+  }, [touchState.longPressTimer]);
     }
     
     if (isAddPanelMode && e.nativeEvent.button === 0) {
@@ -818,6 +941,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
                   e.nativeEvent.preventDefault();
                 }
               }}
+              // 🎯 NEW: Touch event handlers for long press
+              onTouchStart={(e) => handleTouchStart(e, faceIndex)}
+              onTouchEnd={handleTouchEnd}
+              onTouchMove={handleTouchMove}
               onPointerEnter={() => handleFaceHover(faceIndex)}
               onPointerLeave={() => handleFaceHover(null)}
               userData={{ faceIndex }}
