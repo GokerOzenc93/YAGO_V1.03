@@ -98,15 +98,29 @@ const OpenCascadeShape: React.FC<Props> = ({
   // Debug: Log shape information when selected
   useEffect(() => {
     if (isSelected && meshRef.current) {
+      const worldPos = meshRef.current.getWorldPosition(new THREE.Vector3());
+      const localPos = meshRef.current.position;
+      
       console.log('🎯 GIZMO DEBUG - Selected shape:', {
         id: shape.id,
         type: shape.type,
         shapePosition: shape.position,
-        meshPosition: meshRef.current.position.toArray(),
-        meshWorldPosition: meshRef.current.getWorldPosition(new THREE.Vector3()).toArray(),
+        meshLocalPosition: localPos.toArray().map(v => v.toFixed(1)),
+        meshWorldPosition: worldPos.toArray().map(v => v.toFixed(1)),
         geometryBoundingBox: shape.geometry.boundingBox,
-        is2DShape: shape.is2DShape
+        is2DShape: shape.is2DShape,
+        positionMatch: localPos.toArray().map((v, i) => Math.abs(v - shape.position[i]) < 0.1)
       });
+      
+      // Check if mesh position matches shape position
+      const positionDiff = localPos.toArray().map((v, i) => Math.abs(v - shape.position[i]));
+      if (positionDiff.some(diff => diff > 0.1)) {
+        console.warn('🚨 POSITION MISMATCH - Mesh position does not match shape position!', {
+          shapePosision: shape.position,
+          meshPosition: localPos.toArray(),
+          difference: positionDiff
+        });
+      }
     }
   }, [isSelected, shape]);
 

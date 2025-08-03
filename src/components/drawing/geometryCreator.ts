@@ -18,28 +18,24 @@ export const createPolylineGeometry = (
       return geometry;
     }
 
-    // Calculate the center of the polyline for positioning
-    const center = new THREE.Vector3();
+    // Get unique points (remove duplicate closing point if exists)
     const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0]) 
-      ? points.slice(0, -1) // Remove duplicate closing point
+      ? points.slice(0, -1)
       : points;
     
-    uniquePoints.forEach(point => center.add(point));
-    center.divideScalar(uniquePoints.length);
-
-    // Create shape relative to center (translate to origin for shape creation)
-    const relativePoints = uniquePoints.map(point => point.clone().sub(center));
+    // Create shape at origin (0,0) - geometry will be centered at origin
+    const relativePoints = uniquePoints.map(point => new THREE.Vector2(point.x, -point.z));
     
-    // Move to the first relative point
-    shape.moveTo(relativePoints[0].x, -relativePoints[0].z); // Z koordinatını ters çevir
+    // Move to the first point
+    shape.moveTo(relativePoints[0].x, relativePoints[0].y);
     
     // Add lines to subsequent points
     for (let i = 1; i < relativePoints.length; i++) {
-      shape.lineTo(relativePoints[i].x, -relativePoints[i].z); // Z koordinatını ters çevir
+      shape.lineTo(relativePoints[i].x, relativePoints[i].y);
     }
     
     // Close the shape
-    shape.lineTo(relativePoints[0].x, -relativePoints[0].z); // Z koordinatını ters çevir
+    shape.lineTo(relativePoints[0].x, relativePoints[0].y);
 
     // Create extrude settings
     const extrudeSettings = {
@@ -55,17 +51,18 @@ export const createPolylineGeometry = (
     // Rotate to make it horizontal (lying on XZ plane)
     geometry.rotateX(-Math.PI / 2);
     
-    // Move geometry so bottom is at Y=0
-    geometry.translate(0, 0, 0);
-    
-    // Now translate the geometry to the original polyline position
-    geometry.translate(center.x, 0, center.z);
+    // Center the geometry at origin - this ensures gizmo appears at center
+    geometry.computeBoundingBox();
+    if (geometry.boundingBox) {
+      const center = geometry.boundingBox.getCenter(new THREE.Vector3());
+      geometry.translate(-center.x, -center.y, -center.z);
+    }
     
     // Compute bounding volumes
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     
-    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm - GROUND LEVEL (Y=0)`);
+    console.log(`🎯 Polyline geometry created centered at origin with height: ${height}mm`);
     
     return geometry;
     

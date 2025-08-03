@@ -121,15 +121,15 @@ export const extrudeShape = (
     }
     case 'polyline':
     case 'polygon': {
-      // Create geometry with original positioning
-      geometry = createPolylineGeometry(shape.points, height, gridSize, true);
+      // Create centered geometry
+      geometry = createPolylineGeometry(shape.points, height, gridSize);
       
-      // Position at origin since geometry is already positioned correctly
-      position = [0, 0, 0];
+      // Calculate the center of the original polyline points for positioning
+      const center = calculatePolylineCenter(shape.points);
+      position = [center.x, height / 2, center.z]; // Position at polyline center with proper Y offset
       
       shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
-      console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm`);
-      console.log(`Solid positioned at GROUND LEVEL (Y=0) - geometry contains positioning`);
+      console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm at position [${position.join(', ')}]`);
       break;
     }
     default:
