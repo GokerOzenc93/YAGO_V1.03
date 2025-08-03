@@ -179,9 +179,26 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // NEW: Geometric face detection
   const geometricFaces = useMemo(() => {
-    if (shape.type !== 'box') return [];
+    if (shape.type !== 'box' && shape.type !== 'polyline3d' && shape.type !== 'polygon3d') return [];
     
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    let width = 500, height = 500, depth = 500;
+    
+    if (shape.type === 'box') {
+      width = shape.parameters.width || 500;
+      height = shape.parameters.height || 500;
+      depth = shape.parameters.depth || 500;
+    } else if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+      // For polyline/polygon, calculate dimensions from geometry
+      const geometry = shape.geometry;
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) {
+        const size = geometry.boundingBox.getSize(new THREE.Vector3());
+        width = size.x;
+        height = shape.parameters.height || 500;
+        depth = size.z;
+      }
+    }
+    
     const hw = width / 2;
     const hh = height / 2;
     const hd = depth / 2;
@@ -466,7 +483,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     allPanels: number[],
     panelOrder: number
   ): SmartPanelBounds => {
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    let width = 500, height = 500, depth = 500;
+    
+    if (shape.type === 'box') {
+      width = shape.parameters.width || 500;
+      height = shape.parameters.height || 500;
+      depth = shape.parameters.depth || 500;
+    } else if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+      // For polyline/polygon, calculate dimensions from geometry
+      const geometry = shape.geometry;
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) {
+        const size = geometry.boundingBox.getSize(new THREE.Vector3());
+        width = size.x;
+        height = shape.parameters.height || 500;
+        depth = size.z;
+      }
+    }
+    
     const hw = width / 2;
     const hh = height / 2;
     const hd = depth / 2;
@@ -779,7 +813,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
-    const { width = 500, height = 500, depth = 500 } = shape.parameters;
+    let width = 500, height = 500, depth = 500;
+    
+    if (shape.type === 'box') {
+      width = shape.parameters.width || 500;
+      height = shape.parameters.height || 500;
+      depth = shape.parameters.depth || 500;
+    } else if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+      // For polyline/polygon, calculate dimensions from geometry
+      const geometry = shape.geometry;
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) {
+        const size = geometry.boundingBox.getSize(new THREE.Vector3());
+        width = size.x;
+        height = shape.parameters.height || 500;
+        depth = size.z;
+      }
+    }
+    
     const hw = width / 2;
     const hh = height / 2;
     const hd = depth / 2;
@@ -877,7 +928,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
-  if (shape.type !== 'box') {
+  if (shape.type !== 'box' && shape.type !== 'polyline3d' && shape.type !== 'polygon3d') {
     return null;
   }
 
@@ -892,8 +943,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             <mesh
               key={`face-${faceIndex}`}
               geometry={new THREE.PlaneGeometry(
-                faceIndex === 2 || faceIndex === 3 ? shape.parameters.width : (faceIndex === 4 || faceIndex === 5 ? shape.parameters.depth : shape.parameters.width),
-                faceIndex === 2 || faceIndex === 3 ? shape.parameters.depth : shape.parameters.height
+                faceIndex === 2 || faceIndex === 3 ? 
+                  (shape.type === 'box' ? shape.parameters.width : 
+                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500) : 
+                  (faceIndex === 4 || faceIndex === 5 ? 
+                    (shape.type === 'box' ? shape.parameters.depth : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
+                    (shape.type === 'box' ? shape.parameters.width : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500)),
+                faceIndex === 2 || faceIndex === 3 ? 
+                  (shape.type === 'box' ? shape.parameters.depth : 
+                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
+                  (shape.type === 'box' ? shape.parameters.height : shape.parameters.height || 500)
               )}
               position={[
                 shape.position[0] + transform.position[0],
