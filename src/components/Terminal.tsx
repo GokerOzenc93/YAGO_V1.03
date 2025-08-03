@@ -494,7 +494,7 @@ const Terminal: React.FC = () => {
           onKeyDown={handleInputKeyDown}
           placeholder={
             (window as any).handleExtrudeHeight
-              ? "Enter extrude height..."
+              ? `Enter extrude height (${measurementUnit})...`
               : (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) 
                 ? "Enter distance or command..." 
                 : "Enter command..."
@@ -508,7 +508,7 @@ const Terminal: React.FC = () => {
               const numericValue = parseFloat(commandInput.trim());
               if (!isNaN(numericValue)) {
                 (window as any).handleExtrudeHeight(numericValue);
-                addEntry('success', `Extrude height: ${numericValue} ${measurementUnit}`, 
+                addEntry('success', `Polyline extruded: ${numericValue} ${measurementUnit}`, 
                   `Shape will be extruded ${convertToBaseUnit(numericValue).toFixed(1)}mm`);
                 setCommandInput('');
                 return;
@@ -521,7 +521,7 @@ const Terminal: React.FC = () => {
                 const distanceInMm = convertToBaseUnit(numericValue);
                 if ((window as any).handlePolylineMeasurement) {
                   (window as any).handlePolylineMeasurement(distanceInMm);
-                  addEntry('success', `${activeTool} segment: ${numericValue} ${measurementUnit}`, 
+                  addEntry('success', `Polyline extruded: ${numericValue} ${measurementUnit}`, 
                     `Distance set to ${distanceInMm.toFixed(1)}mm`);
                   setCommandInput('');
                   return;

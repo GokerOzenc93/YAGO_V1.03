@@ -197,10 +197,10 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
-    if (showExtrudeInput) {
+    if (pendingShape) {
       // Focus terminal input after a short delay
       setTimeout(() => {
-        const terminalInput = document.querySelector('input[placeholder*="Enter extrude height"]') as HTMLInputElement;
+        const terminalInput = document.querySelector('input[placeholder*="extrude height"]') as HTMLInputElement;
         if (terminalInput) {
           terminalInput.focus();
           terminalInput.select();
@@ -208,38 +208,27 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         }
       }, 100);
     }
-  }, [showExtrudeInput]);
 
   // Handle keyboard input for extrude height
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (showExtrudeInput) {
+      if (pendingShape) {
         if (event.key === 'Enter' && extrudeHeight) {
           handleExtrudeSubmit();
         } else if (event.key === 'Escape') {
           handleExtrudeCancel();
-        } else if (event.key >= '0' && event.key <= '9' || event.key === '.' || event.key === 'Backspace') {
-          if (event.key === 'Backspace') {
-            setExtrudeHeight(prev => prev.slice(0, -1));
-          } else if (event.key !== '.') {
-            setExtrudeHeight(prev => prev + event.key);
-          } else if (!extrudeHeight.includes('.')) {
-            setExtrudeHeight(prev => prev + event.key);
-          }
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showExtrudeInput, extrudeHeight]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
     // Show extrude input dialog instead of immediate conversion
     setPendingShape(shape);
-    setShowExtrudeInput(true);
-    console.log(`${shape.type} completed, asking for extrude height`);
+    console.log(`${shape.type} completed, waiting for extrude height in terminal`);
   };
 
   // UNIFIED: Finish drawing function
@@ -732,34 +721,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       )}
 
       {/* Extrude Height Input Dialog */}
-      {showExtrudeInput && pendingShape && (
-        <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-          <mesh position={[pendingShape.points[0].x, gridSize * 3, pendingShape.points[0].z]}>
-            <planeGeometry args={[gridSize * 8, gridSize * 2]} />
-            <meshBasicMaterial color="#1f2937" opacity={0.95} transparent />
-            <group position={[0, 0, 0.1]}>
-              <Text
-                position={[0, gridSize * 0.3, 0]}
-                fontSize={gridSize / 3}
-                color="white"
-                anchorX="center"
-                anchorY="middle"
-              >
-                Extrude Height: {extrudeHeight || '0'} {measurementUnit}
-              </Text>
-              <Text
-                position={[0, -gridSize * 0.3, 0]}
-                fontSize={gridSize / 4}
-                color="#9ca3af"
-                anchorX="center"
-                anchorY="middle"
-              >
-                Type in terminal or press Enter
-              </Text>
-            </group>
-          </mesh>
-        </Billboard>
-      )}
     </>
   );
 };
