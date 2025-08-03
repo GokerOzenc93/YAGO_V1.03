@@ -208,6 +208,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         }
       }, 100);
     }
+  }, [pendingShape]);
 
   // Handle keyboard input for extrude height
   useEffect(() => {
