@@ -195,6 +195,21 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     };
   }, [drawingState.currentPoint, drawingState.currentDirection, drawingState.isDrawing, activeTool, extrudeHeight, pendingShape]);
 
+  // Auto-focus terminal input when extrude dialog shows
+  useEffect(() => {
+    if (showExtrudeInput) {
+      // Focus terminal input after a short delay
+      setTimeout(() => {
+        const terminalInput = document.querySelector('input[placeholder*="Enter extrude height"]') as HTMLInputElement;
+        if (terminalInput) {
+          terminalInput.focus();
+          terminalInput.select();
+          console.log('Terminal input auto-focused for extrude height');
+        }
+      }, 100);
+    }
+  }, [showExtrudeInput]);
+
   // Handle keyboard input for extrude height
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

@@ -56,8 +56,13 @@ export const createPolylineGeometry = (
     // Create the extruded geometry
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
-    // Don't rotate - keep the geometry as extruded upward
-    // The extrusion naturally goes in the Z direction, which is what we want
+    // Keep the geometry as extruded - no rotation needed
+    // The extrusion naturally goes in the Z direction
+    // We want it to go up in the Y direction, so rotate appropriately
+    geometry.rotateX(-Math.PI / 2); // This makes it lie flat on XZ plane
+    
+    // Move the geometry so its bottom is at Y=0
+    geometry.translate(0, 0, height / 2);
     
     // Compute bounding volumes (critical for Three.js rendering)
     geometry.computeBoundingBox();

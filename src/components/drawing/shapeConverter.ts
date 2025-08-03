@@ -127,12 +127,12 @@ export const extrudeShape = (
       // Calculate the center of the original polyline points
       const center = calculatePolylineCenter(shape.points);
       
-      // Position the solid at the polyline center, with base at ground level
-      position = [center.x, height / 2, center.z];
+      // Position the solid at the polyline center, with base at ground level (Y=0)
+      position = [center.x, 0, center.z];
       
       shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
       console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm`);
-      console.log(`Solid positioned at polyline center: [${center.x.toFixed(1)}, ${height / 2}, ${center.z.toFixed(1)}]`);
+      console.log(`Solid positioned at polyline center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height ${height}mm`);
       break;
     }
     default:
