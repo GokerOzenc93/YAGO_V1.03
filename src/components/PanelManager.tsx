@@ -175,23 +175,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       touchFaceIndex: null,
       longPressTimer: null,
     });
-  }, [touchState, selectedDynamicFace, onDynamicFaceSelect, findClosestFace, findNextFace, LONG_PRESS_DURATION]);
-
-  // 🎯 NEW: Handle touch move - cancel long press if finger moves too much
-  const handleTouchMove = useCallback((e: any) => {
-    if (!touchState.isLongPressing) return;
-    
-    // Cancel long press if finger moves (to prevent accidental confirmations)
-    if (touchState.longPressTimer) {
-      clearTimeout(touchState.longPressTimer);
-      setTouchState(prev => ({
-        ...prev,
-        isLongPressing: false,
-        longPressTimer: null,
-      }));
-      console.log(`🎯 TOUCH MOVE: Long press cancelled due to finger movement`);
-    }
-  }, [touchState]);
+  }, [touchState, selectedDynamicFace, onDynamicFaceSelect, LONG_PRESS_DURATION]);
 
   // NEW: Geometric face detection
   const geometricFaces = useMemo(() => {
@@ -382,6 +366,22 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     console.log(`🎯 Current face: ${currentFace}, Next closest face: ${nextFace}`);
     return nextFace;
   }, [geometricFaces]);
+
+  // 🎯 NEW: Handle touch move - cancel long press if finger moves too much
+  const handleTouchMove = useCallback((e: any) => {
+    if (!touchState.isLongPressing) return;
+    
+    // Cancel long press if finger moves (to prevent accidental confirmations)
+    if (touchState.longPressTimer) {
+      clearTimeout(touchState.longPressTimer);
+      setTouchState(prev => ({
+        ...prev,
+        isLongPressing: false,
+        longPressTimer: null,
+      }));
+      console.log(`🎯 TOUCH MOVE: Long press cancelled due to finger movement`);
+    }
+  }, [touchState]);
 
   // Helper function to get face name
   const getFaceName = (faceIndex: number): string => {
@@ -832,7 +832,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
       }
     }
-  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, findClosestFace, findNextFace]);
+  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect]);
 
   const handleClick = (e: any, faceIndex: number) => {
     // Dynamic selection is always active in panel mode
