@@ -193,15 +193,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     }
   }, [touchState]);
 
-  // 🎯 NEW: Cleanup touch timers on unmount
-  useEffect(() => {
-    return () => {
-      if (touchState.longPressTimer) {
-        clearTimeout(touchState.longPressTimer);
-      }
-    };
-  }, [touchState.longPressTimer]);
-
   // NEW: Geometric face detection
   const geometricFaces = useMemo(() => {
     if (shape.type !== 'box') return [];
@@ -848,6 +839,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (isAddPanelMode) {
       handleDynamicClick(e);
       return;
+    }
   };
 
   const handleFaceHover = (faceIndex: number | null) => {
