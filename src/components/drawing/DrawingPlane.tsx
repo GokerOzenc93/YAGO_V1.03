@@ -179,28 +179,47 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     console.log(`${activeTool} segment added: ${distance.toFixed(1)}mm`);
   };
 
+  // Handle extrude height input from terminal
+  const handleExtrudeInput = (height: number) => {
+    if (!pendingShape) {
+      console.log('No pending shape to extrude');
+      return;
+    }
+    
+    const heightInMm = convertToBaseUnit(height);
+    if (isNaN(heightInMm) || heightInMm <= 0) {
+      console.log('Invalid extrude height');
+      return;
+    }
+    
+    // Create extruded 3D shape
+    extrudeShape(pendingShape, addShape, heightInMm, gridSize);
+    
+    // Cleanup
+    setCompletedShapes(prev => prev.filter(s => s.id !== pendingShape.id));
+    setPendingShape(null);
+    
+    console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm`);
+  };
   // Expose measurement input handler globally
   useEffect(() => {
     (window as any).handlePolylineMeasurement = handleMeasurementInput;
     
-    // Expose extrude height handler globally
-    (window as any).handleExtrudeHeight = (height: number) => {
-      setExtrudeHeight(height.toString());
-      handleExtrudeSubmit();
-    };
+    // Expose extrude height handler globally  
+    (window as any).handleExtrudeHeight = handleExtrudeInput;
     
     return () => {
       delete (window as any).handlePolylineMeasurement;
       delete (window as any).handleExtrudeHeight;
     };
-  }, [drawingState.currentPoint, drawingState.currentDirection, drawingState.isDrawing, activeTool, extrudeHeight, pendingShape]);
+  }, [drawingState.currentPoint, drawingState.currentDirection, drawingState.isDrawing, activeTool, pendingShape, convertToBaseUnit, addShape, gridSize]);
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
     if (pendingShape) {
       // Focus terminal input after a short delay
       setTimeout(() => {
-        const terminalInput = document.querySelector('input[placeholder*="extrude height"]') as HTMLInputElement;
+        const terminalInput = document.querySelector('input[placeholder*="Enter extrude height"]') as HTMLInputElement;
         if (terminalInput) {
           terminalInput.focus();
           terminalInput.select();
@@ -460,21 +479,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       
       // Handle Enter key for POLYLINE and POLYGON
       if (event.key === 'Enter' && (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && drawingState.isDrawing && drawingState.points.length >= 2 && !drawingState.waitingForMeasurement) {
-        const shapeId = Math.random().toString(36).substr(2, 9);
-        const newShape: CompletedShape = {
-          id: shapeId,
-          type: activeTool === Tool.POLYGON ? 'polygon' : 'polyline',
-          points: [...drawingState.points],
-          dimensions: {},
-          isClosed: false
-        };
-        
-        setCompletedShapes(prev => [...prev, newShape]);
-        console.log(`${activeTool} finished with Enter: ${drawingState.points.length} points`);
-        
-        convertAndCleanup(newShape);
-        setDrawingState(INITIAL_DRAWING_STATE);
-        setActiveTool(Tool.SELECT);
       }
       
       if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
@@ -489,35 +493,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTool, drawingState.isDrawing, drawingState.points, setActiveTool, drawingState.waitingForMeasurement, addShape, selectShape, gridSize, setEditingPolylineId]);
-
-  // Handle extrude height input
-  const handleExtrudeSubmit = () => {
-    if (!pendingShape || !extrudeHeight) return;
-    
-    const height = convertToBaseUnit(parseFloat(extrudeHeight));
-    if (isNaN(height) || height <= 0) {
-      console.log('Invalid extrude height');
-      return;
-    }
-    
-    // Create extruded 3D shape
-    extrudeShape(pendingShape, addShape, height, gridSize);
-    
-    // Cleanup
-    setCompletedShapes(prev => prev.filter(s => s.id !== pendingShape.id));
-    setPendingShape(null);
-    setExtrudeHeight('');
-    setShowExtrudeInput(false);
-    
-    console.log(`${pendingShape.type} extruded with height: ${height}mm`);
-  };
-  
-  const handleExtrudeCancel = () => {
-    setPendingShape(null);
-    setExtrudeHeight('');
-    setShowExtrudeInput(false);
-    console.log('Extrude cancelled');
-  };
 
   return (
     <>

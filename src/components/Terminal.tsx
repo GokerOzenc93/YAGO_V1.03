@@ -207,26 +207,26 @@ const Terminal: React.FC = () => {
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       // Check if we're in polyline/polygon mode and have a numeric input
-      if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && commandInput.trim()) {
+      if (commandInput.trim()) {
         const numericValue = parseFloat(commandInput.trim());
         if (!isNaN(numericValue)) {
           // Check if we're waiting for extrude height
           if ((window as any).handleExtrudeHeight) {
             (window as any).handleExtrudeHeight(numericValue);
-            addEntry('success', `Extrude height: ${numericValue} ${measurementUnit}`, 
+            addEntry('success', `Shape extruded: ${numericValue} ${measurementUnit}`, 
               `Shape will be extruded ${convertToBaseUnit(numericValue).toFixed(1)}mm`);
             setCommandInput('');
             return; // Don't execute as regular command
           }
           // Call the global measurement handler if it exists
-          else if ((window as any).handlePolylineMeasurement) {
+          else if ((window as any).handlePolylineMeasurement && (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON)) {
             const distanceInMm = convertToBaseUnit(numericValue);
             (window as any).handlePolylineMeasurement(distanceInMm);
             addEntry('success', `${activeTool} segment: ${numericValue} ${measurementUnit}`, 
               `Distance set to ${distanceInMm.toFixed(1)}mm`);
             setCommandInput('');
             return; // Don't execute as regular command
-          } else {
+          } else if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
             addEntry('warning', `No active ${activeTool.toLowerCase()} drawing`, `Start drawing a ${activeTool.toLowerCase()} first`);
             setCommandInput('');
             return;
@@ -504,24 +504,22 @@ const Terminal: React.FC = () => {
         <button
           onClick={() => {
             // Check if we're waiting for extrude height
-            if ((window as any).handleExtrudeHeight && commandInput.trim()) {
+            if (commandInput.trim()) {
               const numericValue = parseFloat(commandInput.trim());
               if (!isNaN(numericValue)) {
-                (window as any).handleExtrudeHeight(numericValue);
-                addEntry('success', `Polyline extruded: ${numericValue} ${measurementUnit}`, 
-                  `Shape will be extruded ${convertToBaseUnit(numericValue).toFixed(1)}mm`);
-                setCommandInput('');
-                return;
-              }
-            }
-            // Check for polyline measurement
-            else if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && commandInput.trim()) {
-              const numericValue = parseFloat(commandInput.trim());
-              if (!isNaN(numericValue)) {
-                const distanceInMm = convertToBaseUnit(numericValue);
-                if ((window as any).handlePolylineMeasurement) {
+                // Check if we're waiting for extrude height
+                if ((window as any).handleExtrudeHeight) {
+                  (window as any).handleExtrudeHeight(numericValue);
+                  addEntry('success', `Shape extruded: ${numericValue} ${measurementUnit}`, 
+                    `Shape will be extruded ${convertToBaseUnit(numericValue).toFixed(1)}mm`);
+                  setCommandInput('');
+                  return;
+                }
+                // Check for polyline measurement
+                else if ((window as any).handlePolylineMeasurement && (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON)) {
+                  const distanceInMm = convertToBaseUnit(numericValue);
                   (window as any).handlePolylineMeasurement(distanceInMm);
-                  addEntry('success', `Polyline extruded: ${numericValue} ${measurementUnit}`, 
+                  addEntry('success', `${activeTool} segment: ${numericValue} ${measurementUnit}`, 
                     `Distance set to ${distanceInMm.toFixed(1)}mm`);
                   setCommandInput('');
                   return;
