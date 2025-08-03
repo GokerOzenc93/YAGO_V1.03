@@ -18,32 +18,28 @@ export const createPolylineGeometry = (
       return geometry;
     }
 
-    // If keeping original position, use points as-is
-    // Otherwise, center the shape at origin
-    let shapePoints = points;
+    // Calculate the center of the polyline for positioning
+    const center = new THREE.Vector3();
+    const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0]) 
+      ? points.slice(0, -1) // Remove duplicate closing point
+      : points;
     
-    if (!keepOriginalPosition) {
-      // Calculate center for centering at origin
-      const center = new THREE.Vector3();
-      points.forEach(point => center.add(point));
-      center.divideScalar(points.length);
-      
-      // Translate points to center at origin
-      shapePoints = points.map(point => point.clone().sub(center));
-    }
+    uniquePoints.forEach(point => center.add(point));
+    center.divideScalar(uniquePoints.length);
 
-    // Move to the first point (either original or centered)
-    shape.moveTo(shapePoints[0].x, shapePoints[0].z);
+    // Create shape relative to center (translate to origin for shape creation)
+    const relativePoints = uniquePoints.map(point => point.clone().sub(center));
+    
+    // Move to the first relative point
+    shape.moveTo(relativePoints[0].x, relativePoints[0].z);
     
     // Add lines to subsequent points
-    for (let i = 1; i < shapePoints.length; i++) {
-      shape.lineTo(shapePoints[i].x, shapePoints[i].z);
+    for (let i = 1; i < relativePoints.length; i++) {
+      shape.lineTo(relativePoints[i].x, relativePoints[i].z);
     }
     
-    // Close the shape if it's not already closed
-    if (shapePoints.length > 2) {
-      shape.lineTo(shapePoints[0].x, shapePoints[0].z);
-    }
+    // Close the shape
+    shape.lineTo(relativePoints[0].x, relativePoints[0].z);
 
     // Create extrude settings
     const extrudeSettings = {
@@ -56,17 +52,20 @@ export const createPolylineGeometry = (
     // Create the extruded geometry
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
-    // Keep the geometry as extruded - no rotation needed
-    // The extrusion naturally goes in the Z direction
-    // We want it to go up in the Y direction, so rotate appropriately
-    geometry.rotateX(-Math.PI / 2); // This makes it lie flat on XZ plane
+    // Rotate to make it horizontal (lying on XZ plane)
+    geometry.rotateX(-Math.PI / 2);
     
-    // Move the geometry so its bottom is at Y=0
-    geometry.translate(0, 0, height / 2);
+    // Move geometry so bottom is at Y=0
+    geometry.translate(0, height / 2, 0);
     
-    // Compute bounding volumes (critical for Three.js rendering)
+    // Now translate the geometry to the original polyline position
+    geometry.translate(center.x, 0, center.z);
+    
+    // Compute bounding volumes
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
+    
+    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm`);
     
     return geometry;
     
