@@ -31,15 +31,15 @@ export const createPolylineGeometry = (
     const relativePoints = uniquePoints.map(point => point.clone().sub(center));
     
     // Move to the first relative point
-    shape.moveTo(relativePoints[0].x, relativePoints[0].z);
+    shape.moveTo(relativePoints[0].x, -relativePoints[0].z); // Z koordinatını ters çevir
     
     // Add lines to subsequent points
     for (let i = 1; i < relativePoints.length; i++) {
-      shape.lineTo(relativePoints[i].x, relativePoints[i].z);
+      shape.lineTo(relativePoints[i].x, -relativePoints[i].z); // Z koordinatını ters çevir
     }
     
     // Close the shape
-    shape.lineTo(relativePoints[0].x, relativePoints[0].z);
+    shape.lineTo(relativePoints[0].x, -relativePoints[0].z); // Z koordinatını ters çevir
 
     // Create extrude settings
     const extrudeSettings = {
@@ -65,7 +65,7 @@ export const createPolylineGeometry = (
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     
-    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm`);
+    console.log(`🎯 Polyline geometry created at center: [${center.x.toFixed(1)}, 0, ${center.z.toFixed(1)}] with height: ${height}mm - Z coordinates flipped for correct orientation`);
     
     return geometry;
     
