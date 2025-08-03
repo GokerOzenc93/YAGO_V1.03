@@ -251,21 +251,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   // Calculate shape center for transform controls positioning
-  const getShapeCenter = () => {
-    if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
-      // For extruded polylines/polygons, use the geometry's bounding box center
-      const geometry = shape.geometry;
-      geometry.computeBoundingBox();
-      if (geometry.boundingBox) {
-        const center = geometry.boundingBox.getCenter(new THREE.Vector3());
-        // Add shape position offset
-        center.add(new THREE.Vector3(...shape.position));
-        return center;
-      }
-    }
-    // For other shapes, use the shape position
-    return new THREE.Vector3(...shape.position);
-  };
   // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {
     if (isBeingEdited) return '#ff6b35'; // Orange for being edited
@@ -412,10 +397,9 @@ const OpenCascadeShape: React.FC<Props> = ({
         !isEditMode &&
         !isAddPanelMode &&
         !isPanelEditMode && (
-          <group position={getShapeCenter().toArray()}>
           <TransformControls
             ref={transformRef}
-              object={undefined}
+            object={meshRef.current}
             mode={
               activeTool === 'Move'
                 ? 'translate'
@@ -425,29 +409,8 @@ const OpenCascadeShape: React.FC<Props> = ({
                 ? 'scale'
                 : 'translate'
             }
-              size={0.8}
-              onObjectChange={() => {
-                const controls = transformRef.current;
-                if (!controls) return;
-
-                // Get the transform from the controls
-                const position = controls.object?.position || new THREE.Vector3();
-                const rotation = controls.object?.rotation || new THREE.Euler();
-                const scale = controls.object?.scale || new THREE.Vector3(1, 1, 1);
-
-                // Update the shape
-                useAppStore.getState().updateShape(shape.id, {
-                  position: position.toArray(),
-                  rotation: [rotation.x, rotation.y, rotation.z],
-                  scale: scale.toArray(),
-                });
-
-                if (isSelected) {
-                  setSelectedObjectPosition(position.toArray() as [number, number, number]);
-                }
-              }}
+            size={1.2}
           />
-          </group>
         )}
     </group>
   );
