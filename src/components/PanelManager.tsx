@@ -822,12 +822,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // 🎯 NEW: Create preview panel for dynamically selected face
   const previewPanelData = useMemo(() => {
-    if (!isAddPanelMode || selectedDynamicFace === null || !['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+    if (!isAddPanelMode || selectedDynamicFace === null) {
+      console.log(`🎯 No preview panel: addPanelMode=${isAddPanelMode}, selectedDynamicFace=${selectedDynamicFace}`);
       return null;
     }
     
     // Don't show preview if face already has a panel
-    if (selectedFaces.includes(selectedDynamicFace)) return null;
+    if (selectedFaces.includes(selectedDynamicFace)) {
+      console.log(`🎯 Face ${selectedDynamicFace} already has a panel`);
+      return null;
+    }
+    
+    console.log(`🎯 Creating preview panel for face ${selectedDynamicFace} on shape ${shape.id}`);
     
     const faceIndex = selectedDynamicFace;
     const smartBounds = calculateSmartPanelBounds(
@@ -849,7 +855,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       size: smartBounds.finalSize,
       panelOrder: selectedFaces.length,
     };
-  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.type, shape.parameters]);
+  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.geometry, shape.scale, shape.id]);
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
@@ -980,12 +986,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
-  if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
-    console.log(`🎯 PanelManager: Shape type '${shape.type}' not supported for panels`);
-    return null;
-  }
-
-  console.log(`🎯 PanelManager: Rendering panels for shape type '${shape.type}' with ID '${shape.id}'`);
+  console.log(`🎯 PanelManager: Rendering dynamic panels for shape type '${shape.type}' with ID '${shape.id}'`);
 
   return (
     <group>
