@@ -128,7 +128,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   applyDimensionChange('width', inputWidth);
                 }
               }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               step="0.1"
               min="1"
             />
@@ -153,7 +153,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   applyDimensionChange('height', inputHeight);
                 }
               }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               step="0.1"
               min="1"
             />
@@ -178,7 +178,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   applyDimensionChange('depth', inputDepth);
                 }
               }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
+              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               step="0.1"
               min="1"
             />
