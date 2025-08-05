@@ -31,14 +31,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     };
   }, [editedShape.geometry, editedShape.scale]);
 
-  const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(1));
-  const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(1));
-  const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(1));
+  // Giriş alanları için yerel durumlar (state) tanımlandı.
+  // toFixed(0) kullanarak küsurat kaldırıldı.
+  const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
+  const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
+  const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
 
   useEffect(() => {
-    setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
-    setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
-    setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
+    // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
+    // toFixed(0) kullanarak küsurat kaldırıldı.
+    setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
+    setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
+    setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
   // Sadece sayısal, ondalık, +, -, *, /, ( ) girişlere izin veren doğrulama fonksiyonu
@@ -76,9 +80,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
       console.warn(`Geçersiz değer veya matematiksel ifade ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
       // İsteğe bağlı olarak giriş alanını son geçerli değere sıfırla
-      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
-      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
-      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
+      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0)); // toFixed(0) eklendi
+      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0)); // toFixed(0) eklendi
+      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0)); // toFixed(0) eklendi
       return;
     }
 
