@@ -497,28 +497,42 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     allPanels: number[],
     panelOrder: number
   ): SmartPanelBounds => {
+    // Gerçek zamanlı boyutları hesapla - shape.scale ile çarpılmış
     let width = 500, height = 500, depth = 500;
     
     if (shape.type === 'box' || shape.type === 'rectangle2d') {
-      width = shape.parameters.width || 500;
-      height = shape.parameters.height || 500;
-      depth = shape.parameters.depth || 500;
+      // Scale ile çarpılmış gerçek boyutları kullan
+      width = (shape.parameters.width || 500) * shape.scale[0];
+      height = (shape.parameters.height || 500) * shape.scale[1];
+      depth = (shape.parameters.depth || 500) * shape.scale[2];
     } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
       const radius = shape.parameters.radius || 250;
-      width = radius * 2;
-      height = shape.parameters.height || 500;
-      depth = radius * 2;
+      width = radius * 2 * shape.scale[0];
+      height = (shape.parameters.height || 500) * shape.scale[1];
+      depth = radius * 2 * shape.scale[2];
     } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
       // For polyline/polygon, calculate dimensions from geometry
       const geometry = shape.geometry;
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
         const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = Math.abs(size.x) || 500;
-        height = shape.parameters.height || 500;
-        depth = Math.abs(size.z) || 500;
+        // Scale ile çarpılmış boyutları kullan
+        width = (Math.abs(size.x) || 500) * shape.scale[0];
+        height = (shape.parameters.height || 500) * shape.scale[1];
+        depth = (Math.abs(size.z) || 500) * shape.scale[2];
       }
     }
+    
+    console.log(`🎯 Panel bounds calculation for face ${faceIndex}:`, {
+      shapeType: shape.type,
+      originalParams: shape.parameters,
+      scale: shape.scale,
+      calculatedDimensions: {
+        width: width.toFixed(1),
+        height: height.toFixed(1),
+        depth: depth.toFixed(1)
+      }
+    });
     
     const hw = width / 2;
     const hh = height / 2;
@@ -837,28 +851,41 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
+    // Gerçek zamanlı boyutları hesapla - shape.scale ile çarpılmış
     let width = 500, height = 500, depth = 500;
     
     if (shape.type === 'box' || shape.type === 'rectangle2d') {
-      width = shape.parameters.width || 500;
-      height = shape.parameters.height || 500;
-      depth = shape.parameters.depth || 500;
+      // Scale ile çarpılmış gerçek boyutları kullan
+      width = (shape.parameters.width || 500) * shape.scale[0];
+      height = (shape.parameters.height || 500) * shape.scale[1];
+      depth = (shape.parameters.depth || 500) * shape.scale[2];
     } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
       const radius = shape.parameters.radius || 250;
-      width = radius * 2;
-      height = shape.parameters.height || 500;
-      depth = radius * 2;
+      width = radius * 2 * shape.scale[0];
+      height = (shape.parameters.height || 500) * shape.scale[1];
+      depth = radius * 2 * shape.scale[2];
     } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
       // For polyline/polygon, calculate dimensions from geometry
       const geometry = shape.geometry;
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
         const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = Math.abs(size.x) || 500;
-        height = shape.parameters.height || 500;
-        depth = Math.abs(size.z) || 500;
+        // Scale ile çarpılmış boyutları kullan
+        width = (Math.abs(size.x) || 500) * shape.scale[0];
+        height = (shape.parameters.height || 500) * shape.scale[1];
+        depth = (Math.abs(size.z) || 500) * shape.scale[2];
       }
     }
+    
+    console.log(`🎯 Face transforms calculation:`, {
+      shapeType: shape.type,
+      scale: shape.scale,
+      calculatedDimensions: {
+        width: width.toFixed(1),
+        height: height.toFixed(1),
+        depth: depth.toFixed(1)
+      }
+    });
     
     const hw = width / 2;
     const hh = height / 2;
