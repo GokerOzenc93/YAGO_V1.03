@@ -1,211 +1,337 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check } from 'lucide-react'; // Check icon'u eklendi
-import { useAppStore } from '../../store/appStore';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  Pin,
+  PinOff,
+  ChevronLeft,
+  ChevronRight,
+  Puzzle,
+  Grid3X3,
+} from 'lucide-react';
 import { Shape } from '../../types/shapes';
-import * as THREE from 'three';
+import Module from './Module';
+import Panel from './Panel';
 
-interface ModuleProps {
+interface EditModeProps {
   editedShape: Shape;
-  onClose: () => void;
+  onExit: () => void;
+  isAddPanelMode: boolean;
+  setIsAddPanelMode: (mode: boolean) => void;
+  selectedFaces: number[];
+  setSelectedFaces: (faces: number[] | ((prev: number[]) => number[])) => void;
+  hoveredFace: number | null;
+  hoveredEdge: number | null;
+  showEdges: boolean;
+  setShowEdges: (show: boolean) => void;
+  showFaces: boolean;
+  setShowFaces: (show: boolean) => void;
+  isPanelEditMode: boolean;
+  setIsPanelEditMode: (mode: boolean) => void;
 }
 
-const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
+const EditMode: React.FC<EditModeProps> = ({
+  editedShape,
+  onExit,
+  isAddPanelMode,
+  setIsAddPanelMode,
+  selectedFaces,
+  setSelectedFaces,
+  hoveredFace,
+  hoveredEdge,
+  showEdges,
+  setShowEdges,
+  showFaces,
+  setShowFaces,
+  isPanelEditMode,
+  setIsPanelEditMode,
+}) => {
+  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
+  const [panelTop, setPanelTop] = useState('88px');
+  const [activeComponent, setActiveComponent] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Varsayılan olarak sabitlenmiş (pinned) gelsin
+  const [isLocked, setIsLocked] = useState(true); 
+  
+  const MIN_WIDTH_PX = 170;
+  const MAX_WIDTH_PX = 453;
+  const [panelWidth, setPanelWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Şeklin mevcut geometrisinin ve ölçeğinin en dış sınırlarını hesaplar.
-  // Bu, nesne bir kutu olmasa bile (örneğin bir polylinedan oluşsa bile) doğru boyutları verir.
-  const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
-    if (!editedShape.geometry) {
-      return { currentWidth: 0, currentHeight: 0, currentDepth: 0 };
-    }
-
-    // Bounding box'ı hesapla (eğer henüz hesaplanmadıysa)
-    editedShape.geometry.computeBoundingBox();
-    const bbox = editedShape.geometry.boundingBox;
-
-    // Bounding box boyutlarını mevcut ölçekle çarpılarak gerçek dünya boyutları elde edilir
-    const width = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
-    const height = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
-    const depth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
-
-    return {
-      currentWidth: width,
-      currentHeight: height,
-      currentDepth: depth,
-    };
-  }, [editedShape.geometry, editedShape.scale]); // Geometri veya ölçek değiştiğinde yeniden hesapla
-
-  // Giriş alanları için yerel durumlar (state) tanımlandı.
-  // Bu sayede kullanıcı değeri onaylamadan önce değişiklik yapabilir.
-  const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(1));
-  const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(1));
-  const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(1));
-
-  // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
   useEffect(() => {
-    setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
-    setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
-    setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
-  }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !panelRef.current) return;
+      const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
+      setPanelWidth(newWidth);
+    };
 
-  // Boyut değişikliklerini işler ve onayla butonuna basıldığında veya Enter'a basıldığında uygular.
-  const applyDimensionChange = (
-    dimension: 'width' | 'height' | 'depth',
-    value: string
-  ) => {
-    const newValue = convertToBaseUnit(parseFloat(value) || 0);
-    // Geçersiz veya sıfır/negatif değerleri yoksay
-    if (isNaN(newValue) || newValue <= 0) {
-      console.warn(`Geçersiz değer ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
-      // İsteğe bağlı olarak giriş alanını son geçerli değere sıfırla
-      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
-      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
-      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
-      return;
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
     }
 
-    // Ölçekleme yapmadan önce bounding box'ın hesaplandığından emin ol
-    editedShape.geometry.computeBoundingBox();
-    const bbox = editedShape.geometry.boundingBox;
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
-    const currentScale = [...editedShape.scale];
-    const newScale = [...currentScale];
+  useEffect(() => {
+    const calculatePanelPositionAndHeight = () => {
+      const toolbarElement = document.querySelector('.flex.flex-col.font-inter');
+      const topOffset = toolbarElement ? toolbarElement.clientHeight : 88;
 
-    let originalDimension = 0; // Mevcut ölçeklenmiş boyut
+      const terminalElement = document.querySelector('.fixed.bottom-0.left-0.right-0.z-30');
+      const statusBarElement = document.querySelector('.flex.items-center.justify-between.h-5.px-2.text-xs.bg-gray-800\\/80');
 
-    // Hangi boyutun değiştiğine bağlı olarak ölçek faktörünü hesapla
-    if (dimension === 'width') {
-      originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0];
-      if (originalDimension === 0) originalDimension = 1; // Sıfıra bölmeyi önle
-      newScale[0] = (newValue / originalDimension) * currentScale[0];
-    } else if (dimension === 'height') {
-      originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1];
-      if (originalDimension === 0) originalDimension = 1; // Sıfıra bölmeyi önle
-      newScale[1] = (newValue / originalDimension) * currentScale[1];
-    } else if (dimension === 'depth') {
-      originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2];
-      if (originalDimension === 0) originalDimension = 1; // Sıfıra bölmeyi önle
-      newScale[2] = (newValue / originalDimension) * currentScale[2];
-    }
+      let bottomOffset = 0;
 
-    // Şekli yeni ölçek değerleriyle güncelle
-    updateShape(editedShape.id, {
-      scale: newScale as [number, number, number],
+      if (terminalElement) {
+        bottomOffset = terminalElement.clientHeight;
+      } else if (statusBarElement) {
+        bottomOffset = statusBarElement.clientHeight;
+      } else {
+        bottomOffset = 20;
+      }
+
+      const availableHeight = window.innerHeight - topOffset - bottomOffset;
+      const newHeight = Math.max(availableHeight, 200);
+      const newTop = topOffset;
+
+      setPanelHeight(`${newHeight}px`);
+      setPanelTop(`${newTop}px`);
+    };
+
+    calculatePanelPositionAndHeight();
+
+    let resizeTimeoutId: NodeJS.Timeout;
+    const debouncedCalculate = () => {
+      clearTimeout(resizeTimeoutId);
+      resizeTimeoutId = setTimeout(calculatePanelPositionAndHeight, 50);
+    };
+
+    window.addEventListener('resize', debouncedCalculate);
+    const observer = new MutationObserver(debouncedCalculate);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
     });
+
+    return () => {
+      clearTimeout(resizeTimeoutId);
+      window.removeEventListener('resize', debouncedCalculate);
+      observer.disconnect();
+    };
+  }, []);
+
+  const handleClose = () => {
+    setActiveComponent(null);
+    setIsAddPanelMode(false);
+    setIsPanelEditMode(false);
+    onExit();
+  };
+
+  const handleComponentClick = (componentType: string) => {
+    if (activeComponent === componentType) {
+      setActiveComponent(null);
+    } else {
+      setActiveComponent(componentType);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    if (!isLocked && !isResizing) {
+      setIsCollapsed(false);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isLocked && !isResizing) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setIsCollapsed(true);
+      }, 300);
+    }
+  };
+
+  const toggleLock = () => {
+    setIsLocked(!isLocked);
+    if (!isLocked) {
+      setIsCollapsed(false);
+    }
+  };
+
+  const handleCollapse = () => {
+    setIsCollapsed(true);
+  };
+  
+  const handleExpand = () => {
+    setIsCollapsed(false);
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    startX.current = e.clientX;
+    startWidth.current = panelRef.current?.clientWidth || 250;
+  };
+
+  const getIconButtonColorClasses = (color: string, isActive: boolean) => {
+    const baseClasses = 'relative flex items-center rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]';
+
+    if (isActive) {
+      return `${baseClasses} bg-violet-600/90 text-white shadow-lg shadow-violet-500/25 border border-violet-400/30`;
+    } else {
+      return `${baseClasses} bg-gray-800/50 text-gray-300 hover:bg-gray-600/50 border border-gray-500/30 hover:border-gray-400/50`;
+    }
+  };
+
+  const renderComponentContent = () => {
+    switch (activeComponent) {
+      case 'module':
+        return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
+      case 'panel':
+        return (
+          <Panel 
+            editedShape={editedShape} 
+            onClose={() => setActiveComponent(null)}
+            isAddPanelMode={isAddPanelMode}
+            setIsAddPanelMode={setIsAddPanelMode}
+            isPanelEditMode={isPanelEditMode}
+            setIsPanelEditMode={setIsPanelEditMode}
+          />
+        );
+      default:
+        return (
+          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
+            {editedShape.type === 'box' && (
+              <div className="flex flex-col gap-1 px-2">
+                <button
+                  onClick={() => handleComponentClick('module')}
+                  className={`${getIconButtonColorClasses('violet', activeComponent === 'module')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  title="Module"
+                >
+                  <div className="flex-shrink-0">
+                    <Puzzle size={12} />
+                  </div>
+                  <span className="text-xs font-medium truncate">Module</span>
+                  {activeComponent === 'module' && (
+                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    </div>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => handleComponentClick('panel')}
+                  className={`${getIconButtonColorClasses('blue', activeComponent === 'panel')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  title="Panel"
+                >
+                  <div className="flex-shrink-0">
+                    <Grid3X3 size={12} />
+                  </div>
+                  <span className="text-xs font-medium truncate">Panel</span>
+                  {activeComponent === 'panel' && (
+                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    </div>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+    }
   };
 
   return (
-    <>
-      {/* Spinner oklarını gizlemek için stil */}
-      <style jsx>{`
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield; /* Firefox için */
-        }
-      `}</style>
-
-      <div className="flex items-center justify-between px-3 py-2 bg-violet-600/20 border-b border-violet-500/30">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 bg-violet-600/30 rounded">
-            <Puzzle size={12} className="text-violet-300" />
-          </div>
-          <span className="text-white font-medium text-sm">Modül</span>
-        </div>
+    <div
+      ref={panelRef}
+      className={`fixed left-0 z-50 bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+      style={{
+        top: panelTop,
+        height: panelHeight,
+        width: isCollapsed ? '4px' : `${panelWidth}px`,
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onSelectStart={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
+      {isCollapsed && (
         <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-          title="Geri"
+          onClick={handleExpand}
+          className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
+          title="Paneli Genişlet"
         >
-          <X size={12} />
+          <ChevronRight size={16} className="text-white group-hover:text-blue-300" />
         </button>
-      </div>
+      )}
 
-      <div className="flex-1 p-3 space-y-3">
-        <div className="h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent mb-3"></div>
-
-        <div className="space-y-2">
-          {/* Genişlik */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs w-4">G:</span> {/* Genişlik */}
-            <input
-              type="number"
-              value={inputWidth}
-              onChange={(e) => setInputWidth(e.target.value)}
-              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
-                if (e.key === 'Enter') {
-                  applyDimensionChange('width', inputWidth);
-                }
-              }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
-              step="0.1"
-              // min="1" kaldırıldı
-            />
-            <button
-              onClick={() => applyDimensionChange('width', inputWidth)}
-              className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
-              title="Genişliği Onayla"
-            >
-              <Check size={12} />
-            </button>
+      {!isCollapsed && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between p-2 pt-4 border-b border-gray-700">
+            <span className="text-white font-inter text-base font-bold opacity-90">
+              AD06072
+            </span>
+            {/* Panel genişliği 200px'ten büyükse düğmeleri göster*/}
+            {panelWidth > 200 && (
+              <div className="flex items-center gap-1">
+                {isLocked && (
+                  <button
+                    onClick={handleCollapse}
+                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    title="Arayüzü Küçült"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                )}
+                
+                <button
+                  onClick={toggleLock}
+                  className={`p-1 rounded transition-colors ${
+                    isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
+                  } bg-gray-800/80 backdrop-blur-sm`}
+                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
+                >
+                  {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
+                </button>
+                
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Düzenleme Modundan Çık"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Yükseklik */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs w-4">Y:</span> {/* Yükseklik */}
-            <input
-              type="number"
-              value={inputHeight}
-              onChange={(e) => setInputHeight(e.target.value)}
-              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
-                if (e.key === 'Enter') {
-                  applyDimensionChange('height', inputHeight);
-                }
-              }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
-              step="0.1"
-              // min="1" kaldırıldı
-            />
-            <button
-              onClick={() => applyDimensionChange('height', inputHeight)}
-              className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
-              title="Yüksekliği Onayla"
-            >
-              <Check size={12} />
-            </button>
-          </div>
-
-          {/* Derinlik */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs w-4">D:</span> {/* Derinlik */}
-            <input
-              type="number"
-              value={inputDepth}
-              onChange={(e) => setInputDepth(e.target.value)}
-              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
-                if (e.key === 'Enter') {
-                  applyDimensionChange('depth', inputDepth);
-                }
-              }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
-              step="0.1"
-              // min="1" kaldırıldı
-            />
-            <button
-              onClick={() => applyDimensionChange('depth', inputDepth)}
-              className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
-              title="Derinliği Onayla"
-            >
-              <Check size={12} />
-            </button>
+          
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {renderComponentContent()}
           </div>
         </div>
-      </div>
-    </>
+      )}
+      
+      <div
+        className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/30' : 'hover:bg-blue-500/30'}`}
+        onMouseDown={handleResizeMouseDown}
+      />
+    </div>
   );
 };
 
-export default Module;
+export default EditMode;
