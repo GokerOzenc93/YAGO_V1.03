@@ -822,18 +822,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // 🎯 NEW: Create preview panel for dynamically selected face
   const previewPanelData = useMemo(() => {
-    if (!isAddPanelMode || selectedDynamicFace === null) {
-      console.log(`🎯 No preview panel: addPanelMode=${isAddPanelMode}, selectedDynamicFace=${selectedDynamicFace}`);
+    if (!isAddPanelMode || selectedDynamicFace === null || !['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
       return null;
     }
     
     // Don't show preview if face already has a panel
-    if (selectedFaces.includes(selectedDynamicFace)) {
-      console.log(`🎯 Face ${selectedDynamicFace} already has a panel`);
-      return null;
-    }
-    
-    console.log(`🎯 Creating preview panel for face ${selectedDynamicFace} on shape ${shape.id}`);
+    if (selectedFaces.includes(selectedDynamicFace)) return null;
     
     const faceIndex = selectedDynamicFace;
     const smartBounds = calculateSmartPanelBounds(
@@ -855,7 +849,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       size: smartBounds.finalSize,
       panelOrder: selectedFaces.length,
     };
-  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.geometry, shape.scale, shape.id]);
+  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.type, shape.parameters]);
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
@@ -986,7 +980,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
-  console.log(`🎯 PanelManager: Rendering dynamic panels for shape type '${shape.type}' with ID '${shape.id}'`);
+  if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+    console.log(`🎯 PanelManager: Shape type '${shape.type}' not supported for panels`);
+    return null;
+  }
+
+  console.log(`🎯 PanelManager: Rendering panels for shape type '${shape.type}' with ID '${shape.id}'`);
 
   return (
     <group>
@@ -994,39 +993,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       {(showFaces || isAddPanelMode) &&
         faceTransforms.map((transform, faceIndex) => {
           const opacity = getFaceOpacity(faceIndex);
-          
-          // 🎯 DYNAMIC: Calculate face dimensions from current geometry
-          const geometry = shape.geometry;
-          geometry.computeBoundingBox();
-          
-          let faceWidth = 500, faceHeight = 500;
-          
-          if (geometry.boundingBox) {
-            const size = geometry.boundingBox.getSize(new THREE.Vector3());
-            const width = Math.abs(size.x * shape.scale[0]);
-            const height = Math.abs(size.y * shape.scale[1]);
-            const depth = Math.abs(size.z * shape.scale[2]);
-            
-            // Calculate face dimensions based on face orientation
-            if (faceIndex === 2 || faceIndex === 3) {
-              // Top/Bottom faces: width x depth
-              faceWidth = width;
-              faceHeight = depth;
-            } else if (faceIndex === 4 || faceIndex === 5) {
-              // Left/Right faces: depth x height
-              faceWidth = depth;
-              faceHeight = height;
-            } else {
-              // Front/Back faces: width x height
-              faceWidth = width;
-              faceHeight = height;
-            }
-          }
 
           return (
             <mesh
               key={`face-${faceIndex}`}
-              geometry={new THREE.PlaneGeometry(faceWidth, faceHeight)}
+              geometry={new THREE.PlaneGeometry(
+                faceIndex === 2 || faceIndex === 3 ? 
+                  (shape.type === 'box' ? shape.parameters.width : 
+                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500) : 
+                  (faceIndex === 4 || faceIndex === 5 ? 
+                    (shape.type === 'box' ? shape.parameters.depth : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
+                    (shape.type === 'box' ? shape.parameters.width : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500)),
+                faceIndex === 2 || faceIndex === 3 ? 
+                  (shape.type === 'box' ? shape.parameters.depth : 
+                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
+                  (shape.type === 'box' ? shape.parameters.height : shape.parameters.height || 500)
+              )}
               position={[
                 shape.position[0] + transform.position[0],
                 shape.position[1] + transform.position[1],
