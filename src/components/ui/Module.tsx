@@ -32,22 +32,23 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   }, [editedShape.geometry, editedShape.scale]);
 
   // Giriş alanları için yerel durumlar (state) tanımlandı.
-  // toFixed(0) kullanarak küsurat kaldırıldı.
+  // **Başlangıçta ve güncellendiğinde küsuratsız gösterilir (toFixed(0)).**
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
 
   useEffect(() => {
     // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
-    // toFixed(0) kullanarak küsurat kaldırıldı.
+    // **Yine küsuratsız gösterilir (toFixed(0)).**
     setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
     setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
     setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  // Sadece sayısal, ondalık, +, -, *, /, ( ) girişlere izin veren doğrulama fonksiyonu
+  // Sayısal, ondalık, +, -, *, /, ( ) girişlere izin veren doğrulama fonksiyonu
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
-    // Sayıları, ondalık noktayı, +, -, *, /, parantezleri ve boşlukları kabul et
+    // Sayıları, ondalık noktayı, +, -, *, /, parantezleri ve boşlukları kabul eden regex.
+    // Bu sayede kullanıcı hem tam sayı, hem ondalık sayı, hem de matematiksel ifadeler girebilir.
     const regex = /^[0-9+\-*/().\s]*$/;
     if (regex.test(value) || value === '') {
       setter(value);
@@ -75,14 +76,16 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     dimension: 'width' | 'height' | 'depth',
     value: string
   ) => {
+    // Girilen değeri (matematiksel ifade de olabilir) değerlendir.
     const evaluatedValue = evaluateExpression(value);
 
+    // Değerlendirme sonucu geçersizse veya pozitif bir sayı değilse uyarı ver ve işlemi durdur.
     if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
       console.warn(`Geçersiz değer veya matematiksel ifade ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
-      // İsteğe bağlı olarak giriş alanını son geçerli değere sıfırla
-      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0)); // toFixed(0) eklendi
-      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0)); // toFixed(0) eklendi
-      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0)); // toFixed(0) eklendi
+      // Giriş alanını son geçerli değere sıfırla (küsuratsız olarak).
+      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
+      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
+      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
       return;
     }
 
@@ -141,7 +144,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           <div className="flex items-center gap-2">
             <span className="text-gray-300 text-xs w-4">G:</span>
             <input
-              type="text"
+              type="text" // Metin girişi olarak ayarlandı
               value={inputWidth}
               onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
               onKeyDown={(e) => {
@@ -164,7 +167,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           <div className="flex items-center gap-2">
             <span className="text-gray-300 text-xs w-4">Y:</span>
             <input
-              type="text"
+              type="text" // Metin girişi olarak ayarlandı
               value={inputHeight}
               onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
               onKeyDown={(e) => {
@@ -187,7 +190,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           <div className="flex items-center gap-2">
             <span className="text-gray-300 text-xs w-4">D:</span>
             <input
-              type="text"
+              type="text" // Metin girişi olarak ayarlandı
               value={inputDepth}
               onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
               onKeyDown={(e) => {
