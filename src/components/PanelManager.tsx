@@ -77,6 +77,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const { viewMode } = useAppStore();
 
+  // 🎯 NEW: Dynamic face detection state
+  const [detectedFaces, setDetectedFaces] = useState<GeometricFace[]>([]);
+  const [faceDetectionEnabled, setFaceDetectionEnabled] = useState(false);
+
   // 🎯 NEW: Touch long press state for panel confirmation
   const [touchState, setTouchState] = useState<{
     isLongPressing: boolean;
@@ -179,38 +183,37 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // NEW: Geometric face detection
   const geometricFaces = useMemo(() => {
-    if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
-      console.log(`🎯 GeometricFaces: Shape type '${shape.type}' not supported`);
+    return calculateDynamicFaces();
+  }, [shape.parameters]);
+
+  // 🎯 NEW: Dynamic face calculation based on current geometry
+  const calculateDynamicFaces = useCallback(() => {
+    console.log(`🎯 Calculating dynamic faces for shape: ${shape.type} (ID: ${shape.id})`);
+    
+    // Always compute fresh bounding box
+    const geometry = shape.geometry;
+    geometry.computeBoundingBox();
+    
+    if (!geometry.boundingBox) {
+      console.warn(`🎯 No bounding box available for shape ${shape.id}`);
       return [];
     }
     
-    let width = 500, height = 500, depth = 500;
+    // Get current dimensions from geometry (affected by scale)
+    const bbox = geometry.boundingBox;
+    const size = bbox.getSize(new THREE.Vector3());
     
-    if (shape.type === 'box' || shape.type === 'rectangle2d') {
-      width = shape.parameters.width || 500;
-      height = shape.parameters.height || 500;
-      depth = shape.parameters.depth || 500;
-    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-      const radius = shape.parameters.radius || 250;
-      width = radius * 2;
-      height = shape.parameters.height || 500;
-      depth = radius * 2;
-    } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
-      // For polyline/polygon, calculate dimensions from geometry
-      const geometry = shape.geometry;
-      geometry.computeBoundingBox();
-      if (geometry.boundingBox) {
-        const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = Math.abs(size.x) || 500;
-        height = shape.parameters.height || 500;
-        depth = Math.abs(size.z) || 500;
-      }
-    }
+    // Apply current scale to get real-world dimensions
+    const width = Math.abs(size.x * shape.scale[0]);
+    const height = Math.abs(size.y * shape.scale[1]);
+    const depth = Math.abs(size.z * shape.scale[2]);
     
-    console.log(`🎯 GeometricFaces: Calculated dimensions for ${shape.type}:`, {
+    console.log(`🎯 Dynamic dimensions calculated:`, {
       width: width.toFixed(1),
-      height: height.toFixed(1), 
-      depth: depth.toFixed(1)
+      height: height.toFixed(1),
+      depth: depth.toFixed(1),
+      scale: shape.scale,
+      boundingBoxSize: [size.x.toFixed(1), size.y.toFixed(1), size.z.toFixed(1)]
     });
     
     const hw = width / 2;
@@ -218,7 +221,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     const hd = depth / 2;
     
     const faces: GeometricFace[] = [
-      // Front face (0)
+      // Front face (0) - Z+
       {
         index: 0,
         center: new THREE.Vector3(0, 0, hd),
@@ -231,11 +234,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(-hw, hh, hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, hd - 1),
-          new THREE.Vector3(hw, hh, hd + 1)
+          new THREE.Vector3(-hw, -hh, hd - 5),
+          new THREE.Vector3(hw, hh, hd + 5)
         )
       },
-      // Back face (1)
+      // Back face (1) - Z-
       {
         index: 1,
         center: new THREE.Vector3(0, 0, -hd),
@@ -248,11 +251,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(hw, hh, -hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, -hd - 1),
-          new THREE.Vector3(hw, hh, -hd + 1)
+          new THREE.Vector3(-hw, -hh, -hd - 5),
+          new THREE.Vector3(hw, hh, -hd + 5)
         )
       },
-      // Top face (2)
+      // Top face (2) - Y+
       {
         index: 2,
         center: new THREE.Vector3(0, hh, 0),
@@ -265,11 +268,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(-hw, hh, hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, hh - 1, -hd),
-          new THREE.Vector3(hw, hh + 1, hd)
+          new THREE.Vector3(-hw, hh - 5, -hd),
+          new THREE.Vector3(hw, hh + 5, hd)
         )
       },
-      // Bottom face (3)
+      // Bottom face (3) - Y-
       {
         index: 3,
         center: new THREE.Vector3(0, -hh, 0),
@@ -282,11 +285,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(-hw, -hh, -hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh - 1, -hd),
-          new THREE.Vector3(hw, -hh + 1, hd)
+          new THREE.Vector3(-hw, -hh - 5, -hd),
+          new THREE.Vector3(hw, -hh + 5, hd)
         )
       },
-      // Right face (4)
+      // Right face (4) - X+
       {
         index: 4,
         center: new THREE.Vector3(hw, 0, 0),
@@ -299,11 +302,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(hw, hh, hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(hw - 1, -hh, -hd),
-          new THREE.Vector3(hw + 1, hh, hd)
+          new THREE.Vector3(hw - 5, -hh, -hd),
+          new THREE.Vector3(hw + 5, hh, hd)
         )
       },
-      // Left face (5)
+      // Left face (5) - X-
       {
         index: 5,
         center: new THREE.Vector3(-hw, 0, 0),
@@ -316,14 +319,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(-hw, hh, -hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(-hw - 1, -hh, -hd),
-          new THREE.Vector3(-hw + 1, hh, hd)
+          new THREE.Vector3(-hw - 5, -hh, -hd),
+          new THREE.Vector3(-hw + 5, hh, hd)
         )
       }
     ];
     
+    console.log(`🎯 Generated ${faces.length} dynamic faces for shape ${shape.id}`);
     return faces;
-  }, [shape.parameters]);
+  }, [shape.geometry, shape.scale, shape.id, shape.type]);
 
   // NEW: Find closest face to a 3D point using geometric calculations
   const findClosestFace = useCallback((worldPoint: THREE.Vector3): number | null => {
@@ -497,28 +501,37 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     allPanels: number[],
     panelOrder: number
   ): SmartPanelBounds => {
-    let width = 500, height = 500, depth = 500;
+    // 🎯 DYNAMIC: Get current dimensions from geometry
+    const geometry = shape.geometry;
+    geometry.computeBoundingBox();
     
-    if (shape.type === 'box' || shape.type === 'rectangle2d') {
-      width = shape.parameters.width || 500;
-      height = shape.parameters.height || 500;
-      depth = shape.parameters.depth || 500;
-    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-      const radius = shape.parameters.radius || 250;
-      width = radius * 2;
-      height = shape.parameters.height || 500;
-      depth = radius * 2;
-    } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
-      // For polyline/polygon, calculate dimensions from geometry
-      const geometry = shape.geometry;
-      geometry.computeBoundingBox();
-      if (geometry.boundingBox) {
-        const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = Math.abs(size.x) || 500;
-        height = shape.parameters.height || 500;
-        depth = Math.abs(size.z) || 500;
-      }
+    if (!geometry.boundingBox) {
+      console.warn(`🎯 No bounding box for panel calculation on shape ${shape.id}`);
+      return {
+        faceIndex,
+        originalBounds: new THREE.Box3(),
+        expandedBounds: new THREE.Box3(),
+        finalPosition: new THREE.Vector3(),
+        finalSize: new THREE.Vector3(panelThickness, panelThickness, panelThickness),
+        thickness: panelThickness,
+        cuttingSurfaces: [],
+        isLastPanel: false,
+        panelOrder: 0,
+      };
     }
+    
+    // Get current scaled dimensions
+    const size = geometry.boundingBox.getSize(new THREE.Vector3());
+    const width = Math.abs(size.x * shape.scale[0]);
+    const height = Math.abs(size.y * shape.scale[1]);
+    const depth = Math.abs(size.z * shape.scale[2]);
+    
+    console.log(`🎯 Panel bounds calculation for face ${faceIndex}:`, {
+      width: width.toFixed(1),
+      height: height.toFixed(1),
+      depth: depth.toFixed(1),
+      scale: shape.scale
+    });
     
     const hw = width / 2;
     const hh = height / 2;
@@ -749,9 +762,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const smartPanelData = useMemo(() => {
-    if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type) || selectedFaces.length === 0) {
+    if (selectedFaces.length === 0) {
+      console.log(`🎯 No selected faces for shape ${shape.id}`);
       return [];
     }
+    
+    console.log(`🎯 Calculating smart panel data for ${selectedFaces.length} faces on shape ${shape.id}`);
     
     return selectedFaces.map((faceIndex, index) => {
       const panelOrder = index;
@@ -775,7 +791,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         panelOrder: smartBounds.panelOrder,
       };
     });
-  }, [shape.type, shape.parameters, selectedFaces]);
+  }, [shape.geometry, shape.scale, shape.id, selectedFaces]);
 
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) {
@@ -806,12 +822,18 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // 🎯 NEW: Create preview panel for dynamically selected face
   const previewPanelData = useMemo(() => {
-    if (!isAddPanelMode || selectedDynamicFace === null || !['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+    if (!isAddPanelMode || selectedDynamicFace === null) {
+      console.log(`🎯 No preview panel: addPanelMode=${isAddPanelMode}, selectedDynamicFace=${selectedDynamicFace}`);
       return null;
     }
     
     // Don't show preview if face already has a panel
-    if (selectedFaces.includes(selectedDynamicFace)) return null;
+    if (selectedFaces.includes(selectedDynamicFace)) {
+      console.log(`🎯 Face ${selectedDynamicFace} already has a panel`);
+      return null;
+    }
+    
+    console.log(`🎯 Creating preview panel for face ${selectedDynamicFace} on shape ${shape.id}`);
     
     const faceIndex = selectedDynamicFace;
     const smartBounds = calculateSmartPanelBounds(
@@ -833,36 +855,43 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       size: smartBounds.finalSize,
       panelOrder: selectedFaces.length,
     };
-  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.type, shape.parameters]);
+  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.geometry, shape.scale, shape.id]);
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
-    let width = 500, height = 500, depth = 500;
+    // 🎯 DYNAMIC: Calculate face transforms based on current geometry
+    const geometry = shape.geometry;
+    geometry.computeBoundingBox();
     
-    if (shape.type === 'box' || shape.type === 'rectangle2d') {
-      width = shape.parameters.width || 500;
-      height = shape.parameters.height || 500;
-      depth = shape.parameters.depth || 500;
-    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-      const radius = shape.parameters.radius || 250;
-      width = radius * 2;
-      height = shape.parameters.height || 500;
-      depth = radius * 2;
-    } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
-      // For polyline/polygon, calculate dimensions from geometry
-      const geometry = shape.geometry;
-      geometry.computeBoundingBox();
-      if (geometry.boundingBox) {
-        const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = Math.abs(size.x) || 500;
-        height = shape.parameters.height || 500;
-        depth = Math.abs(size.z) || 500;
-      }
-    }
+    if (!geometry.boundingBox) {
+      console.warn(`🎯 No bounding box for face transforms on shape ${shape.id}`);
+      // Return default transforms
+      return [
+        { position: [0, 0, 250], rotation: [0, 0, 0] },
+        { position: [0, 0, -250], rotation: [0, Math.PI, 0] },
+        { position: [0, 250, 0], rotation: [-Math.PI / 2, 0, 0] },
+        { position: [0, -250, 0], rotation: [Math.PI / 2, 0, 0] },
+        { position: [250, 0, 0], rotation: [0, Math.PI / 2, 0] },
+        { position: [-250, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+      ];
+  }, [shape.geometry, shape.scale, shape.id]);
+    
+    // Get current scaled dimensions
+    const size = geometry.boundingBox.getSize(new THREE.Vector3());
+    const width = Math.abs(size.x * shape.scale[0]);
+    const height = Math.abs(size.y * shape.scale[1]);
+    const depth = Math.abs(size.z * shape.scale[2]);
     
     const hw = width / 2;
     const hh = height / 2;
     const hd = depth / 2;
+    
+    console.log(`🎯 Face transforms calculated:`, {
+      width: width.toFixed(1),
+      height: height.toFixed(1),
+      depth: depth.toFixed(1),
+      halfDimensions: [hw.toFixed(1), hh.toFixed(1), hd.toFixed(1)]
+    });
 
     return [
       // Front face (0) - Z+
@@ -957,12 +986,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
-  if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
-    console.log(`🎯 PanelManager: Shape type '${shape.type}' not supported for panels`);
-    return null;
-  }
-
-  console.log(`🎯 PanelManager: Rendering panels for shape type '${shape.type}' with ID '${shape.id}'`);
+  console.log(`🎯 PanelManager: Rendering dynamic panels for shape type '${shape.type}' with ID '${shape.id}'`);
 
   return (
     <group>
@@ -970,24 +994,39 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       {(showFaces || isAddPanelMode) &&
         faceTransforms.map((transform, faceIndex) => {
           const opacity = getFaceOpacity(faceIndex);
+          
+          // 🎯 DYNAMIC: Calculate face dimensions from current geometry
+          const geometry = shape.geometry;
+          geometry.computeBoundingBox();
+          
+          let faceWidth = 500, faceHeight = 500;
+          
+          if (geometry.boundingBox) {
+            const size = geometry.boundingBox.getSize(new THREE.Vector3());
+            const width = Math.abs(size.x * shape.scale[0]);
+            const height = Math.abs(size.y * shape.scale[1]);
+            const depth = Math.abs(size.z * shape.scale[2]);
+            
+            // Calculate face dimensions based on face orientation
+            if (faceIndex === 2 || faceIndex === 3) {
+              // Top/Bottom faces: width x depth
+              faceWidth = width;
+              faceHeight = depth;
+            } else if (faceIndex === 4 || faceIndex === 5) {
+              // Left/Right faces: depth x height
+              faceWidth = depth;
+              faceHeight = height;
+            } else {
+              // Front/Back faces: width x height
+              faceWidth = width;
+              faceHeight = height;
+            }
+          }
 
           return (
             <mesh
               key={`face-${faceIndex}`}
-              geometry={new THREE.PlaneGeometry(
-                faceIndex === 2 || faceIndex === 3 ? 
-                  (shape.type === 'box' ? shape.parameters.width : 
-                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500) : 
-                  (faceIndex === 4 || faceIndex === 5 ? 
-                    (shape.type === 'box' ? shape.parameters.depth : 
-                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
-                    (shape.type === 'box' ? shape.parameters.width : 
-                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500)),
-                faceIndex === 2 || faceIndex === 3 ? 
-                  (shape.type === 'box' ? shape.parameters.depth : 
-                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
-                  (shape.type === 'box' ? shape.parameters.height : shape.parameters.height || 500)
-              )}
+              geometry={new THREE.PlaneGeometry(faceWidth, faceHeight)}
               position={[
                 shape.position[0] + transform.position[0],
                 shape.position[1] + transform.position[1],
