@@ -96,96 +96,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const LONG_PRESS_DURATION = 800; // 800ms for long press
 
-  // 🎯 NEW: Touch long press handlers
-  const handleTouchStart = useCallback((e: any, faceIndex: number) => {
-    if (!isAddPanelMode) return;
-    
-    e.stopPropagation();
-    
-    // Clear any existing timer
-    if (touchState.longPressTimer) {
-      clearTimeout(touchState.longPressTimer);
-    }
-    
-    const startTime = Date.now();
-    
-    // Set up long press timer
-    const timer = setTimeout(() => {
-      // Long press detected - confirm panel placement
-      if (selectedDynamicFace !== null) {
-        onFaceSelect?.(selectedDynamicFace);
-        console.log(`🎯 TOUCH LONG PRESS: Panel confirmed on face ${selectedDynamicFace}`);
-        
-        // Visual feedback - could add haptic feedback here if available
-        if (navigator.vibrate) {
-          navigator.vibrate(100); // Short vibration feedback
-        }
-        
-        setTouchState(prev => ({
-          ...prev,
-          isLongPressing: false,
-          longPressTimer: null,
-        }));
-      }
-    }, LONG_PRESS_DURATION);
-    
-    setTouchState({
-      isLongPressing: true,
-      touchStartTime: startTime,
-      touchFaceIndex: faceIndex,
-      longPressTimer: timer,
-    });
-    
-    console.log(`🎯 TOUCH START: Long press detection started for face ${faceIndex}`);
-  }, [isAddPanelMode, selectedDynamicFace, onFaceSelect, touchState.longPressTimer, LONG_PRESS_DURATION]);
-
-  // 🎯 NEW: Handle touch end - cancel long press if released early
-  const handleTouchEnd = useCallback((e: any) => {
-    if (!touchState.isLongPressing) return;
-    
-    e.stopPropagation();
-    
-    const touchDuration = Date.now() - touchState.touchStartTime;
-    
-    // Clear the timer
-    if (touchState.longPressTimer) {
-      clearTimeout(touchState.longPressTimer);
-    }
-    
-    if (touchDuration < LONG_PRESS_DURATION) {
-      // Short touch - cycle through faces (same as click)
-      const intersectionPoint = e.point || (window as any).lastClickPosition;
-      
-      if (selectedDynamicFace === null && intersectionPoint) {
-        // First touch - find closest face
-        const closestFace = findClosestFace(intersectionPoint);
-        if (closestFace !== null && onDynamicFaceSelect) {
-          onDynamicFaceSelect(closestFace);
-          console.log(`🎯 SHORT TOUCH: Selected face ${closestFace} geometrically`);
-        }
-      } else if (selectedDynamicFace !== null) {
-        // Subsequent touches - find next adjacent face
-        const nextFace = findNextFace(selectedDynamicFace);
-        if (onDynamicFaceSelect) {
-          onDynamicFaceSelect(nextFace);
-          console.log(`🎯 SHORT TOUCH: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
-        }
-      }
-    }
-    
-    setTouchState({
-      isLongPressing: false,
-      touchStartTime: 0,
-      touchFaceIndex: null,
-      longPressTimer: null,
-    });
-  }, [touchState, selectedDynamicFace, onDynamicFaceSelect, LONG_PRESS_DURATION]);
-
-  // NEW: Geometric face detection
-  const geometricFaces = useMemo(() => {
-    return calculateDynamicFaces();
-  }, [shape.parameters]);
-
   // 🎯 NEW: Dynamic face calculation based on current geometry
   const calculateDynamicFaces = useCallback(() => {
     console.log(`🎯 Calculating dynamic faces for shape: ${shape.type} (ID: ${shape.id})`);
@@ -328,6 +238,96 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     console.log(`🎯 Generated ${faces.length} dynamic faces for shape ${shape.id}`);
     return faces;
   }, [shape.geometry, shape.scale, shape.id, shape.type]);
+
+  // 🎯 NEW: Touch long press handlers
+  const handleTouchStart = useCallback((e: any, faceIndex: number) => {
+    if (!isAddPanelMode) return;
+    
+    e.stopPropagation();
+    
+    // Clear any existing timer
+    if (touchState.longPressTimer) {
+      clearTimeout(touchState.longPressTimer);
+    }
+    
+    const startTime = Date.now();
+    
+    // Set up long press timer
+    const timer = setTimeout(() => {
+      // Long press detected - confirm panel placement
+      if (selectedDynamicFace !== null) {
+        onFaceSelect?.(selectedDynamicFace);
+        console.log(`🎯 TOUCH LONG PRESS: Panel confirmed on face ${selectedDynamicFace}`);
+        
+        // Visual feedback - could add haptic feedback here if available
+        if (navigator.vibrate) {
+          navigator.vibrate(100); // Short vibration feedback
+        }
+        
+        setTouchState(prev => ({
+          ...prev,
+          isLongPressing: false,
+          longPressTimer: null,
+        }));
+      }
+    }, LONG_PRESS_DURATION);
+    
+    setTouchState({
+      isLongPressing: true,
+      touchStartTime: startTime,
+      touchFaceIndex: faceIndex,
+      longPressTimer: timer,
+    });
+    
+    console.log(`🎯 TOUCH START: Long press detection started for face ${faceIndex}`);
+  }, [isAddPanelMode, selectedDynamicFace, onFaceSelect, touchState.longPressTimer, LONG_PRESS_DURATION]);
+
+  // 🎯 NEW: Handle touch end - cancel long press if released early
+  const handleTouchEnd = useCallback((e: any) => {
+    if (!touchState.isLongPressing) return;
+    
+    e.stopPropagation();
+    
+    const touchDuration = Date.now() - touchState.touchStartTime;
+    
+    // Clear the timer
+    if (touchState.longPressTimer) {
+      clearTimeout(touchState.longPressTimer);
+    }
+    
+    if (touchDuration < LONG_PRESS_DURATION) {
+      // Short touch - cycle through faces (same as click)
+      const intersectionPoint = e.point || (window as any).lastClickPosition;
+      
+      if (selectedDynamicFace === null && intersectionPoint) {
+        // First touch - find closest face
+        const closestFace = findClosestFace(intersectionPoint);
+        if (closestFace !== null && onDynamicFaceSelect) {
+          onDynamicFaceSelect(closestFace);
+          console.log(`🎯 SHORT TOUCH: Selected face ${closestFace} geometrically`);
+        }
+      } else if (selectedDynamicFace !== null) {
+        // Subsequent touches - find next adjacent face
+        const nextFace = findNextFace(selectedDynamicFace);
+        if (onDynamicFaceSelect) {
+          onDynamicFaceSelect(nextFace);
+          console.log(`🎯 SHORT TOUCH: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
+        }
+      }
+    }
+    
+    setTouchState({
+      isLongPressing: false,
+      touchStartTime: 0,
+      touchFaceIndex: null,
+      longPressTimer: null,
+    });
+  }, [touchState, selectedDynamicFace, onDynamicFaceSelect, LONG_PRESS_DURATION]);
+
+  // NEW: Geometric face detection
+  const geometricFaces = useMemo(() => {
+    return calculateDynamicFaces();
+  }, [shape.parameters]);
 
   // NEW: Find closest face to a 3D point using geometric calculations
   const findClosestFace = useCallback((worldPoint: THREE.Vector3): number | null => {
