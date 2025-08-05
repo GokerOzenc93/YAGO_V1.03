@@ -286,35 +286,38 @@ const EditMode: React.FC<EditModeProps> = ({
             <span className="text-white font-inter text-base font-bold opacity-90">
               AD06072
             </span>
-            <div className="flex items-center gap-1">
-              {isLocked && (
+            {/* Panel genişliği 200px'ten büyükse düğmeleri göster */}
+            {panelWidth > 200 && (
+              <div className="flex items-center gap-1">
+                {isLocked && (
+                  <button
+                    onClick={handleCollapse}
+                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    title="Arayüzü Küçült"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                )}
+                
                 <button
-                  onClick={handleCollapse}
-                  className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                  title="Arayüzü Küçült"
+                  onClick={toggleLock}
+                  className={`p-1 rounded transition-colors ${
+                    isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
+                  } bg-gray-800/80 backdrop-blur-sm`}
+                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
                 >
-                  <ChevronLeft size={12} />
+                  {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
                 </button>
-              )}
-              
-              <button
-                onClick={toggleLock}
-                className={`p-1 rounded transition-colors ${
-                  isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
-                } bg-gray-800/80 backdrop-blur-sm`}
-                title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
-              >
-                {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
-              </button>
-              
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
-                title="Düzenleme Modundan Çık"
-              >
-                <X size={12} />
-              </button>
-            </div>
+                
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Düzenleme Modundan Çık"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 flex flex-col overflow-hidden">
