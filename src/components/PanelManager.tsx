@@ -179,25 +179,39 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // NEW: Geometric face detection
   const geometricFaces = useMemo(() => {
-    if (shape.type !== 'box' && shape.type !== 'polyline3d' && shape.type !== 'polygon3d') return [];
+    if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+      console.log(`🎯 GeometricFaces: Shape type '${shape.type}' not supported`);
+      return [];
+    }
     
     let width = 500, height = 500, depth = 500;
     
-    if (shape.type === 'box') {
+    if (shape.type === 'box' || shape.type === 'rectangle2d') {
       width = shape.parameters.width || 500;
       height = shape.parameters.height || 500;
       depth = shape.parameters.depth || 500;
-    } else if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+      const radius = shape.parameters.radius || 250;
+      width = radius * 2;
+      height = shape.parameters.height || 500;
+      depth = radius * 2;
+    } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
       // For polyline/polygon, calculate dimensions from geometry
       const geometry = shape.geometry;
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
         const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = size.x;
+        width = Math.abs(size.x) || 500;
         height = shape.parameters.height || 500;
-        depth = size.z;
+        depth = Math.abs(size.z) || 500;
       }
     }
+    
+    console.log(`🎯 GeometricFaces: Calculated dimensions for ${shape.type}:`, {
+      width: width.toFixed(1),
+      height: height.toFixed(1), 
+      depth: depth.toFixed(1)
+    });
     
     const hw = width / 2;
     const hh = height / 2;
@@ -485,19 +499,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   ): SmartPanelBounds => {
     let width = 500, height = 500, depth = 500;
     
-    if (shape.type === 'box') {
+    if (shape.type === 'box' || shape.type === 'rectangle2d') {
       width = shape.parameters.width || 500;
       height = shape.parameters.height || 500;
       depth = shape.parameters.depth || 500;
-    } else if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+      const radius = shape.parameters.radius || 250;
+      width = radius * 2;
+      height = shape.parameters.height || 500;
+      depth = radius * 2;
+    } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
       // For polyline/polygon, calculate dimensions from geometry
       const geometry = shape.geometry;
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
         const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = size.x;
+        width = Math.abs(size.x) || 500;
         height = shape.parameters.height || 500;
-        depth = size.z;
+        depth = Math.abs(size.z) || 500;
       }
     }
     
@@ -730,7 +749,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const smartPanelData = useMemo(() => {
-    if (shape.type !== 'box' || selectedFaces.length === 0) return [];
+    if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type) || selectedFaces.length === 0) {
+      return [];
+    }
+    
     return selectedFaces.map((faceIndex, index) => {
       const panelOrder = index;
       const smartBounds = calculateSmartPanelBounds(
@@ -784,7 +806,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   // 🎯 NEW: Create preview panel for dynamically selected face
   const previewPanelData = useMemo(() => {
-    if (!isAddPanelMode || selectedDynamicFace === null || shape.type !== 'box') return null;
+    if (!isAddPanelMode || selectedDynamicFace === null || !['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+      return null;
+    }
     
     // Don't show preview if face already has a panel
     if (selectedFaces.includes(selectedDynamicFace)) return null;
@@ -815,19 +839,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const faceTransforms = useMemo(() => {
     let width = 500, height = 500, depth = 500;
     
-    if (shape.type === 'box') {
+    if (shape.type === 'box' || shape.type === 'rectangle2d') {
       width = shape.parameters.width || 500;
       height = shape.parameters.height || 500;
       depth = shape.parameters.depth || 500;
-    } else if (shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+      const radius = shape.parameters.radius || 250;
+      width = radius * 2;
+      height = shape.parameters.height || 500;
+      depth = radius * 2;
+    } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
       // For polyline/polygon, calculate dimensions from geometry
       const geometry = shape.geometry;
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
         const size = geometry.boundingBox.getSize(new THREE.Vector3());
-        width = size.x;
+        width = Math.abs(size.x) || 500;
         height = shape.parameters.height || 500;
-        depth = size.z;
+        depth = Math.abs(size.z) || 500;
       }
     }
     
@@ -928,9 +957,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
-  if (shape.type !== 'box' && shape.type !== 'polyline3d' && shape.type !== 'polygon3d') {
+  if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+    console.log(`🎯 PanelManager: Shape type '${shape.type}' not supported for panels`);
     return null;
   }
+
+  console.log(`🎯 PanelManager: Rendering panels for shape type '${shape.type}' with ID '${shape.id}'`);
 
   return (
     <group>

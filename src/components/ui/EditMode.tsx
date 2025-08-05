@@ -216,7 +216,14 @@ const EditMode: React.FC<EditModeProps> = ({
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
-            {editedShape.type === 'box' && (
+            {(editedShape.type === 'box' || 
+              editedShape.type === 'cylinder' || 
+              editedShape.type === 'polyline2d' || 
+              editedShape.type === 'polygon2d' || 
+              editedShape.type === 'polyline3d' || 
+              editedShape.type === 'polygon3d' || 
+              editedShape.type === 'rectangle2d' || 
+              editedShape.type === 'circle2d') && (
               <div className="flex flex-col gap-1 px-2">
                 <button
                   onClick={() => handleComponentClick('module')}

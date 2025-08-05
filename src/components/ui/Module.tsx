@@ -24,10 +24,30 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     editedShape.geometry.computeBoundingBox();
     const bbox = editedShape.geometry.boundingBox;
 
+    if (!bbox) {
+      console.warn('Geometry bounding box hesaplanamadı, varsayılan değerler kullanılıyor');
+      return { currentWidth: 500, currentHeight: 500, currentDepth: 500 };
+    }
+
     // Bounding box boyutlarını mevcut ölçekle çarpılarak gerçek dünya boyutları elde edilir
     const width = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
     const height = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
     const depth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
+
+    console.log(`🎯 Module boyutları hesaplandı:`, {
+      shapeType: editedShape.type,
+      shapeId: editedShape.id,
+      boundingBox: {
+        min: [bbox.min.x.toFixed(1), bbox.min.y.toFixed(1), bbox.min.z.toFixed(1)],
+        max: [bbox.max.x.toFixed(1), bbox.max.y.toFixed(1), bbox.max.z.toFixed(1)]
+      },
+      scale: editedShape.scale,
+      calculatedDimensions: {
+        width: width.toFixed(1),
+        height: height.toFixed(1), 
+        depth: depth.toFixed(1)
+      }
+    });
 
     return {
       currentWidth: width,
@@ -41,6 +61,11 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
+
+  // Shape tipine göre hangi boyutların düzenlenebilir olduğunu belirle
+  const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
+  const canEditHeight = true; // Tüm şekillerde yükseklik düzenlenebilir
+  const canEditDepth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
 
   useEffect(() => {
     // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
@@ -146,7 +171,100 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
         <div className="space-y-2">
           {/* Genişlik */}
-          <div className="flex items-center gap-2">
+          {canEditWidth && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 text-xs w-4">G:</span>
+              <input
+                type="text" // Metin girişi olarak ayarlandı
+                value={inputWidth}
+                onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    applyDimensionChange('width', inputWidth);
+                  }
+                }}
+                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                onClick={() => applyDimensionChange('width', inputWidth)}
+                className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+                title="Genişliği Onayla"
+              >
+                <Check size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Yükseklik */}
+          {canEditHeight && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 text-xs w-4">Y:</span>
+              <input
+                type="text" // Metin girişi olarak ayarlandı
+                value={inputHeight}
+                onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    applyDimensionChange('height', inputHeight);
+                  }
+                }}
+                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                onClick={() => applyDimensionChange('height', inputHeight)}
+                className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+                title="Yüksekliği Onayla"
+              >
+                <Check size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Derinlik */}
+          {canEditDepth && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 text-xs w-4">D:</span>
+              <input
+                type="text" // Metin girişi olarak ayarlandı
+                value={inputDepth}
+                onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    applyDimensionChange('depth', inputDepth);
+                  }
+                }}
+                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                onClick={() => applyDimensionChange('depth', inputDepth)}
+                className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+                title="Derinliği Onayla"
+              >
+                <Check size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Bilgi mesajı - sadece cylinder için */}
+          {editedShape.type === 'cylinder' && (
+            <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
+              Silindir: Sadece yükseklik düzenlenebilir
+            </div>
+          )}
+
+          {/* Bilgi mesajı - circle2d için */}
+          {editedShape.type === 'circle2d' && (
+            <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
+              Daire: Sadece yükseklik düzenlenebilir
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default Module;
             <span className="text-gray-300 text-xs w-4">G:</span>
             <input
               type="text" // Metin girişi olarak ayarlandı
