@@ -49,7 +49,8 @@ const EditMode: React.FC<EditModeProps> = ({
   const [panelTop, setPanelTop] = useState('88px');
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
+  // Varsayılan olarak sabitlenmiş (pinned) gelsin
+  const [isLocked, setIsLocked] = useState(true); 
   
   const MIN_WIDTH_PX = 170;
   const MAX_WIDTH_PX = 453;
@@ -215,7 +216,7 @@ const EditMode: React.FC<EditModeProps> = ({
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
-            {(editedShape.type === 'box' || editedShape.type === 'polyline3d' || editedShape.type === 'polygon3d') && (
+            {editedShape.type === 'box' && (
               <div className="flex flex-col gap-1 px-2">
                 <button
                   onClick={() => handleComponentClick('module')}
