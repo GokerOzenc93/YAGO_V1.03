@@ -1,33 +1,43 @@
-import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import { useAppStore } from '../store/appStore';
-import { TransformControls } from '@react-three/drei';
+import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
-import { SHAPE_COLORS } from '../types/shapes';
-import PanelManager from './PanelManager';
-import { ViewMode } from '../store/appStore';
+import { ViewMode, useAppStore } from '../store/appStore';
+import { createExtrudedPanelGeometry } from '../utils/geometryUtils'; // Yeni yardımcı fonksiyonu import ettik
 
-interface Props {
+// NEW: Geometric face detection
+interface GeometricFace {
+  index: number;
+  center: THREE.Vector3;
+  normal: THREE.Vector3;
+  area: number;
+  vertices: THREE.Vector3[];
+  bounds: THREE.Box3;
+}
+
+// NEW: Stored Panel data structure to hold detailed face info
+interface StoredPanel {
+  id: string; // Unique ID for the panel instance
+  faceIndex: number;
+  faceVertices: THREE.Vector3[]; // Vertices of the original face
+  faceNormal: THREE.Vector3;    // Normal of the original face
+  faceCenter: THREE.Vector3;    // Center of the original face
+  panelOrder: number;
+  // Panel'in kendi geometrisi ve transform bilgileri
+  geometry: THREE.BufferGeometry;
+  position: THREE.Vector3;
+  rotation: THREE.Euler;
+}
+
+interface PanelManagerProps {
   shape: Shape;
-  onContextMenuRequest?: (event: any, shape: Shape) => void;
-  isEditMode?: boolean;
-  isBeingEdited?: boolean;
-  // Panel manager props
-  isAddPanelMode?: boolean;
-  selectedFaces?: number[];
-  onFaceSelect?: (faceIndex: number) => void;
-  onFaceHover?: (faceIndex: number | null) => void;
-  hoveredFace?: number | null;
-  showEdges?: boolean;
-  showFaces?: boolean;
-  // Face cycle indicator props
-  onFaceCycleUpdate?: (cycleState: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }) => void;
-  // 🔴 NEW: Panel Edit Mode props
+  isAddPanelMode: boolean;
+  selectedFaces: StoredPanel[]; // Artık sadece index değil, StoredPanel objeleri tutacak
+  hoveredFace: number | null;
+  showEdges: boolean;
+  showFaces: boolean;
+  onFaceSelect: (panelData: StoredPanel) => void; // Callback'i güncelledik
+  onFaceHover: (faceIndex: number | null) => void;
+  alwaysShowPanels?: boolean;
   isPanelEditMode?: boolean;
   onPanelSelect?: (panelData: {
     faceIndex: number;
@@ -35,423 +45,403 @@ interface Props {
     size: THREE.Vector3;
     panelOrder: number;
   }) => void;
-  // NEW: Multi-depth placement props
-  onShowFaceSelection?: (options: any[], position: { x: number; y: number }) => void;
+  onShowFaceSelection?: (faces: GeometricFace[], position: { x: number; y: number }) => void;
   onHideFaceSelection?: () => void;
   onSelectFace?: (faceIndex: number) => void;
-  // Face cycle state props
-  faceCycleState?: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  };
-  setFaceCycleState?: React.Dispatch<React.SetStateAction<{
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }>>;
-  // NEW: Dynamic face selection props
   onDynamicFaceSelect?: (faceIndex: number) => void;
   selectedDynamicFace?: number | null;
-  isCurrentlyEditing?: boolean;
+  isDynamicSelectionMode?: boolean;
 }
 
-const OpenCascadeShape: React.FC<Props> = ({
+const PanelManager: React.FC<PanelManagerProps> = ({
   shape,
-  onContextMenuRequest,
-  isEditMode = false,
-  isBeingEdited = false,
-  isAddPanelMode = false,
-  selectedFaces = [],
+  isAddPanelMode,
+  selectedFaces, // Artık StoredPanel dizisi
+  hoveredFace,
+  showEdges,
+  showFaces,
   onFaceSelect,
   onFaceHover,
-  hoveredFace = null,
-  showEdges = true,
-  showFaces = true,
-  onFaceCycleUpdate,
-  // 🔴 NEW: Panel Edit Mode props.
+  alwaysShowPanels = false,
   isPanelEditMode = false,
   onPanelSelect,
   onShowFaceSelection,
   onHideFaceSelection,
   onSelectFace,
-  faceCycleState,
-  setFaceCycleState,
-  // NEW: Dynamic face selection props
   onDynamicFaceSelect,
   selectedDynamicFace,
-  isCurrentlyEditing,
+  isDynamicSelectionMode = false,
 }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const transformRef = useRef<any>(null);
-  const {
-    activeTool,
-    selectedShapeId,
-    gridSize,
-    setSelectedObjectPosition,
-    viewMode, // 🎯 NEW: Get current view mode
-  } = useAppStore();
-  const isSelected = selectedShapeId === shape.id;
+  const panelThickness = 18; // 18mm panel thickness
 
-  // Debug: Log shape information when selected
-  useEffect(() => {
-    if (isSelected && meshRef.current) {
-      const worldPos = meshRef.current.getWorldPosition(new THREE.Vector3());
-      const localPos = meshRef.current.position;
-      
-      console.log('🎯 GIZMO DEBUG - Selected shape:', {
-        id: shape.id,
-        type: shape.type,
-        shapePosition: shape.position,
-        meshLocalPosition: localPos.toArray().map(v => v.toFixed(1)),
-        meshWorldPosition: worldPos.toArray().map(v => v.toFixed(1)),
-        geometryBoundingBox: shape.geometry.boundingBox,
-        is2DShape: shape.is2DShape,
-        positionMatch: localPos.toArray().map((v, i) => Math.abs(v - shape.position[i]) < 0.1)
-      });
-      
-      // Check if mesh position matches shape position
-      const positionDiff = localPos.toArray().map((v, i) => Math.abs(v - shape.position[i]));
-      if (positionDiff.some(diff => diff > 0.1)) {
-        console.warn('🚨 POSITION MISMATCH - Mesh position does not match shape position!', {
-          shapePosision: shape.position,
-          meshPosition: localPos.toArray(),
-          difference: positionDiff
-        });
-      }
-    }
-  }, [isSelected, shape]);
+  const { viewMode } = useAppStore();
 
-  // Add selectedFaceCenters state
-  const [selectedFaceCenters, setSelectedFaceCenters] = useState<THREE.Vector3[]>([]);
+  // NEW: Find closest face to a 3D point using geometric calculations
+  // Bu fonksiyon artık dışarıdan çağrılmayacak, raycaster'dan gelen veriyi kullanacağız.
+  // Ancak, face cycling için hala bir mantık tutabiliriz.
 
-  const shapeGeometry = useMemo(() => shape.geometry, [shape.geometry]);
-  const edgesGeometry = useMemo(
-    () => new THREE.EdgesGeometry(shapeGeometry),
-    [shapeGeometry]
-  );
+  const woodMaterials = useMemo(() => {
+    const textureLoader = new THREE.TextureLoader();
 
-  // NEW: Handle dynamic face selection with geometric detection
-  const handleDynamicClick = useCallback((e: any) => {
-    if (!isAddPanelMode) return;
-    
-    e.stopPropagation();
-    
-    // Store click position globally for distance calculations
-    (window as any).lastClickPosition = e.point.clone();
-    
-    if (e.nativeEvent.button === 0) {
-      // Left click - cycle through faces geometrically
-      const intersectionPoint = e.point; // Get 3D intersection point from raycaster
-      
-      console.log(`🎯 Mouse clicked at world position: [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
-      
-      if (selectedDynamicFace === null) {
-        // First click - find closest face
-        const closestFace = (window as any).findClosestFaceToPoint?.(intersectionPoint, shape);
-        if (closestFace !== null && onDynamicFaceSelect) {
-          onDynamicFaceSelect(closestFace);
-          console.log(`🎯 First click: Selected face ${closestFace} geometrically`);
-        }
-      } else {
-        // Subsequent clicks - find next adjacent face
-        const nextFace = (window as any).findNextAdjacentFace?.(selectedDynamicFace, shape);
-        if (onDynamicFaceSelect) {
-          onDynamicFaceSelect(nextFace);
-          console.log(`🎯 Next click: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
-        }
-      }
-    } else if (e.nativeEvent.button === 2) {
-      // Right click - add panel to currently selected face
-      if (selectedDynamicFace !== null) {
-        onFaceSelect?.(selectedDynamicFace);
-        console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
-      }
-    }
-  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, shape]);
+    const woodTexture = textureLoader.load(
+      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
+    );
+    woodTexture.wrapS = THREE.RepeatWrapping;
+    woodTexture.wrapT = THREE.RepeatWrapping;
+    woodTexture.repeat.set(0.64, 0.64);
+    woodTexture.anisotropy = 8;
 
-  useEffect(() => {
-    const controls = transformRef.current;
-    if (!controls) return;
+    const woodNormalMap = textureLoader.load(
+      'https://images.pexels.com/photos/6757411/pexels-photo-6757411.jpeg'
+    );
+    woodNormalMap.wrapS = THREE.RepeatWrapping;
+    woodNormalMap.wrapT = THREE.RepeatWrapping;
+    woodNormalMap.repeat.set(0.6, 0.6);
+    woodNormalMap.anisotropy = 108;
 
-    console.log('🎯 GIZMO SETUP - Transform controls initialized for shape:', shape.id);
-
-    controls.translationSnap = gridSize;
-    controls.rotationSnap = Math.PI / 12;
-    controls.scaleSnap = 0.25;
-
-    const handleObjectChange = () => {
-      const mesh = meshRef.current;
-      if (!mesh) return;
-
-      const position = mesh.position.toArray();
-      const rotation = mesh.rotation.toArray().slice(0, 3);
-      const scale = mesh.scale.toArray();
-
-      console.log(`🎯 GIZMO TRANSFORM - Shape ${shape.id} transformed:`, {
-        position: position.map((p) => p.toFixed(1)),
-        rotation: rotation.map((r) => ((r * 180) / Math.PI).toFixed(1)),
-        scale: scale.map((s) => s.toFixed(2)),
-      });
-
-      useAppStore.getState().updateShape(shape.id, {
-        position: position,
-        rotation: rotation,
-        scale: scale,
-      });
-
-      if (isSelected) {
-        setSelectedObjectPosition(position as [number, number, number]);
-      }
+    const baseMaterialProps = {
+      metalness: 0.02,
+      roughness: 1.1,
+      clearcoat: 0.4,
+      clearcoatRoughness: 0.1,
+      reflectivity: 0.1,
+      envMapIntensity: 0.4,
+      emissive: new THREE.Color(0x000000),
+      emissiveIntensity: 0.0,
+      side: THREE.DoubleSide,
+      map: woodTexture,
+      normalMap: woodNormalMap,
+      normalScale: new THREE.Vector2(0.4, 0.4),
+      color: new THREE.Color(0xf3f6f4),
+      transparent: false,
+      opacity: 1.0,
+      alphaTest: 0,
+      depthWrite: true,
+      depthTest: true,
+      premultipliedAlpha: false,
+      vertexColors: false,
+      fog: true,
+      flatShading: false,
+      iridescence: 0.0,
+      iridescenceIOR: 1.0,
+      sheen: 0.1,
+      sheenRoughness: 0.9,
+      sheenColor: new THREE.Color(0xffffff),
+      specularIntensity: 0.3,
+      specularColor: new THREE.Color(0xffffff),
+      transmission: 0.0,
+      thickness: 0.0,
+      attenuationDistance: Infinity,
+      attenuationColor: new THREE.Color(0xffffff),
+      ior: 1.2,
     };
 
-    controls.addEventListener('objectChange', handleObjectChange);
-    return () =>
-      controls.removeEventListener('objectChange', handleObjectChange);
-  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition]);
+    const verticalMaterial = new THREE.MeshPhysicalMaterial(baseMaterialProps);
 
-  useEffect(() => {
-    if (isSelected && meshRef.current) {
-      setSelectedObjectPosition(
-        meshRef.current.position.toArray() as [number, number, number]
-      );
-      console.log(
-        `🎯 GIZMO SELECTION - Shape ${shape.id} selected:`,
-        {
-          meshPosition: meshRef.current.position.toArray().map((p) => p.toFixed(1)),
-          worldPosition: meshRef.current.getWorldPosition(new THREE.Vector3()).toArray().map((p) => p.toFixed(1)),
-          shapePosition: shape.position.map((p) => p.toFixed(1))
-        }
-      );
-    }
-  }, [isSelected, setSelectedObjectPosition, shape.id]);
-
-  // Reset face cycle state when panel mode is disabled
-  useEffect(() => {
-    if (!isAddPanelMode) {
-      if (setFaceCycleState) {
-        setFaceCycleState({
-          availableFaces: [],
-          currentIndex: 0,
-          selectedFace: null,
-          mousePosition: null,
-        });
-      }
-    }
-  }, [isAddPanelMode, setFaceCycleState]);
-
-  // Update parent component with face cycle state changes
-  useEffect(() => {
-    if (onFaceCycleUpdate) {
-      onFaceCycleUpdate(faceCycleState || {
-        availableFaces: [],
-        currentIndex: 0,
-        selectedFace: null,
-        mousePosition: null,
-      });
-    }
-  }, [faceCycleState, onFaceCycleUpdate]);
-
-  const handleClick = (e: any) => {
-    // Panel mode is handled by PanelManager component
-    if (isAddPanelMode || isPanelEditMode) {
-      return; // Let PanelManager handle this
-    }
-
-    // Normal selection mode - only left click
-    if (e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      useAppStore.getState().selectShape(shape.id);
-      console.log(`Shape clicked: ${shape.type} (ID: ${shape.id})`);
-    }
-  };
-
-  const handleContextMenu = (e: any) => {
-    // Panel mode context menu is handled by PanelManager
-    if (isAddPanelMode || isPanelEditMode) {
-      return; // Let PanelManager handle this
-    }
-
-    // Normal context menu - only show for selected shapes
-    if (isSelected && onContextMenuRequest) {
-      e.stopPropagation();
-      e.nativeEvent.preventDefault();
-      onContextMenuRequest(e, shape);
-      console.log(
-        `Context menu requested for shape: ${shape.type} (ID: ${shape.id})`
-      );
-    }
-  };
-
-  // Calculate shape center for transform controls positioning
-  // 🎯 NEW: Get appropriate color based on view mode
-  const getShapeColor = () => {
-    if (isBeingEdited) return '#ff6b35'; // Orange for being edited
-    if (isSelected) return '#60a5fa'; // Blue for selected
-    if (isEditMode && !isBeingEdited) return '#6b7280'; // Gray for other objects in edit mode
-    return SHAPE_COLORS[shape.type as keyof typeof SHAPE_COLORS] || '#94a3b8';
-  };
-
-  // 🎯 NEW: Get opacity based on view mode
-  const getOpacity = () => {
-    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
-
-    if (selectedFaces.length > 0) return 0;
-
-    // Always hide mesh, only show edges
-    return 0;
-  };
-
-  // 🎯 NEW: Get edge visibility based on view mode
-  const shouldShowEdges = () => {
-    if (viewMode === ViewMode.SOLID) {
-      // Solid mode: Only show outline edges
-      return true;
-    } else {
-      // Wireframe mode: Show all edges
-      return true;
-    }
-  };
-
-  // 🎯 NEW: Get edge opacity based on view mode
-  const getEdgeOpacity = () => {
-    // Always full opacity
-    return 1.0;
-  };
-
-  // 🎯 NEW: Get edge color based on view mode
-  const getEdgeColor = () => {
-    if (viewMode === ViewMode.SOLID) {
-      // Solid mode: Black outline edges
-      return '#000000';
-    } else {
-      // Wireframe mode: Black edges
-      return '#000000';
-    }
-  };
-
-  // 🎯 RESPONSIVE LINE WIDTH - Tablet ve küçük ekranlar için optimize edildi
-  const getEdgeLineWidth = () => {
-    const screenWidth = window.innerWidth;
-
-    if (screenWidth < 768) {
-      // Mobile/Tablet
-      return 0.4; // Çok ince çizgiler
-    } else if (screenWidth < 1024) {
-      // Small desktop
-      return 0.7; // Orta kalınlık
-    } else {
-      // Large desktop
-      return 1.0; // Normal kalınlık
-    }
-  };
-
-  // 🎯 NEW: Get material properties based on view mode
-  const getMaterialProps = () => {
-    const opacityValue = 0.05; // 👈 Solid modda bile şeffaf görünüm
+    const horizontalMaterial = new THREE.MeshPhysicalMaterial({
+      ...baseMaterialProps,
+      map: woodTexture.clone(),
+      normalMap: woodNormalMap.clone(),
+    });
+    horizontalMaterial.map!.rotation = Math.PI / 2;
+    horizontalMaterial.normalMap!.rotation = Math.PI / 2;
 
     return {
-      color: getShapeColor(),
-      transparent: true, // 👈 Şeffaflık aktif
-      opacity: opacityValue,
-      visible: false, // Solid modda şekil görünür
+      vertical: verticalMaterial,
+      horizontal: horizontalMaterial,
     };
+  }, []);
+
+  // Panelleri StoredPanel verisine göre oluştur
+  const smartPanelData = useMemo(() => {
+    return selectedFaces.map((panelData) => {
+      // createExtrudedPanelGeometry fonksiyonu, yüzeyin köşelerini alarak
+      // panel geometrisini ve konum/dönüş bilgilerini döndürecek.
+      const { geometry, position, rotation } = createExtrudedPanelGeometry(
+        panelData.faceVertices,
+        panelData.faceNormal,
+        panelThickness
+      );
+
+      return {
+        ...panelData, // StoredPanel'deki tüm bilgileri koru
+        geometry,
+        position,
+        rotation,
+      };
+    });
+  }, [selectedFaces, panelThickness]);
+
+  const getPanelMaterial = (faceIndex: number) => {
+    // Burada panelin yönüne göre materyal seçimi hala geçerli olabilir
+    // Ancak daha dinamik paneller için bu mantık değişebilir veya kaldırılabilir.
+    if (faceIndex === 2 || faceIndex === 3) { // Top/Bottom faces
+      return woodMaterials.horizontal;
+    }
+    return woodMaterials.vertical; // Front/Back/Left/Right faces
   };
+
+  const getPanelEdgeColor = () => {
+    switch (viewMode) {
+      case ViewMode.WIREFRAME:
+        return '#ffffff'; // White edges in wireframe mode
+      case ViewMode.TRANSPARENT:
+        return '#000000'; // Black edges in transparent mode
+      case ViewMode.SOLID:
+        return '#2a2a2a'; // Dark gray in solid mode
+      default:
+        return '#2a2a2a';
+    }
+  };
+
+  const getPanelEdgeLineWidth = () => {
+    const screenWidth = window.innerWidth;
+    if (screenWidth < 768) {
+      return 1.0;
+    } else if (screenWidth < 1024) {
+      return 1.5;
+    } else {
+      return 2.0;
+    }
+  };
+
+  // Dinamik yüzey seçimi ve panel ekleme mantığı
+  const handleClick = useCallback((e: any, faceIndex: number, face: THREE.Face, object: THREE.Object3D) => {
+    if (!isAddPanelMode) return;
+
+    e.stopPropagation();
+
+    // Raycaster'dan gelen yüzey bilgilerini kullanarak panel verisini oluştur
+    const originalMesh = object as THREE.Mesh;
+    const geometry = originalMesh.geometry as THREE.BufferGeometry;
+
+    // Yüzeyin köşelerini al
+    const positionAttribute = geometry.attributes.position;
+    const vertices: THREE.Vector3[] = [];
+    vertices.push(new THREE.Vector3().fromBufferAttribute(positionAttribute, face.a));
+    vertices.push(new THREE.Vector3().fromBufferAttribute(positionAttribute, face.b));
+    vertices.push(new THREE.Vector3().fromBufferAttribute(positionAttribute, face.c));
+
+    // Eğer yüzey bir dörtgen ise (genellikle kutu geometrilerinde olduğu gibi)
+    // d köşesini de eklememiz gerekebilir. Ancak Three.js face objeleri üçgenleri temsil eder.
+    // Daha karmaşık şekiller için, yüzeyin tüm köşelerini doğru bir şekilde çıkarmak
+    // için daha gelişmiş bir geometri işleme mantığı gerekebilir.
+    // Şimdilik, üçgen yüzeyler için çalışacak şekilde tasarlayalım.
+
+    // Yüzeyin normalini ve merkezini al
+    const faceNormal = face.normal.clone();
+    const faceCenter = new THREE.Vector3().addVectors(vertices[0], vertices[1]).add(vertices[2]).divideScalar(3);
+
+    // Mesh'in dönüşünü ve konumunu uygulayarak dünya koordinatlarına çevir
+    originalMesh.updateMatrixWorld(true); // Dünya matrisini güncelle
+    faceNormal.applyQuaternion(originalMesh.quaternion).normalize();
+    faceCenter.applyMatrix4(originalMesh.matrixWorld);
+    vertices.forEach(v => v.applyMatrix4(originalMesh.matrixWorld));
+
+
+    if (e.nativeEvent.button === 0) { // Sol click - Cycle through faces
+      // Bu kısım, üst üste binen yüzeyler için döngüsel seçim mantığını içerir.
+      // Şimdilik, sadece tıklanan yüzeyi seçelim.
+      // Gerçek bir "cycle" için, tıklanan noktadaki tüm kesişimleri bulup
+      // bunlar arasında geçiş yapma mantığına ihtiyaç vardır.
+      // Basitlik adına, doğrudan seçilen yüzeyi işleyelim.
+      const newPanel: StoredPanel = {
+        id: THREE.MathUtils.generateUUID(), // Benzersiz ID
+        faceIndex: faceIndex,
+        faceVertices: vertices,
+        faceNormal: faceNormal,
+        faceCenter: faceCenter,
+        panelOrder: selectedFaces.length, // Mevcut panel sayısına göre sıralama
+        geometry: new THREE.BufferGeometry(), // Placeholder, useMemo'da oluşturulacak
+        position: new THREE.Vector3(),
+        rotation: new THREE.Euler(),
+      };
+      onFaceSelect(newPanel); // Seçilen yüzeyin detaylarını gönder
+      console.log(`🎯 Panel added to face ${faceIndex} geometrically`);
+
+    } else if (e.nativeEvent.button === 2) { // Sağ click - Confirm panel placement
+      // Sağ tıklama ile panel ekleme mantığı, sol tıklama ile aynı olabilir
+      // veya farklı bir onay mekanizması olarak kullanılabilir.
+      // Şu an için sol tıklama ile doğrudan ekliyoruz.
+      e.nativeEvent.preventDefault(); // Tarayıcının varsayılan sağ tık menüsünü engelle
+      console.log(`🎯 Right click on face ${faceIndex}`);
+    }
+  }, [isAddPanelMode, onFaceSelect, selectedFaces.length]);
+
+
+  // Panel edit modu için tıklama işleyicisi
+  const handlePanelMeshClick = useCallback((e: any, panelData: StoredPanel) => {
+    if (isPanelEditMode && onPanelSelect) {
+      e.stopPropagation();
+      // Panel'in gerçek boyutunu ve konumunu hesaplayıp gönder
+      const bbox = new THREE.Box3().setFromBufferAttribute(panelData.geometry.attributes.position);
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+
+      // Panel'in ana şekle göre göreceli konumu
+      const relativePosition = panelData.position;
+
+      onPanelSelect({
+        faceIndex: panelData.faceIndex,
+        position: relativePosition,
+        size: size,
+        panelOrder: panelData.panelOrder,
+      });
+      console.log(`🔴 Panel ${panelData.faceIndex} clicked for editing`);
+    }
+  }, [isPanelEditMode, onPanelSelect]);
+
+
+  const handleFaceHover = (faceIndex: number | null) => {
+    if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
+      onFaceHover(faceIndex);
+    }
+  };
+
+  const getFaceColor = (faceIndex: number) => {
+    // Dinamik seçim vurgulama (her zaman panel modunda aktif)
+    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
+      return '#fbbf24'; // Yellow for dynamically selected face
+    }
+    // selectedFaces artık StoredPanel objeleri içerdiğinden, faceIndex'i kontrol etmeliyiz
+    if (selectedFaces.some(p => p.faceIndex === faceIndex)) return '#10b981'; // Green for confirmed selected
+    if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
+    return '#3b82f6'; // Blue for default
+  };
+
+  const getFaceOpacity = (faceIndex: number) => {
+    // Dinamik seçim görünürlüğü (her zaman panel modunda aktif)
+    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
+      return 0.7; // More visible for selected face
+    }
+    // selectedFaces artık StoredPanel objeleri içerdiğinden, faceIndex'i kontrol etmeliyiz
+    if (selectedFaces.some(p => p.faceIndex === faceIndex)) return 0.0;
+    if (hoveredFace === faceIndex) return 0.0;
+    return 0.001;
+  };
+
+  // Panelleri sadece isAddPanelMode veya isPanelEditMode aktifse göster
+  // veya alwaysShowPanels true ise göster
+  if (!isAddPanelMode && !alwaysShowPanels && !isPanelEditMode) {
+    return null;
+  }
 
   return (
     <group>
-      {/* Main shape mesh */}
-      <mesh
-        ref={meshRef}
-        geometry={shapeGeometry}
-        position={shape.position}
-        rotation={shape.rotation}
-        scale={shape.scale}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        castShadow
-        receiveShadow
-        visible={viewMode === ViewMode.SOLID} // Show mesh in solid mode
-      >
-        <meshPhysicalMaterial {...getMaterialProps()} />
-      </mesh>
-
-      {/* 🎯 ALWAYS SHOW PANELS - Panel Manager renders panels regardless of mode */}
-      <PanelManager
-        shape={shape}
-        isAddPanelMode={isAddPanelMode && isBeingEdited}
-        selectedFaces={selectedFaces}
-        hoveredFace={hoveredFace}
-        showEdges={showEdges}
-        showFaces={showFaces}
-        onFaceSelect={onFaceSelect || (() => {})}
-        onFaceHover={onFaceHover || (() => {})}
-        onFaceCycleUpdate={onFaceCycleUpdate}
-        alwaysShowPanels={true} // 🎯 ALWAYS SHOW PANELS
-        isPanelEditMode={isPanelEditMode && isBeingEdited}
-        onPanelSelect={onPanelSelect || (() => {})}
-        faceCycleState={faceCycleState || {
-          availableFaces: [],
-          currentIndex: 0,
-          selectedFace: null,
-          mousePosition: null,
-        }}
-        setFaceCycleState={setFaceCycleState || (() => {})}
-        onShowFaceSelection={onShowFaceSelection}
-        onHideFaceSelection={onHideFaceSelection}
-        onSelectFace={onSelectFace}
-        onDynamicFaceSelect={onDynamicFaceSelect}
-        selectedDynamicFace={selectedDynamicFace}
-        isDynamicSelectionMode={isAddPanelMode && isCurrentlyEditing}
-      />
-
-      {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
-      {shouldShowEdges() && (
-        <lineSegments
-          geometry={edgesGeometry}
+      {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
+      {/* Bu kısım, raycaster'ın doğru yüzeyleri algılaması için hala gerekli olabilir.
+          Ancak, eğer raycaster doğrudan ana mesh'in yüzeylerini algılayabiliyorsa,
+          bu overlay'ler gereksiz hale gelebilir veya sadece görsel geri bildirim için kullanılabilir.
+          Şimdilik, raycaster'ın ana mesh'in yüzeylerini algıladığını varsayarak
+          bu overlay'leri sadece görsel işaretçi olarak tutuyoruz. */}
+      {showFaces && shape.geometry && (
+        <mesh
+          geometry={shape.geometry}
           position={shape.position}
           rotation={shape.rotation}
           scale={shape.scale}
-          visible={selectedFaces.length === 0 || (isAddPanelMode && isBeingEdited)} // Show outline when no panels OR when adding panels
-        >
-          <lineBasicMaterial
-            color={getEdgeColor()}
-            transparent
-            opacity={getEdgeOpacity()}
-            depthTest={viewMode === ViewMode.SOLID} // 🎯 Her yerden görünür
-            linewidth={getEdgeLineWidth()}
-          />
-        </lineSegments>
+          onPointerMove={(e) => {
+            e.stopPropagation();
+            if (e.faceIndex !== undefined && e.faceIndex !== null) {
+              handleFaceHover(e.faceIndex);
+            } else {
+              handleFaceHover(null);
+            }
+          }}
+          onPointerLeave={() => handleFaceHover(null)}
+          onClick={(e) => {
+            if (e.face && e.faceIndex !== undefined && e.object) {
+              handleClick(e, e.faceIndex, e.face, e.object);
+            }
+          }}
+          onContextMenu={(e) => {
+            // Sağ tık menüsünü engelle
+            e.nativeEvent.preventDefault();
+            if (e.face && e.faceIndex !== undefined && e.object) {
+              handleClick(e, e.faceIndex, e.face, e.object); // Sağ tıkı da panel eklemek için kullanabiliriz
+            }
+          }}
+          // Yüzeyleri görünmez yap ama tıklanabilir kalsın
+          material={new THREE.MeshBasicMaterial({
+            color: hoveredFace !== null ? getFaceColor(hoveredFace) : 0x3b82f6,
+            transparent: true,
+            opacity: hoveredFace !== null ? getFaceOpacity(hoveredFace) : 0.001,
+            side: THREE.DoubleSide,
+            depthTest: false,
+          })}
+        />
       )}
 
-      {/* Transform controls - DISABLED in edit mode and panel mode */}
-      {isSelected &&
-        meshRef.current &&
-        !isEditMode &&
-        !isAddPanelMode &&
-        !isPanelEditMode && (
-          <TransformControls
-            ref={transformRef}
-            object={meshRef.current}
-            mode={
-              activeTool === 'Move'
-                ? 'translate'
-                : activeTool === 'Rotate'
-                ? 'rotate'
-                : activeTool === 'Scale'
-                ? 'scale'
-                : 'translate'
+
+      {/* Dinamik olarak oluşturulan paneller */}
+      {smartPanelData.map((panelData) => (
+        <mesh
+          key={panelData.id} // Benzersiz ID kullan
+          geometry={panelData.geometry}
+          position={[
+            shape.position[0] + panelData.position.x,
+            shape.position[1] + panelData.position.y,
+            shape.position[2] + panelData.position.z,
+          ]}
+          rotation={panelData.rotation} // Panel'in kendi dönüşünü kullan
+          scale={shape.scale} // Ana şeklin ölçeğini uygula
+          castShadow
+          receiveShadow
+          visible={viewMode !== ViewMode.WIREFRAME}
+          onClick={(e) => handlePanelMeshClick(e, panelData)}
+        >
+          {isPanelEditMode ? (
+            <meshPhysicalMaterial
+              color="#dc2626"
+              roughness={0.6}
+              metalness={0.02}
+              transparent={viewMode === ViewMode.TRANSPARENT}
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+              depthWrite={viewMode === ViewMode.SOLID}
+            />
+          ) : (
+            <meshPhysicalMaterial
+              {...getPanelMaterial(panelData.faceIndex).parameters}
+              transparent={viewMode === ViewMode.TRANSPARENT}
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+              depthWrite={viewMode === ViewMode.SOLID}
+            />
+          )}
+        </mesh>
+      ))}
+
+      {/* Panel kenarları */}
+      {smartPanelData.map((panelData) => (
+        <lineSegments
+          key={`panel-edges-${panelData.id}`} // Benzersiz ID kullan
+          geometry={new THREE.EdgesGeometry(panelData.geometry)}
+          position={[
+            shape.position[0] + panelData.position.x,
+            shape.position[1] + panelData.position.y,
+            shape.position[2] + panelData.position.z,
+          ]}
+          rotation={panelData.rotation} // Panel'in kendi dönüşünü kullan
+          scale={shape.scale}
+          visible={
+            viewMode === ViewMode.WIREFRAME ||
+            isPanelEditMode ||
+            selectedFaces.some(p => p.id === panelData.id) // ID'ye göre kontrol
+          }
+        >
+          <lineBasicMaterial
+            color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()}
+            linewidth={getPanelEdgeLineWidth()}
+            transparent={
+              viewMode === ViewMode.TRANSPARENT ||
+              viewMode === ViewMode.WIREFRAME
             }
-            size={0.8}
-            onObjectChange={() => {
-              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
-            }}
+            opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
+            depthTest={viewMode === ViewMode.SOLID}
           />
-        )}
+        </lineSegments>
+      ))}
     </group>
   );
 };
 
-export default React.memo(OpenCascadeShape);
+export default PanelManager;
