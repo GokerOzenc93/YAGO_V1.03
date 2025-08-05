@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { X, Puzzle } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { X, Puzzle, Check } from 'lucide-react'; // Check icon'u eklendi
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -35,16 +35,34 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     };
   }, [editedShape.geometry, editedShape.scale]); // Geometri veya ölçek değiştiğinde yeniden hesapla
 
-  // Boyut değişikliklerini işler.
-  // Kullanıcı bir boyutu değiştirdiğinde, nesnenin mevcut geometrisini
-  // yeni boyuta göre ölçekler.
-  const handleDimensionChange = (
+  // Giriş alanları için yerel durumlar (state) tanımlandı.
+  // Bu sayede kullanıcı değeri onaylamadan önce değişiklik yapabilir.
+  const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(1));
+  const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(1));
+  const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(1));
+
+  // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
+  useEffect(() => {
+    setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
+    setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
+    setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
+  }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
+
+  // Boyut değişikliklerini işler ve onayla butonuna basıldığında veya Enter'a basıldığında uygular.
+  const applyDimensionChange = (
     dimension: 'width' | 'height' | 'depth',
     value: string
   ) => {
     const newValue = convertToBaseUnit(parseFloat(value) || 0);
     // Geçersiz veya sıfır/negatif değerleri yoksay
-    if (isNaN(newValue) || newValue <= 0) return;
+    if (isNaN(newValue) || newValue <= 0) {
+      console.warn(`Geçersiz değer ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
+      // İsteğe bağlı olarak giriş alanını son geçerli değere sıfırla
+      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
+      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
+      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
+      return;
+    }
 
     // Ölçekleme yapmadan önce bounding box'ın hesaplandığından emin ol
     editedShape.geometry.computeBoundingBox();
@@ -98,40 +116,79 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         <div className="h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent mb-3"></div>
 
         <div className="space-y-2">
+          {/* Genişlik */}
           <div className="flex items-center gap-2">
             <span className="text-gray-300 text-xs w-4">G:</span> {/* Genişlik */}
             <input
               type="number"
-              value={convertToDisplayUnit(currentWidth).toFixed(1)}
-              onChange={(e) => handleDimensionChange('width', e.target.value)}
+              value={inputWidth}
+              onChange={(e) => setInputWidth(e.target.value)}
+              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
+                if (e.key === 'Enter') {
+                  applyDimensionChange('width', inputWidth);
+                }
+              }}
               className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
               step="0.1"
               min="1"
             />
+            <button
+              onClick={() => applyDimensionChange('width', inputWidth)}
+              className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+              title="Genişliği Onayla"
+            >
+              <Check size={12} />
+            </button>
           </div>
 
+          {/* Yükseklik */}
           <div className="flex items-center gap-2">
             <span className="text-gray-300 text-xs w-4">Y:</span> {/* Yükseklik */}
             <input
               type="number"
-              value={convertToDisplayUnit(currentHeight).toFixed(1)}
-              onChange={(e) => handleDimensionChange('height', e.target.value)}
+              value={inputHeight}
+              onChange={(e) => setInputHeight(e.target.value)}
+              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
+                if (e.key === 'Enter') {
+                  applyDimensionChange('height', inputHeight);
+                }
+              }}
               className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
               step="0.1"
               min="1"
             />
+            <button
+              onClick={() => applyDimensionChange('height', inputHeight)}
+              className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+              title="Yüksekliği Onayla"
+            >
+              <Check size={12} />
+            </button>
           </div>
 
+          {/* Derinlik */}
           <div className="flex items-center gap-2">
             <span className="text-gray-300 text-xs w-4">D:</span> {/* Derinlik */}
             <input
               type="number"
-              value={convertToDisplayUnit(currentDepth).toFixed(1)}
-              onChange={(e) => handleDimensionChange('depth', e.target.value)}
+              value={inputDepth}
+              onChange={(e) => setInputDepth(e.target.value)}
+              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
+                if (e.key === 'Enter') {
+                  applyDimensionChange('depth', inputDepth);
+                }
+              }}
               className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
               step="0.1"
               min="1"
             />
+            <button
+              onClick={() => applyDimensionChange('depth', inputDepth)}
+              className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+              title="Derinliği Onayla"
+            >
+              <Check size={12} />
+            </button>
           </div>
         </div>
       </div>
@@ -140,8 +197,3 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 };
 
 export default Module;
-```
----
-Bu güncelleme ile, `Module` panelindeki boyut giriş alanları artık düzenlenmekte olan nesnenin **gerçek geometrik sınırlarını** yansıtacak. Kullanıcı bu değerleri değiştirdiğinde ise, nesnenin temel geometrisi korunarak yalnızca **ölçekleme** işlemi uygulanacaktır. Bu, özellikle polylinelar gibi önceden tanımlanmış `width`, `height`, `depth` parametreleri olmayan nesneler için daha doğru ve esnek bir düzenleme deneyimi sağlar.
-
-Uygulamanızda bu değişiklikleri test edebilirsiniz. Başka bir şeye ihtiyacınız olursa çekinmey
