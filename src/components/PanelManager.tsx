@@ -96,6 +96,238 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   const LONG_PRESS_DURATION = 800; // 800ms for long press
 
+  // 🎯 NEW: Advanced panel geometry calculation based on face shape
+  const calculateAdaptivePanelGeometry = useCallback((
+    faceIndex: number,
+    faceGeometry: GeometricFace,
+    panelThickness: number
+  ): {
+    geometry: THREE.BufferGeometry;
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+    isCustomShape: boolean;
+  } => {
+    console.log(`🎯 Creating adaptive panel for face ${faceIndex}:`, {
+      center: faceGeometry.center.toArray().map(v => v.toFixed(1)),
+      normal: faceGeometry.normal.toArray().map(v => v.toFixed(1)),
+      area: faceGeometry.area.toFixed(1),
+      vertices: faceGeometry.vertices.length
+    });
+
+    // For complex polyline shapes, create custom panel geometry
+    if (shape.type.includes('polyline') || shape.type.includes('polygon')) {
+      return createCustomPanelGeometry(faceIndex, faceGeometry, panelThickness);
+    }
+
+    // For simple box shapes, use standard box panels
+    return createStandardPanelGeometry(faceIndex, faceGeometry, panelThickness);
+  }, [shape.type]);
+
+  // 🎯 NEW: Create custom panel geometry for complex shapes
+  const createCustomPanelGeometry = useCallback((
+    faceIndex: number,
+    faceGeometry: GeometricFace,
+    thickness: number
+  ): {
+    geometry: THREE.BufferGeometry;
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+    isCustomShape: boolean;
+  } => {
+    console.log(`🎯 Creating custom panel geometry for face ${faceIndex}`);
+
+    // Get the original polyline points if available
+    const originalPoints = (shape as any).originalPoints;
+    
+    if (originalPoints && originalPoints.length > 2) {
+      // Create panel that follows the polyline shape
+      const panelGeometry = createPolylinePanelGeometry(originalPoints, faceIndex, thickness);
+      
+      // Calculate rotation based on face normal
+      const rotation = calculateFaceRotation(faceGeometry.normal, faceIndex);
+      
+      return {
+        geometry: panelGeometry,
+        position: faceGeometry.center.clone(),
+        rotation,
+        isCustomShape: true
+      };
+    }
+
+    // Fallback to standard geometry
+    return createStandardPanelGeometry(faceIndex, faceGeometry, thickness);
+  }, [shape]);
+
+  // 🎯 NEW: Create standard box panel geometry
+  const createStandardPanelGeometry = useCallback((
+    faceIndex: number,
+    faceGeometry: GeometricFace,
+    thickness: number
+  ): {
+    geometry: THREE.BufferGeometry;
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+    isCustomShape: boolean;
+  } => {
+    // Calculate panel dimensions based on face bounds
+    const bounds = faceGeometry.bounds;
+    const size = bounds.getSize(new THREE.Vector3());
+    
+    let width, height, depth;
+    
+    // Determine panel dimensions based on face orientation
+    switch (faceIndex) {
+      case 0: // Front
+      case 1: // Back
+        width = Math.abs(size.x);
+        height = Math.abs(size.y);
+        depth = thickness;
+        break;
+      case 2: // Top
+      case 3: // Bottom
+        width = Math.abs(size.x);
+        height = thickness;
+        depth = Math.abs(size.z);
+        break;
+      case 4: // Right
+      case 5: // Left
+        width = thickness;
+        height = Math.abs(size.y);
+        depth = Math.abs(size.z);
+        break;
+      default:
+        width = height = depth = thickness;
+    }
+
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    const rotation = calculateFaceRotation(faceGeometry.normal, faceIndex);
+
+    console.log(`🎯 Standard panel created:`, {
+      faceIndex,
+      dimensions: [width.toFixed(1), height.toFixed(1), depth.toFixed(1)],
+      rotation: [rotation.x, rotation.y, rotation.z].map(r => (r * 180 / Math.PI).toFixed(1))
+    });
+
+    return {
+      geometry,
+      position: faceGeometry.center.clone(),
+      rotation,
+      isCustomShape: false
+    };
+  }, []);
+
+  // 🎯 NEW: Create polyline-based panel geometry
+  const createPolylinePanelGeometry = useCallback((
+    points: THREE.Vector3[],
+    faceIndex: number,
+    thickness: number
+  ): THREE.BufferGeometry => {
+    try {
+      // Create a 2D shape from the polyline points
+      const shape2D = new THREE.Shape();
+      
+      if (points.length < 3) {
+        console.warn('🎯 Insufficient points for polyline panel, using box fallback');
+        return new THREE.BoxGeometry(100, thickness, 100);
+      }
+
+      // Convert 3D points to 2D for shape creation
+      const points2D = points.map(point => {
+        // Project points based on face orientation
+        switch (faceIndex) {
+          case 0: // Front (XY plane)
+          case 1: // Back (XY plane)
+            return new THREE.Vector2(point.x, point.y);
+          case 2: // Top (XZ plane)
+          case 3: // Bottom (XZ plane)
+            return new THREE.Vector2(point.x, point.z);
+          case 4: // Right (YZ plane)
+          case 5: // Left (YZ plane)
+            return new THREE.Vector2(point.y, point.z);
+          default:
+            return new THREE.Vector2(point.x, point.z);
+        }
+      });
+
+      // Create the 2D shape
+      shape2D.moveTo(points2D[0].x, points2D[0].y);
+      for (let i = 1; i < points2D.length; i++) {
+        shape2D.lineTo(points2D[i].x, points2D[i].y);
+      }
+      shape2D.lineTo(points2D[0].x, points2D[0].y); // Close the shape
+
+      // Extrude the shape to create panel thickness
+      const extrudeSettings = {
+        depth: thickness,
+        bevelEnabled: false,
+        steps: 1,
+        curveSegments: 8
+      };
+
+      const geometry = new THREE.ExtrudeGeometry(shape2D, extrudeSettings);
+      
+      // Center the geometry
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) {
+        const center = geometry.boundingBox.getCenter(new THREE.Vector3());
+        geometry.translate(-center.x, -center.y, -center.z);
+      }
+
+      console.log(`🎯 Polyline panel geometry created for face ${faceIndex} with ${points.length} points`);
+      return geometry;
+
+    } catch (error) {
+      console.warn('🎯 Failed to create polyline panel geometry:', error);
+      return new THREE.BoxGeometry(100, thickness, 100);
+    }
+  }, []);
+
+  // 🎯 NEW: Calculate face rotation based on normal vector
+  const calculateFaceRotation = useCallback((
+    normal: THREE.Vector3,
+    faceIndex: number
+  ): THREE.Euler => {
+    const rotation = new THREE.Euler();
+
+    // Calculate rotation to align panel with face normal
+    switch (faceIndex) {
+      case 0: // Front (Z+)
+        rotation.set(0, 0, 0);
+        break;
+      case 1: // Back (Z-)
+        rotation.set(0, Math.PI, 0);
+        break;
+      case 2: // Top (Y+)
+        rotation.set(-Math.PI / 2, 0, 0);
+        break;
+      case 3: // Bottom (Y-)
+        rotation.set(Math.PI / 2, 0, 0);
+        break;
+      case 4: // Right (X+)
+        rotation.set(0, Math.PI / 2, 0);
+        break;
+      case 5: // Left (X-)
+        rotation.set(0, -Math.PI / 2, 0);
+        break;
+      default:
+        rotation.set(0, 0, 0);
+    }
+
+    // For complex shapes, add additional rotation based on normal
+    if (shape.type.includes('polyline') || shape.type.includes('polygon')) {
+      // Calculate additional rotation for non-axis-aligned faces
+      const defaultNormal = new THREE.Vector3(0, 0, 1);
+      const quaternion = new THREE.Quaternion().setFromUnitVectors(defaultNormal, normal);
+      const additionalRotation = new THREE.Euler().setFromQuaternion(quaternion);
+      
+      rotation.x += additionalRotation.x;
+      rotation.y += additionalRotation.y;
+      rotation.z += additionalRotation.z;
+    }
+
+    return rotation;
+  }, [shape.type]);
+
   // 🎯 NEW: Dynamic face calculation based on current geometry
   const calculateDynamicFaces = useCallback(() => {
     console.log(`🎯 Calculating dynamic faces for shape: ${shape.type} (ID: ${shape.id})`);
@@ -770,28 +1002,43 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     console.log(`🎯 Calculating smart panel data for ${selectedFaces.length} faces on shape ${shape.id}`);
     
     return selectedFaces.map((faceIndex, index) => {
-      const panelOrder = index;
-      const smartBounds = calculateSmartPanelBounds(
-        faceIndex,
-        selectedFaces,
-        panelOrder
-      );
+      // Get the corresponding geometric face
+      const geometricFace = geometricFaces.find(f => f.index === faceIndex);
+      
+      if (!geometricFace) {
+        console.warn(`🎯 No geometric face found for index ${faceIndex}`);
+        // Fallback to old system
+        const panelOrder = index;
+        const smartBounds = calculateSmartPanelBounds(faceIndex, selectedFaces, panelOrder);
+        return {
+          faceIndex,
+          geometry: new THREE.BoxGeometry(smartBounds.finalSize.x, smartBounds.finalSize.y, smartBounds.finalSize.z),
+          position: smartBounds.finalPosition,
+          rotation: new THREE.Euler(0, 0, 0),
+          size: smartBounds.finalSize,
+          panelOrder: smartBounds.panelOrder,
+          isCustomShape: false,
+        };
+      }
 
-      const geometry = new THREE.BoxGeometry(
-        smartBounds.finalSize.x,
-        smartBounds.finalSize.y,
-        smartBounds.finalSize.z
-      );
+      // Create adaptive panel geometry
+      const adaptivePanel = calculateAdaptivePanelGeometry(faceIndex, geometricFace, panelThickness);
+      
+      // Calculate smart bounds for sizing adjustments
+      const panelOrder = index;
+      const smartBounds = calculateSmartPanelBounds(faceIndex, selectedFaces, panelOrder);
 
       return {
         faceIndex,
-        geometry,
-        position: smartBounds.finalPosition,
-        size: smartBounds.finalSize,
+        geometry: adaptivePanel.geometry,
+        position: adaptivePanel.position,
+        rotation: adaptivePanel.rotation,
+        size: smartBounds.finalSize, // Keep smart sizing for cutting calculations
         panelOrder: smartBounds.panelOrder,
+        isCustomShape: adaptivePanel.isCustomShape,
       };
     });
-  }, [shape.geometry, shape.scale, shape.id, selectedFaces]);
+  }, [shape.geometry, shape.scale, shape.id, selectedFaces, geometricFaces, calculateAdaptivePanelGeometry]);
 
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) {
@@ -835,27 +1082,34 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     
     console.log(`🎯 Creating preview panel for face ${selectedDynamicFace} on shape ${shape.id}`);
     
-    const faceIndex = selectedDynamicFace;
-    const smartBounds = calculateSmartPanelBounds(
-      faceIndex,
-      [...selectedFaces, faceIndex], // Include current face in calculation
-      selectedFaces.length // This would be the panel order
-    );
+    // Get the corresponding geometric face
+    const geometricFace = geometricFaces.find(f => f.index === selectedDynamicFace);
+    
+    if (!geometricFace) {
+      console.warn(`🎯 No geometric face found for preview panel ${selectedDynamicFace}`);
+      return null;
+    }
 
-    const geometry = new THREE.BoxGeometry(
-      smartBounds.finalSize.x,
-      smartBounds.finalSize.y,
-      smartBounds.finalSize.z
+    // Create adaptive preview panel
+    const adaptivePanel = calculateAdaptivePanelGeometry(selectedDynamicFace, geometricFace, panelThickness);
+    
+    // Calculate smart bounds for preview
+    const smartBounds = calculateSmartPanelBounds(
+      selectedDynamicFace,
+      [...selectedFaces, selectedDynamicFace],
+      selectedFaces.length
     );
 
     return {
-      faceIndex,
-      geometry,
-      position: smartBounds.finalPosition,
+      faceIndex: selectedDynamicFace,
+      geometry: adaptivePanel.geometry,
+      position: adaptivePanel.position,
+      rotation: adaptivePanel.rotation,
       size: smartBounds.finalSize,
       panelOrder: selectedFaces.length,
+      isCustomShape: adaptivePanel.isCustomShape,
     };
-  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, shape.geometry, shape.scale, shape.id]);
+  }, [isAddPanelMode, selectedDynamicFace, selectedFaces, geometricFaces, calculateAdaptivePanelGeometry]);
 
   // Face positions and rotations for box - MOVED BEFORE CONDITIONAL RETURN
   const faceTransforms = useMemo(() => {
@@ -1062,7 +1316,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[1] + panelData.position.y,
             shape.position[2] + panelData.position.z,
           ]}
-          rotation={shape.rotation}
+          rotation={[
+            shape.rotation[0] + panelData.rotation.x,
+            shape.rotation[1] + panelData.rotation.y,
+            shape.rotation[2] + panelData.rotation.z,
+          ]}
           scale={shape.scale}
           castShadow
           receiveShadow
@@ -1116,7 +1374,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[1] + previewPanelData.position.y,
             shape.position[2] + previewPanelData.position.z,
           ]}
-          rotation={shape.rotation}
+          rotation={[
+            shape.rotation[0] + previewPanelData.rotation.x,
+            shape.rotation[1] + previewPanelData.rotation.y,
+            shape.rotation[2] + previewPanelData.rotation.z,
+          ]}
           scale={shape.scale}
           visible={viewMode !== ViewMode.WIREFRAME}
           castShadow
@@ -1154,7 +1416,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[1] + previewPanelData.position.y,
             shape.position[2] + previewPanelData.position.z,
           ]}
-          rotation={shape.rotation}
+          rotation={[
+            shape.rotation[0] + previewPanelData.rotation.x,
+            shape.rotation[1] + previewPanelData.rotation.y,
+            shape.rotation[2] + previewPanelData.rotation.z,
+          ]}
           scale={shape.scale}
         >
           <lineBasicMaterial
@@ -1177,7 +1443,11 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[1] + panelData.position.y,
             shape.position[2] + panelData.position.z,
           ]}
-          rotation={shape.rotation}
+          rotation={[
+            shape.rotation[0] + panelData.rotation.x,
+            shape.rotation[1] + panelData.rotation.y,
+            shape.rotation[2] + panelData.rotation.z,
+          ]}
           scale={shape.scale}
           visible={
             viewMode === ViewMode.WIREFRAME ||
