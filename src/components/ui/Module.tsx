@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check } from 'lucide-react'; // Check icon'u eklendi
+import { X, Puzzle, Check } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -12,18 +12,14 @@ interface ModuleProps {
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
-  // Şeklin mevcut geometrisinin ve ölçeğinin en dış sınırlarını hesaplar.
-  // Bu, nesne bir kutu olmasa bile (örneğin bir polylinedan oluşsa bile) doğru boyutları verir.
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
       return { currentWidth: 0, currentHeight: 0, currentDepth: 0 };
     }
 
-    // Bounding box'ı hesapla (eğer henüz hesaplanmadıysa)
     editedShape.geometry.computeBoundingBox();
     const bbox = editedShape.geometry.boundingBox;
 
-    // Bounding box boyutlarını mevcut ölçekle çarpılarak gerçek dünya boyutları elde edilir
     const width = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
     const height = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
     const depth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
@@ -33,30 +29,52 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       currentHeight: height,
       currentDepth: depth,
     };
-  }, [editedShape.geometry, editedShape.scale]); // Geometri veya ölçek değiştiğinde yeniden hesapla
+  }, [editedShape.geometry, editedShape.scale]);
 
-  // Giriş alanları için yerel durumlar (state) tanımlandı.
-  // Bu sayede kullanıcı değeri onaylamadan önce değişiklik yapabilir.
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(1));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(1));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(1));
 
-  // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
   useEffect(() => {
     setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
     setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
     setInputDepth(convertToDisplayUnit(currentDepth).toFixed(1));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  // Boyut değişikliklerini işler ve onayla butonuna basıldığında veya Enter'a basıldığında uygular.
+  // Sadece sayısal, ondalık, +, -, *, /, ( ) girişlere izin veren doğrulama fonksiyonu
+  const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    // Sayıları, ondalık noktayı, +, -, *, /, parantezleri ve boşlukları kabul et
+    const regex = /^[0-9+\-*/().\s]*$/;
+    if (regex.test(value) || value === '') {
+      setter(value);
+    }
+  };
+
+  // Matematiksel ifadeyi değerlendirip sonucu döndüren yardımcı fonksiyon
+  const evaluateExpression = (expression: string): number | null => {
+    try {
+      // Güvenlik uyarısı: eval() kullanmak güvenlik açıkları oluşturabilir.
+      // Güvenli bir uygulama için daha robust bir matematiksel ifade ayrıştırıcı kütüphane kullanılması önerilir.
+      // Bu uygulama yerel olduğundan ve kullanıcı girdisi kısıtlı olduğundan şimdilik kullanılmıştır.
+      const result = eval(expression);
+      if (typeof result === 'number' && isFinite(result)) {
+        return result;
+      }
+      return null;
+    } catch (e) {
+      console.error("Matematiksel ifade değerlendirilirken hata oluştu:", e);
+      return null;
+    }
+  };
+
   const applyDimensionChange = (
     dimension: 'width' | 'height' | 'depth',
     value: string
   ) => {
-    const newValue = convertToBaseUnit(parseFloat(value) || 0);
-    // Geçersiz veya sıfır/negatif değerleri yoksay
-    if (isNaN(newValue) || newValue <= 0) {
-      console.warn(`Geçersiz değer ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
+    const evaluatedValue = evaluateExpression(value);
+
+    if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
+      console.warn(`Geçersiz değer veya matematiksel ifade ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
       // İsteğe bağlı olarak giriş alanını son geçerli değere sıfırla
       if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(1));
       if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(1));
@@ -64,31 +82,30 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    // Ölçekleme yapmadan önce bounding box'ın hesaplandığından emin ol
+    const newValue = convertToBaseUnit(evaluatedValue);
+
     editedShape.geometry.computeBoundingBox();
     const bbox = editedShape.geometry.boundingBox;
 
     const currentScale = [...editedShape.scale];
     const newScale = [...currentScale];
 
-    let originalDimension = 0; // Mevcut ölçeklenmiş boyut
+    let originalDimension = 0;
 
-    // Hangi boyutun değiştiğine bağlı olarak ölçek faktörünü hesapla
     if (dimension === 'width') {
       originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0];
-      if (originalDimension === 0) originalDimension = 1; // Sıfıra bölmeyi önle
+      if (originalDimension === 0) originalDimension = 1;
       newScale[0] = (newValue / originalDimension) * currentScale[0];
     } else if (dimension === 'height') {
       originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1];
-      if (originalDimension === 0) originalDimension = 1; // Sıfıra bölmeyi önle
+      if (originalDimension === 0) originalDimension = 1;
       newScale[1] = (newValue / originalDimension) * currentScale[1];
     } else if (dimension === 'depth') {
       originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2];
-      if (originalDimension === 0) originalDimension = 1; // Sıfıra bölmeyi önle
+      if (originalDimension === 0) originalDimension = 1;
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
-    // Şekli yeni ölçek değerleriyle güncelle
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
     });
@@ -118,19 +135,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         <div className="space-y-2">
           {/* Genişlik */}
           <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs w-4">G:</span> {/* Genişlik */}
+            <span className="text-gray-300 text-xs w-4">G:</span>
             <input
-              type="number"
+              type="text"
               value={inputWidth}
-              onChange={(e) => setInputWidth(e.target.value)}
-              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
+              onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   applyDimensionChange('width', inputWidth);
                 }
               }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              step="0.1"
-              min="1"
+              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
             />
             <button
               onClick={() => applyDimensionChange('width', inputWidth)}
@@ -143,19 +158,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
           {/* Yükseklik */}
           <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs w-4">Y:</span> {/* Yükseklik */}
+            <span className="text-gray-300 text-xs w-4">Y:</span>
             <input
-              type="number"
+              type="text"
               value={inputHeight}
-              onChange={(e) => setInputHeight(e.target.value)}
-              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
+              onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   applyDimensionChange('height', inputHeight);
                 }
               }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              step="0.1"
-              min="1"
+              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
             />
             <button
               onClick={() => applyDimensionChange('height', inputHeight)}
@@ -168,19 +181,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
           {/* Derinlik */}
           <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs w-4">D:</span> {/* Derinlik */}
+            <span className="text-gray-300 text-xs w-4">D:</span>
             <input
-              type="number"
+              type="text"
               value={inputDepth}
-              onChange={(e) => setInputDepth(e.target.value)}
-              onKeyDown={(e) => { // Enter tuşuna basıldığında onayla
+              onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   applyDimensionChange('depth', inputDepth);
                 }
               }}
-              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              step="0.1"
-              min="1"
+              className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50"
             />
             <button
               onClick={() => applyDimensionChange('depth', inputDepth)}
