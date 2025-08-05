@@ -1003,17 +1003,17 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               key={`face-${faceIndex}`}
               geometry={new THREE.PlaneGeometry(
                 faceIndex === 2 || faceIndex === 3 ? 
-                  (shape.type === 'box' ? shape.parameters.width : 
-                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500) : 
+                  (shape.type === 'box' ? (shape.parameters.width || 500) * shape.scale[0] : 
+                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x * shape.scale[0] : 500) : 
                   (faceIndex === 4 || faceIndex === 5 ? 
-                    (shape.type === 'box' ? shape.parameters.depth : 
-                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
-                    (shape.type === 'box' ? shape.parameters.width : 
-                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x : 500)),
+                    (shape.type === 'box' ? (shape.parameters.depth || 500) * shape.scale[2] : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z * shape.scale[2] : 500) : 
+                    (shape.type === 'box' ? (shape.parameters.width || 500) * shape.scale[0] : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x * shape.scale[0] : 500)),
                 faceIndex === 2 || faceIndex === 3 ? 
-                  (shape.type === 'box' ? shape.parameters.depth : 
-                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z : 500) : 
-                  (shape.type === 'box' ? shape.parameters.height : shape.parameters.height || 500)
+                  (shape.type === 'box' ? (shape.parameters.depth || 500) * shape.scale[2] : 
+                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z * shape.scale[2] : 500) : 
+                  (shape.type === 'box' ? (shape.parameters.height || 500) * shape.scale[1] : (shape.parameters.height || 500) * shape.scale[1])
               )}
               position={[
                 shape.position[0] + transform.position[0],
@@ -1025,7 +1025,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
                 shape.rotation[1] + transform.rotation[1],
                 shape.rotation[2] + transform.rotation[2],
               ]}
-              scale={shape.scale}
+              scale={[1, 1, 1]} // Face overlay'lerde scale kullanma, boyutlar zaten hesaplandı
               onClick={(e) => handleClick(e, faceIndex)}
               onContextMenu={(e) => {
                 if (isAddPanelMode) {
