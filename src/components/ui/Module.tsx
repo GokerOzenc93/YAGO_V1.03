@@ -12,14 +12,19 @@ interface ModuleProps {
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
+  // Şeklin mevcut geometrisinin ve ölçeğinin en dış sınırlarını hesaplar.
+  // Bu, nesne bir kutu olmasa bile (örneğin bir polylinedan oluşsa bile) doğru boyutları verir.
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
       return { currentWidth: 0, currentHeight: 0, currentDepth: 0 };
     }
 
+    // Bounding box'ı hesapla (eğer henüz hesaplanmadıysa)
+    // Bu metod, herhangi bir THREE.BufferGeometry için en dış sınırları verir.
     editedShape.geometry.computeBoundingBox();
     const bbox = editedShape.geometry.boundingBox;
 
+    // Bounding box boyutlarını mevcut ölçekle çarpılarak gerçek dünya boyutları elde edilir
     const width = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
     const height = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
     const depth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
@@ -32,14 +37,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   }, [editedShape.geometry, editedShape.scale]);
 
   // Giriş alanları için yerel durumlar (state) tanımlandı.
-  // **Başlangıçta ve güncellendiğinde küsuratsız gösterilir (toFixed(0)).**
+  // Başlangıçta ve güncellendiğinde küsuratsız gösterilir (toFixed(0)).
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
 
   useEffect(() => {
     // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
-    // **Yine küsuratsız gösterilir (toFixed(0)).**
+    // Yine küsuratsız gösterilir (toFixed(0)).
     setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
     setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
     setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
