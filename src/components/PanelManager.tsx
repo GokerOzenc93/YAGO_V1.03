@@ -307,7 +307,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
       // Left click - ENHANCED FACE CYCLING SYSTEM (only in add panel mode)
       if (isAddPanelMode && event.button === 0) {
-        if (overlappingFaces.length === 0) {
+        if (overlappingPanels.length === 0) {
           console.log('🎯 NO FACES DETECTED at this position');
           return;
         }
@@ -319,18 +319,19 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
         if (!isSamePosition || faceCycleState.availableFaces.length === 0) {
           // NEW POSITION - Start new cycle
+          const faceIndices = overlappingPanels.map((_, index) => index);
           setFaceCycleState({
-            availableFaces: overlappingFaces,
+            availableFaces: faceIndices,
             currentIndex: 0,
-            selectedFace: overlappingFaces[0],
+            selectedFace: 0,
             mousePosition: { x: mouseX, y: mouseY },
           });
 
           console.log(`🎯 NEW FACE CYCLE STARTED:`, {
             position: { x: mouseX, y: mouseY },
-            availableFaces: overlappingFaces,
-            selectedFace: overlappingFaces[0],
-            totalFaces: overlappingFaces.length,
+            availableFaces: faceIndices,
+            selectedFace: 0,
+            totalFaces: overlappingPanels.length,
           });
         } else {
           // SAME POSITION - Continue cycling through faces
@@ -400,7 +401,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
       if (overlappingFaces.length > 0) {
         // For simplicity, just hover the first detected panel
-        const firstFacePanel = generatePanelDataFromFace(shape, overlappingFaces[0]);
+        const firstFacePanel = overlappingPanels[0];
         onPanelHover(firstFacePanel.id);
       } else {
         onPanelHover(null);
