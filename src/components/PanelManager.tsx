@@ -2,6 +2,138 @@ import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
+// Helper function to create box faces for traditional box/rectangle shapes
+const createBoxFaces3 = (shape: Shape): FaceInfo[] => {
+  const { width = 500, height = 500, depth = 500 } = shape.parameters;
+  const [scaleX, scaleY, scaleZ] = shape.scale;
+  
+  // Apply scale to dimensions
+  const scaledWidth = width * scaleX;
+  const scaledHeight = height * scaleY;
+  const scaledDepth = depth * scaleZ;
+  
+  const hw = scaledWidth / 2;
+  const hh = scaledHeight / 2;
+  const hd = scaledDepth / 2;
+  
+  console.log(`🎯 createBoxFaces3 - Creating faces for ${shape.type}:`, {
+    originalDimensions: { width, height, depth },
+    scale: shape.scale,
+    scaledDimensions: { scaledWidth, scaledHeight, scaledDepth }
+  });
+  
+  return [
+    {
+      id: 0,
+      name: 'Front',
+      description: 'Front face (positive Z)',
+      center: new THREE.Vector3(0, 0, hd),
+      normal: new THREE.Vector3(0, 0, 1),
+      area: scaledWidth * scaledHeight,
+      vertices: [
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, hh, hd),
+        new THREE.Vector3(-hw, hh, hd)
+      ],
+      bounds: {
+        min: new THREE.Vector3(-hw, -hh, hd),
+        max: new THREE.Vector3(hw, hh, hd)
+      }
+    },
+    {
+      id: 1,
+      name: 'Back',
+      description: 'Back face (negative Z)',
+      center: new THREE.Vector3(0, 0, -hd),
+      normal: new THREE.Vector3(0, 0, -1),
+      area: scaledWidth * scaledHeight,
+      vertices: [
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(-hw, hh, -hd),
+        new THREE.Vector3(hw, hh, -hd)
+      ],
+      bounds: {
+        min: new THREE.Vector3(-hw, -hh, -hd),
+        max: new THREE.Vector3(hw, hh, -hd)
+      }
+    },
+    {
+      id: 2,
+      name: 'Top',
+      description: 'Top face (positive Y)',
+      center: new THREE.Vector3(0, hh, 0),
+      normal: new THREE.Vector3(0, 1, 0),
+      area: scaledWidth * scaledDepth,
+      vertices: [
+        new THREE.Vector3(-hw, hh, -hd),
+        new THREE.Vector3(hw, hh, -hd),
+        new THREE.Vector3(hw, hh, hd),
+        new THREE.Vector3(-hw, hh, hd)
+      ],
+      bounds: {
+        min: new THREE.Vector3(-hw, hh, -hd),
+        max: new THREE.Vector3(hw, hh, hd)
+      }
+    },
+    {
+      id: 3,
+      name: 'Bottom',
+      description: 'Bottom face (negative Y)',
+      center: new THREE.Vector3(0, -hh, 0),
+      normal: new THREE.Vector3(0, -1, 0),
+      area: scaledWidth * scaledDepth,
+      vertices: [
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, -hd)
+      ],
+      bounds: {
+        min: new THREE.Vector3(-hw, -hh, -hd),
+        max: new THREE.Vector3(hw, -hh, hd)
+      }
+    },
+    {
+      id: 4,
+      name: 'Right',
+      description: 'Right face (positive X)',
+      center: new THREE.Vector3(hw, 0, 0),
+      normal: new THREE.Vector3(1, 0, 0),
+      area: scaledDepth * scaledHeight,
+      vertices: [
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(hw, hh, -hd),
+        new THREE.Vector3(hw, hh, hd)
+      ],
+      bounds: {
+        min: new THREE.Vector3(hw, -hh, -hd),
+        max: new THREE.Vector3(hw, hh, hd)
+      }
+    },
+    {
+      id: 5,
+      name: 'Left',
+      description: 'Left face (negative X)',
+      center: new THREE.Vector3(-hw, 0, 0),
+      normal: new THREE.Vector3(-1, 0, 0),
+      area: scaledDepth * scaledHeight,
+      vertices: [
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(-hw, hh, hd),
+        new THREE.Vector3(-hw, hh, -hd)
+      ],
+      bounds: {
+        min: new THREE.Vector3(-hw, -hh, -hd),
+        max: new THREE.Vector3(-hw, hh, hd)
+      }
+    }
+  ];
+};
+
 // Helper function to create box faces - moved to top to avoid hoisting issues
 const createBoxFaces2 = (width: number, height: number, depth: number) => {
   const hw = width / 2;
