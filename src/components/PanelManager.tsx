@@ -887,6 +887,86 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(-hw, hh, hd)
         ],
         bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, hh - 1, -hd),
+          new THREE.Vector3(hw, hh + 1, hd)
+        )
+      },
+      {
+        index: 3,
+        center: new THREE.Vector3(0, -hh, 0),
+        normal: new THREE.Vector3(0, -1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh - 1, -hd),
+          new THREE.Vector3(hw, -hh + 1, hd)
+        )
+      },
+      {
+        index: 4,
+        center: new THREE.Vector3(hw, 0, 0),
+        normal: new THREE.Vector3(1, 0, 0),
+        area: height * depth,
+        vertices: [
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(hw - 1, -hh, -hd),
+          new THREE.Vector3(hw + 1, hh, hd)
+        )
+      },
+      {
+        index: 5,
+        center: new THREE.Vector3(-hw, 0, 0),
+        normal: new THREE.Vector3(-1, 0, 0),
+        area: height * depth,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(-hw, hh, hd),
+          new THREE.Vector3(-hw, hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw - 1, -hh, -hd),
+          new THREE.Vector3(-hw + 1, hh, hd)
+        )
+      }
+    ];
+
+    return faces;
+  };
+
+  // NEW: Find closest face to a 3D point
+  const findClosestFace = useCallback((point: THREE.Vector3): number | null => {
+    if (geometricFaces.length === 0) return null;
+    
+    // Convert world point to local space
+    const shapePosition = new THREE.Vector3(...shape.position);
+    const localPoint = point.clone().sub(shapePosition);
+    
+    // Find the face with the closest center
+    let closestFace = 0;
+    let closestDistance = localPoint.distanceTo(geometricFaces[0].center);
+    
+    for (let i = 1; i < geometricFaces.length; i++) {
+      const distance = localPoint.distanceTo(geometricFaces[i].center);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestFace = i;
+      }
+    }
+    
+    console.log(`🎯 Closest face to point ${localPoint.toArray().map(v => v.toFixed(1))}: Face ${closestFace} (distance: ${closestDistance.toFixed(1)})`);
+    return closestFace;
+  }, [geometricFaces, shape.position]);
 
   // NEW: Find next face in sequence (cycling through faces)
   const findNextFace = useCallback((currentFace: number): number => {
