@@ -2,6 +2,100 @@ import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
+// Helper function to create box faces - moved to top to avoid hoisting issues
+const createBoxFaces2 = (width: number, height: number, depth: number) => {
+  const hw = width / 2;
+  const hh = height / 2;
+  const hd = depth / 2;
+
+  return [
+    {
+      id: 0,
+      name: 'Front',
+      normal: new THREE.Vector3(0, 0, 1),
+      center: new THREE.Vector3(0, 0, hd),
+      width: width,
+      height: height,
+      vertices: [
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, hh, hd),
+        new THREE.Vector3(-hw, hh, hd),
+      ],
+    },
+    {
+      id: 1,
+      name: 'Back',
+      normal: new THREE.Vector3(0, 0, -1),
+      center: new THREE.Vector3(0, 0, -hd),
+      width: width,
+      height: height,
+      vertices: [
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(-hw, hh, -hd),
+        new THREE.Vector3(hw, hh, -hd),
+      ],
+    },
+    {
+      id: 2,
+      name: 'Top',
+      normal: new THREE.Vector3(0, 1, 0),
+      center: new THREE.Vector3(0, hh, 0),
+      width: width,
+      height: depth,
+      vertices: [
+        new THREE.Vector3(-hw, hh, -hd),
+        new THREE.Vector3(hw, hh, -hd),
+        new THREE.Vector3(hw, hh, hd),
+        new THREE.Vector3(-hw, hh, hd),
+      ],
+    },
+    {
+      id: 3,
+      name: 'Bottom',
+      normal: new THREE.Vector3(0, -1, 0),
+      center: new THREE.Vector3(0, -hh, 0),
+      width: width,
+      height: depth,
+      vertices: [
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, -hd),
+      ],
+    },
+    {
+      id: 4,
+      name: 'Right',
+      normal: new THREE.Vector3(1, 0, 0),
+      center: new THREE.Vector3(hw, 0, 0),
+      width: depth,
+      height: height,
+      vertices: [
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(hw, hh, -hd),
+        new THREE.Vector3(hw, hh, hd),
+      ],
+    },
+    {
+      id: 5,
+      name: 'Left',
+      normal: new THREE.Vector3(-1, 0, 0),
+      center: new THREE.Vector3(-hw, 0, 0),
+      width: depth,
+      height: height,
+      vertices: [
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(-hw, hh, hd),
+        new THREE.Vector3(-hw, hh, -hd),
+      ],
+    },
+  ];
+};
+
 // Helper function to create box faces - moved to top to avoid initialization error
 const createBoxFaces = (shape: Shape) => {
   const { width = 500, height = 500, depth = 500 } = shape.parameters;
@@ -518,101 +612,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         height = shape.parameters.height || 500;
         depth = Math.abs(size.z) || 500;
       }
-    }
-    
-    const hw = width / 2;
-    const hh = height / 2;
-    const hd = depth / 2;
-
-    const faces = [
-      {
-        index: 0,
-        center: new THREE.Vector3(0, 0, hd),
-        normal: new THREE.Vector3(0, 0, 1),
-        area: width * height,
-        vertices: [
-          new THREE.Vector3(-hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, hd),
-          new THREE.Vector3(hw, hh, hd),
-          new THREE.Vector3(-hw, hh, hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, hd),
-          new THREE.Vector3(hw, hh, hd)
-        )
-      },
-      {
-        index: 1,
-        center: new THREE.Vector3(0, 0, -hd),
-        normal: new THREE.Vector3(0, 0, -1),
-        area: width * height,
-        vertices: [
-          new THREE.Vector3(hw, -hh, -hd),
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(-hw, hh, -hd),
-          new THREE.Vector3(hw, hh, -hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(hw, hh, -hd)
-        )
-      },
-      {
-        index: 2,
-        center: new THREE.Vector3(0, hh, 0),
-        normal: new THREE.Vector3(0, 1, 0),
-        area: width * depth,
-        vertices: [
-          new THREE.Vector3(-hw, hh, -hd),
-          new THREE.Vector3(hw, hh, -hd),
-          new THREE.Vector3(hw, hh, hd),
-          new THREE.Vector3(-hw, hh, hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, hh, -hd),
-          new THREE.Vector3(hw, hh, hd)
-        )
-      },
-      {
-        index: 3,
-        center: new THREE.Vector3(0, -hh, 0),
-        normal: new THREE.Vector3(0, -1, 0),
-        area: width * depth,
-        vertices: [
-          new THREE.Vector3(-hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, -hd),
-          new THREE.Vector3(-hw, -hh, -hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(hw, -hh, hd)
-        )
-      },
-      {
-        index: 4,
-        center: new THREE.Vector3(hw, 0, 0),
-        normal: new THREE.Vector3(1, 0, 0),
-        area: depth * height,
-        vertices: [
-          new THREE.Vector3(hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, -hd),
-          new THREE.Vector3(hw, hh, -hd),
-          new THREE.Vector3(hw, hh, hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(hw, -hh, -hd),
-          new THREE.Vector3(hw, hh, hd)
-        )
-      },
-      {
-        index: 5,
-        center: new THREE.Vector3(-hw, 0, 0),
-        normal: new THREE.Vector3(-1, 0, 0),
-        area: depth * height,
-        vertices: [
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(-hw, -hh, hd),
+  }, [shape.type, shape.parameters, shape.scale, shape.geometry]);
           new THREE.Vector3(-hw, hh, hd),
           new THREE.Vector3(-hw, hh, -hd)
         ],
