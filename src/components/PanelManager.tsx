@@ -94,14 +94,23 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   // Convert face indices to PanelData objects
   const panelDataArray = useMemo(() => {
     if (!selectedPanels || !Array.isArray(selectedPanels)) {
+      console.log('🎯 No selected panels or invalid array:', selectedPanels);
       return [];
     }
     
-    return selectedPanels.map((faceIndex) => {
+    const panels = selectedPanels.map((faceIndex) => {
       // Generate PanelData from face index
       const panelData = generatePanelDataFromFace(shape, faceIndex);
+      console.log(`🎯 Generated panel for face ${faceIndex}:`, {
+        id: panelData.id,
+        position: panelData.position.toArray().map(v => v.toFixed(1)),
+        size: panelData.size.toArray().map(v => v.toFixed(1))
+      });
       return panelData;
     });
+    
+    console.log(`🎯 Total panels generated: ${panels.length}`);
+    return panels;
   }, [selectedPanels, shape]);
 
   const panelThickness = 18; // 18mm panel thickness
@@ -509,14 +518,16 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     const material = new THREE.MeshBasicMaterial({
       color: 0x888888, // A neutral color for the base shape
       transparent: true,
-      opacity: 0.2, // Slightly transparent to see through
+      opacity: 0.0, // Completely invisible
       side: THREE.DoubleSide,
+      visible: false, // Make it completely invisible
     });
     const mesh = new THREE.Mesh(shapeGeometry, material);
     mesh.position.set(shape.position[0], shape.position[1], shape.position[2]);
     mesh.rotation.set(shape.rotation[0], shape.rotation[1], shape.rotation[2]);
     mesh.scale.set(shape.scale[0], shape.scale[1], shape.scale[2]);
     mesh.name = "mainShape"; // Give it a name for identification
+    mesh.visible = false; // Ensure it's not visible
     return mesh;
   }, [shape, shapeGeometry]);
 
@@ -545,9 +556,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
   return (
     <group>
-      {/* Render the main shape (the object we are adding panels to) */}
-      {/* The actual mesh is added to the scene via useEffect and meshRef */}
-
       {/* Render dynamically generated panels */}
       {panelDataArray.map((panelData) => (
         <mesh
@@ -556,7 +564,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           rotation={panelData.rotation}
           castShadow
           receiveShadow
-          visible={viewMode !== ViewMode.WIREFRAME}
+          visible={true} // Always visible
           onClick={(e) => {
             if (isPanelEditMode) {
               e.stopPropagation();
@@ -586,7 +594,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           ) : (
             <meshPhysicalMaterial
               {...getPanelMaterial(panelData.normal).parameters} // Normal'e göre malzeme seçimi
-              transparent={viewMode === ViewMode.TRANSPARENT}
+              transparent={false}
               opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
               depthWrite={viewMode === ViewMode.SOLID}
             />
@@ -601,9 +609,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           position={panelData.position}
           rotation={panelData.rotation}
           visible={
-            viewMode === ViewMode.WIREFRAME ||
-            isPanelEditMode ||
-            true
+            true // Always show panel edges
           }
         >
           <edgesGeometry
@@ -619,10 +625,9 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()} // Koyu kırmızı kenarlar düzenleme modunda
             linewidth={getPanelEdgeLineWidth()}
             transparent={
-              viewMode === ViewMode.TRANSPARENT ||
-              viewMode === ViewMode.WIREFRAME
+              false
             }
-            opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
+            opacity={1.0}
             depthTest={viewMode === ViewMode.SOLID}
           />
         </lineSegments>
@@ -638,6 +643,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           rotation={selectedPanel.rotation}
           // Scale slightly larger to make it visible as an overlay
           scale={[1.01, 1.01, 1.01]}
+          visible={true}
         >
           <boxGeometry
             args={[
@@ -649,7 +655,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           <meshBasicMaterial
             color={getPanelOverlayColor(faceCycleState.selectedFace)}
             transparent
-            opacity={getPanelOverlayOpacity(faceCycleState.selectedFace)}
+            opacity={0.6} // Fixed opacity for better visibility
             side={THREE.DoubleSide}
             depthTest={false} // Ensure it's always visible
           />
