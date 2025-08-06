@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -16,18 +16,44 @@ import {
   Tool,
   MeasurementUnit,
   ViewMode,
-  ActiveDrawingPlane, // 🔴 NEW: Import ActiveDrawingPlane interface
 } from '../store/appStore';
 import OpenCascadeShape from './OpenCascadeShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
-import EditModePanel from './ui/EditModePanel';
-import PanelEditor from './ui/PanelEditor';
+import EditMode from './ui/EditMode';
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
+import { FaceSelectionOption } from './PanelManager';
+import { FaceCycleState } from '../types/panelTypes';
 import * as THREE from 'three';
-import { useOcWorker } from '../hooks/useOcWorker'; // 🔴 NEW: Import useOcWorker
+
+const CameraPositionUpdater = () => {
+  const { camera } = useThree();
+  const { setCameraPosition } = useAppStore();
+
+  useEffect(() => {
+    const updatePosition = () => {
+      setCameraPosition([
+        camera.position.x,
+        camera.position.y,
+        camera.position.z,
+      ]);
+    };
+
+    // Update position initially
+    updatePosition();
+
+    // Listen for camera changes
+    const controls = (window as any).cameraControls;
+    if (controls) {
+      controls.addEventListener('change', updatePosition);
+      return () => controls.removeEventListener('change', updatePosition);
+    }
+  }, [camera, setCameraPosition]);
+
+  return null;
+};
 
 interface MeasurementOverlayProps {
   position: { x: number; y: number };
@@ -36,27 +62,86 @@ interface MeasurementOverlayProps {
   onSubmit: (value: number) => void;
 }
 
-const CameraPositionUpdater = () => {
-  const { camera } = useThree();
-  const { setCameraPosition } = useAppStore();
+// NEW: Interface for face selection popup
+interface FaceSelectionPopupProps {
+  options: FaceSelectionOption[];
+  position: { x: number; y: number };
+  onSelect: (option: FaceSelectionOption) => void;
+  onCancel: () => void;
+}
 
-  useEffect(() => {
-    const updateCameraPosition = () => {
-      setCameraPosition([
-        camera.position.x,
-        camera.position.y,
-        camera.position.z,
-      ]);
-    };
+// NEW: Face selection popup component
+const FaceSelectionPopup: React.FC<FaceSelectionPopupProps> = ({
+  options,
+  position,
+  onSelect,
+  onCancel,
+}) => {
+  return (
+    <div
+      className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[320px] max-w-[450px]"
+      style={{
+        left: Math.min(position.x, window.innerWidth - 350),
+        top: Math.min(position.y, window.innerHeight - 300),
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-600/50">
+        <h3 className="text-white font-medium text-sm">Karşı Taraf Seçimi</h3>
+        <p className="text-gray-400 text-xs mt-1">Tıkladığınız yerin arkasındaki yüzeyi seçin</p>
+      </div>
 
-    updateCameraPosition();
-    camera.addEventListener('change', updateCameraPosition);
-    return () => camera.removeEventListener('change', updateCameraPosition);
-  }, [camera, setCameraPosition]);
+      {/* Face Options */}
+      <div className="max-h-80 overflow-y-auto">
+        <div className="space-y-0">
+          {options.map((option, index) => (
+            <button
+              key={option.id}
+              onClick={() => onSelect(option)}
+              className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-800/20 last:border-b-0"
+            >
+              <div className="flex items-center gap-3">
+                {/* Face Icon */}
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">
+                  {option.faceIndex}
+                </div>
+                
+                {/* Face Details */}
+                <div className="flex-1">
+                  <div className="text-white text-sm font-medium">{option.name}</div>
+                  <div className="text-gray-400 text-xs">{option.description}</div>
+                  <div className="flex items-center gap-4 mt-1">
+                    <div className="text-blue-400 text-xs">
+                      Area: {option.area.toFixed(0)}mm²
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      Normal: [{option.normal.x}, {option.normal.y}, {option.normal.z}]
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
 
-  return null;
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-gray-600/50 bg-gray-700/20">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400 text-xs">
+            Karşı taraf yüzeyi
+          </span>
+          <button
+            onClick={onCancel}
+            className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
+          >
+            İptal
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
-
 interface CameraControllerProps {
   isAddPanelMode: boolean;
 }
@@ -185,12 +270,8 @@ const Scene: React.FC = () => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
-    viewMode,
-    activeDrawingPlane, // 🔴 NEW: Get activeDrawingPlane from store
-    setActiveDrawingPlane, // 🔴 NEW: Get setActiveDrawingPlane from store
+    viewMode, // 🎯 NEW: Get current view mode
   } = useAppStore();
-
-  const { worker } = useOcWorker(); // 🔴 NEW: Get worker instance
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
   useEffect(() => {
@@ -240,13 +321,9 @@ const Scene: React.FC = () => {
 
   // 🔴 NEW: Panel Edit Mode State
   const [isPanelEditMode, setIsPanelEditMode] = useState(false);
-  const [selectedPanel, setSelectedPanel] = useState<{
-    faceIndex: number;
-    position: THREE.Vector3;
-    size: THREE.Vector3;
-    panelOrder: number;
-  } | null>(null);
-  const [isPanelEditorOpen, setIsPanelEditorOpen] = useState(false);
+
+  // NEW: Dynamic face selection state
+  const [selectedDynamicFace, setSelectedDynamicFace] = useState<number | null>(null);
 
   // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
   const [shapePanels, setShapePanels] = useState<{
@@ -254,12 +331,7 @@ const Scene: React.FC = () => {
   }>({});
 
   // Face cycle indicator state - moved to Scene component
-  const [faceCycleState, setFaceCycleState] = useState<{
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }>({
+  const [faceCycleState, setFaceCycleState] = useState<FaceCycleState>({
     selectedFace: null,
     currentIndex: 0,
     availableFaces: [],
@@ -277,14 +349,11 @@ const Scene: React.FC = () => {
         if (isEditMode) {
           exitEditMode();
         }
-        // 🔴 NEW: Clear active drawing plane on Escape
-        setActiveDrawingPlane(null);
-        console.log('Active drawing plane cleared on Escape.');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectShape, isEditMode, setActiveDrawingPlane]); // 🔴 NEW: Add setActiveDrawingPlane to dependencies
+  }, [selectShape, isEditMode]);
 
   useEffect(() => {
     const handleDoubleClick = (e: MouseEvent) => {
@@ -489,8 +558,6 @@ const Scene: React.FC = () => {
 
     // 🔴 NEW: Reset panel edit mode
     setIsPanelEditMode(false);
-    setSelectedPanel(null);
-    setIsPanelEditorOpen(false);
 
     // Reset face cycle state
     setFaceCycleState({
@@ -499,10 +566,6 @@ const Scene: React.FC = () => {
       availableFaces: [],
       mousePosition: null,
     });
-
-    // 🔴 NEW: Clear active drawing plane when exiting edit mode
-    setActiveDrawingPlane(null);
-    console.log('Active drawing plane cleared on exit edit mode.');
 
     console.log('Edit mode deactivated. All shapes visible again');
   };
@@ -590,11 +653,12 @@ const Scene: React.FC = () => {
   }, [measurementOverlay]);
 
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
-  const handleFaceSelect = useCallback(async (
-    faceIndex: number,
-    shapeId: string,
-    intersectionPoint: THREE.Vector3
-  ) => {
+  const handleFaceSelect = (faceIndex: number) => {
+    if (!isAddPanelMode) {
+      console.log('Panel add mode is not active');
+      return;
+    }
+    
     setSelectedFaces((prev) => {
       const newFaces = prev.includes(faceIndex)
         ? prev.filter((f) => f !== faceIndex) // Remove if already selected
@@ -607,44 +671,15 @@ const Scene: React.FC = () => {
           [editingShapeId]: [...newFaces],
         }));
         console.log(
-          `Panel ${faceIndex} ${
+          `🎯 GUARANTEED SYSTEM - Panel ${faceIndex} ${
             prev.includes(faceIndex) ? 'removed from' : 'added to'
-          } shape ${editingShapeId}`
+          } shape ${editingShapeId} - Previous panels stay full size, last panel shrinks`
         );
       }
 
       return newFaces;
     });
-
-    // 🔴 NEW: If in Add Panel Mode, set the active drawing plane
-    if (isAddPanelMode && worker && editingShapeId === shapeId) {
-      try {
-        console.log(`Attempting to get face geometry for shape ${shapeId}, face ${faceIndex}`);
-        const response = await worker.getFaceGeometry(shapeId, faceIndex);
-        
-        if (response && response.normal && response.origin && response.bounds) {
-          const newDrawingPlane: ActiveDrawingPlane = {
-            normal: response.normal,
-            origin: response.origin,
-            bounds: response.bounds,
-            attachedTo: { shapeId, faceIndex }
-          };
-          setActiveDrawingPlane(newDrawingPlane);
-          console.log('Active drawing plane set:', newDrawingPlane);
-        } else {
-          console.warn('Failed to get face geometry or incomplete data:', response);
-          setActiveDrawingPlane(null); // Clear if data is incomplete
-        }
-      } catch (error) {
-        console.error('Error getting face geometry:', error);
-        setActiveDrawingPlane(null); // Clear on error
-      }
-    } else if (!isAddPanelMode) {
-      // 🔴 NEW: If not in Add Panel Mode, clear the drawing plane
-      setActiveDrawingPlane(null);
-    }
-  }, [isAddPanelMode, worker, editingShapeId, setActiveDrawingPlane]);
-
+  };
 
   const handleFaceHover = (faceIndex: number | null) => {
     setHoveredFace(faceIndex);
@@ -657,8 +692,6 @@ const Scene: React.FC = () => {
     size: THREE.Vector3;
     panelOrder: number;
   }) => {
-    setSelectedPanel(panelData);
-    setIsPanelEditorOpen(true);
     console.log(`🔴 Panel selected for editing:`, {
       faceIndex: panelData.faceIndex,
       position: panelData.position.toArray().map((v) => v.toFixed(1)),
@@ -667,33 +700,131 @@ const Scene: React.FC = () => {
     });
   };
 
-  // 🔴 NEW: Handle panel updates from editor
-  const handlePanelUpdate = (
-    faceIndex: number,
-    updates: Partial<{
-      faceIndex: number;
-      position: THREE.Vector3;
-      size: THREE.Vector3;
-      panelOrder: number;
-    }>
-  ) => {
-    // Update the panel data in the system
-    // This would typically update the panel in the PanelManager
-    console.log(`🔴 Panel ${faceIndex} updated:`, updates);
-
-    // Update selected panel if it's the same one
-    if (selectedPanel && selectedPanel.faceIndex === faceIndex) {
-      setSelectedPanel((prev) => (prev ? { ...prev, ...updates } : null));
-    }
+  // NEW: Handle dynamic face selection
+  const handleDynamicFaceSelect = (faceIndex: number) => {
+    setSelectedDynamicFace(faceIndex);
+    console.log(`🎯 Dynamic face selected: ${faceIndex}`);
   };
 
+  // Reset dynamic face selection when panel mode changes
+  useEffect(() => {
+    if (!isAddPanelMode) {
+      setSelectedDynamicFace(null);
+    }
+  }, [isAddPanelMode]);
+
+  // Reset dynamic face selection when adding a panel
+  const handleFaceSelectWithReset = (faceIndex: number) => {
+    if (!isAddPanelMode) {
+      console.log('Panel add mode is not active');
+      return;
+    }
+    
+    setSelectedFaces((prev) => {
+      const newFaces = prev.includes(faceIndex)
+        ? prev.filter((f) => f !== faceIndex) // Remove if already selected
+        : [...prev, faceIndex]; // Add to selection
+
+      // 🎯 IMMEDIATE SAVE - Hemen kaydet
+      if (editingShapeId) {
+        setShapePanels((prevPanels) => ({
+          ...prevPanels,
+          [editingShapeId]: [...newFaces],
+        }));
+        console.log(
+          `🎯 GUARANTEED SYSTEM - Panel ${faceIndex} ${
+            prev.includes(faceIndex) ? 'removed from' : 'added to'
+          } shape ${editingShapeId} - Previous panels stay full size, last panel shrinks`
+        );
+      }
+
+      return newFaces;
+    });
+    
+    // Reset dynamic selection after adding panel
+    setSelectedDynamicFace(null);
+    console.log('🎯 Dynamic selection reset after panel addition');
+  };
+
+  // Global face detection functions for geometric calculations
+  useEffect(() => {
+    // Global function to find closest face to a clicked point
+    (window as any).findClosestFaceToPoint = (worldPoint: THREE.Vector3, shape: Shape): number | null => {
+      if (shape.type !== 'box') return null;
+      
+      const { width = 500, height = 500, depth = 500 } = shape.parameters;
+      const hw = width / 2;
+      const hh = height / 2;
+      const hd = depth / 2;
+      
+      // Convert world point to shape's local coordinate system
+      const shapePosition = new THREE.Vector3(...shape.position);
+      const localPoint = worldPoint.clone().sub(shapePosition);
+      
+      console.log(`🎯 World point: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
+      console.log(`🎯 Shape position: [${shapePosition.x.toFixed(1)}, ${shapePosition.y.toFixed(1)}, ${shapePosition.z.toFixed(1)}]`);
+      console.log(`🎯 Local point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
+      
+      // Define face data with centers and normals
+      const faces = [
+        { index: 0, center: new THREE.Vector3(0, 0, hd), normal: new THREE.Vector3(0, 0, 1), name: 'Front' },
+        { index: 1, center: new THREE.Vector3(0, 0, -hd), normal: new THREE.Vector3(0, 0, -1), name: 'Back' },
+        { index: 2, center: new THREE.Vector3(0, hh, 0), normal: new THREE.Vector3(0, 1, 0), name: 'Top' },
+        { index: 3, center: new THREE.Vector3(0, -hh, 0), normal: new THREE.Vector3(0, -1, 0), name: 'Bottom' },
+        { index: 4, center: new THREE.Vector3(hw, 0, 0), normal: new THREE.Vector3(1, 0, 0), name: 'Right' },
+        { index: 5, center: new THREE.Vector3(-hw, 0, 0), normal: new THREE.Vector3(-1, 0, 0), name: 'Left' },
+      ];
+      
+      // Calculate distances from click point to all face centers and sort by distance
+      const faceDistances = faces.map(face => {
+        const distanceToCenter = localPoint.distanceTo(face.center);
+        const pointToCenter = localPoint.clone().sub(face.center);
+        const projectionDistance = Math.abs(pointToCenter.dot(face.normal));
+        
+        console.log(`🎯 Face ${face.index} (${face.name}): Distance to center: ${distanceToCenter.toFixed(1)}, Projection distance: ${projectionDistance.toFixed(1)}`);
+        
+        return {
+          index: face.index,
+          name: face.name,
+          distance: distanceToCenter,
+          projectionDistance: projectionDistance,
+          isOnPlane: projectionDistance < 50 // 50mm threshold
+        };
+      }).sort((a, b) => a.distance - b.distance); // Sort by distance to center
+      
+      console.log(`🎯 Faces sorted by distance:`, faceDistances.map(f => 
+        `${f.name}(${f.index}): ${f.distance.toFixed(1)}mm ${f.isOnPlane ? '✓' : '✗'}`
+      ).join(', '));
+      
+      // First try to find a face that the point is actually on
+      const faceOnPlane = faceDistances.find(f => f.isOnPlane);
+      if (faceOnPlane) {
+        console.log(`🎯 Point is on face: ${faceOnPlane.name} (${faceOnPlane.index})`);
+        return faceOnPlane.index;
+      }
+      
+      // If no face is directly under the point, return the closest one
+      const closestFace = faceDistances[0];
+      console.log(`🎯 Closest face: ${closestFace.name} (${closestFace.index}) at ${closestFace.distance.toFixed(1)}mm`);
+      
+      return closestFace.index;
+    };
+    
+    // Global function to find next face based on distance to last click point
+    (window as any).findNextAdjacentFace = (currentFace: number, shape: Shape): number => {
+      // This function is now handled by PanelManager's findNextFace method
+      // which uses the stored click position for distance-based sorting
+      return (currentFace + 1) % 6; // Fallback
+    };
+    
+    return () => {
+      delete (window as any).findClosestFaceToPoint;
+      delete (window as any).findNextAdjacentFace;
+    };
+  }, []);
+
   // Handle face cycle updates from OpenCascadeShape
-  const handleFaceCycleUpdate = (cycleState: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }) => {
+  const handleFaceCycleUpdate = (cycleState: FaceCycleState) => {
     setFaceCycleState(cycleState);
   };
 
@@ -716,7 +847,7 @@ const Scene: React.FC = () => {
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
       {isEditMode && editedShape && (
-        <EditModePanel
+        <EditMode
           editedShape={editedShape}
           onExit={exitEditMode}
           isAddPanelMode={isAddPanelMode}
@@ -729,36 +860,27 @@ const Scene: React.FC = () => {
           setShowEdges={setShowEdges}
           showFaces={showFaces}
           setShowFaces={setShowFaces}
-          isPanelEditMode={isPanelEditMode} // 🔴 NEW: Pass panel edit mode
-          setIsPanelEditMode={setIsPanelEditMode} // 🔴 NEW: Pass setter
+          isPanelEditMode={isPanelEditMode}
+          setIsPanelEditMode={setIsPanelEditMode}
         />
       )}
 
-      {/* 🔴 NEW: Panel Editor Modal */}
-      <PanelEditor
-        isOpen={isPanelEditorOpen}
-        onClose={() => {
-          setIsPanelEditorOpen(false);
-          setSelectedPanel(null);
-        }}
-        selectedPanel={selectedPanel}
-        onPanelUpdate={handlePanelUpdate}
-        editingShapeId={editingShapeId}
-      />
-
       <Canvas
         ref={canvasRef}
-        dpr={[1, 1.5]} // 🎯 REDUCED DPR - Less intensive rendering
+        dpr={[1.5, 2]} // 🎯 HIGH QUALITY DPR - Better rendering quality
         shadows
         gl={{
           antialias: true,
           alpha: true,
           preserveDrawingBuffer: true,
           logarithmicDepthBuffer: true,
-          toneMapping: THREE.LinearToneMapping, // 🎯 LINEAR TONE MAPPING - No blooms
-          toneMappingExposure: 1.0, // 🎯 NORMAL EXPOSURE - No overbrightness
+          toneMapping: THREE.ACESFilmicToneMapping, // 🎯 CINEMATIC TONE MAPPING
+          toneMappingExposure: 1.2, // 🎯 ENHANCED EXPOSURE
           outputColorSpace: THREE.SRGBColorSpace,
           powerPreference: 'high-performance',
+          stencil: true,
+          depth: true,
+          precision: 'highp',
         }}
         camera={{
           near: 1,
@@ -787,15 +909,17 @@ const Scene: React.FC = () => {
           />
         )}
 
-        {/* 🎯 BALANCED LIGHTING SYSTEM - Bright but no blooms */}
-        <Environment preset="apartment" intensity={0.4} blur={0.4} />
+        {/* 🎯 HIGH QUALITY LIGHTING SYSTEM */}
+        <Environment preset="city" intensity={0.6} blur={0.2} />
 
         <directionalLight
           position={[2000, 3000, 2000]}
-          intensity={0.8}
+          intensity={1.2}
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[4096, 4096]}
           shadow-bias={-0.0001}
+          shadow-normalBias={0.02}
+          shadow-radius={4}
           color="#ffffff"
         >
           <orthographicCamera
@@ -806,16 +930,38 @@ const Scene: React.FC = () => {
 
         <directionalLight
           position={[-1500, 1500, -1500]}
-          intensity={0.3}
-          color="#f8f9fa"
+          intensity={0.5}
+          color="#e0f2fe"
         />
 
-        <ambientLight intensity={0.5} color="#ffffff" />
+        <directionalLight
+          position={[0, 2000, 1000]}
+          intensity={0.4}
+          color="#fef3c7"
+        />
+
+        <ambientLight intensity={0.3} color="#f1f5f9" />
+
+        {/* 🎯 NEW: Additional fill lights for better quality */}
+        <pointLight
+          position={[1000, 1000, 1000]}
+          intensity={0.3}
+          color="#ffffff"
+          decay={2}
+          distance={3000}
+        />
+
+        <pointLight
+          position={[-1000, 500, -1000]}
+          intensity={0.2}
+          color="#e0f2fe"
+          decay={2}
+          distance={2000}
+        />
 
         <DrawingPlane
           onShowMeasurement={setMeasurementOverlay}
           onHideMeasurement={() => setMeasurementOverlay(null)}
-          activeDrawingPlane={activeDrawingPlane} // 🔴 NEW: Pass activeDrawingPlane
         />
 
         <group position={[0, -0.001, 0]}>
@@ -859,7 +1005,7 @@ const Scene: React.FC = () => {
               selectedFaces={
                 isCurrentlyEditing ? selectedFaces : shapePersistentPanels
               } // 🎯 PERSISTENT PANELS
-              onFaceSelect={handleFaceSelect} // 🔴 NEW: Updated to handle shapeId and intersectionPoint
+              onFaceSelect={handleFaceSelectWithReset}
               onFaceHover={handleFaceHover}
               hoveredFace={hoveredFace}
               showEdges={showEdges}
@@ -868,6 +1014,12 @@ const Scene: React.FC = () => {
               // 🔴 NEW: Panel Edit Mode props
               isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
               onPanelSelect={handlePanelSelect}
+              faceCycleState={faceCycleState}
+              setFaceCycleState={setFaceCycleState}
+              // NEW: Dynamic face selection props
+              onDynamicFaceSelect={handleDynamicFaceSelect}
+              selectedDynamicFace={selectedDynamicFace}
+              isDynamicSelectionMode={isAddPanelMode && isCurrentlyEditing}
             />
           );
         })}
