@@ -3,15 +3,7 @@ import * as THREE from 'three';
 import { useThree } from '@react-three/fiber'; // useThree hook for camera and renderer
 import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
-
-interface PanelData {
-  id: string; // Unique ID for the panel, e.g., based on face normal and position
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
-  size: THREE.Vector3;
-  normal: THREE.Vector3;
-  // Add any other properties needed for rendering or editing
-}
+import { PanelData, FaceCycleState } from '../types/panelTypes';
 
 interface PanelManagerProps {
   shape: Shape;
@@ -23,27 +15,10 @@ interface PanelManagerProps {
   onPanelSelect: (panel: PanelData) => void; // Updated to pass PanelData
   onPanelHover: (panelId: string | null) => void; // Updated to pass panel ID
   // Face cycle indicator props (will be adapted for dynamic panels)
-  onFaceCycleUpdate?: (cycleState: {
-    selectedFace: PanelData | null; // Now PanelData
-    currentIndex: number;
-    availableFaces: PanelData[]; // Now PanelData
-    mousePosition: { x: number; y: number } | null;
-  }) => void;
+  onFaceCycleUpdate?: (cycleState: FaceCycleState) => void;
   // Face cycling state from parent
-  faceCycleState: {
-    selectedFace: PanelData | null; // Now PanelData
-    currentIndex: number;
-    availableFaces: PanelData[]; // Now PanelData
-    mousePosition: { x: number; y: number } | null;
-  };
-  setFaceCycleState: React.Dispatch<
-    React.SetStateAction<{
-      selectedFace: PanelData | null;
-      currentIndex: number;
-      availableFaces: PanelData[];
-      mousePosition: { x: number; y: number } | null;
-    }>
-  >;
+  faceCycleState: FaceCycleState;
+  setFaceCycleState: React.Dispatch<React.SetStateAction<FaceCycleState>>;
   alwaysShowPanels?: boolean;
   isPanelEditMode?: boolean;
   onPanelEditSelect?: (panelData: PanelData) => void; // Updated for editing
@@ -332,7 +307,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
       // Left click - ENHANCED FACE CYCLING SYSTEM (only in add panel mode)
       if (isAddPanelMode && event.button === 0) {
-        if (overlappingPanels.length === 0) {
+        if (overlappingFaces.length === 0) {
           console.log('🎯 NO FACES DETECTED at this position');
           return;
         }
@@ -345,38 +320,38 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         if (!isSamePosition || faceCycleState.availableFaces.length === 0) {
           // NEW POSITION - Start new cycle
           setFaceCycleState({
-            availableFaces: overlappingPanels,
+            availableFaces: overlappingFaces,
             currentIndex: 0,
-            selectedFace: overlappingPanels[0],
+            selectedFace: overlappingFaces[0],
             mousePosition: { x: mouseX, y: mouseY },
           });
 
           console.log(`🎯 NEW FACE CYCLE STARTED:`, {
             position: { x: mouseX, y: mouseY },
-            availableFaces: overlappingPanels.map(p => p.id),
-            selectedFace: overlappingPanels[0]?.id,
-            totalFaces: overlappingPanels.length,
+            availableFaces: overlappingFaces,
+            selectedFace: overlappingFaces[0],
+            totalFaces: overlappingFaces.length,
           });
         } else {
           // SAME POSITION - Continue cycling through faces
           const nextIndex =
             (faceCycleState.currentIndex + 1) %
             faceCycleState.availableFaces.length;
-          const nextFace = faceCycleState.availableFaces[nextIndex];
+          const nextFaceIndex = faceCycleState.availableFaces[nextIndex];
 
           setFaceCycleState((prev) => ({
             ...prev,
             currentIndex: nextIndex,
-            selectedFace: nextFace,
+            selectedFace: nextFaceIndex,
           }));
 
           console.log(`🎯 FACE CYCLE CONTINUED:`, {
-            previousFace: faceCycleState.selectedFace?.id,
-            newFace: nextFace?.id,
+            previousFace: faceCycleState.selectedFace,
+            newFace: nextFaceIndex,
             cycleIndex: `${nextIndex + 1}/${
               faceCycleState.availableFaces.length
             }`,
-            availableFaces: faceCycleState.availableFaces.map(p => p.id),
+            availableFaces: faceCycleState.availableFaces,
           });
         }
       }
@@ -391,14 +366,15 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       event.stopPropagation();
       event.preventDefault();
 
-      const targetPanel = faceCycleState.selectedFace;
+      const targetFaceIndex = faceCycleState.selectedFace;
 
-      if (targetPanel && onPanelSelect) {
+      if (targetFaceIndex !== null && onPanelSelect) {
+        const targetPanel = generatePanelDataFromFace(shape, targetFaceIndex);
         onPanelSelect(targetPanel);
         console.log(`🎯 GUARANTEED SYSTEM - Panel ${targetPanel.id} confirmed:`, {
           confirmedPanel: targetPanel.id,
           method: 'right-click',
-          wasInCycle: faceCycleState.selectedFace !== null,
+          faceIndex: targetFaceIndex,
         });
 
         // Reset cycle state after confirmation
@@ -410,7 +386,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         });
       }
     },
-    [isAddPanelMode, faceCycleState.selectedFace, onPanelSelect, setFaceCycleState]
+    [isAddPanelMode, faceCycleState.selectedFace, onPanelSelect, setFaceCycleState, shape, generatePanelDataFromFace]
   );
 
   const handlePointerMove = useCallback(
@@ -420,16 +396,17 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       const mouseX = event.clientX;
       const mouseY = event.clientY;
 
-      const overlappingPanels = getOverlappingFacesAtPosition(mouseX, mouseY);
+      const overlappingFaces = getOverlappingFacesAtPosition(mouseX, mouseY);
 
-      if (overlappingPanels.length > 0) {
+      if (overlappingFaces.length > 0) {
         // For simplicity, just hover the first detected panel
-        onPanelHover(overlappingPanels[0].id);
+        const firstFacePanel = generatePanelDataFromFace(shape, overlappingFaces[0]);
+        onPanelHover(firstFacePanel.id);
       } else {
         onPanelHover(null);
       }
     },
-    [isAddPanelMode, isPanelEditMode, onPanelHover, getOverlappingFacesAtPosition]
+    [isAddPanelMode, isPanelEditMode, onPanelHover, getOverlappingFacesAtPosition, shape, generatePanelDataFromFace]
   );
 
   useEffect(() => {
@@ -447,17 +424,19 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   }, [gl, handleClick, handleContextMenu, handlePointerMove]);
 
   // Get face color based on state (now for dynamic panels)
-  const getPanelOverlayColor = (panel: PanelData) => {
-    if (faceCycleState.selectedFace?.id === panel.id) return '#fbbf24'; // YELLOW for currently selected face in cycle
-    if (selectedPanels.some(sp => sp.id === panel.id)) return '#10b981'; // Green for confirmed selected
+  const getPanelOverlayColor = (faceIndex: number) => {
+    if (faceCycleState.selectedFace === faceIndex) return '#fbbf24'; // YELLOW for currently selected face in cycle
+    if (selectedPanels.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
+    const panel = generatePanelDataFromFace(shape, faceIndex);
     if (hoveredPanelId === panel.id) return '#eeeeee'; // Gray for hovered
     return '#3b82f6'; // Blue for default (should rarely be seen if opacity is low)
   };
 
   // Get face opacity - ALL FACES VISIBLE IN PANEL MODE
-  const getPanelOverlayOpacity = (panel: PanelData) => {
-    if (faceCycleState.selectedFace?.id === panel.id) return 0.8; // High visibility for cycling face
-    if (selectedPanels.some(sp => sp.id === panel.id)) return 0.0; // Confirmed panels are now actual meshes, so overlay can be hidden
+  const getPanelOverlayOpacity = (faceIndex: number) => {
+    if (faceCycleState.selectedFace === faceIndex) return 0.8; // High visibility for cycling face
+    if (selectedPanels.includes(faceIndex)) return 0.0; // Confirmed panels are now actual meshes, so overlay can be hidden
+    const panel = generatePanelDataFromFace(shape, faceIndex);
     if (hoveredPanelId === panel.id) return 0.0; // Hovered panels are now actual meshes, so overlay can be hidden
     return 0.001; // Very low but visible for all other faces
   };
@@ -598,18 +577,21 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       ))}
 
       {/* Render the currently cycling/hovered panel as an overlay */}
-      {isAddPanelMode && faceCycleState.selectedFace && (
+      {isAddPanelMode && faceCycleState.selectedFace !== null && (
+        (() => {
+          const selectedPanel = generatePanelDataFromFace(shape, faceCycleState.selectedFace);
+          return (
         <mesh
-          position={faceCycleState.selectedFace.position}
-          rotation={faceCycleState.selectedFace.rotation}
+          position={selectedPanel.position}
+          rotation={selectedPanel.rotation}
           // Scale slightly larger to make it visible as an overlay
           scale={[1.01, 1.01, 1.01]}
         >
           <boxGeometry
             args={[
-              faceCycleState.selectedFace.size.x,
-              faceCycleState.selectedFace.size.y,
-              faceCycleState.selectedFace.size.z,
+              selectedPanel.size.x,
+              selectedPanel.size.y,
+              selectedPanel.size.z,
             ]}
           />
           <meshBasicMaterial
@@ -620,6 +602,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             depthTest={false} // Ensure it's always visible
           />
         </mesh>
+          );
+        })()
       )}
     </group>
   );

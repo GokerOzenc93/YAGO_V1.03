@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { FaceSelectionOption } from './PanelManager';
+import { FaceCycleState } from '../types/panelTypes';
 import * as THREE from 'three';
 
 const CameraPositionUpdater = () => {
@@ -330,12 +331,7 @@ const Scene: React.FC = () => {
   }>({});
 
   // Face cycle indicator state - moved to Scene component
-  const [faceCycleState, setFaceCycleState] = useState<{
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }>({
+  const [faceCycleState, setFaceCycleState] = useState<FaceCycleState>({
     selectedFace: null,
     currentIndex: 0,
     availableFaces: [],
@@ -828,12 +824,7 @@ const Scene: React.FC = () => {
   }, []);
 
   // Handle face cycle updates from OpenCascadeShape
-  const handleFaceCycleUpdate = (cycleState: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }) => {
+  const handleFaceCycleUpdate = (cycleState: FaceCycleState) => {
     setFaceCycleState(cycleState);
   };
 

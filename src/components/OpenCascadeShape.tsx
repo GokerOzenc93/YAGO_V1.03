@@ -6,6 +6,7 @@ import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import PanelManager from './PanelManager';
 import { ViewMode } from '../store/appStore';
+import { FaceCycleState } from '../types/panelTypes';
 
 interface Props {
   shape: Shape;
@@ -21,12 +22,7 @@ interface Props {
   showEdges?: boolean;
   showFaces?: boolean;
   // Face cycle indicator props
-  onFaceCycleUpdate?: (cycleState: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }) => void;
+  onFaceCycleUpdate?: (cycleState: FaceCycleState) => void;
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode?: boolean;
   onPanelSelect?: (panelData: {
@@ -40,18 +36,8 @@ interface Props {
   onHideFaceSelection?: () => void;
   onSelectFace?: (faceIndex: number) => void;
   // Face cycle state props
-  faceCycleState?: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  };
-  setFaceCycleState?: React.Dispatch<React.SetStateAction<{
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }>>;
+  faceCycleState?: FaceCycleState;
+  setFaceCycleState?: React.Dispatch<React.SetStateAction<FaceCycleState>>;
   // NEW: Dynamic face selection props
   onDynamicFaceSelect?: (faceIndex: number) => void;
   selectedDynamicFace?: number | null;
