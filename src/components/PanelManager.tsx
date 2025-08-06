@@ -5,6 +5,57 @@ import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
 import { PanelData, FaceCycleState } from '../types/panelTypes';
 
+// Helper function to calculate shape dimensions
+const calculateShapeDimensions = (shape: Shape) => {
+  let width = 100, height = 100, depth = 100; // Default values
+  
+  if (shape.type === 'box' && shape.parameters) {
+    width = shape.parameters.width || 100;
+    height = shape.parameters.height || 100;
+    depth = shape.parameters.depth || 100;
+  } else if (shape.type === 'cylinder' && shape.parameters) {
+    const radius = shape.parameters.radius || 50;
+    width = radius * 2;
+    depth = radius * 2;
+    height = shape.parameters.height || 100;
+  } else if (shape.type === 'sphere' && shape.parameters) {
+    const radius = shape.parameters.radius || 50;
+    width = radius * 2;
+    height = radius * 2;
+    depth = radius * 2;
+  } else if (shape.type === 'polyline' && shape.geometry) {
+    // Calculate bounding box for polyline
+    const points = shape.geometry.points || [];
+    if (points.length > 0) {
+      let minX = points[0][0], maxX = points[0][0];
+      let minY = points[0][1], maxY = points[0][1];
+      let minZ = points[0][2] || 0, maxZ = points[0][2] || 0;
+      
+      points.forEach(point => {
+        minX = Math.min(minX, point[0]);
+        maxX = Math.max(maxX, point[0]);
+        minY = Math.min(minY, point[1]);
+        maxY = Math.max(maxY, point[1]);
+        if (point[2] !== undefined) {
+          minZ = Math.min(minZ, point[2]);
+          maxZ = Math.max(maxZ, point[2]);
+        }
+      });
+      
+      width = maxX - minX;
+      height = maxY - minY;
+      depth = maxZ - minZ;
+    }
+  }
+  
+  // Apply scale
+  width *= shape.scale[0];
+  height *= shape.scale[1];
+  depth *= shape.scale[2];
+  
+  return { width, height, depth };
+};
+
 interface PanelManagerProps {
   shape: Shape;
   isAddPanelMode: boolean;
