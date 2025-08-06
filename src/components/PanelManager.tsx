@@ -497,7 +497,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     allPanels: number[],
     panelOrder: number
   ): SmartPanelBounds => {
-    // Gerçek zamanlı boyutları hesapla - shape.scale ile çarpılmış
+    // 🌊 LIQUID FILLING ALGORITHM - Sıvı doldurma mantığı
+    console.log(`🌊 LIQUID PANEL: Starting liquid fill for face ${faceIndex}, panel order ${panelOrder}`);
+    
+    // Gerçek zamanlı boyutları hesapla
     let width = 500, height = 500, depth = 500;
     
     if (shape.type === 'box' || shape.type === 'rectangle2d') {
@@ -537,227 +540,132 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     const hw = width / 2;
     const hh = height / 2;
     const hd = depth / 2;
-    const previousPanels = allPanels.slice(0, panelOrder);
-    const isLastPanel = panelOrder === allPanels.length - 1;
 
-    let originalBounds: THREE.Box3;
-    let expandedBounds: THREE.Box3;
+    // 🌊 STEP 1: Define the complete internal volume (empty space to fill)
+    const internalVolume = new THREE.Box3(
+      new THREE.Vector3(-hw, -hh, -hd),
+      new THREE.Vector3(hw, hh, hd)
+    );
+    
+    console.log(`🌊 Internal volume defined:`, {
+      min: internalVolume.min.toArray().map(v => v.toFixed(1)),
+      max: internalVolume.max.toArray().map(v => v.toFixed(1)),
+      size: internalVolume.getSize(new THREE.Vector3()).toArray().map(v => v.toFixed(1))
+    });
+
+    // 🌊 STEP 2: Subtract space occupied by previous panels (liquid displacement)
+    const previousPanels = allPanels.slice(0, panelOrder);
+    let availableVolume = internalVolume.clone();
+    
+    previousPanels.forEach((prevFaceIndex) => {
+      console.log(`🌊 Subtracting space for previous panel on face ${prevFaceIndex}`);
+      
+      switch (prevFaceIndex) {
+        case 0: // Front face - reduce depth from front
+          availableVolume.max.z = Math.min(availableVolume.max.z, hd - panelThickness);
+          break;
+        case 1: // Back face - reduce depth from back
+          availableVolume.min.z = Math.max(availableVolume.min.z, -hd + panelThickness);
+          break;
+        case 2: // Top face - reduce height from top
+          availableVolume.max.y = Math.min(availableVolume.max.y, hh - panelThickness);
+          break;
+        case 3: // Bottom face - reduce height from bottom
+          availableVolume.min.y = Math.max(availableVolume.min.y, -hh + panelThickness);
+          break;
+        case 4: // Right face - reduce width from right
+          availableVolume.max.x = Math.min(availableVolume.max.x, hw - panelThickness);
+          break;
+        case 5: // Left face - reduce width from left
+          availableVolume.min.x = Math.max(availableVolume.min.x, -hw + panelThickness);
+          break;
+      }
+    });
+    
+    console.log(`🌊 Available volume after subtracting ${previousPanels.length} panels:`, {
+      min: availableVolume.min.toArray().map(v => v.toFixed(1)),
+      max: availableVolume.max.toArray().map(v => v.toFixed(1)),
+      size: availableVolume.getSize(new THREE.Vector3()).toArray().map(v => v.toFixed(1))
+    });
+
+    // 🌊 STEP 3: Create panel that fills available space up to the selected face
     let finalPosition: THREE.Vector3;
     let finalSize: THREE.Vector3;
+    let panelBounds: THREE.Box3;
 
     switch (faceIndex) {
-      case 0: // Front face
-        originalBounds = new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, hd - panelThickness),
-          new THREE.Vector3(hw, hh, hd)
-        );
-        expandedBounds = originalBounds.clone();
-        previousPanels.forEach((previousPanel) => {
-          if (previousPanel === 4) {
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
-          }
-          if (previousPanel === 5) {
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
-          }
-          if (previousPanel === 2) {
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
-          }
-          if (previousPanel === 3) {
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
-          }
-        });
-        finalSize = new THREE.Vector3(
-          expandedBounds.max.x - expandedBounds.min.x,
-          expandedBounds.max.y - expandedBounds.min.y,
-          panelThickness
-        );
-        finalPosition = new THREE.Vector3(
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
-          hd - panelThickness / 2
+      case 0: // Front face - Fill from available volume to front face
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(availableVolume.min.x, availableVolume.min.y, hd - panelThickness),
+          new THREE.Vector3(availableVolume.max.x, availableVolume.max.y, hd)
         );
         break;
 
-      case 1: // Back face
-        originalBounds = new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(hw, hh, -hd + panelThickness)
-        );
-        expandedBounds = originalBounds.clone();
-        previousPanels.forEach((previousPanel) => {
-          if (previousPanel === 4) {
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
-          }
-          if (previousPanel === 5) {
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
-          }
-          if (previousPanel === 2) {
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
-          }
-          if (previousPanel === 3) {
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
-          }
-        });
-        finalSize = new THREE.Vector3(
-          expandedBounds.max.x - expandedBounds.min.x,
-          expandedBounds.max.y - expandedBounds.min.y,
-          panelThickness
-        );
-        finalPosition = new THREE.Vector3(
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
-          -hd + panelThickness / 2
+      case 1: // Back face - Fill from available volume to back face
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(availableVolume.min.x, availableVolume.min.y, -hd),
+          new THREE.Vector3(availableVolume.max.x, availableVolume.max.y, -hd + panelThickness)
         );
         break;
 
-      case 2: // Top face
-        originalBounds = new THREE.Box3(
-          new THREE.Vector3(-hw, hh - panelThickness, -hd),
-          new THREE.Vector3(hw, hh, hd)
-        );
-        expandedBounds = originalBounds.clone();
-        previousPanels.forEach((previousPanel) => {
-          if (previousPanel === 4) {
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
-          }
-          if (previousPanel === 5) {
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
-          }
-          if (previousPanel === 0) {
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
-          }
-          if (previousPanel === 1) {
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
-          }
-        });
-        finalSize = new THREE.Vector3(
-          expandedBounds.max.x - expandedBounds.min.x,
-          panelThickness,
-          expandedBounds.max.z - expandedBounds.min.z
-        );
-        finalPosition = new THREE.Vector3(
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
-          hh - panelThickness / 2,
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+      case 2: // Top face - Fill from available volume to top face
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(availableVolume.min.x, hh - panelThickness, availableVolume.min.z),
+          new THREE.Vector3(availableVolume.max.x, hh, availableVolume.max.z)
         );
         break;
 
-      case 3: // Bottom face
-        originalBounds = new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(hw, -hh + panelThickness, hd)
-        );
-        expandedBounds = originalBounds.clone();
-        previousPanels.forEach((previousPanel) => {
-          if (previousPanel === 4) {
-            expandedBounds.max.x = Math.min(expandedBounds.max.x, hw - panelThickness);
-          }
-          if (previousPanel === 5) {
-            expandedBounds.min.x = Math.max(expandedBounds.min.x, -hw + panelThickness);
-          }
-          if (previousPanel === 0) {
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
-          }
-          if (previousPanel === 1) {
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
-          }
-        });
-        finalSize = new THREE.Vector3(
-          expandedBounds.max.x - expandedBounds.min.x,
-          panelThickness,
-          expandedBounds.max.z - expandedBounds.min.z
-        );
-        finalPosition = new THREE.Vector3(
-          (expandedBounds.max.x + expandedBounds.min.x) / 2,
-          -hh + panelThickness / 2,
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+      case 3: // Bottom face - Fill from available volume to bottom face
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(availableVolume.min.x, -hh, availableVolume.min.z),
+          new THREE.Vector3(availableVolume.max.x, -hh + panelThickness, availableVolume.max.z)
         );
         break;
 
-      case 4: // Right face
-        originalBounds = new THREE.Box3(
-          new THREE.Vector3(hw - panelThickness, -hh, -hd),
-          new THREE.Vector3(hw, hh, hd)
-        );
-        expandedBounds = originalBounds.clone();
-        previousPanels.forEach((previousPanel) => {
-          if (previousPanel === 2) {
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
-          }
-          if (previousPanel === 3) {
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
-          }
-          if (previousPanel === 0) {
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
-          }
-          if (previousPanel === 1) {
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
-          }
-        });
-        finalSize = new THREE.Vector3(
-          panelThickness,
-          expandedBounds.max.y - expandedBounds.min.y,
-          expandedBounds.max.z - expandedBounds.min.z
-        );
-        finalPosition = new THREE.Vector3(
-          hw - panelThickness / 2,
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+      case 4: // Right face - Fill from available volume to right face
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(hw - panelThickness, availableVolume.min.y, availableVolume.min.z),
+          new THREE.Vector3(hw, availableVolume.max.y, availableVolume.max.z)
         );
         break;
 
-      case 5: // Left face
-        originalBounds = new THREE.Box3(
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(-hw + panelThickness, hh, hd)
-        );
-        expandedBounds = originalBounds.clone();
-        previousPanels.forEach((previousPanel) => {
-          if (previousPanel === 2) {
-            expandedBounds.max.y = Math.min(expandedBounds.max.y, hh - panelThickness);
-          }
-          if (previousPanel === 3) {
-            expandedBounds.min.y = Math.max(expandedBounds.min.y, -hh + panelThickness);
-          }
-          if (previousPanel === 0) {
-            expandedBounds.max.z = Math.min(expandedBounds.max.z, hd - panelThickness);
-          }
-          if (previousPanel === 1) {
-            expandedBounds.min.z = Math.max(expandedBounds.min.z, -hd + panelThickness);
-          }
-        });
-        finalSize = new THREE.Vector3(
-          panelThickness,
-          expandedBounds.max.y - expandedBounds.min.y,
-          expandedBounds.max.z - expandedBounds.min.z
-        );
-        finalPosition = new THREE.Vector3(
-          -hw + panelThickness / 2,
-          (expandedBounds.max.y + expandedBounds.min.y) / 2,
-          (expandedBounds.max.z + expandedBounds.min.z) / 2
+      case 5: // Left face - Fill from available volume to left face
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(-hw, availableVolume.min.y, availableVolume.min.z),
+          new THREE.Vector3(-hw + panelThickness, availableVolume.max.y, availableVolume.max.z)
         );
         break;
 
       default:
-        originalBounds = new THREE.Box3();
-        expandedBounds = new THREE.Box3();
-        finalPosition = new THREE.Vector3();
-        finalSize = new THREE.Vector3(
-          panelThickness,
-          panelThickness,
-          panelThickness
+        panelBounds = new THREE.Box3(
+          new THREE.Vector3(-panelThickness/2, -panelThickness/2, -panelThickness/2),
+          new THREE.Vector3(panelThickness/2, panelThickness/2, panelThickness/2)
         );
     }
+    
+    // 🌊 STEP 4: Calculate final panel dimensions and position
+    finalSize = panelBounds.getSize(new THREE.Vector3());
+    finalPosition = panelBounds.getCenter(new THREE.Vector3());
+    
+    console.log(`🌊 LIQUID PANEL RESULT for face ${faceIndex}:`, {
+      panelBounds: {
+        min: panelBounds.min.toArray().map(v => v.toFixed(1)),
+        max: panelBounds.max.toArray().map(v => v.toFixed(1))
+      },
+      finalSize: finalSize.toArray().map(v => v.toFixed(1)),
+      finalPosition: finalPosition.toArray().map(v => v.toFixed(1)),
+      liquidFillComplete: true
+    });
 
     return {
       faceIndex,
-      originalBounds,
-      expandedBounds,
+      originalBounds: panelBounds.clone(),
+      expandedBounds: panelBounds.clone(),
       finalPosition,
       finalSize,
       thickness: panelThickness,
       cuttingSurfaces: previousPanels,
-      isLastPanel,
+      isLastPanel: panelOrder === allPanels.length - 1,
       panelOrder,
     };
   };
