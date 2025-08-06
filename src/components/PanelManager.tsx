@@ -478,7 +478,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     // Use dynamic faces for complex geometries, geometric faces for simple ones
     if (['box', 'rectangle2d'].includes(shape.type)) {
       // Use traditional box face system for simple shapes
-      return createBoxFaces();
+      return createBoxFaces(shape);
     } else {
       // Use dynamic face detection for complex geometries
       console.log(`🎯 Using dynamic face detection for ${shape.type}`);
@@ -515,6 +515,108 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       if (geometry.boundingBox) {
         const size = geometry.boundingBox.getSize(new THREE.Vector3());
         width = Math.abs(size.x) || 500;
+        height = shape.parameters.height || 500;
+        depth = Math.abs(size.z) || 500;
+      }
+    }
+    
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    const faces = [
+      {
+        index: 0,
+        center: new THREE.Vector3(0, 0, hd),
+        normal: new THREE.Vector3(0, 0, 1),
+        area: width * height,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, hh, hd),
+          new THREE.Vector3(-hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, hh, hd)
+        )
+      },
+      {
+        index: 1,
+        center: new THREE.Vector3(0, 0, -hd),
+        normal: new THREE.Vector3(0, 0, -1),
+        area: width * height,
+        vertices: [
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, -hd)
+        )
+      },
+      {
+        index: 2,
+        center: new THREE.Vector3(0, hh, 0),
+        normal: new THREE.Vector3(0, 1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd),
+          new THREE.Vector3(-hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        )
+      },
+      {
+        index: 3,
+        center: new THREE.Vector3(0, -hh, 0),
+        normal: new THREE.Vector3(0, -1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(hw, -hh, hd)
+        )
+      },
+      {
+        index: 4,
+        center: new THREE.Vector3(hw, 0, 0),
+        normal: new THREE.Vector3(1, 0, 0),
+        area: depth * height,
+        vertices: [
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        )
+      },
+      {
+        index: 5,
+        center: new THREE.Vector3(-hw, 0, 0),
+        normal: new THREE.Vector3(-1, 0, 0),
+        area: depth * height,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(-hw, hh, hd),
+          new THREE.Vector3(-hw, hh, -hd)
+        ],
+        bounds: new THREE.Box3(
           new THREE.Vector3(-hw - 1, -hh, -hd),
           new THREE.Vector3(-hw + 1, hh, hd)
         )
