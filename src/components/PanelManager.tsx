@@ -5,6 +5,212 @@ import { Shape } from '../types/shapes';
 import { ViewMode, useAppStore } from '../store/appStore';
 import { PanelData, FaceCycleState } from '../types/panelTypes';
 
+// 🎯 NEW: Polyline face detection utilities
+interface PolylineFace {
+  index: number;
+  vertices: THREE.Vector3[];
+  normal: THREE.Vector3;
+  center: THREE.Vector3;
+  area: number;
+  name: string;
+}
+
+// Extract faces from polyline/polygon geometry
+const extractPolylineFaces = (geometry: THREE.BufferGeometry): PolylineFace[] => {
+  const faces: PolylineFace[] = [];
+  
+  if (!geometry.index) {
+    console.warn('Geometry has no index, cannot extract faces');
+    return faces;
+  }
+
+  const positions = geometry.attributes.position;
+  const indices = geometry.index.array;
+  
+  // Group triangles into faces
+  const faceMap = new Map<string, THREE.Vector3[]>();
+  
+  for (let i = 0; i < indices.length; i += 3) {
+    const a = indices[i];
+    const b = indices[i + 1];
+    const c = indices[i + 2];
+    
+    const va = new THREE.Vector3().fromBufferAttribute(positions, a);
+    const vb = new THREE.Vector3().fromBufferAttribute(positions, b);
+    const vc = new THREE.Vector3().fromBufferAttribute(positions, c);
+    
+    // Calculate face normal
+    const normal = new THREE.Vector3();
+    const edge1 = vb.clone().sub(va);
+    const edge2 = vc.clone().sub(va);
+    normal.crossVectors(edge1, edge2).normalize();
+    
+    // Group by normal direction (faces with similar normals belong together)
+    const normalKey = `${normal.x.toFixed(2)}_${normal.y.toFixed(2)}_${normal.z.toFixed(2)}`;
+    
+    if (!faceMap.has(normalKey)) {
+      faceMap.set(normalKey, []);
+    }
+    faceMap.get(normalKey)!.push(va, vb, vc);
+  }
+  
+  // Convert grouped triangles to faces
+  let faceIndex = 0;
+  faceMap.forEach((vertices, normalKey) => {
+    const [nx, ny, nz] = normalKey.split('_').map(Number);
+    const normal = new THREE.Vector3(nx, ny, nz);
+    
+    // Calculate face center
+    const center = new THREE.Vector3();
+    vertices.forEach(v => center.add(v));
+    center.divideScalar(vertices.length);
+    
+    // Calculate approximate area
+    let area = 0;
+    for (let i = 0; i < vertices.length; i += 3) {
+      const va = vertices[i];
+      const vb = vertices[i + 1];
+      const vc = vertices[i + 2];
+      
+      const edge1 = vb.clone().sub(va);
+      const edge2 = vc.clone().sub(va);
+      area += edge1.cross(edge2).length() * 0.5;
+    }
+    
+    // Determine face name based on normal
+    let name = 'Custom';
+    if (Math.abs(normal.y) > 0.9) {
+      name = normal.y > 0 ? 'Top' : 'Bottom';
+    } else if (Math.abs(normal.x) > 0.7) {
+      name = normal.x > 0 ? 'Right' : 'Left';
+    } else if (Math.abs(normal.z) > 0.7) {
+      name = normal.z > 0 ? 'Front' : 'Back';
+    }
+    
+    faces.push({
+      index: faceIndex++,
+      vertices,
+      normal,
+      center,
+      area,
+      name: `${name}_${faceIndex}`
+    });
+  });
+  
+  console.log(`🎯 Extracted ${faces.length} faces from polyline geometry:`, 
+    faces.map(f => ({ index: f.index, name: f.name, area: f.area.toFixed(0) }))
+  );
+  
+  return faces;
+};
+
+// Create panel geometry that matches polyline face shape
+const createPolylineFacePanel = (
+  face: PolylineFace, 
+  thickness: number,
+  shape: Shape
+): THREE.BufferGeometry => {
+  try {
+    // Create a shape from face vertices projected to 2D
+    const shape2D = new THREE.Shape();
+    
+    if (face.vertices.length < 3) {
+      console.warn('Face has insufficient vertices, using fallback geometry');
+      return new THREE.BoxGeometry(100, thickness, 100);
+    }
+    
+    // Project vertices to 2D plane based on face normal
+    const projectedVertices: THREE.Vector2[] = [];
+    
+    // Choose projection plane based on normal
+    let uAxis = new THREE.Vector3(1, 0, 0);
+    let vAxis = new THREE.Vector3(0, 1, 0);
+    
+    if (Math.abs(face.normal.y) > 0.9) {
+      // Top/Bottom face - project to XZ plane
+      uAxis = new THREE.Vector3(1, 0, 0);
+      vAxis = new THREE.Vector3(0, 0, 1);
+    } else if (Math.abs(face.normal.x) > 0.7) {
+      // Left/Right face - project to YZ plane
+      uAxis = new THREE.Vector3(0, 1, 0);
+      vAxis = new THREE.Vector3(0, 0, 1);
+    } else {
+      // Front/Back face - project to XY plane
+      uAxis = new THREE.Vector3(1, 0, 0);
+      vAxis = new THREE.Vector3(0, 1, 0);
+    }
+    
+    // Project vertices and find unique points
+    const uniquePoints = new Map<string, THREE.Vector2>();
+    
+    face.vertices.forEach(vertex => {
+      const u = vertex.dot(uAxis);
+      const v = vertex.dot(vAxis);
+      const key = `${u.toFixed(1)}_${v.toFixed(1)}`;
+      
+      if (!uniquePoints.has(key)) {
+        uniquePoints.set(key, new THREE.Vector2(u, v));
+      }
+    });
+    
+    const points = Array.from(uniquePoints.values());
+    
+    if (points.length < 3) {
+      console.warn('Insufficient unique points after projection, using fallback');
+      return new THREE.BoxGeometry(100, thickness, 100);
+    }
+    
+    // Sort points to create proper shape outline
+    const center = new THREE.Vector2();
+    points.forEach(p => center.add(p));
+    center.divideScalar(points.length);
+    
+    points.sort((a, b) => {
+      const angleA = Math.atan2(a.y - center.y, a.x - center.x);
+      const angleB = Math.atan2(b.y - center.y, b.x - center.x);
+      return angleA - angleB;
+    });
+    
+    // Create 2D shape
+    shape2D.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      shape2D.lineTo(points[i].x, points[i].y);
+    }
+    shape2D.lineTo(points[0].x, points[0].y); // Close shape
+    
+    // Extrude the shape
+    const extrudeSettings = {
+      depth: thickness,
+      bevelEnabled: false,
+      steps: 1,
+      curveSegments: 8
+    };
+    
+    const geometry = new THREE.ExtrudeGeometry(shape2D, extrudeSettings);
+    
+    // Orient geometry based on face normal
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.normal);
+    geometry.applyQuaternion(quaternion);
+    
+    // Position at face center
+    geometry.translate(face.center.x, face.center.y, face.center.z);
+    
+    console.log(`🎯 Created custom panel for face ${face.name}:`, {
+      vertices: points.length,
+      area: face.area.toFixed(0),
+      thickness,
+      center: face.center.toArray().map(v => v.toFixed(1))
+    });
+    
+    return geometry;
+    
+  } catch (error) {
+    console.error('Error creating polyline face panel:', error);
+    return new THREE.BoxGeometry(100, thickness, 100);
+  }
+};
+
 // Helper function to calculate shape dimensions
 const calculateShapeDimensions = (shape: Shape) => {
   let width = 100, height = 100, depth = 100; // Default values
@@ -97,11 +303,43 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       return [];
     }
     
-    return selectedPanels.map((faceIndex) => {
-      // Generate PanelData from face index
-      const panelData = generatePanelDataFromFace(shape, faceIndex);
-      return panelData;
-    });
+    // 🎯 NEW: Handle polyline geometries differently
+    if (shape.type.includes('polyline') || shape.type.includes('polygon')) {
+      const polylineFaces = extractPolylineFaces(shape.geometry);
+      
+      return selectedPanels.map((faceIndex) => {
+        const polylineFace = polylineFaces[faceIndex];
+        
+        if (polylineFace) {
+          // Create panel data from polyline face
+          return {
+            id: `polyline-face-${faceIndex}-${polylineFace.name}`,
+            position: polylineFace.center.clone(),
+            rotation: new THREE.Euler().setFromQuaternion(
+              new THREE.Quaternion().setFromUnitVectors(
+                new THREE.Vector3(0, 0, 1), 
+                polylineFace.normal
+              )
+            ),
+            size: new THREE.Vector3(
+              Math.sqrt(polylineFace.area), 
+              panelThickness, 
+              Math.sqrt(polylineFace.area)
+            ),
+            normal: polylineFace.normal.clone(),
+          };
+        } else {
+          // Fallback to standard face generation
+          return generatePanelDataFromFace(shape, faceIndex);
+        }
+      });
+    } else {
+      // Standard box/cylinder geometry
+      return selectedPanels.map((faceIndex) => {
+        const panelData = generatePanelDataFromFace(shape, faceIndex);
+        return panelData;
+      });
+    }
   }, [selectedPanels, shape]);
 
   const panelThickness = 18; // 18mm panel thickness
@@ -272,41 +510,83 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
       const detectedPanels: PanelData[] = [];
 
-      // Process intersections to create PanelData
-      intersections.forEach((intersection) => {
-        if (intersection.face && intersection.object === meshRef.current) {
-          const point = intersection.point.clone();
-          const normal = intersection.face.normal.clone();
+      // 🎯 NEW: Handle polyline geometries with face detection
+      if (shape.type.includes('polyline') || shape.type.includes('polygon')) {
+        const polylineFaces = extractPolylineFaces(shape.geometry);
+        
+        intersections.forEach((intersection) => {
+          if (intersection.face && intersection.object === meshRef.current) {
+            const point = intersection.point.clone();
+            const faceNormal = intersection.face.normal.clone();
+            faceNormal.transformDirection(meshRef.current.matrixWorld);
+            
+            // Find closest polyline face by normal similarity
+            let closestFace: PolylineFace | null = null;
+            let maxDot = -1;
+            
+            polylineFaces.forEach(face => {
+              const dot = Math.abs(faceNormal.dot(face.normal));
+              if (dot > maxDot) {
+                maxDot = dot;
+                closestFace = face;
+              }
+            });
+            
+            if (closestFace && maxDot > 0.8) { // Threshold for normal similarity
+              const panelPosition = closestFace.center.clone();
+              const rotation = new THREE.Euler().setFromQuaternion(
+                new THREE.Quaternion().setFromUnitVectors(
+                  new THREE.Vector3(0, 0, 1), 
+                  closestFace.normal
+                )
+              );
+              
+              detectedPanels.push({
+                id: `polyline-face-${closestFace.index}-${closestFace.name}`,
+                position: panelPosition,
+                rotation,
+                size: new THREE.Vector3(
+                  Math.sqrt(closestFace.area), 
+                  panelThickness, 
+                  Math.sqrt(closestFace.area)
+                ),
+                normal: closestFace.normal.clone(),
+              });
+            }
+          }
+        });
+      } else {
+        // Standard geometry processing
+        intersections.forEach((intersection) => {
+          if (intersection.face && intersection.object === meshRef.current) {
+            const point = intersection.point.clone();
+            const normal = intersection.face.normal.clone();
 
-          // Transform normal to world coordinates
-          normal.transformDirection(meshRef.current.matrixWorld);
+            // Transform normal to world coordinates
+            normal.transformDirection(meshRef.current.matrixWorld);
 
-          // Calculate a unique ID for the face/panel
-          const id = `${normal.x.toFixed(2)}-${normal.y.toFixed(2)}-${normal.z.toFixed(2)}-${point.x.toFixed(2)}-${point.y.toFixed(2)}-${point.z.toFixed(2)}`;
+            // Calculate a unique ID for the face/panel
+            const id = `${normal.x.toFixed(2)}-${normal.y.toFixed(2)}-${normal.z.toFixed(2)}-${point.x.toFixed(2)}-${point.y.toFixed(2)}-${point.z.toFixed(2)}`;
 
-          // Calculate rotation for the panel to align with the face normal
-          const quaternion = new THREE.Quaternion();
-          const upVector = new THREE.Vector3(0, 1, 0); // Default up
-          quaternion.setFromUnitVectors(upVector, normal);
-          const rotation = new THREE.Euler().setFromQuaternion(quaternion);
+            // Calculate rotation for the panel to align with the face normal
+            const quaternion = new THREE.Quaternion();
+            const upVector = new THREE.Vector3(0, 1, 0); // Default up
+            quaternion.setFromUnitVectors(upVector, normal);
+            const rotation = new THREE.Euler().setFromQuaternion(quaternion);
 
-          // For simplicity, let's assume a default panel size for now.
-          // In a real application, you'd calculate this based on the intersected face's actual dimensions.
-          // This is a placeholder for dynamic size calculation.
-          const panelSize = new THREE.Vector3(100, 100, panelThickness);
+            const panelSize = new THREE.Vector3(100, 100, panelThickness);
+            const panelPosition = point.clone().add(normal.multiplyScalar(panelThickness / 2));
 
-          // Offset the panel slightly along the normal to avoid z-fighting
-          const panelPosition = point.clone().add(normal.multiplyScalar(panelThickness / 2));
-
-          detectedPanels.push({
-            id,
-            position: panelPosition,
-            rotation,
-            size: panelSize,
-            normal,
-          });
+            detectedPanels.push({
+              id,
+              position: panelPosition,
+              rotation,
+              size: panelSize,
+              normal,
+            });
+          }
+        });
         }
-      });
 
       // Filter out duplicate panels (e.g., if multiple triangles form one logical face)
       const uniquePanels: PanelData[] = [];
@@ -318,7 +598,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         }
       });
 
-      console.log(`🎯 OVERLAPPING FACES DETECTED (Raycasting):`, {
+      console.log(`🎯 OVERLAPPING FACES DETECTED (${shape.type}):`, {
         mousePosition: { x: clientX, y: clientY },
         detectedPanels: uniquePanels.map(p => ({
           id: p.id,
@@ -550,88 +830,164 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
       {/* Render dynamically generated panels */}
       {panelDataArray.map((panelData) => (
-        <mesh
-          key={`panel-${panelData.id}`}
-          position={panelData.position}
-          rotation={panelData.rotation}
-          castShadow
-          receiveShadow
-          visible={viewMode !== ViewMode.WIREFRAME}
-          onClick={(e) => {
-            if (isPanelEditMode) {
-              e.stopPropagation();
-              if (onPanelEditSelect) {
-                onPanelEditSelect(panelData);
-                console.log(`🔴 Panel ${panelData.id} clicked for editing`);
+        <group key={`panel-group-${panelData.id}`}>
+          <mesh
+            position={panelData.position}
+            rotation={panelData.rotation}
+            castShadow
+            receiveShadow
+            visible={viewMode !== ViewMode.WIREFRAME}
+            onClick={(e) => {
+              if (isPanelEditMode) {
+                e.stopPropagation();
+                if (onPanelEditSelect) {
+                  onPanelEditSelect(panelData);
+                  console.log(`🔴 Panel ${panelData.id} clicked for editing`);
+                }
               }
-            }
-          }}
-        >
-          <boxGeometry
-            args={[
-              panelData.size.x,
-              panelData.size.y,
-              panelData.size.z,
-            ]}
-          />
-          {isPanelEditMode ? (
-            <meshPhysicalMaterial
-              color="#dc2626" // Kırmızı renk düzenleme modunda
-              roughness={0.6}
-              metalness={0.02}
-              transparent={viewMode === ViewMode.TRANSPARENT}
-              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
-              depthWrite={viewMode === ViewMode.SOLID}
-            />
-          ) : (
-            <meshPhysicalMaterial
-              {...getPanelMaterial(panelData.normal).parameters} // Normal'e göre malzeme seçimi
-              transparent={viewMode === ViewMode.TRANSPARENT}
-              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
-              depthWrite={viewMode === ViewMode.SOLID}
-            />
-          )}
-        </mesh>
+            }}
+          >
+            {/* 🎯 NEW: Use custom geometry for polyline faces */}
+            {shape.type.includes('polyline') || shape.type.includes('polygon') ? (
+              (() => {
+                const polylineFaces = extractPolylineFaces(shape.geometry);
+                const faceIndex = parseInt(panelData.id.split('-')[2]) || 0;
+                const polylineFace = polylineFaces[faceIndex];
+                
+                if (polylineFace) {
+                  const customGeometry = createPolylineFacePanel(polylineFace, panelThickness, shape);
+                  return <primitive object={customGeometry} />;
+                } else {
+                  return (
+                    <boxGeometry
+                      args={[panelData.size.x, panelData.size.y, panelData.size.z]}
+                    />
+                  );
+                }
+              })()
+            ) : (
+              <boxGeometry
+                args={[panelData.size.x, panelData.size.y, panelData.size.z]}
+              />
+            )}
+            
+            {isPanelEditMode ? (
+              <meshPhysicalMaterial
+                color="#dc2626" // Kırmızı renk düzenleme modunda
+                roughness={0.6}
+                metalness={0.02}
+                transparent={viewMode === ViewMode.TRANSPARENT}
+                opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+                depthWrite={viewMode === ViewMode.SOLID}
+              />
+            ) : (
+              <meshPhysicalMaterial
+                {...getPanelMaterial(panelData.normal).parameters} // Normal'e göre malzeme seçimi
+                transparent={viewMode === ViewMode.TRANSPARENT}
+                opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+                depthWrite={viewMode === ViewMode.SOLID}
+              />
+            )}
+          </mesh>
+        </group>
       ))}
 
       {/* Render edges for dynamically generated panels */}
       {panelDataArray.map((panelData) => (
-        <lineSegments
-          key={`panel-edges-${panelData.id}`}
-          position={panelData.position}
-          rotation={panelData.rotation}
-          visible={
-            viewMode === ViewMode.WIREFRAME ||
-            isPanelEditMode ||
-            true
-          }
-        >
-          <edgesGeometry
-            args={[
-              new THREE.BoxGeometry(
-                panelData.size.x,
-                panelData.size.y,
-                panelData.size.z
-              ),
-            ]}
-          />
-          <lineBasicMaterial
-            color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()} // Koyu kırmızı kenarlar düzenleme modunda
-            linewidth={getPanelEdgeLineWidth()}
-            transparent={
-              viewMode === ViewMode.TRANSPARENT ||
-              viewMode === ViewMode.WIREFRAME
+        <group key={`panel-edges-group-${panelData.id}`}>
+          <lineSegments
+            position={panelData.position}
+            rotation={panelData.rotation}
+            visible={
+              viewMode === ViewMode.WIREFRAME ||
+              isPanelEditMode ||
+              true
             }
-            opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
-            depthTest={viewMode === ViewMode.SOLID}
-          />
-        </lineSegments>
+          >
+            {/* 🎯 NEW: Use custom edges for polyline faces */}
+            {shape.type.includes('polyline') || shape.type.includes('polygon') ? (
+              (() => {
+                const polylineFaces = extractPolylineFaces(shape.geometry);
+                const faceIndex = parseInt(panelData.id.split('-')[2]) || 0;
+                const polylineFace = polylineFaces[faceIndex];
+                
+                if (polylineFace) {
+                  const customGeometry = createPolylineFacePanel(polylineFace, panelThickness, shape);
+                  return <edgesGeometry args={[customGeometry]} />;
+                } else {
+                  return (
+                    <edgesGeometry
+                      args={[
+                        new THREE.BoxGeometry(
+                          panelData.size.x,
+                          panelData.size.y,
+                          panelData.size.z
+                        ),
+                      ]}
+                    />
+                  );
+                }
+              })()
+            ) : (
+              <edgesGeometry
+                args={[
+                  new THREE.BoxGeometry(
+                    panelData.size.x,
+                    panelData.size.y,
+                    panelData.size.z
+                  ),
+                ]}
+              />
+            )}
+            
+            <lineBasicMaterial
+              color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()} // Koyu kırmızı kenarlar düzenleme modunda
+              linewidth={getPanelEdgeLineWidth()}
+              transparent={
+                viewMode === ViewMode.TRANSPARENT ||
+                viewMode === ViewMode.WIREFRAME
+              }
+              opacity={viewMode === ViewMode.TRANSPARENT ? 0.5 : 1.0}
+              depthTest={viewMode === ViewMode.SOLID}
+            />
+          </lineSegments>
+        </group>
       ))}
 
       {/* Render the currently cycling/hovered panel as an overlay */}
       {isAddPanelMode && faceCycleState.selectedFace !== null && (
         (() => {
-          const selectedPanel = generatePanelDataFromFace(shape, faceCycleState.selectedFace);
+          // 🎯 NEW: Handle polyline face selection
+          let selectedPanel;
+          
+          if (shape.type.includes('polyline') || shape.type.includes('polygon')) {
+            const polylineFaces = extractPolylineFaces(shape.geometry);
+            const polylineFace = polylineFaces[faceCycleState.selectedFace];
+            
+            if (polylineFace) {
+              selectedPanel = {
+                id: `temp-polyline-face-${faceCycleState.selectedFace}`,
+                position: polylineFace.center.clone(),
+                rotation: new THREE.Euler().setFromQuaternion(
+                  new THREE.Quaternion().setFromUnitVectors(
+                    new THREE.Vector3(0, 0, 1), 
+                    polylineFace.normal
+                  )
+                ),
+                size: new THREE.Vector3(
+                  Math.sqrt(polylineFace.area), 
+                  panelThickness, 
+                  Math.sqrt(polylineFace.area)
+                ),
+                normal: polylineFace.normal.clone(),
+              };
+            } else {
+              selectedPanel = generatePanelDataFromFace(shape, faceCycleState.selectedFace);
+            }
+          } else {
+            selectedPanel = generatePanelDataFromFace(shape, faceCycleState.selectedFace);
+          }
+          
           return (
         <mesh
           position={selectedPanel.position}
@@ -639,13 +995,29 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           // Scale slightly larger to make it visible as an overlay
           scale={[1.01, 1.01, 1.01]}
         >
-          <boxGeometry
-            args={[
-              selectedPanel.size.x,
-              selectedPanel.size.y,
-              selectedPanel.size.z,
-            ]}
-          />
+          {/* 🎯 NEW: Use custom geometry for polyline overlay */}
+          {shape.type.includes('polyline') || shape.type.includes('polygon') ? (
+            (() => {
+              const polylineFaces = extractPolylineFaces(shape.geometry);
+              const polylineFace = polylineFaces[faceCycleState.selectedFace];
+              
+              if (polylineFace) {
+                const customGeometry = createPolylineFacePanel(polylineFace, panelThickness, shape);
+                return <primitive object={customGeometry} />;
+              } else {
+                return (
+                  <boxGeometry
+                    args={[selectedPanel.size.x, selectedPanel.size.y, selectedPanel.size.z]}
+                  />
+                );
+              }
+            })()
+          ) : (
+            <boxGeometry
+              args={[selectedPanel.size.x, selectedPanel.size.y, selectedPanel.size.z]}
+            />
+          )}
+          
           <meshBasicMaterial
             color={getPanelOverlayColor(faceCycleState.selectedFace)}
             transparent
