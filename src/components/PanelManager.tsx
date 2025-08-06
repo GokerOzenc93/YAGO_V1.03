@@ -612,7 +612,101 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         height = shape.parameters.height || 500;
         depth = Math.abs(size.z) || 500;
       }
-  }, [shape.type, shape.parameters, shape.scale, shape.geometry]);
+    }
+    
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    const faces = [
+      {
+        index: 0,
+        center: new THREE.Vector3(0, 0, hd),
+        normal: new THREE.Vector3(0, 0, 1),
+        area: width * height,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, hh, hd),
+          new THREE.Vector3(-hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, hd - 1),
+          new THREE.Vector3(hw, hh, hd + 1)
+        )
+      },
+      {
+        index: 1,
+        center: new THREE.Vector3(0, 0, -hd),
+        normal: new THREE.Vector3(0, 0, -1),
+        area: width * height,
+        vertices: [
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh, -hd - 1),
+          new THREE.Vector3(hw, hh, -hd + 1)
+        )
+      },
+      {
+        index: 2,
+        center: new THREE.Vector3(0, hh, 0),
+        normal: new THREE.Vector3(0, 1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd),
+          new THREE.Vector3(-hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, hh - 1, -hd),
+          new THREE.Vector3(hw, hh + 1, hd)
+        )
+      },
+      {
+        index: 3,
+        center: new THREE.Vector3(0, -hh, 0),
+        normal: new THREE.Vector3(0, -1, 0),
+        area: width * depth,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, -hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(-hw, -hh - 1, -hd),
+          new THREE.Vector3(hw, -hh + 1, hd)
+        )
+      },
+      {
+        index: 4,
+        center: new THREE.Vector3(hw, 0, 0),
+        normal: new THREE.Vector3(1, 0, 0),
+        area: depth * height,
+        vertices: [
+          new THREE.Vector3(hw, -hh, hd),
+          new THREE.Vector3(hw, -hh, -hd),
+          new THREE.Vector3(hw, hh, -hd),
+          new THREE.Vector3(hw, hh, hd)
+        ],
+        bounds: new THREE.Box3(
+          new THREE.Vector3(hw - 1, -hh, -hd),
+          new THREE.Vector3(hw + 1, hh, hd)
+        )
+      },
+      {
+        index: 5,
+        center: new THREE.Vector3(-hw, 0, 0),
+        normal: new THREE.Vector3(-1, 0, 0),
+        area: depth * height,
+        vertices: [
+          new THREE.Vector3(-hw, -hh, -hd),
+          new THREE.Vector3(-hw, -hh, hd),
           new THREE.Vector3(-hw, hh, hd),
           new THREE.Vector3(-hw, hh, -hd)
         ],
