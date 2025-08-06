@@ -3,6 +3,97 @@ import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { useAppStore } from '../store/appStore';
 
+// Helper function to create box faces - MUST be declared before component
+const createBoxFaces4 = (shape: Shape) => {
+  if (shape.type !== 'box') return [];
+  
+  const { width = 500, height = 500, depth = 500 } = shape.parameters;
+  const hw = width / 2;
+  const hh = height / 2;
+  const hd = depth / 2;
+  
+  return [
+    {
+      index: 0,
+      name: 'Front',
+      center: new THREE.Vector3(0, 0, hd),
+      normal: new THREE.Vector3(0, 0, 1),
+      corners: [
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, hh, hd),
+        new THREE.Vector3(-hw, hh, hd)
+      ],
+      area: width * height
+    },
+    {
+      index: 1,
+      name: 'Back',
+      center: new THREE.Vector3(0, 0, -hd),
+      normal: new THREE.Vector3(0, 0, -1),
+      corners: [
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(-hw, hh, -hd),
+        new THREE.Vector3(hw, hh, -hd)
+      ],
+      area: width * height
+    },
+    {
+      index: 2,
+      name: 'Top',
+      center: new THREE.Vector3(0, hh, 0),
+      normal: new THREE.Vector3(0, 1, 0),
+      corners: [
+        new THREE.Vector3(-hw, hh, hd),
+        new THREE.Vector3(hw, hh, hd),
+        new THREE.Vector3(hw, hh, -hd),
+        new THREE.Vector3(-hw, hh, -hd)
+      ],
+      area: width * depth
+    },
+    {
+      index: 3,
+      name: 'Bottom',
+      center: new THREE.Vector3(0, -hh, 0),
+      normal: new THREE.Vector3(0, -1, 0),
+      corners: [
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(-hw, -hh, hd)
+      ],
+      area: width * depth
+    },
+    {
+      index: 4,
+      name: 'Right',
+      center: new THREE.Vector3(hw, 0, 0),
+      normal: new THREE.Vector3(1, 0, 0),
+      corners: [
+        new THREE.Vector3(hw, -hh, hd),
+        new THREE.Vector3(hw, -hh, -hd),
+        new THREE.Vector3(hw, hh, -hd),
+        new THREE.Vector3(hw, hh, hd)
+      ],
+      area: height * depth
+    },
+    {
+      index: 5,
+      name: 'Left',
+      center: new THREE.Vector3(-hw, 0, 0),
+      normal: new THREE.Vector3(-1, 0, 0),
+      corners: [
+        new THREE.Vector3(-hw, -hh, -hd),
+        new THREE.Vector3(-hw, -hh, hd),
+        new THREE.Vector3(-hw, hh, hd),
+        new THREE.Vector3(-hw, hh, -hd)
+      ],
+      area: height * depth
+    }
+  ];
+};
+
 // Helper function to create box faces for traditional box/rectangle shapes
 const createBoxFaces3 = (shape: Shape): FaceInfo[] => {
   const { width = 500, height = 500, depth = 500 } = shape.parameters;
@@ -796,97 +887,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           new THREE.Vector3(-hw, hh, hd)
         ],
         bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, hh - 1, -hd),
-          new THREE.Vector3(hw, hh + 1, hd)
-        )
-      },
-      {
-        index: 3,
-        center: new THREE.Vector3(0, -hh, 0),
-        normal: new THREE.Vector3(0, -1, 0),
-        area: width * depth,
-        vertices: [
-          new THREE.Vector3(-hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, -hd),
-          new THREE.Vector3(-hw, -hh, -hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(-hw, -hh - 1, -hd),
-          new THREE.Vector3(hw, -hh + 1, hd)
-        )
-      },
-      {
-        index: 4,
-        center: new THREE.Vector3(hw, 0, 0),
-        normal: new THREE.Vector3(1, 0, 0),
-        area: depth * height,
-        vertices: [
-          new THREE.Vector3(hw, -hh, hd),
-          new THREE.Vector3(hw, -hh, -hd),
-          new THREE.Vector3(hw, hh, -hd),
-          new THREE.Vector3(hw, hh, hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(hw - 1, -hh, -hd),
-          new THREE.Vector3(hw + 1, hh, hd)
-        )
-      },
-      {
-        index: 5,
-        center: new THREE.Vector3(-hw, 0, 0),
-        normal: new THREE.Vector3(-1, 0, 0),
-        area: depth * height,
-        vertices: [
-          new THREE.Vector3(-hw, -hh, -hd),
-          new THREE.Vector3(-hw, -hh, hd),
-          new THREE.Vector3(-hw, hh, hd),
-          new THREE.Vector3(-hw, hh, -hd)
-        ],
-        bounds: new THREE.Box3(
-          new THREE.Vector3(-hw - 1, -hh, -hd),
-          new THREE.Vector3(-hw + 1, hh, hd)
-        )
-      }
-    ];
-    
-    return faces;
-  };
-
-  // NEW: Find closest face to a 3D point using geometric calculations
-  const findClosestFace = useCallback((worldPoint: THREE.Vector3): number | null => {
-    if (geometricFaces.length === 0) return null;
-    
-    // Convert world point to local space (shape coordinate system)
-    const shapePosition = new THREE.Vector3(...shape.position);
-    const localPoint = worldPoint.clone().sub(shapePosition);
-    
-    let closestFace = -1;
-    let minDistance = Infinity;
-    
-    geometricFaces.forEach((face) => {
-      // Calculate distance from clicked point to face center
-      const distanceToFaceCenter = localPoint.distanceTo(face.center);
-      
-      // Project point onto face plane
-      const pointToFaceCenter = localPoint.clone().sub(face.center);
-      const projectionDistance = pointToFaceCenter.dot(face.normal);
-      const projectedPoint = localPoint.clone().sub(face.normal.clone().multiplyScalar(projectionDistance));
-      
-      // Check if projected point is within face bounds
-      const isWithinBounds = face.bounds.containsPoint(projectedPoint);
-      
-      // Use distance to face center for closest face determination
-      if (isWithinBounds && distanceToFaceCenter < minDistance) {
-        minDistance = distanceToFaceCenter;
-        closestFace = face.index;
-        console.log(`🎯 Face ${face.index} - Distance: ${distanceToFaceCenter.toFixed(1)}, Within bounds: ${isWithinBounds}`);
-      }
-    });
-    
-    console.log(`🎯 Closest face found: ${closestFace} with distance: ${minDistance.toFixed(1)}`);
-    return closestFace !== -1 ? closestFace : null;
-  }, [geometricFaces, shape.position]);
 
   // NEW: Find next face in sequence (cycling through faces)
   const findNextFace = useCallback((currentFace: number): number => {
