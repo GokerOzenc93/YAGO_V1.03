@@ -97,6 +97,25 @@ export const UNIT_CONVERSIONS = {
   [MeasurementUnit.INCH]: 25.4,
 };
 
+// 🔴 NEW: Interface for Active Drawing Plane
+export interface ActiveDrawingPlane {
+  normal: [number, number, number]; // Normal vector of the plane
+  origin: [number, number, number]; // A point on the plane (origin)
+  // Optional: bounds or dimensions of the clicked face for dynamic plane sizing
+  // This could be a bounding box, or a list of 2D points in the plane's local coordinate system
+  bounds?: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  };
+  // Optional: The ID of the shape and face this plane is attached to
+  attachedTo?: {
+    shapeId: string;
+    faceIndex: number;
+  };
+}
+
 interface AppState {
   activeTool: Tool;
   setActiveTool: (tool: Tool) => void;
@@ -139,11 +158,9 @@ interface AppState {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   cycleViewMode: () => void;
-  // Panel mode states
-  isAddPanelMode: boolean;
-  setIsAddPanelMode: (enabled: boolean) => void;
-  isPanelEditMode: boolean;
-  setIsPanelEditMode: (enabled: boolean) => void;
+  // 🔴 NEW: Active Drawing Plane State
+  activeDrawingPlane: ActiveDrawingPlane | null;
+  setActiveDrawingPlane: (plane: ActiveDrawingPlane | null) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -229,13 +246,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ viewMode: nextMode });
     console.log(`🎯 View mode cycled from ${viewMode} to ${nextMode}`);
   },
-  
-  // Panel mode states
-  isAddPanelMode: false,
-  setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
-  
-  isPanelEditMode: false,
-  setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+
+  // 🔴 NEW: Active Drawing Plane State and Action
+  activeDrawingPlane: null,
+  setActiveDrawingPlane: (plane) => set({ activeDrawingPlane: plane }),
   
   // Snap settings - all enabled by default
   snapSettings: {
