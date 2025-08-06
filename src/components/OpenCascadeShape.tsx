@@ -382,7 +382,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       <PanelManager
         shape={shape}
         isAddPanelMode={isAddPanelMode && isBeingEdited}
-        selectedFaces={selectedFaces}
+        selectedPanels={selectedFaces}
         hoveredFace={hoveredFace}
         showEdges={showEdges}
         showFaces={showFaces}

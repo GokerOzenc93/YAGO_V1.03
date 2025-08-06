@@ -16,7 +16,7 @@ interface PanelData {
 interface PanelManagerProps {
   shape: Shape;
   isAddPanelMode: boolean;
-  selectedPanels: PanelData[]; // Now stores PanelData, not just faceIndex
+  selectedPanels: number[]; // Array of face indices
   hoveredPanelId: string | null; // Now stores panel ID
   showEdges: boolean;
   showFaces: boolean;
@@ -65,10 +65,51 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   isPanelEditMode = false,
   onPanelEditSelect,
 }) => {
+  // Convert face indices to PanelData objects
+  const panelDataArray = useMemo(() => {
+    if (!selectedPanels || !Array.isArray(selectedPanels)) {
+      return [];
+    }
+    
+    return selectedPanels.map((faceIndex) => {
+      // Generate PanelData from face index
+      const panelData = generatePanelDataFromFace(shape, faceIndex);
+      return panelData;
+    });
+  }, [selectedPanels, shape]);
+
   const panelThickness = 18; // 18mm panel thickness
   const { viewMode } = useAppStore();
   const { camera, gl, scene } = useThree(); // Access Three.js camera and renderer
   const meshRef = useRef<THREE.Mesh>(null); // Reference to the main shape mesh
+
+  // Helper function to generate PanelData from face index
+  const generatePanelDataFromFace = useCallback((shape: Shape, faceIndex: number): PanelData => {
+    const { width, height, depth } = calculateShapeDimensions(shape);
+    const hw = width / 2;
+    const hh = height / 2;
+    const hd = depth / 2;
+
+    // Define face configurations
+    const faceConfigs = [
+      { name: 'Front', position: [0, 0, hd], rotation: [0, 0, 0], size: [width, height, panelThickness] },
+      { name: 'Back', position: [0, 0, -hd], rotation: [0, Math.PI, 0], size: [width, height, panelThickness] },
+      { name: 'Right', position: [hw, 0, 0], rotation: [0, Math.PI/2, 0], size: [depth, height, panelThickness] },
+      { name: 'Left', position: [-hw, 0, 0], rotation: [0, -Math.PI/2, 0], size: [depth, height, panelThickness] },
+      { name: 'Top', position: [0, hh, 0], rotation: [-Math.PI/2, 0, 0], size: [width, depth, panelThickness] },
+      { name: 'Bottom', position: [0, -hh, 0], rotation: [Math.PI/2, 0, 0], size: [width, depth, panelThickness] },
+    ];
+
+    const config = faceConfigs[faceIndex] || faceConfigs[0];
+    
+    return {
+      id: `face-${faceIndex}-${config.name.toLowerCase()}`,
+      position: new THREE.Vector3(...config.position),
+      rotation: new THREE.Euler(...config.rotation),
+      size: new THREE.Vector3(...config.size),
+      normal: new THREE.Vector3(0, 0, 1).applyEuler(new THREE.Euler(...config.rotation)),
+    };
+  }, [panelThickness]);
 
   // 🪵 BALANCED WOOD MATERIALS - Elegant but controlled reflections
   const woodMaterials = useMemo(() => {
@@ -477,7 +518,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       {/* The actual mesh is added to the scene via useEffect and meshRef */}
 
       {/* Render dynamically generated panels */}
-      {selectedPanels.map((panelData) => (
+      {panelDataArray.map((panelData) => (
         <mesh
           key={`panel-${panelData.id}`}
           position={panelData.position}
@@ -502,7 +543,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               panelData.size.z,
             ]}
           />
-          {isPanelEditMode && selectedPanels.some(sp => sp.id === panelData.id) ? (
+          {isPanelEditMode ? (
             <meshPhysicalMaterial
               color="#dc2626" // Kırmızı renk düzenleme modunda
               roughness={0.6}
@@ -523,7 +564,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       ))}
 
       {/* Render edges for dynamically generated panels */}
-      {selectedPanels.map((panelData) => (
+      {panelDataArray.map((panelData) => (
         <lineSegments
           key={`panel-edges-${panelData.id}`}
           position={panelData.position}
@@ -531,7 +572,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           visible={
             viewMode === ViewMode.WIREFRAME ||
             isPanelEditMode ||
-            selectedPanels.some(sp => sp.id === panelData.id)
+            true
           }
         >
           <edgesGeometry
