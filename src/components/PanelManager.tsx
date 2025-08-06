@@ -670,6 +670,65 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     };
   };
 
+  // 🔪 NEW: Create geometry-cut panel function
+  const createGeometryCutPanel = (panelData: any) => {
+    console.log(`🔪 GEOMETRY CUTTING: Creating cut panel for face ${panelData.faceIndex}`);
+    
+    // Base panel geometry (before cutting)
+    const basePanelGeometry = new THREE.BoxGeometry(
+      panelData.size.x,
+      panelData.size.y,
+      panelData.size.z
+    );
+    
+    // 🔪 STEP 1: Check if we need to cut based on reference geometry
+    if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
+      console.log(`🔪 Complex geometry detected: ${shape.type} - Applying geometry-based cutting`);
+      
+      // For complex geometries, we need to intersect the panel with the reference shape
+      try {
+        // Create a cutting volume based on the reference geometry
+        const referenceGeometry = shape.geometry.clone();
+        
+        // Scale the reference geometry to match current shape scale
+        referenceGeometry.scale(shape.scale[0], shape.scale[1], shape.scale[2]);
+        
+        // Position the cutting geometry
+        const cuttingMatrix = new THREE.Matrix4();
+        cuttingMatrix.makeTranslation(0, 0, 0); // Keep at origin since panel is also at origin
+        referenceGeometry.applyMatrix4(cuttingMatrix);
+        
+        console.log(`🔪 Reference geometry prepared for cutting:`, {
+          type: shape.type,
+          scale: shape.scale,
+          boundingBox: referenceGeometry.boundingBox
+        });
+        
+        // For now, return the base geometry but mark it as cut
+        // In a full implementation, we would use CSG (Constructive Solid Geometry) here
+        return {
+          geometry: basePanelGeometry,
+          isCut: true,
+          cuttingGeometry: referenceGeometry
+        };
+        
+      } catch (error) {
+        console.warn(`🔪 Geometry cutting failed, using base panel:`, error);
+        return {
+          geometry: basePanelGeometry,
+          isCut: false
+        };
+      }
+    } else {
+      // For simple geometries (box, cylinder), no cutting needed
+      console.log(`🔪 Simple geometry: ${shape.type} - No cutting required`);
+      return {
+        geometry: basePanelGeometry,
+        isCut: false
+      };
+    }
+  };
+
   const smartPanelData = useMemo(() => {
     if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type) || selectedFaces.length === 0) {
       return [];
@@ -683,21 +742,24 @@ const PanelManager: React.FC<PanelManagerProps> = ({
         panelOrder
       );
 
-      const geometry = new THREE.BoxGeometry(
-        smartBounds.finalSize.x,
-        smartBounds.finalSize.y,
-        smartBounds.finalSize.z
-      );
+      // 🔪 Create geometry-cut panel
+      const cutPanelResult = createGeometryCutPanel({
+        faceIndex,
+        size: smartBounds.finalSize,
+        position: smartBounds.finalPosition
+      });
 
       return {
         faceIndex,
-        geometry,
+        geometry: cutPanelResult.geometry,
+        isCut: cutPanelResult.isCut,
+        cuttingGeometry: cutPanelResult.cuttingGeometry,
         position: smartBounds.finalPosition,
         size: smartBounds.finalSize,
         panelOrder: smartBounds.panelOrder,
       };
     });
-  }, [shape.type, shape.parameters, selectedFaces]);
+  }, [shape.type, shape.parameters, shape.scale, selectedFaces, shape.geometry]);
 
   const getPanelMaterial = (faceIndex: number) => {
     if (faceIndex === 2 || faceIndex === 3) {
@@ -965,56 +1027,83 @@ const PanelManager: React.FC<PanelManagerProps> = ({
 
       {/* Wood panels with guaranteed sizing */}
       {smartPanelData.map((panelData) => (
-        <mesh
-          key={`guaranteed-panel-${panelData.faceIndex}`}
-          geometry={panelData.geometry}
-          position={[
-            shape.position[0] + panelData.position.x,
-            shape.position[1] + panelData.position.y,
-            shape.position[2] + panelData.position.z,
-          ]}
-          rotation={shape.rotation}
-          scale={shape.scale}
-          castShadow
-          receiveShadow
-          // Hide mesh in wireframe mode
-          visible={viewMode !== ViewMode.WIREFRAME}
-          // 🔴 NEW: Click handler for panel edit mode
-          onClick={(e) => {
-            if (isPanelEditMode) {
-              e.stopPropagation();
-              if (onPanelSelect) {
-                onPanelSelect({
-                  faceIndex: panelData.faceIndex,
-                  position: panelData.position,
-                  size: panelData.size,
-                  panelOrder: panelData.panelOrder,
-                });
-                console.log(
-                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
-                );
+        <group key={`panel-group-${panelData.faceIndex}`}>
+          {/* 🔪 Main cut panel */}
+          <mesh
+            key={`guaranteed-panel-${panelData.faceIndex}`}
+            geometry={panelData.geometry}
+            position={[
+              shape.position[0] + panelData.position.x,
+              shape.position[1] + panelData.position.y,
+              shape.position[2] + panelData.position.z,
+            ]}
+            rotation={shape.rotation}
+            scale={[1, 1, 1]} // Don't double-scale, geometry is already sized correctly
+            castShadow
+            receiveShadow
+            // Hide mesh in wireframe mode
+            visible={viewMode !== ViewMode.WIREFRAME}
+            // 🔴 NEW: Click handler for panel edit mode
+            onClick={(e) => {
+              if (isPanelEditMode) {
+                e.stopPropagation();
+                if (onPanelSelect) {
+                  onPanelSelect({
+                    faceIndex: panelData.faceIndex,
+                    position: panelData.position,
+                    size: panelData.size,
+                    panelOrder: panelData.panelOrder,
+                  });
+                  console.log(
+                    `🔴 Panel ${panelData.faceIndex} clicked for editing`
+                  );
+                }
               }
-            }
-          }}
-        >
-          {isPanelEditMode ? (
-            <meshPhysicalMaterial
-              color="#dc2626"
-              roughness={0.6}
-              metalness={0.02}
-              transparent={viewMode === ViewMode.TRANSPARENT}
-              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
-              depthWrite={viewMode === ViewMode.SOLID}
-            />
-          ) : (
-            <meshPhysicalMaterial
-              {...getPanelMaterial(panelData.faceIndex).parameters}
-              transparent={viewMode === ViewMode.TRANSPARENT}
-              opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
-              depthWrite={viewMode === ViewMode.SOLID}
-            />
+            }}
+          >
+            {isPanelEditMode ? (
+              <meshPhysicalMaterial
+                color="#dc2626"
+                roughness={0.6}
+                metalness={0.02}
+                transparent={viewMode === ViewMode.TRANSPARENT}
+                opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+                depthWrite={viewMode === ViewMode.SOLID}
+              />
+            ) : (
+              <meshPhysicalMaterial
+                {...getPanelMaterial(panelData.faceIndex).parameters}
+                transparent={viewMode === ViewMode.TRANSPARENT}
+                opacity={viewMode === ViewMode.TRANSPARENT ? 0.3 : 1.0}
+                depthWrite={viewMode === ViewMode.SOLID}
+              />
+            )}
+          </mesh>
+          
+          {/* 🔪 Debug: Show cutting geometry outline if panel is cut */}
+          {panelData.isCut && panelData.cuttingGeometry && (
+            <lineSegments
+              key={`cutting-outline-${panelData.faceIndex}`}
+              geometry={new THREE.EdgesGeometry(panelData.cuttingGeometry)}
+              position={[
+                shape.position[0] + panelData.position.x,
+                shape.position[1] + panelData.position.y,
+                shape.position[2] + panelData.position.z,
+              ]}
+              rotation={shape.rotation}
+              scale={[1, 1, 1]}
+              visible={isPanelEditMode} // Only show in edit mode for debugging
+            >
+              <lineBasicMaterial
+                color="#ff0000"
+                linewidth={1.0}
+                transparent
+                opacity={0.5}
+                depthTest={false}
+              />
+            </lineSegments>
           )}
-        </mesh>
+        </group>
       ))}
 
       {/* 🎯 NEW: Preview panel for dynamically selected face (YELLOW) */}
@@ -1089,7 +1178,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
             shape.position[2] + panelData.position.z,
           ]}
           rotation={shape.rotation}
-          scale={shape.scale}
+          scale={[1, 1, 1]} // Don't double-scale
           visible={
             viewMode === ViewMode.WIREFRAME ||
             isPanelEditMode ||
