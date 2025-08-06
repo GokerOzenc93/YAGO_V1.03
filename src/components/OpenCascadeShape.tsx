@@ -6,7 +6,6 @@ import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import PanelManager from './PanelManager';
 import { ViewMode } from '../store/appStore';
-import { FaceCycleState } from '../types/panelTypes';
 
 interface Props {
   shape: Shape;
@@ -22,7 +21,12 @@ interface Props {
   showEdges?: boolean;
   showFaces?: boolean;
   // Face cycle indicator props
-  onFaceCycleUpdate?: (cycleState: FaceCycleState) => void;
+  onFaceCycleUpdate?: (cycleState: {
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  }) => void;
   // 🔴 NEW: Panel Edit Mode props
   isPanelEditMode?: boolean;
   onPanelSelect?: (panelData: {
@@ -36,8 +40,18 @@ interface Props {
   onHideFaceSelection?: () => void;
   onSelectFace?: (faceIndex: number) => void;
   // Face cycle state props
-  faceCycleState?: FaceCycleState;
-  setFaceCycleState?: React.Dispatch<React.SetStateAction<FaceCycleState>>;
+  faceCycleState?: {
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  };
+  setFaceCycleState?: React.Dispatch<React.SetStateAction<{
+    selectedFace: number | null;
+    currentIndex: number;
+    availableFaces: number[];
+    mousePosition: { x: number; y: number } | null;
+  }>>;
   // NEW: Dynamic face selection props
   onDynamicFaceSelect?: (faceIndex: number) => void;
   selectedDynamicFace?: number | null;
@@ -368,7 +382,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       <PanelManager
         shape={shape}
         isAddPanelMode={isAddPanelMode && isBeingEdited}
-        selectedPanels={selectedFaces}
+        selectedFaces={selectedFaces}
         hoveredFace={hoveredFace}
         showEdges={showEdges}
         showFaces={showFaces}
