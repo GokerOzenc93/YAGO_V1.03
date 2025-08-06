@@ -28,9 +28,8 @@ interface DynamicPanel {
 
 interface FaceSelectionOption {
   faceIndex: number;
+  name: string;
   position: THREE.Vector3;
-  size: THREE.Vector3;
-  panelOrder: number;
 }
 
 interface PanelManagerProps {
@@ -1308,47 +1307,62 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   // 🎯 ALWAYS SHOW PANELS - Only hide if shape is not a box
-  if (!['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type)) {
+  if (!shape.geometry || !shape.geometry.attributes.position) {
     console.log(`🎯 PanelManager: Shape type '${shape.type}' not supported for panels`);
     return null;
   }
 
   console.log(`🎯 PanelManager: Rendering panels for shape type '${shape.type}' with ID '${shape.id}'`);
 
+  // Determine which panel system to use
+  const useBoxSystem = ['box', 'rectangle2d'].includes(shape.type);
+  const useDynamicSystem = !useBoxSystem;
+
   return (
     <group>
-      {/* Individual face overlays for panel mode - ALL FACES VISIBLE */}
+      {/* Face overlays - Box system or Dynamic system */}
       {(showFaces || isAddPanelMode) &&
-        faceTransforms.map((transform, faceIndex) => {
+        (useBoxSystem ? faceTransforms : dynamicFaces).map((item, faceIndex) => {
+          const transform = useBoxSystem ? item : {
+            position: [item.center.x, item.center.y, item.center.z],
+            rotation: [0, 0, 0] // Dynamic rotation will be calculated
+          };
+          
           const opacity = getFaceOpacity(faceIndex);
 
           return (
             <mesh
               key={`face-${faceIndex}`}
-              geometry={new THREE.PlaneGeometry(
-                faceIndex === 2 || faceIndex === 3 ? 
-                  (shape.type === 'box' ? (shape.parameters.width || 500) * shape.scale[0] : 
-                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x * shape.scale[0] : 500) : 
-                  (faceIndex === 4 || faceIndex === 5 ? 
+              geometry={useBoxSystem ? 
+                new THREE.PlaneGeometry(
+                  faceIndex === 2 || faceIndex === 3 ? 
+                    (shape.type === 'box' ? (shape.parameters.width || 500) * shape.scale[0] : 
+                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x * shape.scale[0] : 500) : 
+                    (faceIndex === 4 || faceIndex === 5 ? 
+                      (shape.type === 'box' ? (shape.parameters.depth || 500) * shape.scale[2] : 
+                       shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z * shape.scale[2] : 500) : 
+                      (shape.type === 'box' ? (shape.parameters.width || 500) * shape.scale[0] : 
+                       shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x * shape.scale[0] : 500)),
+                  faceIndex === 2 || faceIndex === 3 ? 
                     (shape.type === 'box' ? (shape.parameters.depth || 500) * shape.scale[2] : 
                      shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z * shape.scale[2] : 500) : 
-                    (shape.type === 'box' ? (shape.parameters.width || 500) * shape.scale[0] : 
-                     shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).x * shape.scale[0] : 500)),
-                faceIndex === 2 || faceIndex === 3 ? 
-                  (shape.type === 'box' ? (shape.parameters.depth || 500) * shape.scale[2] : 
-                   shape.geometry.boundingBox ? shape.geometry.boundingBox.getSize(new THREE.Vector3()).z * shape.scale[2] : 500) : 
-                  (shape.type === 'box' ? (shape.parameters.height || 500) * shape.scale[1] : (shape.parameters.height || 500) * shape.scale[1])
-              )}
+                    (shape.type === 'box' ? (shape.parameters.height || 500) * shape.scale[1] : (shape.parameters.height || 500) * shape.scale[1])
+                ) :
+                new THREE.PlaneGeometry(
+                  Math.sqrt(item.area) * 0.8, // Approximate face size
+                  Math.sqrt(item.area) * 0.8
+                )
+              }
               position={[
                 shape.position[0] + transform.position[0],
                 shape.position[1] + transform.position[1],
                 shape.position[2] + transform.position[2],
               ]}
-              rotation={[
+              rotation={useBoxSystem ? [
                 shape.rotation[0] + transform.rotation[0],
                 shape.rotation[1] + transform.rotation[1],
                 shape.rotation[2] + transform.rotation[2],
-              ]}
+              ] : shape.rotation}
               scale={[1, 1, 1]} // Face overlay'lerde scale kullanma, boyutlar zaten hesaplandı
               onClick={(e) => handleClick(e, faceIndex)}
               onContextMenu={(e) => {
@@ -1379,7 +1393,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           );
         })}
 
-      {/* Wood panels with guaranteed sizing */}
+      {/* Wood panels - Box system or Dynamic system */}
       {smartPanelData.map((panelData) => (
         <mesh
           key={`guaranteed-panel-${panelData.faceIndex}`}
@@ -1430,6 +1444,44 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               depthWrite={viewMode === ViewMode.SOLID}
             />
           )}
+        </mesh>
+      ))}
+
+      {/* Dynamic panels for complex geometries */}
+      {useDynamicSystem && dynamicPanelData.map((panelData) => (
+        <mesh
+          key={`dynamic-panel-${panelData.faceId}`}
+          geometry={panelData.geometry}
+          position={[
+            shape.position[0] + panelData.position.x,
+            shape.position[1] + panelData.position.y,
+            shape.position[2] + panelData.position.z,
+          ]}
+          rotation={[
+            shape.rotation[0] + panelData.rotation.x,
+            shape.rotation[1] + panelData.rotation.y,
+            shape.rotation[2] + panelData.rotation.z,
+          ]}
+          scale={shape.scale}
+          castShadow
+          receiveShadow
+          visible={viewMode !== ViewMode.WIREFRAME}
+          onClick={(e) => {
+            if (isPanelEditMode) {
+              e.stopPropagation();
+              if (onPanelSelect) {
+                onPanelSelect({
+                  faceIndex: panelData.faceIndex,
+                  position: panelData.position,
+                  size: new THREE.Vector3(1, 1, 1), // Dynamic size
+                  panelOrder: panelData.panelOrder,
+                });
+                console.log(`🔴 Dynamic panel ${panelData.faceId} clicked for editing`);
+              }
+            }
+          }}
+        >
+          <meshPhysicalMaterial {...getPanelMaterial(panelData.faceIndex).parameters} />
         </mesh>
       ))}
 
