@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
+import { useAppStore } from '../store/appStore';
 
 // Helper function to create box faces for traditional box/rectangle shapes
 const createBoxFaces3 = (shape: Shape): FaceInfo[] => {
