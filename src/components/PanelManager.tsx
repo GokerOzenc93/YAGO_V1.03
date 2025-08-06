@@ -4,6 +4,25 @@ import { Shape } from '../types/shapes';
 import { useAppStore } from '../store/appStore';
 
 // Helper function to create box faces - MUST be declared before component
+// Helper function to create box faces - moved before component to avoid hoisting issues
+const createBoxFaces5 = (shape: Shape) => {
+  if (shape.type !== 'box') return [];
+  
+  const { width = 500, height = 500, depth = 500 } = shape.parameters;
+  const hw = width / 2;
+  const hh = height / 2;
+  const hd = depth / 2;
+  
+  return [
+    { index: 0, center: new THREE.Vector3(0, 0, hd), normal: new THREE.Vector3(0, 0, 1), name: 'Front', area: width * height },
+    { index: 1, center: new THREE.Vector3(0, 0, -hd), normal: new THREE.Vector3(0, 0, -1), name: 'Back', area: width * height },
+    { index: 2, center: new THREE.Vector3(0, hh, 0), normal: new THREE.Vector3(0, 1, 0), name: 'Top', area: width * depth },
+    { index: 3, center: new THREE.Vector3(0, -hh, 0), normal: new THREE.Vector3(0, -1, 0), name: 'Bottom', area: width * depth },
+    { index: 4, center: new THREE.Vector3(hw, 0, 0), normal: new THREE.Vector3(1, 0, 0), name: 'Right', area: height * depth },
+    { index: 5, center: new THREE.Vector3(-hw, 0, 0), normal: new THREE.Vector3(-1, 0, 0), name: 'Left', area: height * depth },
+  ];
+};
+
 const createBoxFaces4 = (shape: Shape) => {
   if (shape.type !== 'box') return [];
   
