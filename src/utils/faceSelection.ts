@@ -82,6 +82,87 @@ export const getFaceArea = (vertices: THREE.Vector3[]): number => {
 };
 
 /**
+ * Komşu yüzleri bulma (ortak vertex kontrolü ile)
+ */
+const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): number[] => {
+  const indexAttr = geometry.index;
+  const neighbors: number[] = [];
+  if (!indexAttr) return neighbors;
+
+  const faceVertsIdx = [
+    indexAttr.getX(faceIndex * 3),
+    indexAttr.getX(faceIndex * 3 + 1),
+    indexAttr.getX(faceIndex * 3 + 2)
+  ];
+
+  const totalFaces = indexAttr.count / 3;
+
+  for (let i = 0; i < totalFaces; i++) {
+    if (i === faceIndex) continue;
+    const vertsIdx = [
+      indexAttr.getX(i * 3),
+      indexAttr.getX(i * 3 + 1),
+      indexAttr.getX(i * 3 + 2)
+    ];
+    const sharedVerts = vertsIdx.filter(v => faceVertsIdx.includes(v));
+    if (sharedVerts.length >= 2) {
+      neighbors.push(i);
+    }
+  }
+
+  return neighbors;
+};
+
+/**
+ * Tüm yüzeyi bulma - aynı normale sahip komşu üçgenleri birleştirme
+ */
+export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFaceIndex: number): THREE.Vector3[] => {
+  const pos = geometry.attributes.position;
+  const index = geometry.index;
+  if (!pos) return [];
+
+  // Hedef yüzeyin normalini hesapla
+  const startVerts = getFaceVertices(geometry, startFaceIndex);
+  const targetNormal = getFaceNormal(startVerts);
+
+  const visited = new Set<number>();
+  const allVertices: THREE.Vector3[] = [];
+  const uniqueVertices = new Map<string, THREE.Vector3>();
+
+  const stack = [startFaceIndex];
+
+  while (stack.length > 0) {
+    const faceIndex = stack.pop()!;
+    if (visited.has(faceIndex)) continue;
+    visited.add(faceIndex);
+
+    const faceVerts = getFaceVertices(geometry, faceIndex);
+    const normal = getFaceNormal(faceVerts);
+
+    // Normaller çok yakınsa aynı yüzey say (0.1 radyan = ~5.7 derece)
+    if (normal.angleTo(targetNormal) < 0.1) {
+      // Unique vertices ekle (duplicate'leri önlemek için)
+      faceVerts.forEach(vertex => {
+        const key = `${vertex.x.toFixed(3)},${vertex.y.toFixed(3)},${vertex.z.toFixed(3)}`;
+        if (!uniqueVertices.has(key)) {
+          uniqueVertices.set(key, vertex);
+          allVertices.push(vertex);
+        }
+      });
+
+      // Komşu üçgenleri bul (ortak kenarı olanlar)
+      const neighbors = getNeighborFaces(geometry, faceIndex);
+      neighbors.forEach(n => {
+        if (!visited.has(n)) stack.push(n);
+      });
+    }
+  }
+
+  console.log(`🎯 Full surface found: ${visited.size} triangles, ${allVertices.length} unique vertices`);
+  return allVertices;
+};
+
+/**
  * Yüzey highlight mesh'i oluştur
  */
 export const createFaceHighlight = (
@@ -93,7 +174,7 @@ export const createFaceHighlight = (
   // World space'e dönüştür
   const worldVertices = vertices.map(v => v.clone().applyMatrix4(worldMatrix));
   
-  // Üçgen geometri oluştur
+  // Çokgen geometri oluştur (triangulation ile)
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(worldVertices.length * 3);
   
@@ -104,7 +185,13 @@ export const createFaceHighlight = (
   });
   
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setIndex([0, 1, 2]);
+  
+  // Triangulation - basit fan triangulation
+  const indices: number[] = [];
+  for (let i = 1; i < worldVertices.length - 1; i++) {
+    indices.push(0, i, i + 1);
+  }
+  geometry.setIndex(indices);
   geometry.computeVertexNormals();
   
   // Highlight material
@@ -161,19 +248,23 @@ export const highlightFace = (
     return null;
   }
   
+  // Tüm yüzeyi bul (komşu üçgenleri dahil et)
+  const fullSurfaceVertices = getFullSurfaceVertices(geometry, hit.faceIndex);
+  const surfaceVertices = fullSurfaceVertices.length > 3 ? fullSurfaceVertices : vertices;
+  
   // World matrix'i al
   const worldMatrix = mesh.matrixWorld.clone();
   
   // Highlight mesh'i oluştur
-  const highlightMesh = createFaceHighlight(vertices, worldMatrix, color, opacity);
+  const highlightMesh = createFaceHighlight(surfaceVertices, worldMatrix, color, opacity);
   
   // Sahneye ekle
   scene.add(highlightMesh);
   
   // Face bilgilerini logla
-  const faceNormal = getFaceNormal(vertices);
-  const faceCenter = getFaceCenter(vertices);
-  const faceArea = getFaceArea(vertices);
+  const faceNormal = getFaceNormal(surfaceVertices);
+  const faceCenter = getFaceCenter(surfaceVertices);
+  const faceArea = getFaceArea(surfaceVertices);
   
   console.log('🎯 Face highlighted:', {
     shapeId: shape.id,
@@ -182,7 +273,7 @@ export const highlightFace = (
     faceCenter: faceCenter.toArray().map(v => v.toFixed(1)),
     faceNormal: faceNormal.toArray().map(v => v.toFixed(2)),
     faceArea: faceArea.toFixed(1),
-    vertexCount: vertices.length
+    vertexCount: surfaceVertices.length
   });
   
   currentHighlight = {
