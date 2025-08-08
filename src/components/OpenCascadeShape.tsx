@@ -252,7 +252,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   const handleClick = (e: any) => {
     // Panel mode is handled by PanelManager component
-    if (isAddPanelMode || isPanelEditMode) {
+    if (isAddPanelMode || isFaceEditMode) {
       return; // Let PanelManager handle this
     }
 
@@ -266,7 +266,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   const handleContextMenu = (e: any) => {
     // Panel mode context menu is handled by PanelManager
-    if (isAddPanelMode || isPanelEditMode) {
+    if (isAddPanelMode || isFaceEditMode) {
       return; // Let PanelManager handle this
     }
 
