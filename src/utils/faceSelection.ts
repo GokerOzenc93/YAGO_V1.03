@@ -105,7 +105,8 @@ const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): nu
       indexAttr.getX(i * 3 + 2)
     ];
     const sharedVerts = vertsIdx.filter(v => faceVertsIdx.includes(v));
-    if (sharedVerts.length >= 2) {
+    // Sadece tam 2 ortak vertex olan komşuları al (ortak kenar)
+    if (sharedVerts.length === 2) {
       neighbors.push(i);
     }
   }
@@ -131,6 +132,8 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
 
   const stack = [startFaceIndex];
 
+  console.log(`🔍 Starting surface detection from face ${startFaceIndex}`);
+  console.log(`🎯 Target normal: [${targetNormal.x.toFixed(3)}, ${targetNormal.y.toFixed(3)}, ${targetNormal.z.toFixed(3)}]`);
   while (stack.length > 0) {
     const faceIndex = stack.pop()!;
     if (visited.has(faceIndex)) continue;
@@ -139,11 +142,14 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
     const faceVerts = getFaceVertices(geometry, faceIndex);
     const normal = getFaceNormal(faceVerts);
 
-    // Normaller çok yakınsa aynı yüzey say (0.1 radyan = ~5.7 derece)
-    if (normal.angleTo(targetNormal) < 0.1) {
+    const angle = normal.angleTo(targetNormal);
+    console.log(`📐 Face ${faceIndex} angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
+    
+    // Daha geniş tolerans - 30 derece
+    if (angle < 0.52) { // 0.52 radyan = ~30 derece
       // Unique vertices ekle (duplicate'leri önlemek için)
       faceVerts.forEach(vertex => {
-        const key = `${vertex.x.toFixed(3)},${vertex.y.toFixed(3)},${vertex.z.toFixed(3)}`;
+        const key = `${vertex.x.toFixed(2)},${vertex.y.toFixed(2)},${vertex.z.toFixed(2)}`;
         if (!uniqueVertices.has(key)) {
           uniqueVertices.set(key, vertex);
           allVertices.push(vertex);
@@ -152,9 +158,12 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
 
       // Komşu üçgenleri bul (ortak kenarı olanlar)
       const neighbors = getNeighborFaces(geometry, faceIndex);
+      console.log(`👥 Face ${faceIndex} has ${neighbors.length} neighbors: [${neighbors.join(', ')}]`);
       neighbors.forEach(n => {
         if (!visited.has(n)) stack.push(n);
       });
+    } else {
+      console.log(`❌ Face ${faceIndex} rejected - angle too large: ${(angle * 180 / Math.PI).toFixed(1)}°`);
     }
   }
 
@@ -241,6 +250,8 @@ export const highlightFace = (
   const mesh = hit.object as THREE.Mesh;
   const geometry = mesh.geometry as THREE.BufferGeometry;
   
+  console.log(`🎯 Highlighting face ${hit.faceIndex} on ${shape.type} (${shape.id})`);
+  
   // Face vertices'lerini al
   const vertices = getFaceVertices(geometry, hit.faceIndex);
   if (vertices.length === 0) {
@@ -248,9 +259,17 @@ export const highlightFace = (
     return null;
   }
   
+  console.log(`📊 Single face vertices: ${vertices.length}`);
+  
   // Tüm yüzeyi bul (komşu üçgenleri dahil et)
   const fullSurfaceVertices = getFullSurfaceVertices(geometry, hit.faceIndex);
-  const surfaceVertices = fullSurfaceVertices.length > 3 ? fullSurfaceVertices : vertices;
+  
+  console.log(`📊 Full surface vertices: ${fullSurfaceVertices.length}`);
+  
+  // Eğer tam yüzey bulunamadıysa tek üçgeni kullan
+  const surfaceVertices = fullSurfaceVertices.length >= 3 ? fullSurfaceVertices : vertices;
+  
+  console.log(`✅ Using ${surfaceVertices.length} vertices for highlight`);
   
   // World matrix'i al
   const worldMatrix = mesh.matrixWorld.clone();
