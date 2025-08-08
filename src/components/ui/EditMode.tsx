@@ -6,44 +6,35 @@ import {
   ChevronLeft,
   ChevronRight,
   Puzzle,
-  Grid3X3,
+  MousePointer,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
-import Panel from './Panel';
 
 interface EditModeProps {
   editedShape: Shape;
   onExit: () => void;
-  isAddPanelMode: boolean;
-  setIsAddPanelMode: (mode: boolean) => void;
-  selectedFaces: number[];
-  setSelectedFaces: (faces: number[] | ((prev: number[]) => number[])) => void;
   hoveredFace: number | null;
   hoveredEdge: number | null;
   showEdges: boolean;
   setShowEdges: (show: boolean) => void;
   showFaces: boolean;
   setShowFaces: (show: boolean) => void;
-  isPanelEditMode: boolean;
-  setIsPanelEditMode: (mode: boolean) => void;
+  isFaceEditMode: boolean;
+  setIsFaceEditMode: (mode: boolean) => void;
 }
 
 const EditMode: React.FC<EditModeProps> = ({
   editedShape,
   onExit,
-  isAddPanelMode,
-  setIsAddPanelMode,
-  selectedFaces,
-  setSelectedFaces,
   hoveredFace,
   hoveredEdge,
   showEdges,
   setShowEdges,
   showFaces,
   setShowFaces,
-  isPanelEditMode,
-  setIsPanelEditMode,
+  isFaceEditMode,
+  setIsFaceEditMode,
 }) => {
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
@@ -135,8 +126,7 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleClose = () => {
     setActiveComponent(null);
-    setIsAddPanelMode(false);
-    setIsPanelEditMode(false);
+    setIsFaceEditMode(false);
     onExit();
   };
 
@@ -198,21 +188,21 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
+  const toggleFaceEditMode = () => {
+    const newMode = !isFaceEditMode;
+    setIsFaceEditMode(newMode);
+    
+    if (newMode) {
+      console.log('🎯 Face Edit Mode ACTIVATED - Click on faces to select them');
+    } else {
+      console.log('🎯 Face Edit Mode DEACTIVATED');
+    }
+  };
+
   const renderComponentContent = () => {
     switch (activeComponent) {
       case 'module':
         return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
-      case 'panel':
-        return (
-          <Panel 
-            editedShape={editedShape} 
-            onClose={() => setActiveComponent(null)}
-            isAddPanelMode={isAddPanelMode}
-            setIsAddPanelMode={setIsAddPanelMode}
-            isPanelEditMode={isPanelEditMode}
-            setIsPanelEditMode={setIsPanelEditMode}
-          />
-        );
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
@@ -241,27 +231,107 @@ const EditMode: React.FC<EditModeProps> = ({
                   )}
                 </button>
                 
-                <button
-                  onClick={() => handleComponentClick('panel')}
-                  className={`${getIconButtonColorClasses('blue', activeComponent === 'panel')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                  title="Panel"
-                >
-                  <div className="flex-shrink-0">
-                    <Grid3X3 size={12} />
-                  </div>
-                  <span className="text-xs font-medium truncate">Panel</span>
-                  {activeComponent === 'panel' && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                    </div>
-                  )}
-                </button>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-500/60 to-transparent my-2"></div>
+                
+                <div className="px-2">
+                  <h3 className="text-gray-400 text-xs font-medium mb-2">Face Edit</h3>
+                  <button
+                    onClick={toggleFaceEditMode}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                      isFaceEditMode
+                        ? 'bg-orange-600/90 text-white'
+                        : 'bg-gray-600/50 text-gray-300 hover:bg-gray-600/70'
+                    }`}
+                  >
+                    <MousePointer size={12} />
+                    Face Select
+                  </button>
+                </div>
               </div>
             )}
           </div>
         );
     }
   };
+
+  return (
+    <div
+      ref={panelRef}
+      className={`fixed left-0 z-50 bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+      style={{
+        top: panelTop,
+        height: panelHeight,
+        width: isCollapsed ? '4px' : `${panelWidth}px`,
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onSelectStart={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
+      {isCollapsed && (
+        <button
+          onClick={handleExpand}
+          className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
+          title="Paneli Genişlet"
+        >
+          <ChevronRight size={16} className="text-white group-hover:text-blue-300" />
+        </button>
+      )}
+
+      {!isCollapsed && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between p-2 pt-4 border-b border-gray-700">
+            <span className="text-white font-inter text-base font-bold opacity-90">
+              AD06072
+            </span>
+            {/* Panel genişliği 200px'ten büyükse düğmeleri göster*/}
+            {panelWidth > 200 && (
+              <div className="flex items-center gap-1">
+                {isLocked && (
+                  <button
+                    onClick={handleCollapse}
+                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    title="Arayüzü Küçült"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                )}
+                
+                <button
+                  onClick={toggleLock}
+                  className={`p-1 rounded transition-colors ${
+                    isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
+                  } bg-gray-800/80 backdrop-blur-sm`}
+                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
+                >
+                  {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
+                </button>
+                
+                <button
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  title="Düzenleme Modundan Çık"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {renderComponentContent()}
+          </div>
+      )}
+      
+      <div
+        className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/30' : 'hover:bg-blue-500/30'}`}
+        onMouseDown={handleResizeMouseDown}
+      />
+    </div>
+  );
+};
+
+export default EditMode;
 
   return (
     <div
