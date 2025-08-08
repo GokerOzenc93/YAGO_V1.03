@@ -1,11 +1,17 @@
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode } from '../store/appStore';
-import { findFaceAtIntersection, getFaceGeometry } from '../utils/faceSelection';
+import { 
+  detectFaceAtMouse, 
+  highlightFace, 
+  clearFaceHighlight,
+  getCurrentHighlight 
+} from '../utils/faceSelection';
 
 interface Props {
   shape: Shape;
@@ -30,6 +36,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
+  const { scene, camera, gl } = useThree();
   const {
     activeTool,
     selectedShapeId,
@@ -67,9 +74,6 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
     }
   }, [isSelected, shape]);
-
-  // Add selectedFaceCenters state
-  const [selectedFaceCenters, setSelectedFaceCenters] = useState<THREE.Vector3[]>([]);
 
   const shapeGeometry = useMemo(() => shape.geometry, [shape.geometry]);
   const edgesGeometry = useMemo(
@@ -138,23 +142,25 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      // Get intersection data from raycaster
-      const intersectionPoint = e.point;
-      const intersectionNormal = e.face?.normal;
+      // Three.js tabanlı face detection
+      const hit = detectFaceAtMouse(
+        e.nativeEvent, 
+        camera, 
+        meshRef.current!, 
+        gl.domElement
+      );
       
-      if (!intersectionPoint || !intersectionNormal) {
-        console.warn('🎯 No intersection data available');
+      if (!hit || hit.faceIndex === undefined) {
+        console.warn('🎯 No face detected');
         return;
       }
       
-      console.log(`🎯 Face Edit Click: World position [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
-      console.log(`🎯 Face Edit Click: Face normal [${intersectionNormal.x.toFixed(2)}, ${intersectionNormal.y.toFixed(2)}, ${intersectionNormal.z.toFixed(2)}]`);
+      // Face highlight ekle
+      const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
       
-      // Find face at intersection using raycast data
-      const detectedFace = findFaceAtIntersection(intersectionPoint, intersectionNormal, shape);
-      if (detectedFace !== null && onFaceSelect) {
-        onFaceSelect(detectedFace);
-        console.log(`🎯 Face ${detectedFace} selected in Face Edit mode using raycast intersection`);
+      if (highlight && onFaceSelect) {
+        onFaceSelect(hit.faceIndex);
+        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
       }
       return;
     }
@@ -185,6 +191,13 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
     }
   };
+
+  // Face Edit mode'dan çıkıldığında highlight'ı temizle
+  useEffect(() => {
+    if (!isFaceEditMode) {
+      clearFaceHighlight(scene);
+    }
+  }, [isFaceEditMode, scene]);
 
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
@@ -276,36 +289,6 @@ const OpenCascadeShape: React.FC<Props> = ({
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
-
-      {/* Face Selection Overlay - Only for Face Edit Mode */}
-      {isFaceEditMode && isBeingEdited && selectedFaceIndex !== null && (
-        <group>
-          {/* Dynamic face overlay for selected face */}
-          {(() => {
-            const faceGeom = getFaceGeometry(shape, selectedFaceIndex);
-            if (!faceGeom) return null;
-            
-            return (
-              <mesh
-                key={`selected-face-${selectedFaceIndex}`}
-                geometry={faceGeom.geometry}
-                position={faceGeom.position}
-                rotation={faceGeom.rotation}
-                onClick={handleClick}
-              >
-                <meshBasicMaterial
-                  color="#f97316" // Orange for selected face
-                  transparent
-                  opacity={0.6}
-                  side={THREE.DoubleSide}
-                  depthTest={true}
-                  depthWrite={false}
-                />
-              </mesh>
-            );
-          })()}
-        </group>
-      )}
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
       {shouldShowEdges() && (

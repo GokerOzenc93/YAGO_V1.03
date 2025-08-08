@@ -24,7 +24,7 @@ import EditMode from './ui/EditMode';
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
-import { FaceSelectionOption } from './PanelManager';
+import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 
 const CameraPositionUpdater = () => {
@@ -69,78 +69,6 @@ interface FaceSelectionPopupProps {
   onCancel: () => void;
 }
 
-// NEW: Face selection popup component
-const FaceSelectionPopup: React.FC<FaceSelectionPopupProps> = ({
-  options,
-  position,
-  onSelect,
-  onCancel,
-}) => {
-  return (
-    <div
-      className="fixed bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-50 min-w-[320px] max-w-[450px]"
-      style={{
-        left: Math.min(position.x, window.innerWidth - 350),
-        top: Math.min(position.y, window.innerHeight - 300),
-      }}
-    >
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-600/50">
-        <h3 className="text-white font-medium text-sm">Karşı Taraf Seçimi</h3>
-        <p className="text-gray-400 text-xs mt-1">Tıkladığınız yerin arkasındaki yüzeyi seçin</p>
-      </div>
-
-      {/* Face Options */}
-      <div className="max-h-80 overflow-y-auto">
-        <div className="space-y-0">
-          {options.map((option, index) => (
-            <button
-              key={option.id}
-              onClick={() => onSelect(option)}
-              className="w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-800/20 last:border-b-0"
-            >
-              <div className="flex items-center gap-3">
-                {/* Face Icon */}
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">
-                  {option.faceIndex}
-                </div>
-                
-                {/* Face Details */}
-                <div className="flex-1">
-                  <div className="text-white text-sm font-medium">{option.name}</div>
-                  <div className="text-gray-400 text-xs">{option.description}</div>
-                  <div className="flex items-center gap-4 mt-1">
-                    <div className="text-blue-400 text-xs">
-                      Area: {option.area.toFixed(0)}mm²
-                    </div>
-                    <div className="text-gray-500 text-xs">
-                      Normal: [{option.normal.x}, {option.normal.y}, {option.normal.z}]
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-600/50 bg-gray-700/20">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400 text-xs">
-            Karşı taraf yüzeyi
-          </span>
-          <button
-            onClick={onCancel}
-            className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
-          >
-            İptal
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 interface CameraControllerProps {
   isAddPanelMode: boolean;
 }
@@ -517,6 +445,9 @@ const Scene: React.FC = () => {
   const exitEditMode = () => {
     console.log('Exiting edit mode');
 
+    // Face highlight'ları temizle
+    clearFaceHighlight(scene);
+
     // 🎯 SAVE PERSISTENT PANELS - Mevcut panelleri kaydet
     if (editingShapeId && selectedFaces.length > 0) {
       setShapePanels((prev) => ({
@@ -627,16 +558,8 @@ const Scene: React.FC = () => {
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
   const handleFaceSelect = (faceIndex: number) => {
     setSelectedFaceIndex(faceIndex);
-    console.log(`🎯 Face ${faceIndex} selected`);
+    console.log(`🎯 Face ${faceIndex} selected for panel creation`);
   };
-
-  // 🔴 NEW: Handle panel selection for editing
-
-  // Global face detection functions for geometric calculations
-  useEffect(() => {
-    // Face selection utilities are now in separate file
-    console.log('🎯 Face selection utilities loaded from faceSelection.ts');
-  }, []);
 
   // Handle face cycle updates from OpenCascadeShape
   // Filter shapes based on edit mode
@@ -648,6 +571,9 @@ const Scene: React.FC = () => {
   const editedShape = editingShapeId
     ? shapes.find((s) => s.id === editingShapeId)
     : null;
+
+  // Scene referansını al
+  const [sceneRef, setSceneRef] = useState<THREE.Scene | null>(null);
 
   return (
     <div className="w-full h-full bg-gray-100">
@@ -687,6 +613,9 @@ const Scene: React.FC = () => {
         camera={{
           near: 1,
           far: 50000,
+        }}
+        onCreated={({ scene }) => {
+          setSceneRef(scene);
         }}
       >
         <CameraPositionUpdater />
