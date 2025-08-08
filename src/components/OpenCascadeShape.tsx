@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode } from '../store/appStore';
+import { findClosestFaceToPoint, getFaceGeometry } from '../utils/faceSelection';
 
 interface Props {
   shape: Shape;
@@ -143,8 +144,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       
       console.log(`🎯 Face Edit Click: World position [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
       
-      // Find closest face using geometric detection
-      const closestFace = (window as any).findClosestFaceToPoint?.(intersectionPoint, shape);
+      // Find closest face using the new face selection utility
+      const closestFace = findClosestFaceToPoint(intersectionPoint, shape);
       if (closestFace !== null && onFaceSelect) {
         onFaceSelect(closestFace);
         console.log(`🎯 Face ${closestFace} selected in Face Edit mode`);
@@ -271,81 +272,31 @@ const OpenCascadeShape: React.FC<Props> = ({
       </mesh>
 
       {/* Face Selection Overlay - Only for Face Edit Mode */}
-      {isFaceEditMode && isBeingEdited && ['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type) && (
+      {isFaceEditMode && isBeingEdited && selectedFaceIndex !== null && (
         <group>
-          {/* Face overlays for selection */}
-          {[0, 1, 2, 3, 4, 5].map((faceIndex) => {
-            // Calculate face dimensions and position based on shape type
-            let width = 500, height = 500, depth = 500;
-            
-            if (shape.type === 'box' || shape.type === 'rectangle2d') {
-              width = (shape.parameters.width || 500) * shape.scale[0];
-              height = (shape.parameters.height || 500) * shape.scale[1];
-              depth = (shape.parameters.depth || 500) * shape.scale[2];
-            } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-              const radius = shape.parameters.radius || 250;
-              width = radius * 2 * shape.scale[0];
-              height = (shape.parameters.height || 500) * shape.scale[1];
-              depth = radius * 2 * shape.scale[2];
-            } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
-              const geometry = shape.geometry;
-              geometry.computeBoundingBox();
-              if (geometry.boundingBox) {
-                const size = geometry.boundingBox.getSize(new THREE.Vector3());
-                width = (Math.abs(size.x) || 500) * shape.scale[0];
-                height = (shape.parameters.height || 500) * shape.scale[1];
-                depth = (Math.abs(size.z) || 500) * shape.scale[2];
-              }
-            }
-            
-            const hw = width / 2;
-            const hh = height / 2;
-            const hd = depth / 2;
-            
-            // Face transforms
-            const faceTransforms = [
-              { position: [0, 0, hd], rotation: [0, 0, 0] }, // Front
-              { position: [0, 0, -hd], rotation: [0, Math.PI, 0] }, // Back
-              { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] }, // Top
-              { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] }, // Bottom
-              { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] }, // Right
-              { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] }, // Left
-            ];
-            
-            const transform = faceTransforms[faceIndex];
-            const isSelected = selectedFaceIndex === faceIndex;
+          {/* Dynamic face overlay for selected face */}
+          {(() => {
+            const faceGeom = getFaceGeometry(shape, selectedFaceIndex);
+            if (!faceGeom) return null;
             
             return (
               <mesh
-                key={`face-${faceIndex}`}
-                geometry={new THREE.PlaneGeometry(
-                  faceIndex === 2 || faceIndex === 3 ? width : 
-                  (faceIndex === 4 || faceIndex === 5 ? depth : width),
-                  faceIndex === 2 || faceIndex === 3 ? depth : height
-                )}
-                position={[
-                  shape.position[0] + transform.position[0],
-                  shape.position[1] + transform.position[1],
-                  shape.position[2] + transform.position[2],
-                ]}
-                rotation={[
-                  shape.rotation[0] + transform.rotation[0],
-                  shape.rotation[1] + transform.rotation[1],
-                  shape.rotation[2] + transform.rotation[2],
-                ]}
+                key={`selected-face-${selectedFaceIndex}`}
+                geometry={faceGeom.geometry}
+                position={faceGeom.position}
+                rotation={faceGeom.rotation}
                 onClick={handleClick}
-                userData={{ faceIndex }}
               >
                 <meshBasicMaterial
-                  color={isSelected ? '#f97316' : '#3b82f6'} // Orange for selected, blue for others
+                  color="#f97316" // Orange for selected face
                   transparent
-                  opacity={isSelected ? 0.3 : 0.001} // Only show selected face
+                  opacity={0.4}
                   side={THREE.DoubleSide}
                   depthTest={false}
                 />
               </mesh>
             );
-          })}
+          })()}
         </group>
       )}
 

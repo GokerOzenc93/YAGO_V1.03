@@ -634,79 +634,8 @@ const Scene: React.FC = () => {
 
   // Global face detection functions for geometric calculations
   useEffect(() => {
-    // Global function to find closest face to a clicked point
-    (window as any).findClosestFaceToPoint = (worldPoint: THREE.Vector3, shape: Shape): number | null => {
-      if (shape.type !== 'box') return null;
-      
-      const { width = 500, height = 500, depth = 500 } = shape.parameters;
-      const hw = width / 2;
-      const hh = height / 2;
-      const hd = depth / 2;
-      
-      // Convert world point to shape's local coordinate system
-      const shapePosition = new THREE.Vector3(...shape.position);
-      const localPoint = worldPoint.clone().sub(shapePosition);
-      
-      console.log(`🎯 World point: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
-      console.log(`🎯 Shape position: [${shapePosition.x.toFixed(1)}, ${shapePosition.y.toFixed(1)}, ${shapePosition.z.toFixed(1)}]`);
-      console.log(`🎯 Local point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
-      
-      // Define face data with centers and normals
-      const faces = [
-        { index: 0, center: new THREE.Vector3(0, 0, hd), normal: new THREE.Vector3(0, 0, 1), name: 'Front' },
-        { index: 1, center: new THREE.Vector3(0, 0, -hd), normal: new THREE.Vector3(0, 0, -1), name: 'Back' },
-        { index: 2, center: new THREE.Vector3(0, hh, 0), normal: new THREE.Vector3(0, 1, 0), name: 'Top' },
-        { index: 3, center: new THREE.Vector3(0, -hh, 0), normal: new THREE.Vector3(0, -1, 0), name: 'Bottom' },
-        { index: 4, center: new THREE.Vector3(hw, 0, 0), normal: new THREE.Vector3(1, 0, 0), name: 'Right' },
-        { index: 5, center: new THREE.Vector3(-hw, 0, 0), normal: new THREE.Vector3(-1, 0, 0), name: 'Left' },
-      ];
-      
-      // Calculate distances from click point to all face centers and sort by distance
-      const faceDistances = faces.map(face => {
-        const distanceToCenter = localPoint.distanceTo(face.center);
-        const pointToCenter = localPoint.clone().sub(face.center);
-        const projectionDistance = Math.abs(pointToCenter.dot(face.normal));
-        
-        console.log(`🎯 Face ${face.index} (${face.name}): Distance to center: ${distanceToCenter.toFixed(1)}, Projection distance: ${projectionDistance.toFixed(1)}`);
-        
-        return {
-          index: face.index,
-          name: face.name,
-          distance: distanceToCenter,
-          projectionDistance: projectionDistance,
-          isOnPlane: projectionDistance < 50 // 50mm threshold
-        };
-      }).sort((a, b) => a.distance - b.distance); // Sort by distance to center
-      
-      console.log(`🎯 Faces sorted by distance:`, faceDistances.map(f => 
-        `${f.name}(${f.index}): ${f.distance.toFixed(1)}mm ${f.isOnPlane ? '✓' : '✗'}`
-      ).join(', '));
-      
-      // First try to find a face that the point is actually on
-      const faceOnPlane = faceDistances.find(f => f.isOnPlane);
-      if (faceOnPlane) {
-        console.log(`🎯 Point is on face: ${faceOnPlane.name} (${faceOnPlane.index})`);
-        return faceOnPlane.index;
-      }
-      
-      // If no face is directly under the point, return the closest one
-      const closestFace = faceDistances[0];
-      console.log(`🎯 Closest face: ${closestFace.name} (${closestFace.index}) at ${closestFace.distance.toFixed(1)}mm`);
-      
-      return closestFace.index;
-    };
-    
-    // Global function to find next face based on distance to last click point
-    (window as any).findNextAdjacentFace = (currentFace: number, shape: Shape): number => {
-      // This function is now handled by PanelManager's findNextFace method
-      // which uses the stored click position for distance-based sorting
-      return (currentFace + 1) % 6; // Fallback
-    };
-    
-    return () => {
-      delete (window as any).findClosestFaceToPoint;
-      delete (window as any).findNextAdjacentFace;
-    };
+    // Face selection utilities are now in separate file
+    console.log('🎯 Face selection utilities loaded from faceSelection.ts');
   }, []);
 
   // Handle face cycle updates from OpenCascadeShape
