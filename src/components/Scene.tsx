@@ -311,36 +311,11 @@ const Scene: React.FC = () => {
   }>({ visible: false, position: { x: 0, y: 0 }, shape: null });
 
   // 🎯 PERSISTENT PANEL MANAGER STATE - Panels Mode kapansa bile paneller kalır
-  const [isAddPanelMode, setIsAddPanelMode] = useState(false);
-  const [selectedFaces, setSelectedFaces] = useState<number[]>([]);
-  const [hoveredFace, setHoveredFace] = useState<number | null>(null);
-  const [hoveredEdge, setHoveredEdge] = useState<number | null>(null);
-  const [showEdges, setShowEdges] = useState(true);
-  const [showFaces, setShowFaces] = useState(true);
-
   // 🔴 NEW: Panel Edit Mode State
   const [isFaceEditMode, setIsFaceEditMode] = useState(false);
 
-  // NEW: Dynamic face selection state
-  const [selectedDynamicFace, setSelectedDynamicFace] = useState<number | null>(null);
-
-  // 🎯 PERSISTENT PANELS - Her shape için ayrı panel state'i
-  const [shapePanels, setShapePanels] = useState<{
-    [shapeId: string]: number[];
-  }>({});
-
-  // Face cycle indicator state - moved to Scene component
-  const [faceCycleState, setFaceCycleState] = useState<{
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }>({
-    selectedFace: null,
-    currentIndex: 0,
-    availableFaces: [],
-    mousePosition: null,
-  });
+  // Face selection state
+  const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
 
   // Disable rotation when drawing polylines OR when panel mode is active
   const isDrawingPolyline = activeTool === 'Polyline';
@@ -555,20 +530,9 @@ const Scene: React.FC = () => {
     setActiveTool(Tool.SELECT);
 
     // Reset panel manager state (but keep persistent panels)
-    setSelectedFaces([]);
-    setHoveredFace(null);
-    setHoveredEdge(null);
-
     // Reset face edit mode
     setIsFaceEditMode(false);
-
-    // Reset face cycle state
-    setFaceCycleState({
-      selectedFace: null,
-      currentIndex: 0,
-      availableFaces: [],
-      mousePosition: null,
-    });
+    setSelectedFaceIndex(null);
 
     console.log('Edit mode deactivated. All shapes visible again');
   };
@@ -657,97 +621,11 @@ const Scene: React.FC = () => {
 
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
   const handleFaceSelect = (faceIndex: number) => {
-    if (!isAddPanelMode) {
-      console.log('Panel add mode is not active');
-      return;
-    }
-    
-    setSelectedFaces((prev) => {
-      const newFaces = prev.includes(faceIndex)
-        ? prev.filter((f) => f !== faceIndex) // Remove if already selected
-        : [...prev, faceIndex]; // Add to selection
-
-      // 🎯 IMMEDIATE SAVE - Hemen kaydet
-      if (editingShapeId) {
-        setShapePanels((prevPanels) => ({
-          ...prevPanels,
-          [editingShapeId]: [...newFaces],
-        }));
-        console.log(
-          `🎯 GUARANTEED SYSTEM - Panel ${faceIndex} ${
-            prev.includes(faceIndex) ? 'removed from' : 'added to'
-          } shape ${editingShapeId} - Previous panels stay full size, last panel shrinks`
-        );
-      }
-
-      return newFaces;
-    });
-  };
-
-  const handleFaceHover = (faceIndex: number | null) => {
-    setHoveredFace(faceIndex);
+    setSelectedFaceIndex(faceIndex);
+    console.log(`🎯 Face ${faceIndex} selected`);
   };
 
   // 🔴 NEW: Handle panel selection for editing
-  const handlePanelSelect = (panelData: {
-    faceIndex: number;
-    position: THREE.Vector3;
-    size: THREE.Vector3;
-    panelOrder: number;
-  }) => {
-    console.log(`🔴 Panel selected for editing:`, {
-      faceIndex: panelData.faceIndex,
-      position: panelData.position.toArray().map((v) => v.toFixed(1)),
-      size: panelData.size.toArray().map((v) => v.toFixed(1)),
-      panelOrder: panelData.panelOrder,
-    });
-  };
-
-  // NEW: Handle dynamic face selection
-  const handleDynamicFaceSelect = (faceIndex: number) => {
-    setSelectedDynamicFace(faceIndex);
-    console.log(`🎯 Dynamic face selected: ${faceIndex}`);
-  };
-
-  // Reset dynamic face selection when panel mode changes
-  useEffect(() => {
-    if (!isAddPanelMode) {
-      setSelectedDynamicFace(null);
-    }
-  }, [isAddPanelMode]);
-
-  // Reset dynamic face selection when adding a panel
-  const handleFaceSelectWithReset = (faceIndex: number) => {
-    if (!isAddPanelMode) {
-      console.log('Panel add mode is not active');
-      return;
-    }
-    
-    setSelectedFaces((prev) => {
-      const newFaces = prev.includes(faceIndex)
-        ? prev.filter((f) => f !== faceIndex) // Remove if already selected
-        : [...prev, faceIndex]; // Add to selection
-
-      // 🎯 IMMEDIATE SAVE - Hemen kaydet
-      if (editingShapeId) {
-        setShapePanels((prevPanels) => ({
-          ...prevPanels,
-          [editingShapeId]: [...newFaces],
-        }));
-        console.log(
-          `🎯 GUARANTEED SYSTEM - Panel ${faceIndex} ${
-            prev.includes(faceIndex) ? 'removed from' : 'added to'
-          } shape ${editingShapeId} - Previous panels stay full size, last panel shrinks`
-        );
-      }
-
-      return newFaces;
-    });
-    
-    // Reset dynamic selection after adding panel
-    setSelectedDynamicFace(null);
-    console.log('🎯 Dynamic selection reset after panel addition');
-  };
 
   // Global face detection functions for geometric calculations
   useEffect(() => {
@@ -827,15 +705,6 @@ const Scene: React.FC = () => {
   }, []);
 
   // Handle face cycle updates from OpenCascadeShape
-  const handleFaceCycleUpdate = (cycleState: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }) => {
-    setFaceCycleState(cycleState);
-  };
-
   // Filter shapes based on edit mode
   const visibleShapes = shapes.filter(
     (shape) => !hiddenShapeIds.includes(shape.id)
@@ -846,11 +715,6 @@ const Scene: React.FC = () => {
     ? shapes.find((s) => s.id === editingShapeId)
     : null;
 
-  // 🎯 GET PERSISTENT PANELS FOR CURRENT SHAPE - Mevcut shape için kaydedilmiş panelleri al
-  const getCurrentShapePanels = (shapeId: string): number[] => {
-    return shapePanels[shapeId] || [];
-  };
-
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
@@ -858,12 +722,12 @@ const Scene: React.FC = () => {
         <EditMode
           editedShape={editedShape}
           onExit={exitEditMode}
-          hoveredFace={hoveredFace}
-          hoveredEdge={hoveredEdge}
-          showEdges={showEdges}
-          setShowEdges={setShowEdges}
-          showFaces={showFaces}
-          setShowFaces={setShowFaces}
+          hoveredFace={null}
+          hoveredEdge={null}
+          showEdges={true}
+          setShowEdges={() => {}}
+          showFaces={true}
+          setShowFaces={() => {}}
           isFaceEditMode={isFaceEditMode}
           setIsFaceEditMode={setIsFaceEditMode}
         />
@@ -994,8 +858,6 @@ const Scene: React.FC = () => {
 
         {/* 🎯 PERSISTENT PANELS - Render shapes with their persistent panels */}
         {visibleShapes.map((shape) => {
-          // Her shape için kendi kaydedilmiş panellerini kullan
-          const shapePersistentPanels = getCurrentShapePanels(shape.id);
           const isCurrentlyEditing = editingShapeId === shape.id;
 
           return (
@@ -1005,25 +867,10 @@ const Scene: React.FC = () => {
               onContextMenuRequest={handleShapeContextMenuRequest}
               isEditMode={isEditMode}
               isBeingEdited={isCurrentlyEditing}
-              isAddPanelMode={isAddPanelMode && isCurrentlyEditing}
-              selectedFaces={
-                isCurrentlyEditing ? selectedFaces : shapePersistentPanels
-              } // 🎯 PERSISTENT PANELS
-              onFaceSelect={handleFaceSelectWithReset}
-              onFaceHover={handleFaceHover}
-              hoveredFace={hoveredFace}
-              showEdges={showEdges}
-              showFaces={showFaces}
-              onFaceCycleUpdate={handleFaceCycleUpdate}
               // Face Edit Mode props
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
-              selectedFaceIndex={selectedDynamicFace}
-              faceCycleState={faceCycleState}
-              setFaceCycleState={setFaceCycleState}
-              // NEW: Dynamic face selection props
-              onDynamicFaceSelect={handleDynamicFaceSelect}
-              selectedDynamicFace={selectedDynamicFace}
-              isDynamicSelectionMode={isAddPanelMode && isCurrentlyEditing}
+              selectedFaceIndex={selectedFaceIndex}
+              onFaceSelect={handleFaceSelect}
             />
           );
         })}
@@ -1091,40 +938,17 @@ const Scene: React.FC = () => {
           document.body
         )}
 
-      {/* Face Cycle Indicator - Rendered outside Canvas using Portal */}
-      {isAddPanelMode &&
-        faceCycleState.selectedFace !== null &&
-        faceCycleState.mousePosition &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="fixed bg-yellow-500/90 text-black px-2 py-1 rounded text-xs font-medium z-50 pointer-events-none"
-            style={{
-              left: faceCycleState.mousePosition.x + 10,
-              top: faceCycleState.mousePosition.y - 30,
-            }}
-          >
-            Face {faceCycleState.selectedFace} (
-            {faceCycleState.currentIndex + 1}/
-            {faceCycleState.availableFaces.length})
-            <div className="text-[10px] mt-0.5">
-              Left click: Next face | Right click: Confirm panel
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* 🔴 NEW: Panel Edit Mode Indicator */}
+      {/* Face Edit Mode Indicator */}
       {isFaceEditMode &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className="fixed top-32 right-4 bg-red-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
+          <div className="fixed top-32 right-4 bg-orange-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Panel Edit Mode</span>
+              <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Face Edit Mode</span>
             </div>
-            <div className="text-xs text-red-200 mt-1">
-              Click on panels to edit dimensions
+            <div className="text-xs text-orange-200 mt-1">
+              Click on faces to select them
             </div>
           </div>,
           document.body

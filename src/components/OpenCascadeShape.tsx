@@ -4,7 +4,6 @@ import { TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
-import PanelManager from './PanelManager';
 import { ViewMode } from '../store/appStore';
 
 interface Props {
@@ -12,46 +11,10 @@ interface Props {
   onContextMenuRequest?: (event: any, shape: Shape) => void;
   isEditMode?: boolean;
   isBeingEdited?: boolean;
-  // Panel manager props
-  isAddPanelMode?: boolean;
-  selectedFaces?: number[];
-  onFaceSelect?: (faceIndex: number) => void;
-  onFaceHover?: (faceIndex: number | null) => void;
-  hoveredFace?: number | null;
-  showEdges?: boolean;
-  showFaces?: boolean;
-  // Face cycle indicator props
-  onFaceCycleUpdate?: (cycleState: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }) => void;
-  // 🔴 NEW: Panel Edit Mode props
+  // Face Edit Mode props
   isFaceEditMode?: boolean;
   selectedFaceIndex?: number | null;
   onFaceSelect?: (faceIndex: number) => void;
-  // NEW: Multi-depth placement props
-  onShowFaceSelection?: (options: any[], position: { x: number; y: number }) => void;
-  onHideFaceSelection?: () => void;
-  onSelectFace?: (faceIndex: number) => void;
-  // Face cycle state props
-  faceCycleState?: {
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  };
-  setFaceCycleState?: React.Dispatch<React.SetStateAction<{
-    selectedFace: number | null;
-    currentIndex: number;
-    availableFaces: number[];
-    mousePosition: { x: number; y: number } | null;
-  }>>;
-  // NEW: Dynamic face selection props
-  onDynamicFaceSelect?: (faceIndex: number) => void;
-  selectedDynamicFace?: number | null;
-  isCurrentlyEditing?: boolean;
 }
 
 const OpenCascadeShape: React.FC<Props> = ({
@@ -59,26 +22,10 @@ const OpenCascadeShape: React.FC<Props> = ({
   onContextMenuRequest,
   isEditMode = false,
   isBeingEdited = false,
-  isAddPanelMode = false,
-  selectedFaces = [],
-  onFaceSelect,
-  onFaceHover,
-  hoveredFace = null,
-  showEdges = true,
-  showFaces = true,
-  onFaceCycleUpdate,
   // Face Edit Mode props
   isFaceEditMode = false,
   selectedFaceIndex,
-  onShowFaceSelection,
-  onHideFaceSelection,
-  onSelectFace,
-  faceCycleState,
-  setFaceCycleState,
-  // NEW: Dynamic face selection props
-  onDynamicFaceSelect,
-  selectedDynamicFace,
-  isCurrentlyEditing,
+  onFaceSelect,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -128,45 +75,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     () => new THREE.EdgesGeometry(shapeGeometry),
     [shapeGeometry]
   );
-
-  // NEW: Handle dynamic face selection with geometric detection
-  const handleDynamicClick = useCallback((e: any) => {
-    if (!isAddPanelMode) return;
-    
-    e.stopPropagation();
-    
-    // Store click position globally for distance calculations
-    (window as any).lastClickPosition = e.point.clone();
-    
-    if (e.nativeEvent.button === 0) {
-      // Left click - cycle through faces geometrically
-      const intersectionPoint = e.point; // Get 3D intersection point from raycaster
-      
-      console.log(`🎯 Mouse clicked at world position: [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
-      
-      if (selectedDynamicFace === null) {
-        // First click - find closest face
-        const closestFace = (window as any).findClosestFaceToPoint?.(intersectionPoint, shape);
-        if (closestFace !== null && onDynamicFaceSelect) {
-          onDynamicFaceSelect(closestFace);
-          console.log(`🎯 First click: Selected face ${closestFace} geometrically`);
-        }
-      } else {
-        // Subsequent clicks - find next adjacent face
-        const nextFace = (window as any).findNextAdjacentFace?.(selectedDynamicFace, shape);
-        if (onDynamicFaceSelect) {
-          onDynamicFaceSelect(nextFace);
-          console.log(`🎯 Next click: Cycled to face ${nextFace} from ${selectedDynamicFace}`);
-        }
-      }
-    } else if (e.nativeEvent.button === 2) {
-      // Right click - add panel to currently selected face
-      if (selectedDynamicFace !== null) {
-        onFaceSelect?.(selectedDynamicFace);
-        console.log(`🎯 Right click: Added panel to face ${selectedDynamicFace}`);
-      }
-    }
-  }, [isAddPanelMode, selectedDynamicFace, onDynamicFaceSelect, onFaceSelect, shape]);
 
   useEffect(() => {
     const controls = transformRef.current;
@@ -224,32 +132,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
   }, [isSelected, setSelectedObjectPosition, shape.id]);
 
-  // Reset face cycle state when panel mode is disabled
-  useEffect(() => {
-    if (!isAddPanelMode) {
-      if (setFaceCycleState) {
-        setFaceCycleState({
-          availableFaces: [],
-          currentIndex: 0,
-          selectedFace: null,
-          mousePosition: null,
-        });
-      }
-    }
-  }, [isAddPanelMode, setFaceCycleState]);
-
-  // Update parent component with face cycle state changes
-  useEffect(() => {
-    if (onFaceCycleUpdate) {
-      onFaceCycleUpdate(faceCycleState || {
-        availableFaces: [],
-        currentIndex: 0,
-        selectedFace: null,
-        mousePosition: null,
-      });
-    }
-  }, [faceCycleState, onFaceCycleUpdate]);
-
   const handleClick = (e: any) => {
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
@@ -270,11 +152,6 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
     
-    // Panel mode is handled by PanelManager component
-    if (isAddPanelMode) {
-      return; // Let PanelManager handle this
-    }
-
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -291,11 +168,6 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
     
-    // Panel mode context menu is handled by PanelManager
-    if (isAddPanelMode) {
-      return; // Let PanelManager handle this
-    }
-
     // Normal context menu - only show for selected shapes
     if (isSelected && onContextMenuRequest) {
       e.stopPropagation();
@@ -319,8 +191,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   // 🎯 NEW: Get opacity based on view mode
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
-
-    if (selectedFaces.length > 0) return 0;
 
     // Always hide mesh, only show edges
     return 0;
@@ -400,34 +270,84 @@ const OpenCascadeShape: React.FC<Props> = ({
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
 
-      {/* 🎯 ALWAYS SHOW PANELS - Panel Manager renders panels regardless of mode */}
-      <PanelManager
-        shape={shape}
-        isAddPanelMode={isAddPanelMode && isBeingEdited}
-        selectedFaces={selectedFaces}
-        hoveredFace={hoveredFace}
-        showEdges={showEdges}
-        showFaces={showFaces}
-        onFaceSelect={onFaceSelect || (() => {})}
-        onFaceHover={onFaceHover || (() => {})}
-        onFaceCycleUpdate={onFaceCycleUpdate}
-        alwaysShowPanels={true} // 🎯 ALWAYS SHOW PANELS
-        isFaceEditMode={isFaceEditMode && isBeingEdited}
-        selectedFaceIndex={selectedFaceIndex}
-        faceCycleState={faceCycleState || {
-          availableFaces: [],
-          currentIndex: 0,
-          selectedFace: null,
-          mousePosition: null,
-        }}
-        setFaceCycleState={setFaceCycleState || (() => {})}
-        onShowFaceSelection={onShowFaceSelection}
-        onHideFaceSelection={onHideFaceSelection}
-        onSelectFace={onSelectFace}
-        onDynamicFaceSelect={onDynamicFaceSelect}
-        selectedDynamicFace={selectedDynamicFace}
-        isDynamicSelectionMode={isAddPanelMode && isCurrentlyEditing}
-      />
+      {/* Face Selection Overlay - Only for Face Edit Mode */}
+      {isFaceEditMode && isBeingEdited && ['box', 'cylinder', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d', 'rectangle2d', 'circle2d'].includes(shape.type) && (
+        <group>
+          {/* Face overlays for selection */}
+          {[0, 1, 2, 3, 4, 5].map((faceIndex) => {
+            // Calculate face dimensions and position based on shape type
+            let width = 500, height = 500, depth = 500;
+            
+            if (shape.type === 'box' || shape.type === 'rectangle2d') {
+              width = (shape.parameters.width || 500) * shape.scale[0];
+              height = (shape.parameters.height || 500) * shape.scale[1];
+              depth = (shape.parameters.depth || 500) * shape.scale[2];
+            } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+              const radius = shape.parameters.radius || 250;
+              width = radius * 2 * shape.scale[0];
+              height = (shape.parameters.height || 500) * shape.scale[1];
+              depth = radius * 2 * shape.scale[2];
+            } else if (['polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(shape.type)) {
+              const geometry = shape.geometry;
+              geometry.computeBoundingBox();
+              if (geometry.boundingBox) {
+                const size = geometry.boundingBox.getSize(new THREE.Vector3());
+                width = (Math.abs(size.x) || 500) * shape.scale[0];
+                height = (shape.parameters.height || 500) * shape.scale[1];
+                depth = (Math.abs(size.z) || 500) * shape.scale[2];
+              }
+            }
+            
+            const hw = width / 2;
+            const hh = height / 2;
+            const hd = depth / 2;
+            
+            // Face transforms
+            const faceTransforms = [
+              { position: [0, 0, hd], rotation: [0, 0, 0] }, // Front
+              { position: [0, 0, -hd], rotation: [0, Math.PI, 0] }, // Back
+              { position: [0, hh, 0], rotation: [-Math.PI / 2, 0, 0] }, // Top
+              { position: [0, -hh, 0], rotation: [Math.PI / 2, 0, 0] }, // Bottom
+              { position: [hw, 0, 0], rotation: [0, Math.PI / 2, 0] }, // Right
+              { position: [-hw, 0, 0], rotation: [0, -Math.PI / 2, 0] }, // Left
+            ];
+            
+            const transform = faceTransforms[faceIndex];
+            const isSelected = selectedFaceIndex === faceIndex;
+            
+            return (
+              <mesh
+                key={`face-${faceIndex}`}
+                geometry={new THREE.PlaneGeometry(
+                  faceIndex === 2 || faceIndex === 3 ? width : 
+                  (faceIndex === 4 || faceIndex === 5 ? depth : width),
+                  faceIndex === 2 || faceIndex === 3 ? depth : height
+                )}
+                position={[
+                  shape.position[0] + transform.position[0],
+                  shape.position[1] + transform.position[1],
+                  shape.position[2] + transform.position[2],
+                ]}
+                rotation={[
+                  shape.rotation[0] + transform.rotation[0],
+                  shape.rotation[1] + transform.rotation[1],
+                  shape.rotation[2] + transform.rotation[2],
+                ]}
+                onClick={handleClick}
+                userData={{ faceIndex }}
+              >
+                <meshBasicMaterial
+                  color={isSelected ? '#f97316' : '#3b82f6'} // Orange for selected, blue for others
+                  transparent
+                  opacity={isSelected ? 0.3 : 0.001} // Only show selected face
+                  side={THREE.DoubleSide}
+                  depthTest={false}
+                />
+              </mesh>
+            );
+          })}
+        </group>
+      )}
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
       {shouldShowEdges() && (
@@ -436,7 +356,7 @@ const OpenCascadeShape: React.FC<Props> = ({
           position={shape.position}
           rotation={shape.rotation}
           scale={shape.scale}
-          visible={selectedFaces.length === 0 || (isAddPanelMode && isBeingEdited)} // Show outline when no panels OR when adding panels
+          visible={true} // Always show edges
         >
           <lineBasicMaterial
             color={getEdgeColor()}
@@ -452,7 +372,6 @@ const OpenCascadeShape: React.FC<Props> = ({
       {isSelected &&
         meshRef.current &&
         !isEditMode &&
-        !isAddPanelMode &&
         !isFaceEditMode && (
           <TransformControls
             ref={transformRef}
