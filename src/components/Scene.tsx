@@ -446,7 +446,9 @@ const Scene: React.FC = () => {
     console.log('Exiting edit mode');
 
     // Face highlight'ları temizle
-    clearFaceHighlight(scene);
+    if (sceneRef) {
+      clearFaceHighlight(sceneRef);
+    }
 
     // 🎯 SAVE PERSISTENT PANELS - Mevcut panelleri kaydet
     if (editingShapeId && selectedFaces.length > 0) {
