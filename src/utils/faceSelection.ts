@@ -276,6 +276,7 @@ export const findFaceAtIntersection = (
   if (faces.length === 0) return null;
   
   const shapePosition = new THREE.Vector3(...shape.position);
+  const worldPoint = intersectionPoint.clone();
   const localPoint = worldPoint.clone().sub(shapePosition);
   const localNormal = intersectionNormal.clone().normalize();
   
@@ -316,9 +317,6 @@ export const findFaceAtIntersection = (
   
   console.log(`🎯 No good face match found, using closest: ${bestMatch.name} (${bestMatch.index})`);
   return bestMatch.index;
-};
-  
-  return closestFace.index;
 };
 
 /**
