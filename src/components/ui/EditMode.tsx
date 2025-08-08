@@ -246,15 +246,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     <MousePointer size={12} />
                     Face Select
                   </button>
-                  
-                  {isFaceEditMode && (
-                    <div className="mt-2 p-2 bg-gray-700/30 rounded text-xs">
-                      <div className="text-gray-300 mb-1">Selection Mode:</div>
-                      <div className="text-orange-300">• Click triangles to merge surfaces</div>
-                      <div className="text-orange-300">• Connected triangles auto-merge</div>
-                      <div className="text-gray-400 mt-1">ESC to clear selection</div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
