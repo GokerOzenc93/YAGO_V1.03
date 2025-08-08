@@ -319,7 +319,7 @@ const Scene: React.FC = () => {
   const [showFaces, setShowFaces] = useState(true);
 
   // 🔴 NEW: Panel Edit Mode State
-  const [isPanelEditMode, setIsPanelEditMode] = useState(false);
+  const [isFaceEditMode, setIsFaceEditMode] = useState(false);
 
   // NEW: Dynamic face selection state
   const [selectedDynamicFace, setSelectedDynamicFace] = useState<number | null>(null);
@@ -555,13 +555,12 @@ const Scene: React.FC = () => {
     setActiveTool(Tool.SELECT);
 
     // Reset panel manager state (but keep persistent panels)
-    setIsAddPanelMode(false);
     setSelectedFaces([]);
     setHoveredFace(null);
     setHoveredEdge(null);
 
-    // 🔴 NEW: Reset panel edit mode
-    setIsPanelEditMode(false);
+    // Reset face edit mode
+    setIsFaceEditMode(false);
 
     // Reset face cycle state
     setFaceCycleState({
@@ -859,18 +858,14 @@ const Scene: React.FC = () => {
         <EditMode
           editedShape={editedShape}
           onExit={exitEditMode}
-          isAddPanelMode={isAddPanelMode}
-          setIsAddPanelMode={setIsAddPanelMode}
-          selectedFaces={selectedFaces}
-          setSelectedFaces={setSelectedFaces}
           hoveredFace={hoveredFace}
           hoveredEdge={hoveredEdge}
           showEdges={showEdges}
           setShowEdges={setShowEdges}
           showFaces={showFaces}
           setShowFaces={setShowFaces}
-          isPanelEditMode={isPanelEditMode}
-          setIsPanelEditMode={setIsPanelEditMode}
+          isFaceEditMode={isFaceEditMode}
+          setIsFaceEditMode={setIsFaceEditMode}
         />
       )}
 
@@ -1020,9 +1015,8 @@ const Scene: React.FC = () => {
               showEdges={showEdges}
               showFaces={showFaces}
               onFaceCycleUpdate={handleFaceCycleUpdate}
-              // 🔴 NEW: Panel Edit Mode props
-              isPanelEditMode={isPanelEditMode && isCurrentlyEditing}
-              onPanelSelect={handlePanelSelect}
+              // Face Edit Mode props
+              isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
               faceCycleState={faceCycleState}
               setFaceCycleState={setFaceCycleState}
               // NEW: Dynamic face selection props
@@ -1120,7 +1114,7 @@ const Scene: React.FC = () => {
         )}
 
       {/* 🔴 NEW: Panel Edit Mode Indicator */}
-      {isPanelEditMode &&
+      {isFaceEditMode &&
         typeof document !== 'undefined' &&
         createPortal(
           <div className="fixed top-32 right-4 bg-red-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">

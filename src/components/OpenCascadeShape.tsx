@@ -28,13 +28,9 @@ interface Props {
     mousePosition: { x: number; y: number } | null;
   }) => void;
   // 🔴 NEW: Panel Edit Mode props
-  isPanelEditMode?: boolean;
-  onPanelSelect?: (panelData: {
-    faceIndex: number;
-    position: THREE.Vector3;
-    size: THREE.Vector3;
-    panelOrder: number;
-  }) => void;
+  isFaceEditMode?: boolean;
+  selectedFaceIndex?: number | null;
+  onFaceSelect?: (faceIndex: number) => void;
   // NEW: Multi-depth placement props
   onShowFaceSelection?: (options: any[], position: { x: number; y: number }) => void;
   onHideFaceSelection?: () => void;
@@ -71,9 +67,9 @@ const OpenCascadeShape: React.FC<Props> = ({
   showEdges = true,
   showFaces = true,
   onFaceCycleUpdate,
-  // 🔴 NEW: Panel Edit Mode props
-  isPanelEditMode = false,
-  onPanelSelect,
+  // Face Edit Mode props
+  isFaceEditMode = false,
+  selectedFaceIndex,
   onShowFaceSelection,
   onHideFaceSelection,
   onSelectFace,
@@ -390,8 +386,8 @@ const OpenCascadeShape: React.FC<Props> = ({
         onFaceHover={onFaceHover || (() => {})}
         onFaceCycleUpdate={onFaceCycleUpdate}
         alwaysShowPanels={true} // 🎯 ALWAYS SHOW PANELS
-        isPanelEditMode={isPanelEditMode && isBeingEdited}
-        onPanelSelect={onPanelSelect || (() => {})}
+        isFaceEditMode={isFaceEditMode && isBeingEdited}
+        selectedFaceIndex={selectedFaceIndex}
         faceCycleState={faceCycleState || {
           availableFaces: [],
           currentIndex: 0,

@@ -15,13 +15,8 @@ interface PanelManagerProps {
   // 🎯 NEW PROP - Always show panels
   alwaysShowPanels?: boolean;
   // 🔴 NEW: Panel Edit Mode props
-  isPanelEditMode?: boolean;
-  onPanelSelect?: (panelData: {
-    faceIndex: number;
-    position: THREE.Vector3;
-    size: THREE.Vector3;
-    panelOrder: number;
-  }) => void;
+  isFaceEditMode?: boolean;
+  selectedFaceIndex?: number | null;
   // NEW: Face selection callbacks
   onShowFaceSelection?: (faces: FaceSelectionOption[], position: { x: number; y: number }) => void;
   onHideFaceSelection?: () => void;
@@ -64,8 +59,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   onFaceSelect,
   onFaceHover,
   alwaysShowPanels = false,
-  isPanelEditMode = false,
-  onPanelSelect,
+  isFaceEditMode = false,
+  selectedFaceIndex,
   onShowFaceSelection,
   onHideFaceSelection,
   onSelectFace,
@@ -799,8 +794,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getPanelColor = (faceIndex: number) => {
-    if (isPanelEditMode && selectedFaces.includes(faceIndex)) {
-      return '#dc2626'; // RED for panels in edit mode
+    if (isFaceEditMode && selectedFaceIndex === faceIndex) {
+      return '#f97316'; // ORANGE for selected face in edit mode
     }
     return getPanelMaterial(faceIndex);
   };
@@ -960,6 +955,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
     if (isAddPanelMode && selectedDynamicFace === faceIndex) {
       return '#fbbf24'; // Yellow for dynamically selected face
     }
+    // Face edit mode highlighting
+    if (isFaceEditMode && selectedFaceIndex === faceIndex) {
+      return '#f97316'; // Orange for selected face
+    }
     if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
     if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
     return '#3b82f6'; // Blue for default
@@ -968,6 +967,8 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   const getFaceOpacity = (faceIndex: number) => {
     // Hide all face overlays in panel mode - only show blue panel preview
     if (selectedFaces.includes(faceIndex)) return 0.0;
+    // Show selected face in edit mode
+    if (isFaceEditMode && selectedFaceIndex === faceIndex) return 0.3;
     if (hoveredFace === faceIndex) return 0.0;
     return 0.001;
   };
@@ -1030,6 +1031,13 @@ const PanelManager: React.FC<PanelManagerProps> = ({
               onContextMenu={(e) => {
                 if (isAddPanelMode) {
                   handleDynamicClick(e);
+                } else if (isFaceEditMode) {
+                  // Face edit mode - select face on click
+                  e.stopPropagation();
+                  if (onFaceSelect) {
+                    onFaceSelect(faceIndex);
+                    console.log(`🎯 Face ${faceIndex} selected in edit mode`);
+                  }
                 } else {
                   // Original right-click behavior for non-dynamic mode
                   e.stopPropagation();
@@ -1071,27 +1079,20 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           receiveShadow
           // Hide mesh in wireframe mode
           visible={viewMode !== ViewMode.WIREFRAME}
-          // 🔴 NEW: Click handler for panel edit mode
+          // Face edit mode click handler
           onClick={(e) => {
-            if (isPanelEditMode) {
+            if (isFaceEditMode) {
               e.stopPropagation();
-              if (onPanelSelect) {
-                onPanelSelect({
-                  faceIndex: panelData.faceIndex,
-                  position: panelData.position,
-                  size: panelData.size,
-                  panelOrder: panelData.panelOrder,
-                });
-                console.log(
-                  `🔴 Panel ${panelData.faceIndex} clicked for editing`
-                );
+              if (onFaceSelect) {
+                onFaceSelect(panelData.faceIndex);
+                console.log(`🎯 Face ${panelData.faceIndex} selected via panel`);
               }
             }
           }}
         >
-          {isPanelEditMode ? (
+          {isFaceEditMode && selectedFaceIndex === panelData.faceIndex ? (
             <meshPhysicalMaterial
-              color="#dc2626"
+              color="#f97316" // Orange for selected face
               roughness={0.6}
               metalness={0.02}
               transparent={viewMode === ViewMode.TRANSPARENT}
@@ -1184,12 +1185,12 @@ const PanelManager: React.FC<PanelManagerProps> = ({
           scale={shape.scale}
           visible={
             viewMode === ViewMode.WIREFRAME ||
-            isPanelEditMode ||
+            (isFaceEditMode && selectedFaceIndex === panelData.faceIndex) ||
             selectedFaces.includes(panelData.faceIndex)
           }
         >
           <lineBasicMaterial
-            color={isPanelEditMode ? '#7f1d1d' : getPanelEdgeColor()}
+            color={(isFaceEditMode && selectedFaceIndex === panelData.faceIndex) ? '#ea580c' : getPanelEdgeColor()}
             linewidth={getPanelEdgeLineWidth()}
             transparent={
               viewMode === ViewMode.TRANSPARENT ||
