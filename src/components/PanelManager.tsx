@@ -945,7 +945,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const handleFaceHover = (faceIndex: number | null) => {
-    if ((isAddPanelMode || isPanelEditMode) && onFaceHover) {
+    if ((isAddPanelMode || isFaceEditMode) && onFaceHover) {
       onFaceHover(faceIndex);
     }
   };

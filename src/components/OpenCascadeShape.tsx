@@ -427,7 +427,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         meshRef.current &&
         !isEditMode &&
         !isAddPanelMode &&
-        !isPanelEditMode && (
+        !isFaceEditMode && (
           <TransformControls
             ref={transformRef}
             object={meshRef.current}
