@@ -5,9 +5,13 @@ export interface FaceHighlight {
   mesh: THREE.Mesh;
   faceIndex: number;
   shapeId: string;
+  triangles: number[];
+  mergedGeometry?: THREE.BufferGeometry;
 }
 
 let currentHighlight: FaceHighlight | null = null;
+let selectedTriangles: Set<number> = new Set();
+let currentShapeId: string | null = null;
 
 /**
  * BufferGeometry'den face vertices'lerini al
@@ -82,6 +86,114 @@ export const getFaceArea = (vertices: THREE.Vector3[]): number => {
 };
 
 /**
+ * İki üçgenin aynı yüzeyde olup olmadığını kontrol et
+ */
+export const areTrianglesOnSameSurface = (
+  geometry: THREE.BufferGeometry,
+  triangle1Index: number,
+  triangle2Index: number,
+  normalThreshold: number = 0.95,
+  distanceThreshold: number = 10
+): boolean => {
+  const vertices1 = getFaceVertices(geometry, triangle1Index);
+  const vertices2 = getFaceVertices(geometry, triangle2Index);
+  
+  if (vertices1.length < 3 || vertices2.length < 3) return false;
+  
+  const normal1 = getFaceNormal(vertices1);
+  const normal2 = getFaceNormal(vertices2);
+  const center1 = getFaceCenter(vertices1);
+  const center2 = getFaceCenter(vertices2);
+  
+  // Normal benzerliği kontrolü
+  const normalSimilarity = Math.abs(normal1.dot(normal2));
+  
+  // Mesafe kontrolü
+  const distance = center1.distanceTo(center2);
+  
+  return normalSimilarity > normalThreshold && distance < distanceThreshold;
+};
+
+/**
+ * Verilen üçgenle aynı yüzeydeki tüm üçgenleri bul
+ */
+export const findConnectedTriangles = (
+  geometry: THREE.BufferGeometry,
+  startTriangleIndex: number,
+  normalThreshold: number = 0.95,
+  distanceThreshold: number = 50
+): number[] => {
+  const connectedTriangles = new Set<number>();
+  const toCheck = [startTriangleIndex];
+  const checked = new Set<number>();
+  
+  // Toplam üçgen sayısını hesapla
+  const totalTriangles = geometry.index 
+    ? geometry.index.count / 3 
+    : geometry.attributes.position.count / 3;
+  
+  while (toCheck.length > 0) {
+    const currentIndex = toCheck.pop()!;
+    
+    if (checked.has(currentIndex)) continue;
+    checked.add(currentIndex);
+    connectedTriangles.add(currentIndex);
+    
+    // Diğer tüm üçgenlerle karşılaştır
+    for (let i = 0; i < totalTriangles; i++) {
+      if (i === currentIndex || checked.has(i)) continue;
+      
+      if (areTrianglesOnSameSurface(geometry, currentIndex, i, normalThreshold, distanceThreshold)) {
+        toCheck.push(i);
+      }
+    }
+  }
+  
+  return Array.from(connectedTriangles);
+};
+
+/**
+ * Birden fazla üçgenden birleşik geometri oluştur
+ */
+export const createMergedGeometry = (
+  geometry: THREE.BufferGeometry,
+  triangleIndices: number[],
+  worldMatrix: THREE.Matrix4
+): THREE.BufferGeometry => {
+  const allVertices: THREE.Vector3[] = [];
+  const allIndices: number[] = [];
+  
+  triangleIndices.forEach((triangleIndex, i) => {
+    const vertices = getFaceVertices(geometry, triangleIndex);
+    
+    // World space'e dönüştür
+    const worldVertices = vertices.map(v => v.clone().applyMatrix4(worldMatrix));
+    
+    // Vertices'leri ekle
+    allVertices.push(...worldVertices);
+    
+    // İndeksleri ekle
+    const baseIndex = i * 3;
+    allIndices.push(baseIndex, baseIndex + 1, baseIndex + 2);
+  });
+  
+  // Yeni geometri oluştur
+  const mergedGeometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(allVertices.length * 3);
+  
+  allVertices.forEach((vertex, i) => {
+    positions[i * 3] = vertex.x;
+    positions[i * 3 + 1] = vertex.y;
+    positions[i * 3 + 2] = vertex.z;
+  });
+  
+  mergedGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  mergedGeometry.setIndex(allIndices);
+  mergedGeometry.computeVertexNormals();
+  
+  return mergedGeometry;
+};
+/**
  * Yüzey highlight mesh'i oluştur
  */
 export const createFaceHighlight = (
@@ -128,9 +240,18 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
     scene.remove(currentHighlight.mesh);
     currentHighlight.mesh.geometry.dispose();
     (currentHighlight.mesh.material as THREE.Material).dispose();
+    
+    if (currentHighlight.mergedGeometry) {
+      currentHighlight.mergedGeometry.dispose();
+    }
+    
     currentHighlight = null;
     console.log('🎯 Face highlight cleared');
   }
+  
+  // Seçimleri temizle
+  selectedTriangles.clear();
+  currentShapeId = null;
 };
 
 /**
@@ -143,52 +264,72 @@ export const highlightFace = (
   color: number = 0xff6b35,
   opacity: number = 0.6
 ): FaceHighlight | null => {
-  // Önce eski highlight'ı temizle
-  clearFaceHighlight(scene);
+  const mesh = hit.object as THREE.Mesh;
+  const geometry = mesh.geometry as THREE.BufferGeometry;
   
   if (!hit.face || hit.faceIndex === undefined) {
     console.warn('No face data in intersection');
     return null;
   }
   
-  const mesh = hit.object as THREE.Mesh;
-  const geometry = mesh.geometry as THREE.BufferGeometry;
-  
-  // Face vertices'lerini al
-  const vertices = getFaceVertices(geometry, hit.faceIndex);
-  if (vertices.length === 0) {
-    console.warn('Could not get face vertices');
-    return null;
+  // Yeni shape'e geçildiyse seçimleri sıfırla
+  if (currentShapeId !== shape.id) {
+    clearFaceHighlight(scene);
+    selectedTriangles.clear();
+    currentShapeId = shape.id;
   }
   
-  // World matrix'i al
+  // Bu üçgenle bağlantılı tüm üçgenleri bul
+  const connectedTriangles = findConnectedTriangles(geometry, hit.faceIndex);
+  
+  console.log(`🎯 Found ${connectedTriangles.length} connected triangles for face ${hit.faceIndex}`);
+  
+  // Yeni üçgenleri seçime ekle
+  connectedTriangles.forEach(triangleIndex => {
+    selectedTriangles.add(triangleIndex);
+  });
+  
+  // Önce eski highlight'ı temizle
+  clearFaceHighlight(scene);
+  
+  // Tüm seçili üçgenlerden birleşik geometri oluştur
   const worldMatrix = mesh.matrixWorld.clone();
+  const mergedGeometry = createMergedGeometry(geometry, Array.from(selectedTriangles), worldMatrix);
+  
+  // Highlight material
+  const material = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: opacity,
+    side: THREE.DoubleSide,
+    depthTest: true,
+    depthWrite: false
+  });
   
   // Highlight mesh'i oluştur
-  const highlightMesh = createFaceHighlight(vertices, worldMatrix, color, opacity);
+  const highlightMesh = new THREE.Mesh(mergedGeometry, material);
   
   // Sahneye ekle
   scene.add(highlightMesh);
   
-  // Face bilgilerini logla
-  const faceNormal = getFaceNormal(vertices);
-  const faceCenter = getFaceCenter(vertices);
-  const faceArea = getFaceArea(vertices);
-  
-  console.log('🎯 Face highlighted:', {
+  // Seçim bilgilerini logla
+  console.log('🎯 Surface highlighted:', {
     shapeId: shape.id,
     shapeType: shape.type,
-    faceIndex: hit.faceIndex,
-    faceCenter: faceCenter.toArray().map(v => v.toFixed(1)),
-    faceNormal: faceNormal.toArray().map(v => v.toFixed(2)),
-    faceArea: faceArea.toFixed(1),
-    vertexCount: vertices.length
+    selectedTriangles: selectedTriangles.size,
+    newTriangles: connectedTriangles.length,
+    totalArea: Array.from(selectedTriangles).reduce((total, triangleIndex) => {
+      const vertices = getFaceVertices(geometry, triangleIndex);
+      return total + getFaceArea(vertices);
+    }, 0).toFixed(1)
   });
   
   currentHighlight = {
     mesh: highlightMesh,
     faceIndex: hit.faceIndex,
-    shapeId: shape.id
+    shapeId: shape.id,
+    triangles: Array.from(selectedTriangles),
+    mergedGeometry: mergedGeometry
   };
   
   return currentHighlight;
