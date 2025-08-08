@@ -192,8 +192,9 @@ const getExtrudedShapeFaces = (shape: Shape): FaceInfo[] => {
   const faces: FaceInfo[] = [];
   
   if (!shape.originalPoints || shape.originalPoints.length < 3) {
-    console.warn('No original points found for extruded shape');
-    return [];
+    console.warn('No original points found for extruded shape, using fallback geometry analysis');
+    // Fallback: Analyze the actual geometry
+    return getGeometryBasedFaces(shape);
   }
   
   const points = shape.originalPoints;
@@ -285,6 +286,8 @@ export const findFaceAtIntersection = (
   console.log(`🎯 Intersection normal: [${localNormal.x.toFixed(2)}, ${localNormal.y.toFixed(2)}, ${localNormal.z.toFixed(2)}]`);
   console.log(`🎯 Shape position: [${shapePosition.x.toFixed(1)}, ${shapePosition.y.toFixed(1)}, ${shapePosition.z.toFixed(1)}]`);
   console.log(`🎯 Local point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
+  console.log(`🎯 Available faces: ${faces.length} faces for ${shape.type}`);
+  console.log(`🎯 Face names: ${faces.map(f => f.name).join(', ')}`);
   
   // Find face with normal most similar to intersection normal
   const faceMatches = faces.map(face => {
@@ -299,7 +302,7 @@ export const findFaceAtIntersection = (
       normalSimilarity: normalSimilarity,
       distanceToCenter: distanceToCenter,
       projectionDistance: projectionDistance,
-      isOnFace: projectionDistance < 100, // 100mm threshold
+      isOnFace: projectionDistance < 200, // 200mm threshold for polylines
       score: normalSimilarity * 2 + (1 / (distanceToCenter + 1)) // Combined score
     };
   }).sort((a, b) => b.score - a.score); // Sort by highest score
@@ -310,7 +313,7 @@ export const findFaceAtIntersection = (
   
   // Return the face with highest score (best normal match + closest distance)
   const bestMatch = faceMatches[0];
-  if (bestMatch && bestMatch.normalSimilarity > 0.3) { // Minimum similarity threshold
+  if (bestMatch && bestMatch.normalSimilarity > 0.1) { // Lower threshold for complex shapes
     console.log(`🎯 Best face match: ${bestMatch.name} (${bestMatch.index}) with score ${bestMatch.score.toFixed(2)}`);
     return bestMatch.index;
   }
@@ -384,7 +387,16 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
           const shapeGeom = new THREE.Shape(points2D);
           geometry = new THREE.ShapeGeometry(shapeGeom);
         } else {
-          geometry = new THREE.PlaneGeometry(100, 100);
+          // Fallback: Use bounding box dimensions
+          shape.geometry.computeBoundingBox();
+          const bbox = shape.geometry.boundingBox;
+          if (bbox) {
+            const w = (bbox.max.x - bbox.min.x) * shape.scale[0];
+            const d = (bbox.max.z - bbox.min.z) * shape.scale[2];
+            geometry = new THREE.PlaneGeometry(w, d);
+          } else {
+            geometry = new THREE.PlaneGeometry(100, 100);
+          }
         }
       } else { // Side faces
         const h = (shape.parameters.height || 500) * shape.scale[1];
@@ -402,7 +414,16 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
           width = edgeLength;
           height = h;
         } else {
-          width = 100;
+          // Fallback: Use average edge length from bounding box
+          shape.geometry.computeBoundingBox();
+          const bbox = shape.geometry.boundingBox;
+          if (bbox) {
+            const w = (bbox.max.x - bbox.min.x) * shape.scale[0];
+            const d = (bbox.max.z - bbox.min.z) * shape.scale[2];
+            width = Math.max(w, d) / 4; // Approximate edge length
+          } else {
+            width = 100;
+          }
           height = h;
         }
       }
@@ -471,4 +492,83 @@ const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   }
   
   return Math.abs(area) / 2;
+};
+
+/**
+ * Fallback geometry-based face detection for shapes without originalPoints
+ */
+const getGeometryBasedFaces = (shape: Shape): FaceInfo[] => {
+  const faces: FaceInfo[] = [];
+  
+  // Get geometry bounding box
+  shape.geometry.computeBoundingBox();
+  const bbox = shape.geometry.boundingBox;
+  
+  if (!bbox) {
+    console.warn('No bounding box available for geometry-based face detection');
+    return [];
+  }
+  
+  const width = (bbox.max.x - bbox.min.x) * shape.scale[0];
+  const height = (bbox.max.y - bbox.min.y) * shape.scale[1];
+  const depth = (bbox.max.z - bbox.min.z) * shape.scale[2];
+  
+  const hw = width / 2;
+  const hh = height / 2;
+  const hd = depth / 2;
+  
+  // Create basic 6 faces based on bounding box
+  faces.push(
+    {
+      index: 0,
+      name: 'Top',
+      center: new THREE.Vector3(0, hh, 0),
+      normal: new THREE.Vector3(0, 1, 0),
+      area: width * depth,
+      vertices: []
+    },
+    {
+      index: 1,
+      name: 'Bottom',
+      center: new THREE.Vector3(0, -hh, 0),
+      normal: new THREE.Vector3(0, -1, 0),
+      area: width * depth,
+      vertices: []
+    },
+    {
+      index: 2,
+      name: 'Front',
+      center: new THREE.Vector3(0, 0, hd),
+      normal: new THREE.Vector3(0, 0, 1),
+      area: width * height,
+      vertices: []
+    },
+    {
+      index: 3,
+      name: 'Back',
+      center: new THREE.Vector3(0, 0, -hd),
+      normal: new THREE.Vector3(0, 0, -1),
+      area: width * height,
+      vertices: []
+    },
+    {
+      index: 4,
+      name: 'Right',
+      center: new THREE.Vector3(hw, 0, 0),
+      normal: new THREE.Vector3(1, 0, 0),
+      area: height * depth,
+      vertices: []
+    },
+    {
+      index: 5,
+      name: 'Left',
+      center: new THREE.Vector3(-hw, 0, 0),
+      normal: new THREE.Vector3(-1, 0, 0),
+      area: height * depth,
+      vertices: []
+    }
+  );
+  
+  console.log(`🎯 Generated ${faces.length} geometry-based faces for ${shape.type}`);
+  return faces;
 };
