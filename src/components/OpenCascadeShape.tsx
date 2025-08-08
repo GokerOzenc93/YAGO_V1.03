@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode } from '../store/appStore';
-import { findClosestFaceToPoint, getFaceGeometry } from '../utils/faceSelection';
+import { findFaceAtIntersection, getFaceGeometry } from '../utils/faceSelection';
 
 interface Props {
   shape: Shape;
@@ -138,17 +138,23 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      // Get intersection point from raycaster
+      // Get intersection data from raycaster
       const intersectionPoint = e.point;
-      if (!intersectionPoint) return;
+      const intersectionNormal = e.face?.normal;
+      
+      if (!intersectionPoint || !intersectionNormal) {
+        console.warn('🎯 No intersection data available');
+        return;
+      }
       
       console.log(`🎯 Face Edit Click: World position [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
+      console.log(`🎯 Face Edit Click: Face normal [${intersectionNormal.x.toFixed(2)}, ${intersectionNormal.y.toFixed(2)}, ${intersectionNormal.z.toFixed(2)}]`);
       
-      // Find closest face using the new face selection utility
-      const closestFace = findClosestFaceToPoint(intersectionPoint, shape);
-      if (closestFace !== null && onFaceSelect) {
-        onFaceSelect(closestFace);
-        console.log(`🎯 Face ${closestFace} selected in Face Edit mode`);
+      // Find face at intersection using raycast data
+      const detectedFace = findFaceAtIntersection(intersectionPoint, intersectionNormal, shape);
+      if (detectedFace !== null && onFaceSelect) {
+        onFaceSelect(detectedFace);
+        console.log(`🎯 Face ${detectedFace} selected in Face Edit mode using raycast intersection`);
       }
       return;
     }

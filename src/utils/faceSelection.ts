@@ -265,48 +265,58 @@ const getExtrudedShapeFaces = (shape: Shape): FaceInfo[] => {
 };
 
 /**
- * Find closest face to a world point
+ * Find face at intersection point using raycast data
  */
-export const findClosestFaceToPoint = (worldPoint: THREE.Vector3, shape: Shape): number | null => {
+export const findFaceAtIntersection = (
+  intersectionPoint: THREE.Vector3, 
+  intersectionNormal: THREE.Vector3,
+  shape: Shape
+): number | null => {
   const faces = getFaceInfo(shape);
   if (faces.length === 0) return null;
   
   const shapePosition = new THREE.Vector3(...shape.position);
   const localPoint = worldPoint.clone().sub(shapePosition);
+  const localNormal = intersectionNormal.clone().normalize();
   
-  console.log(`🎯 Finding closest face for ${shape.type}:`);
-  console.log(`🎯 World point: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
+  console.log(`🎯 Finding face at intersection for ${shape.type}:`);
+  console.log(`🎯 Intersection point: [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
+  console.log(`🎯 Intersection normal: [${localNormal.x.toFixed(2)}, ${localNormal.y.toFixed(2)}, ${localNormal.z.toFixed(2)}]`);
   console.log(`🎯 Shape position: [${shapePosition.x.toFixed(1)}, ${shapePosition.y.toFixed(1)}, ${shapePosition.z.toFixed(1)}]`);
   console.log(`🎯 Local point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
   
-  const faceDistances = faces.map(face => {
+  // Find face with normal most similar to intersection normal
+  const faceMatches = faces.map(face => {
+    const normalSimilarity = Math.abs(localNormal.dot(face.normal));
     const distanceToCenter = localPoint.distanceTo(face.center);
-    const pointToCenter = localPoint.clone().sub(face.center);
-    const projectionDistance = Math.abs(pointToCenter.dot(face.normal));
+    const pointToFace = localPoint.clone().sub(face.center);
+    const projectionDistance = Math.abs(pointToFace.dot(face.normal));
     
     return {
       index: face.index,
       name: face.name,
-      distance: distanceToCenter,
+      normalSimilarity: normalSimilarity,
+      distanceToCenter: distanceToCenter,
       projectionDistance: projectionDistance,
-      isOnPlane: projectionDistance < 50 // 50mm threshold
+      isOnFace: projectionDistance < 100, // 100mm threshold
+      score: normalSimilarity * 2 + (1 / (distanceToCenter + 1)) // Combined score
     };
-  }).sort((a, b) => a.distance - b.distance);
+  }).sort((a, b) => b.score - a.score); // Sort by highest score
   
-  console.log(`🎯 Face distances:`, faceDistances.map(f => 
-    `${f.name}(${f.index}): ${f.distance.toFixed(1)}mm ${f.isOnPlane ? '✓' : '✗'}`
+  console.log(`🎯 Face matches:`, faceMatches.slice(0, 3).map(f => 
+    `${f.name}(${f.index}): similarity=${f.normalSimilarity.toFixed(2)}, dist=${f.distanceToCenter.toFixed(1)}mm, score=${f.score.toFixed(2)} ${f.isOnFace ? '✓' : '✗'}`
   ).join(', '));
   
-  // First try to find a face that the point is actually on
-  const faceOnPlane = faceDistances.find(f => f.isOnPlane);
-  if (faceOnPlane) {
-    console.log(`🎯 Point is on face: ${faceOnPlane.name} (${faceOnPlane.index})`);
-    return faceOnPlane.index;
+  // Return the face with highest score (best normal match + closest distance)
+  const bestMatch = faceMatches[0];
+  if (bestMatch && bestMatch.normalSimilarity > 0.3) { // Minimum similarity threshold
+    console.log(`🎯 Best face match: ${bestMatch.name} (${bestMatch.index}) with score ${bestMatch.score.toFixed(2)}`);
+    return bestMatch.index;
   }
   
-  // If no face is directly under the point, return the closest one
-  const closestFace = faceDistances[0];
-  console.log(`🎯 Closest face: ${closestFace.name} (${closestFace.index}) at ${closestFace.distance.toFixed(1)}mm`);
+  console.log(`🎯 No good face match found, using closest: ${bestMatch.name} (${bestMatch.index})`);
+  return bestMatch.index;
+};
   
   return closestFace.index;
 };
