@@ -10,6 +10,7 @@ export interface Shape {
   parameters: Record<string, any>;
   originalPoints?: THREE.Vector3[]; // For 2D shapes converted to 3D
   is2DShape?: boolean; // Mark if this is a converted 2D shape
+  quaternion?: THREE.Quaternion; // For accurate face calculations
 }
 
 export interface BoxParameters {
