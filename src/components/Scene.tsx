@@ -1017,6 +1017,7 @@ const Scene: React.FC = () => {
               onFaceCycleUpdate={handleFaceCycleUpdate}
               // Face Edit Mode props
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
+              selectedFaceIndex={selectedDynamicFace}
               faceCycleState={faceCycleState}
               setFaceCycleState={setFaceCycleState}
               // NEW: Dynamic face selection props

@@ -951,13 +951,13 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceColor = (faceIndex: number) => {
-    // Dynamic selection highlighting (always active in panel mode)
-    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
-      return '#fbbf24'; // Yellow for dynamically selected face
-    }
     // Face edit mode highlighting
     if (isFaceEditMode && selectedFaceIndex === faceIndex) {
       return '#f97316'; // Orange for selected face
+    }
+    // Dynamic selection highlighting (always active in panel mode)
+    if (isAddPanelMode && selectedDynamicFace === faceIndex) {
+      return '#fbbf24'; // Yellow for dynamically selected face
     }
     if (selectedFaces.includes(faceIndex)) return '#10b981'; // Green for confirmed selected
     if (hoveredFace === faceIndex) return '#eeeeee'; // Gray for hovered
@@ -965,10 +965,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   };
 
   const getFaceOpacity = (faceIndex: number) => {
-    // Hide all face overlays in panel mode - only show blue panel preview
-    if (selectedFaces.includes(faceIndex)) return 0.0;
     // Show selected face in edit mode
     if (isFaceEditMode && selectedFaceIndex === faceIndex) return 0.3;
+    // Hide all face overlays in panel mode - only show blue panel preview
+    if (selectedFaces.includes(faceIndex)) return 0.0;
     if (hoveredFace === faceIndex) return 0.0;
     return 0.001;
   };

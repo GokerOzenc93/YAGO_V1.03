@@ -251,8 +251,27 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [faceCycleState, onFaceCycleUpdate]);
 
   const handleClick = (e: any) => {
+    // Face Edit mode - handle face selection
+    if (isFaceEditMode && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      
+      // Get intersection point from raycaster
+      const intersectionPoint = e.point;
+      if (!intersectionPoint) return;
+      
+      console.log(`🎯 Face Edit Click: World position [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
+      
+      // Find closest face using geometric detection
+      const closestFace = (window as any).findClosestFaceToPoint?.(intersectionPoint, shape);
+      if (closestFace !== null && onFaceSelect) {
+        onFaceSelect(closestFace);
+        console.log(`🎯 Face ${closestFace} selected in Face Edit mode`);
+      }
+      return;
+    }
+    
     // Panel mode is handled by PanelManager component
-    if (isAddPanelMode || isFaceEditMode) {
+    if (isAddPanelMode) {
       return; // Let PanelManager handle this
     }
 
@@ -265,8 +284,15 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
+    // Face Edit mode - prevent context menu
+    if (isFaceEditMode) {
+      e.stopPropagation();
+      e.nativeEvent.preventDefault();
+      return;
+    }
+    
     // Panel mode context menu is handled by PanelManager
-    if (isAddPanelMode || isFaceEditMode) {
+    if (isAddPanelMode) {
       return; // Let PanelManager handle this
     }
 
