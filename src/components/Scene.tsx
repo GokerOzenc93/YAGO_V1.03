@@ -310,6 +310,10 @@ const Scene: React.FC = () => {
     shape: Shape | null;
   }>({ visible: false, position: { x: 0, y: 0 }, shape: null });
 
+  // Panel-related state variables (now unused but kept for compatibility)
+  const [shapePanels, setShapePanels] = useState<{[shapeId: string]: any[]}>({});
+  const [selectedFaces, setSelectedFaces] = useState<any[]>([]);
+
   // 🎯 PERSISTENT PANEL MANAGER STATE - Panels Mode kapansa bile paneller kalır
   // 🔴 NEW: Panel Edit Mode State
   const [isFaceEditMode, setIsFaceEditMode] = useState(false);
