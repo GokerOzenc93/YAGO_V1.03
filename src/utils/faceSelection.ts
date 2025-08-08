@@ -1,5 +1,26 @@
 import * as THREE from 'three';
-import { Shape } from '../types/shapes';
+// Assuming 'Shape' type is defined in '../types/shapes'
+// import { Shape } from '../types/shapes'; 
+
+// Placeholder for Shape type if not available
+// You should ensure your actual Shape type definition is correctly imported or defined.
+interface Shape {
+  type: 'box' | 'rectangle2d' | 'cylinder' | 'circle2d' | 'polyline2d' | 'polygon2d' | 'polyline3d' | 'polygon3d';
+  parameters: {
+    width?: number;
+    height?: number;
+    depth?: number;
+    radius?: number;
+    [key: string]: any; // Allows for other parameters
+  };
+  scale: [number, number, number];
+  position: [number, number, number];
+  rotation: [number, number, number]; // Euler angles
+  quaternion?: THREE.Quaternion; // Preferred for rotations
+  originalPoints?: THREE.Vector3[]; // For extruded shapes
+  geometry: THREE.BufferGeometry; // Reference to the actual THREE.js geometry
+}
+
 
 export interface FaceInfo {
   index: number;
@@ -171,7 +192,8 @@ const getCylinderFaces = (shape: Shape): FaceInfo[] => {
       index: i + 2,
       name: `Side ${i + 1}`,
       center: new THREE.Vector3(x, 0, z),
-      normal: new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)),
+      // Normal points outwards from the center of the cylinder at this segment
+      normal: new THREE.Vector3(Math.cos(angle + segmentAngle / 2), 0, Math.sin(angle + segmentAngle / 2)).normalize(),
       area: 2 * Math.PI * r * h / segments,
       vertices: [
         new THREE.Vector3(x, -hh, z),
@@ -228,8 +250,8 @@ const getExtrudedShapeFaces = (shape: Shape): FaceInfo[] => {
   });
   
   // Side faces
-  const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0]) 
-    ? points.slice(0, -1) 
+  const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0])  
+    ? points.slice(0, -1)  
     : points;
   
   for (let i = 0; i < uniquePoints.length; i++) {
@@ -242,6 +264,7 @@ const getExtrudedShapeFaces = (shape: Shape): FaceInfo[] => {
       (current.z + next.z) / 2
     );
     
+    // Calculate normal perpendicular to the edge in the XZ plane
     const edgeVector = new THREE.Vector3().subVectors(next, current);
     const normal = new THREE.Vector3(-edgeVector.z, 0, edgeVector.x).normalize();
     
@@ -267,79 +290,119 @@ const getExtrudedShapeFaces = (shape: Shape): FaceInfo[] => {
 
 /**
  * Find face at intersection point using raycast data
+ * @param intersectionPoint The intersection point in world coordinates.
+ * @param intersectionNormal The normal at the intersection point in world coordinates.
+ * @param shape The shape object.
+ * @param raycastIntersection (Optional) The full THREE.Intersection object from the raycast.
+ * @returns The index of the matched face, or null if no good match is found.
  */
 export const findFaceAtIntersection = (
   intersectionPoint: THREE.Vector3, 
   intersectionNormal: THREE.Vector3,
-  shape: Shape
+  shape: Shape,
+  raycastIntersection?: THREE.Intersection // Mark as optional
 ): number | null => {
   const faces = getFaceInfo(shape);
   if (faces.length === 0) return null;
   
   const shapePosition = new THREE.Vector3(...shape.position);
   const worldPoint = intersectionPoint.clone();
-  const localPoint = worldPoint.clone().sub(shapePosition);
-  const localNormal = intersectionNormal.clone().normalize();
+  
+  // Ensure shape.quaternion is available or convert from Euler angles
+  const shapeQuaternion = shape.quaternion || new THREE.Quaternion().setFromEuler(new THREE.Euler(...shape.rotation));
+
+  // Transform world intersection normal to shape's local space
+  const localIntersectionNormal = intersectionNormal.clone().applyQuaternion(shapeQuaternion.clone().invert()).normalize();
+
+  // Transform world intersection point to shape's local space
+  // This is crucial for comparing with face.center which is in local space
+  const localPoint = worldPoint.clone().sub(shapePosition).applyQuaternion(shapeQuaternion.clone().invert());
   
   console.log(`🎯 Finding face at intersection for ${shape.type}:`);
-  console.log(`🎯 Intersection point: [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
-  console.log(`🎯 Intersection normal: [${localNormal.x.toFixed(2)}, ${localNormal.y.toFixed(2)}, ${localNormal.z.toFixed(2)}]`);
+  console.log(`🎯 Intersection point (world): [${intersectionPoint.x.toFixed(1)}, ${intersectionPoint.y.toFixed(1)}, ${intersectionPoint.z.toFixed(1)}]`);
+  console.log(`🎯 Intersection normal (world): [${intersectionNormal.x.toFixed(2)}, ${intersectionNormal.y.toFixed(2)}, ${intersectionNormal.z.toFixed(2)}]`);
+  console.log(`🎯 Local intersection point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
+  console.log(`🎯 Local intersection normal: [${localIntersectionNormal.x.toFixed(2)}, ${localIntersectionNormal.y.toFixed(2)}, ${localIntersectionNormal.z.toFixed(2)}]`);
   console.log(`🎯 Shape position: [${shapePosition.x.toFixed(1)}, ${shapePosition.y.toFixed(1)}, ${shapePosition.z.toFixed(1)}]`);
-  console.log(`🎯 Local point: [${localPoint.x.toFixed(1)}, ${localPoint.y.toFixed(1)}, ${localPoint.z.toFixed(1)}]`);
   console.log(`🎯 Available faces: ${faces.length} faces for ${shape.type}`);
   console.log(`🎯 Face names: ${faces.map(f => f.name).join(', ')}`);
-  
-  // Find face with normal most similar to intersection normal
-  const faceMatches = faces.map(face => {
-    // Calculate normal similarity (higher = better match)
-    const normalSimilarity = Math.abs(localNormal.dot(face.normal));
+
+  // Prioritize direct raycast face normal if available and a good match
+  // This assumes raycastIntersection.face.normal is in the object's local space
+  if (raycastIntersection && raycastIntersection.face) {
+    const raycastFaceNormal = raycastIntersection.face.normal; 
     
-    // Calculate distance from intersection point to face center
+    const directFaceMatches = faces.map(face => {
+      const similarity = Math.abs(raycastFaceNormal.dot(face.normal));
+      return { index: face.index, name: face.name, similarity: similarity };
+    }).sort((a, b) => b.similarity - a.similarity);
+
+    const bestDirectMatch = directFaceMatches[0];
+    if (bestDirectMatch && bestDirectMatch.similarity > 0.95) { // High threshold for direct match
+      console.log(`🎯 Direct raycast face match: ${bestDirectMatch.name} (${bestDirectMatch.index}) with similarity ${bestDirectMatch.similarity.toFixed(3)}`);
+      return bestDirectMatch.index;
+    } else if (bestDirectMatch && bestDirectMatch.similarity > 0.5) { // Lower threshold, but still a direct hint
+        console.log(`🎯 Direct raycast face suggested (medium confidence): ${bestDirectMatch.name} (${bestDirectMatch.index}) with similarity ${bestDirectMatch.similarity.toFixed(3)}`);
+        // We'll let the detailed heuristic below confirm this if it's not a strong match
+    }
+  }
+
+  // Find face with normal most similar to local intersection normal (heuristic approach)
+  const faceMatches = faces.map(face => {
+    // Calculate normal similarity (higher = better match) using local intersection normal
+    const normalSimilarity = Math.abs(localIntersectionNormal.dot(face.normal));
+    
+    // Calculate distance from local intersection point to face center
     const distanceToCenter = localPoint.distanceTo(face.center);
     
     // Calculate how far the point is from the face plane
-    const pointToFace = localPoint.clone().sub(face.center);
-    const projectionDistance = Math.abs(pointToFace.dot(face.normal));
+    // Project localPoint onto the face's normal from the face's center
+    const pointToFaceVector = localPoint.clone().sub(face.center);
+    const projectionDistance = Math.abs(pointToFaceVector.dot(face.normal));
     
-    // Check if point is reasonably close to the face
-    const isNearFace = projectionDistance < 300; // 300mm threshold
+    // Check if point is reasonably close to the face plane
+    const isNearFacePlane = projectionDistance < 50; // Smaller threshold for proximity to plane
     
-    // Combined score: prioritize normal similarity, then distance
-    const normalWeight = 10; // High weight for normal similarity
-    const distanceWeight = 1 / (distanceToCenter + 1); // Inverse distance
-    const score = (normalSimilarity * normalWeight) + distanceWeight;
+    // Combined score: prioritize normal similarity, then proximity to plane, then distance to center
+    // Higher normal similarity and closer proximity to the plane are better
+    const normalWeight = 100; // Very high weight for normal similarity
+    const planeProximityWeight = 50; // High weight for closeness to plane
+    const distanceWeight = 1 / (distanceToCenter + 1); // Inverse distance for secondary sorting
     
+    let score = 0;
+    if (isNearFacePlane) {
+        // If near the plane, combine scores
+        score = (normalSimilarity * normalWeight) + (planeProximityWeight * (1 - Math.min(projectionDistance / 50, 1))) + distanceWeight;
+    } else {
+        // If not near the plane, heavily penalize or just use a very low weighted normal similarity
+        score = normalSimilarity * normalWeight * 0.1; // Much lower score if not on the plane
+    }
+
     return {
       index: face.index,
       name: face.name,
       normalSimilarity: normalSimilarity,
       distanceToCenter: distanceToCenter,
       projectionDistance: projectionDistance,
-      isNearFace: isNearFace,
+      isNearFacePlane: isNearFacePlane,
       score: score
     };
-  }).sort((a, b) => {
-    // First sort by normal similarity (most important)
-    if (Math.abs(b.normalSimilarity - a.normalSimilarity) > 0.1) {
-      return b.normalSimilarity - a.normalSimilarity;
-    }
-    // Then by distance (closer is better)
-    return a.distanceToCenter - b.distanceToCenter;
-  });
-  
-  console.log(`🎯 Face matches:`, faceMatches.slice(0, 3).map(f => 
-    `${f.name}(${f.index}): similarity=${f.normalSimilarity.toFixed(3)}, dist=${f.distanceToCenter.toFixed(1)}mm, proj=${f.projectionDistance.toFixed(1)}mm ${f.isNearFace ? '✓' : '✗'}`
+  }).sort((a, b) => b.score - a.score); // Sort by combined score
+
+  console.log(`🎯 Face matches (sorted by score):`, faceMatches.slice(0, 3).map(f => 
+    `${f.name}(${f.index}): score=${f.score.toFixed(2)}, sim=${f.normalSimilarity.toFixed(3)}, dist=${f.distanceToCenter.toFixed(1)}mm, proj=${f.projectionDistance.toFixed(1)}mm ${f.isNearFacePlane ? '✓' : '✗'}`
   ).join(', '));
   
-  // Return the face with best normal similarity
+  // Return the face with the best score, with a reasonable minimum similarity
   const bestMatch = faceMatches[0];
-  if (bestMatch && bestMatch.normalSimilarity > 0.05) { // Very low threshold for complex shapes
+  if (bestMatch && bestMatch.normalSimilarity > 0.05 && bestMatch.isNearFacePlane) { // Ensure it's on the plane and normal matches
     console.log(`🎯 Best face match: ${bestMatch.name} (${bestMatch.index}) with similarity ${bestMatch.normalSimilarity.toFixed(3)}`);
     return bestMatch.index;
   }
   
-  console.log(`🎯 No good face match found (similarity too low), using closest: ${bestMatch?.name} (${bestMatch?.index})`);
-  return bestMatch?.index || 0;
+  console.log(`🎯 No sufficiently good face match found via heuristics. Returning null.`);
+  // As a last resort, if no suitable face is found, return null.
+  return bestMatch?.index || null; 
 };
 
 /**
@@ -354,12 +417,12 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
   const face = faces.find(f => f.index === faceIndex);
   
   if (!face) return null;
-  
+
   let geometry: THREE.BufferGeometry;
   
   console.log(`🎯 Creating face geometry for ${shape.type}, face ${faceIndex} (${face.name})`);
-  console.log(`🎯 Face center: [${face.center.x.toFixed(1)}, ${face.center.y.toFixed(1)}, ${face.center.z.toFixed(1)}]`);
-  console.log(`🎯 Face normal: [${face.normal.x.toFixed(2)}, ${face.normal.y.toFixed(2)}, ${face.normal.z.toFixed(2)}]`);
+  console.log(`🎯 Face center (local): [${face.center.x.toFixed(1)}, ${face.center.y.toFixed(1)}, ${face.center.z.toFixed(1)}]`);
+  console.log(`🎯 Face normal (local): [${face.normal.x.toFixed(2)}, ${face.normal.y.toFixed(2)}, ${face.normal.z.toFixed(2)}]`);
   console.log(`🎯 Face area: ${face.area.toFixed(1)}mm²`);
   
   switch (shape.type) {
@@ -377,7 +440,7 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
       } else { // Left/Right
         geometry = new THREE.PlaneGeometry(scaledD, scaledH);
       }
-      console.log(`🎯 Box face geometry: ${scaledW}x${scaledH}x${scaledD}mm`);
+      console.log(`🎯 Box face geometry: ${scaledW.toFixed(1)}x${scaledH.toFixed(1)}x${scaledD.toFixed(1)}mm`);
       break;
     }
     
@@ -389,12 +452,12 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
       
       if (faceIndex === 0 || faceIndex === 1) { // Top/Bottom
         geometry = new THREE.CircleGeometry(scaledR, 32);
-        console.log(`🎯 Cylinder top/bottom: radius ${scaledR}mm`);
+        console.log(`🎯 Cylinder top/bottom: radius ${scaledR.toFixed(1)}mm`);
       } else { // Side segments
         const segmentAngle = (Math.PI * 2) / 8;
         const segmentWidth = 2 * scaledR * Math.sin(segmentAngle / 2);
         geometry = new THREE.PlaneGeometry(segmentWidth, scaledH);
-        console.log(`🎯 Cylinder side segment: ${segmentWidth.toFixed(1)}x${scaledH}mm`);
+        console.log(`🎯 Cylinder side segment: ${segmentWidth.toFixed(1)}x${scaledH.toFixed(1)}mm`);
       }
       break;
     }
@@ -409,9 +472,9 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
         // Create geometry from original points
         if (shape.originalPoints && shape.originalPoints.length >= 3) {
           // Convert 3D points to 2D for shape geometry
-          const uniquePoints = shape.originalPoints.length > 2 && 
-            shape.originalPoints[shape.originalPoints.length - 1].equals(shape.originalPoints[0]) 
-            ? shape.originalPoints.slice(0, -1) 
+          const uniquePoints = shape.originalPoints.length > 2 &&  
+            shape.originalPoints[shape.originalPoints.length - 1].equals(shape.originalPoints[0])  
+            ? shape.originalPoints.slice(0, -1)  
             : shape.originalPoints;
           
           const points2D = uniquePoints.map(p => new THREE.Vector2(p.x, p.z));
@@ -435,9 +498,9 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
       } else { // Side faces
         if (shape.originalPoints && faceIndex - 2 < shape.originalPoints.length) {
           const i = faceIndex - 2;
-          const uniquePoints = shape.originalPoints.length > 2 && 
-            shape.originalPoints[shape.originalPoints.length - 1].equals(shape.originalPoints[0]) 
-            ? shape.originalPoints.slice(0, -1) 
+          const uniquePoints = shape.originalPoints.length > 2 &&  
+            shape.originalPoints[shape.originalPoints.length - 1].equals(shape.originalPoints[0])  
+            ? shape.originalPoints.slice(0, -1)  
             : shape.originalPoints;
           
           const current = uniquePoints[i];
@@ -445,7 +508,7 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
           const edgeLength = current.distanceTo(next);
           
           geometry = new THREE.PlaneGeometry(edgeLength, h);
-          console.log(`🎯 Polyline side ${i + 1}: ${edgeLength.toFixed(1)}x${h}mm`);
+          console.log(`🎯 Polyline side ${i + 1}: ${edgeLength.toFixed(1)}x${h.toFixed(1)}mm`);
         } else {
           // Fallback: Use average edge length from bounding box
           shape.geometry.computeBoundingBox();
@@ -455,43 +518,60 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
             const d = (bbox.max.z - bbox.min.z) * shape.scale[2];
             const avgEdgeLength = Math.max(w, d) / 4; // Approximate edge length
             geometry = new THREE.PlaneGeometry(avgEdgeLength, h);
-            console.log(`🎯 Polyline fallback side: ${avgEdgeLength.toFixed(1)}x${h}mm`);
+            console.log(`🎯 Polyline fallback side: ${avgEdgeLength.toFixed(1)}x${h.toFixed(1)}mm`);
           } else {
             geometry = new THREE.PlaneGeometry(100, h);
-            console.log(`🎯 Polyline default side: 100x${h}mm`);
+            console.log(`🎯 Polyline default side: 100x${h.toFixed(1)}mm`);
           }
         }
       }
       break;
     }
+    default:
+      console.warn(`Geometry creation not implemented for shape type: ${shape.type}`);
+      return null;
   }
   
-  // Calculate rotation based on face normal
-  const rotation = new THREE.Euler();
-  const normal = face.normal;
+  // Calculate transformation for the face overlay using matrix
   
-  if (Math.abs(normal.y) > 0.9) {
-    // Top/Bottom faces
-    rotation.x = normal.y > 0 ? -Math.PI / 2 : Math.PI / 2;
-  } else if (Math.abs(normal.z) > 0.9) {
-    // Front/Back faces
-    rotation.y = normal.z > 0 ? 0 : Math.PI;
-  } else if (Math.abs(normal.x) > 0.9) {
-    // Left/Right faces
-    rotation.y = normal.x > 0 ? Math.PI / 2 : -Math.PI / 2;
-  } else {
-    // Angled faces (for extruded shapes)
-    const angle = Math.atan2(normal.x, normal.z);
-    rotation.y = angle;
-  }
+  // Ensure shape.quaternion is available or convert from Euler angles
+  const shapeQuaternion = shape.quaternion || new THREE.Quaternion().setFromEuler(new THREE.Euler(...shape.rotation));
+
+  // Create a matrix from the shape's world position, rotation (quaternion), and scale
+  // This matrix will transform the face's local center and normal into world coordinates
+  const shapeMatrix = new THREE.Matrix4();
+  shapeMatrix.compose(
+    new THREE.Vector3(...shape.position),
+    shapeQuaternion,
+    new THREE.Vector3(...shape.scale)
+  );
+
+  // Transform the face's local center to world coordinates
+  const worldFaceCenter = face.center.clone().applyMatrix4(shapeMatrix);
   
-  // Position the overlay at the face center + shape position
-  const position = face.center.clone().add(new THREE.Vector3(...shape.position));
+  // Transform the face's local normal to world coordinates and normalize it
+  // Normals should only be rotated, not translated or scaled for correct orientation
+  const worldFaceNormal = face.normal.clone().applyQuaternion(shapeQuaternion).normalize();
+
+  // The PlaneGeometry, CircleGeometry, and ShapeGeometry are created in the XY plane,
+  // meaning their default local normal is (0, 0, 1).
+  const sourceNormal = new THREE.Vector3(0, 0, 1);
   
-  console.log(`🎯 Face overlay position: [${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}]`);
-  console.log(`🎯 Face overlay rotation: [${(rotation.x * 180 / Math.PI).toFixed(1)}°, ${(rotation.y * 180 / Math.PI).toFixed(1)}°, ${(rotation.z * 180 / Math.PI).toFixed(1)}°]`);
+  // Create a quaternion that rotates the source normal (default geometry normal)
+  // to the target world face normal. This correctly aligns the plane.
+  const rotationQuaternion = new THREE.Quaternion().setFromUnitVectors(sourceNormal, worldFaceNormal);
   
-  return { geometry, position, rotation };
+  // Convert the quaternion to Euler angles for the return type
+  const finalRotation = new THREE.Euler().setFromQuaternion(rotationQuaternion);
+
+  console.log(`🎯 Face overlay position (world): [${worldFaceCenter.x.toFixed(1)}, ${worldFaceCenter.y.toFixed(1)}, ${worldFaceCenter.z.toFixed(1)}]`);
+  console.log(`🎯 Face overlay rotation (Euler, degrees): [${(finalRotation.x * 180 / Math.PI).toFixed(1)}°, ${(finalRotation.y * 180 / Math.PI).toFixed(1)}°, ${(finalRotation.z * 180 / Math.PI).toFixed(1)}°]`);
+  
+  return { 
+    geometry, 
+    position: worldFaceCenter, 
+    rotation: finalRotation 
+  };
 };
 
 /**
@@ -499,8 +579,8 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
  */
 const calculatePolygonCenter = (points: THREE.Vector3[]): THREE.Vector3 => {
   const center = new THREE.Vector3();
-  const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0]) 
-    ? points.slice(0, -1) 
+  const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0])  
+    ? points.slice(0, -1)  
     : points;
   
   for (const point of uniquePoints) {
@@ -514,8 +594,8 @@ const calculatePolygonCenter = (points: THREE.Vector3[]): THREE.Vector3 => {
 const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   if (points.length < 3) return 0;
   
-  const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0]) 
-    ? points.slice(0, -1) 
+  const uniquePoints = points.length > 2 && points[points.length - 1].equals(points[0])  
+    ? points.slice(0, -1)  
     : points;
   
   let area = 0;
@@ -543,6 +623,7 @@ const getGeometryBasedFaces = (shape: Shape): FaceInfo[] => {
     return [];
   }
   
+  // Ensure bounding box dimensions are correctly scaled
   const width = (bbox.max.x - bbox.min.x) * shape.scale[0];
   const height = (bbox.max.y - bbox.min.y) * shape.scale[1];
   const depth = (bbox.max.z - bbox.min.z) * shape.scale[2];
@@ -556,10 +637,10 @@ const getGeometryBasedFaces = (shape: Shape): FaceInfo[] => {
     {
       index: 0,
       name: 'Top',
-      center: new THREE.Vector3(0, hh, 0),
+      center: new THREE.Vector3(0, hh, 0), // Center in local bbox coordinates
       normal: new THREE.Vector3(0, 1, 0),
       area: width * depth,
-      vertices: []
+      vertices: [] // Vertices for fallback might not be precisely defined
     },
     {
       index: 1,
