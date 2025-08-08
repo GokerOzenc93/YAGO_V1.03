@@ -291,10 +291,23 @@ export const findFaceAtIntersection = (
   
   // Find face with normal most similar to intersection normal
   const faceMatches = faces.map(face => {
+    // Calculate normal similarity (higher = better match)
     const normalSimilarity = Math.abs(localNormal.dot(face.normal));
+    
+    // Calculate distance from intersection point to face center
     const distanceToCenter = localPoint.distanceTo(face.center);
+    
+    // Calculate how far the point is from the face plane
     const pointToFace = localPoint.clone().sub(face.center);
     const projectionDistance = Math.abs(pointToFace.dot(face.normal));
+    
+    // Check if point is reasonably close to the face
+    const isNearFace = projectionDistance < 300; // 300mm threshold
+    
+    // Combined score: prioritize normal similarity, then distance
+    const normalWeight = 10; // High weight for normal similarity
+    const distanceWeight = 1 / (distanceToCenter + 1); // Inverse distance
+    const score = (normalSimilarity * normalWeight) + distanceWeight;
     
     return {
       index: face.index,
@@ -302,24 +315,31 @@ export const findFaceAtIntersection = (
       normalSimilarity: normalSimilarity,
       distanceToCenter: distanceToCenter,
       projectionDistance: projectionDistance,
-      isOnFace: projectionDistance < 200, // 200mm threshold for polylines
-      score: normalSimilarity * 2 + (1 / (distanceToCenter + 1)) // Combined score
+      isNearFace: isNearFace,
+      score: score
     };
-  }).sort((a, b) => b.score - a.score); // Sort by highest score
+  }).sort((a, b) => {
+    // First sort by normal similarity (most important)
+    if (Math.abs(b.normalSimilarity - a.normalSimilarity) > 0.1) {
+      return b.normalSimilarity - a.normalSimilarity;
+    }
+    // Then by distance (closer is better)
+    return a.distanceToCenter - b.distanceToCenter;
+  });
   
   console.log(`🎯 Face matches:`, faceMatches.slice(0, 3).map(f => 
-    `${f.name}(${f.index}): similarity=${f.normalSimilarity.toFixed(2)}, dist=${f.distanceToCenter.toFixed(1)}mm, score=${f.score.toFixed(2)} ${f.isOnFace ? '✓' : '✗'}`
+    `${f.name}(${f.index}): similarity=${f.normalSimilarity.toFixed(3)}, dist=${f.distanceToCenter.toFixed(1)}mm, proj=${f.projectionDistance.toFixed(1)}mm ${f.isNearFace ? '✓' : '✗'}`
   ).join(', '));
   
-  // Return the face with highest score (best normal match + closest distance)
+  // Return the face with best normal similarity
   const bestMatch = faceMatches[0];
-  if (bestMatch && bestMatch.normalSimilarity > 0.1) { // Lower threshold for complex shapes
-    console.log(`🎯 Best face match: ${bestMatch.name} (${bestMatch.index}) with score ${bestMatch.score.toFixed(2)}`);
+  if (bestMatch && bestMatch.normalSimilarity > 0.05) { // Very low threshold for complex shapes
+    console.log(`🎯 Best face match: ${bestMatch.name} (${bestMatch.index}) with similarity ${bestMatch.normalSimilarity.toFixed(3)}`);
     return bestMatch.index;
   }
   
-  console.log(`🎯 No good face match found, using closest: ${bestMatch.name} (${bestMatch.index})`);
-  return bestMatch.index;
+  console.log(`🎯 No good face match found (similarity too low), using closest: ${bestMatch?.name} (${bestMatch?.index})`);
+  return bestMatch?.index || 0;
 };
 
 /**
@@ -336,7 +356,11 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
   if (!face) return null;
   
   let geometry: THREE.BufferGeometry;
-  let width = 100, height = 100;
+  
+  console.log(`🎯 Creating face geometry for ${shape.type}, face ${faceIndex} (${face.name})`);
+  console.log(`🎯 Face center: [${face.center.x.toFixed(1)}, ${face.center.y.toFixed(1)}, ${face.center.z.toFixed(1)}]`);
+  console.log(`🎯 Face normal: [${face.normal.x.toFixed(2)}, ${face.normal.y.toFixed(2)}, ${face.normal.z.toFixed(2)}]`);
+  console.log(`🎯 Face area: ${face.area.toFixed(1)}mm²`);
   
   switch (shape.type) {
     case 'box':
@@ -347,15 +371,13 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
       const scaledD = d * shape.scale[2];
       
       if (faceIndex === 0 || faceIndex === 1) { // Front/Back
-        width = scaledW;
-        height = scaledH;
+        geometry = new THREE.PlaneGeometry(scaledW, scaledH);
       } else if (faceIndex === 2 || faceIndex === 3) { // Top/Bottom
-        width = scaledW;
-        height = scaledD;
+        geometry = new THREE.PlaneGeometry(scaledW, scaledD);
       } else { // Left/Right
-        width = scaledD;
-        height = scaledH;
+        geometry = new THREE.PlaneGeometry(scaledD, scaledH);
       }
+      console.log(`🎯 Box face geometry: ${scaledW}x${scaledH}x${scaledD}mm`);
       break;
     }
     
@@ -367,11 +389,12 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
       
       if (faceIndex === 0 || faceIndex === 1) { // Top/Bottom
         geometry = new THREE.CircleGeometry(scaledR, 32);
+        console.log(`🎯 Cylinder top/bottom: radius ${scaledR}mm`);
       } else { // Side segments
         const segmentAngle = (Math.PI * 2) / 8;
         const segmentWidth = 2 * scaledR * Math.sin(segmentAngle / 2);
-        width = segmentWidth;
-        height = scaledH;
+        geometry = new THREE.PlaneGeometry(segmentWidth, scaledH);
+        console.log(`🎯 Cylinder side segment: ${segmentWidth.toFixed(1)}x${scaledH}mm`);
       }
       break;
     }
@@ -380,12 +403,21 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
     case 'polygon2d':
     case 'polyline3d':
     case 'polygon3d': {
+      const h = (shape.parameters.height || 500) * shape.scale[1];
+      
       if (faceIndex === 0 || faceIndex === 1) { // Top/Bottom
         // Create geometry from original points
         if (shape.originalPoints && shape.originalPoints.length >= 3) {
-          const points2D = shape.originalPoints.map(p => new THREE.Vector2(p.x, p.z));
+          // Convert 3D points to 2D for shape geometry
+          const uniquePoints = shape.originalPoints.length > 2 && 
+            shape.originalPoints[shape.originalPoints.length - 1].equals(shape.originalPoints[0]) 
+            ? shape.originalPoints.slice(0, -1) 
+            : shape.originalPoints;
+          
+          const points2D = uniquePoints.map(p => new THREE.Vector2(p.x, p.z));
           const shapeGeom = new THREE.Shape(points2D);
           geometry = new THREE.ShapeGeometry(shapeGeom);
+          console.log(`🎯 Polyline top/bottom: ${uniquePoints.length} points, area ${face.area.toFixed(1)}mm²`);
         } else {
           // Fallback: Use bounding box dimensions
           shape.geometry.computeBoundingBox();
@@ -394,12 +426,13 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
             const w = (bbox.max.x - bbox.min.x) * shape.scale[0];
             const d = (bbox.max.z - bbox.min.z) * shape.scale[2];
             geometry = new THREE.PlaneGeometry(w, d);
+            console.log(`🎯 Polyline fallback top/bottom: ${w.toFixed(1)}x${d.toFixed(1)}mm`);
           } else {
             geometry = new THREE.PlaneGeometry(100, 100);
+            console.log(`🎯 Polyline default top/bottom: 100x100mm`);
           }
         }
       } else { // Side faces
-        const h = (shape.parameters.height || 500) * shape.scale[1];
         if (shape.originalPoints && faceIndex - 2 < shape.originalPoints.length) {
           const i = faceIndex - 2;
           const uniquePoints = shape.originalPoints.length > 2 && 
@@ -411,8 +444,8 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
           const next = uniquePoints[(i + 1) % uniquePoints.length];
           const edgeLength = current.distanceTo(next);
           
-          width = edgeLength;
-          height = h;
+          geometry = new THREE.PlaneGeometry(edgeLength, h);
+          console.log(`🎯 Polyline side ${i + 1}: ${edgeLength.toFixed(1)}x${h}mm`);
         } else {
           // Fallback: Use average edge length from bounding box
           shape.geometry.computeBoundingBox();
@@ -420,20 +453,17 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
           if (bbox) {
             const w = (bbox.max.x - bbox.min.x) * shape.scale[0];
             const d = (bbox.max.z - bbox.min.z) * shape.scale[2];
-            width = Math.max(w, d) / 4; // Approximate edge length
+            const avgEdgeLength = Math.max(w, d) / 4; // Approximate edge length
+            geometry = new THREE.PlaneGeometry(avgEdgeLength, h);
+            console.log(`🎯 Polyline fallback side: ${avgEdgeLength.toFixed(1)}x${h}mm`);
           } else {
-            width = 100;
+            geometry = new THREE.PlaneGeometry(100, h);
+            console.log(`🎯 Polyline default side: 100x${h}mm`);
           }
-          height = h;
         }
       }
       break;
     }
-  }
-  
-  // Create geometry if not already created
-  if (!geometry) {
-    geometry = new THREE.PlaneGeometry(width, height);
   }
   
   // Calculate rotation based on face normal
@@ -455,7 +485,11 @@ export const getFaceGeometry = (shape: Shape, faceIndex: number): {
     rotation.y = angle;
   }
   
+  // Position the overlay at the face center + shape position
   const position = face.center.clone().add(new THREE.Vector3(...shape.position));
+  
+  console.log(`🎯 Face overlay position: [${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}]`);
+  console.log(`🎯 Face overlay rotation: [${(rotation.x * 180 / Math.PI).toFixed(1)}°, ${(rotation.y * 180 / Math.PI).toFixed(1)}°, ${(rotation.z * 180 / Math.PI).toFixed(1)}°]`);
   
   return { geometry, position, rotation };
 };

@@ -296,9 +296,10 @@ const OpenCascadeShape: React.FC<Props> = ({
                 <meshBasicMaterial
                   color="#f97316" // Orange for selected face
                   transparent
-                  opacity={0.4}
+                  opacity={0.6}
                   side={THREE.DoubleSide}
-                  depthTest={false}
+                  depthTest={true}
+                  depthWrite={false}
                 />
               </mesh>
             );
