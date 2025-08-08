@@ -319,6 +319,7 @@ const Scene: React.FC = () => {
 
   // Disable rotation when drawing polylines OR when panel mode is active
   const isDrawingPolyline = activeTool === 'Polyline';
+  const isAddPanelMode = false; // Panel mode removed, always false
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
