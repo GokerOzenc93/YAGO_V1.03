@@ -486,4 +486,5 @@ export const cycleFaceUnderMouse = (
     // Index'i ilerlet (döngü şeklinde)
     _hitIndex = (_hitIndex + 1) % _hitStack.length;
     const hit = _hitStack[_hitIndex];
+}
 
