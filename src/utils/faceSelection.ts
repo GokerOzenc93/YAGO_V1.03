@@ -313,104 +313,109 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
  * Yüzey highlight'ı ekle (Flood-Fill tabanlı)
  */
 
-/** ---------- Robust Coplanar Face Region Utilities (added) ---------- **/
+/** ===== Robust Planar Region Selection (welded + triangulated) ===== **/
 
-/**
- * Ensure geometry is indexed; returns the same geometry (possibly converted).
- */
-const ensureIndexedGeometry = (geom: THREE.BufferGeometry): THREE.BufferGeometry => {
-    if (!geom.index) {
-        geom = geom.toNonIndexed(); // ensure predictable indexing first
-        geom = geom.toNonIndexed(); // stay non-indexed, we'll create an index below
-        // Build an explicit index so we can get triangle adjacency
-        const pos = geom.getAttribute('position') as THREE.BufferAttribute;
-        const indices = [];
-        for (let i = 0; i < pos.count; i++) indices.push(i);
-        geom.setIndex(indices);
-    }
-    return geom;
+type RegionResult = {
+    triangles: number[];
+    normal: THREE.Vector3;
+    plane: THREE.Plane;
+    boundaryLoops: number[][]; // loops of welded vertex ids
+    weldedToWorld: Map<number, THREE.Vector3>;
 };
 
-/**
- * Build adjacency: for each triangle, find neighboring triangles that share an edge.
- */
-const buildTriangleNeighbors = (geom: THREE.BufferGeometry): Map<number, number[]> => {
-    const index = geom.index!;
-    const neighbors = new Map<number, number[]>();
-    const edgeMap = new Map<string, number>(); // key = "min_max", value = triIndex
+const QUANT_EPS = 1e-4;  // weld tolerance in world units
+const ANGLE_DEG = 4;     // dihedral angle tolerance
+const PLANE_EPS = 2e-4;  // base plane epsilon (scaled with object size)
 
-    const idxArray = index.array as ArrayLike<number>;
-    const triCount = Math.floor(idxArray.length / 3);
+const posKey = (v: THREE.Vector3, eps: number) => {
+    const kx = Math.round(v.x / eps);
+    const ky = Math.round(v.y / eps);
+    const kz = Math.round(v.z / eps);
+    return `${kx}_${ky}_${kz}`;
+};
+
+const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
+    let geom = mesh.geometry as THREE.BufferGeometry;
+    if (!geom.index) geom = geom.toNonIndexed();
+    const index = geom.index!;
+    const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+    const idx = index.array as ArrayLike<number>;
+    const triCount = Math.floor(idx.length / 3);
+
+    const keyToId = new Map<string, number>();
+    const weldedIdToWorld = new Map<number, THREE.Vector3>();
+    const vertToWelded = new Map<number, number>();
+    let nextId = 0;
+
+    const tmp = new THREE.Vector3();
+    const m = mesh.matrixWorld;
+    for (let vi = 0; vi < pos.count; vi++) {
+        tmp.fromBufferAttribute(pos, vi).applyMatrix4(m);
+        const key = posKey(tmp, weldEps);
+        if (!keyToId.has(key)) {
+            keyToId.set(key, nextId);
+            weldedIdToWorld.set(nextId, tmp.clone());
+            nextId++;
+        }
+        vertToWelded.set(vi, keyToId.get(key)!);
+    }
+
+    const edgeMap = new Map<string, number>();
+    const neighbors = new Map<number, number[]>();
+    const triToWelded: [number, number, number][] = [];
+
     for (let t = 0; t < triCount; t++) {
-        const a = idxArray[t*3], b = idxArray[t*3+1], c = idxArray[t*3+2];
-        const edges: [number,number][] = [[a,b],[b,c],[c,a]];
-        for (const [u,v] of edges) {
-            const key = u < v ? `${u}_${v}` : `${v}_${u}`;
-            if (edgeMap.has(key)) {
-                const other = edgeMap.get(key)!;
+        const a = (idx[t*3] as number) | 0;
+        const b = (idx[t*3+1] as number) | 0;
+        const c = (idx[t*3+2] as number) | 0;
+        const wa = vertToWelded.get(a)!;
+        const wb = vertToWelded.get(b)!;
+        const wc = vertToWelded.get(c)!;
+        triToWelded.push([wa, wb, wc]);
+
+        const edges: [number, number][] = [[wa, wb], [wb, wc], [wc, wa]];
+        for (const [u0, v0] of edges) {
+            const u = Math.min(u0, v0);
+            const v = Math.max(u0, v0);
+            const ekey = `${u}_${v}`;
+            if (edgeMap.has(ekey)) {
+                const other = edgeMap.get(ekey)!;
                 if (!neighbors.has(t)) neighbors.set(t, []);
                 if (!neighbors.has(other)) neighbors.set(other, []);
                 neighbors.get(t)!.push(other);
                 neighbors.get(other)!.push(t);
             } else {
-                edgeMap.set(key, t);
+                edgeMap.set(ekey, t);
             }
         }
     }
-    return neighbors;
+
+    return { neighbors, triToWelded, weldedIdToWorld, index: index, posAttr: pos };
 };
 
-/**
- * Get triangle vertices in WORLD space
- */
-const getTriangleVerticesWorld = (mesh: THREE.Mesh, triIndex: number): [THREE.Vector3, THREE.Vector3, THREE.Vector3] => {
-    const geom = mesh.geometry as THREE.BufferGeometry;
-    const index = geom.index!;
-    const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferAttribute, pos: THREE.BufferAttribute) => {
     const ia = index.getX(triIndex*3), ib = index.getX(triIndex*3+1), ic = index.getX(triIndex*3+2);
     const a = new THREE.Vector3().fromBufferAttribute(pos, ia).applyMatrix4(mesh.matrixWorld);
     const b = new THREE.Vector3().fromBufferAttribute(pos, ib).applyMatrix4(mesh.matrixWorld);
     const c = new THREE.Vector3().fromBufferAttribute(pos, ic).applyMatrix4(mesh.matrixWorld);
-    return [a,b,c];
+    return new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize();
 };
 
-/**
- * Compute normalized face normal in WORLD space for a given triangle.
- */
-const getTriangleNormalWorld = (mesh: THREE.Mesh, triIndex: number): THREE.Vector3 => {
-    const [a,b,c] = getTriangleVerticesWorld(mesh, triIndex);
-    const n = new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize();
-    return n;
-};
+const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
+    const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
+        mesh, QUANT_EPS * (() => { const s = new THREE.Vector3(); const p = new THREE.Vector3(); const q = new THREE.Quaternion(); mesh.matrixWorld.decompose(p,q,s); return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; })()
+    );
 
-/**
- * BFS to collect all coplanar triangles connected to the seed triangle the user clicked.
- * Uses angle tolerance (degrees) and plane distance epsilon (in world units).
- */
-const collectCoplanarRegion = (
-    mesh: THREE.Mesh,
-    seedTri: number,
-    angleToleranceDeg: number = 2,
-    planeEpsilon: number = 1e-4
-) => {
-    let geom = mesh.geometry as THREE.BufferGeometry;
-    geom = ensureIndexedGeometry(geom);
-    const neighbors = buildTriangleNeighbors(geom);
+    const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
+    mesh.matrixWorld.decompose(pvec, q, svec);
+    const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag);
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG));
 
-    // Seed plane (world)
-    const [sa,sb,sc] = getTriangleVerticesWorld(mesh, seedTri);
-    const seedNormal = new THREE.Vector3().subVectors(sb,sa).cross(new THREE.Vector3().subVectors(sc,sa)).normalize();
-    const seedPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(seedNormal, sa);
-
-    // Adjust epsilon based on object scale magnitude (avoid too strict on big meshes)
-    const scale = new THREE.Vector3();
-    const posQ = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-    mesh.matrixWorld.decompose(posQ, quat, scale);
-    const scaleMag = (Math.abs(scale.x) + Math.abs(scale.y) + Math.abs(scale.z)) / 3;
-    const eps = planeEpsilon * Math.max(1, scaleMag);
-
-    const cosThresh = Math.cos(THREE.MathUtils.degToRad(angleToleranceDeg));
+    let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
+    const seedW = triToWelded[seedTri];
+    const seedPoint = weldedIdToWorld.get(seedW[0])!.clone();
+    let plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
 
     const visited = new Set<number>();
     const region: number[] = [];
@@ -418,56 +423,145 @@ const collectCoplanarRegion = (
     visited.add(seedTri);
 
     while (queue.length) {
-        const tri = queue.shift()!;
-        region.push(tri);
-
-        const neighs = neighbors.get(tri) || [];
+        const t = queue.shift()!;
+        region.push(t);
+        const neighs = neighbors.get(t) || [];
         for (const nt of neighs) {
             if (visited.has(nt)) continue;
+            const n = triNormalWorld(mesh, nt, index, posAttr);
+            if (n.dot(avgNormal) < angleCos) continue;
 
-            const nNormal = getTriangleNormalWorld(mesh, nt);
-            // Normal similarity check
-            if (nNormal.dot(seedNormal) < cosThresh) continue;
+            const wids = triToWelded[nt];
+            const pa = weldedIdToWorld.get(wids[0])!;
+            const pb = weldedIdToWorld.get(wids[1])!;
+            const pc = weldedIdToWorld.get(wids[2])!;
+            if (Math.abs(plane.distanceToPoint(pa)) > planeEps) continue;
+            if (Math.abs(plane.distanceToPoint(pb)) > planeEps) continue;
+            if (Math.abs(plane.distanceToPoint(pc)) > planeEps) continue;
 
-            // Coplanarity check: all vertices close to seed plane
-            const [na,nb,nc] = getTriangleVerticesWorld(mesh, nt);
-            const d1 = Math.abs(seedPlane.distanceToPoint(na));
-            const d2 = Math.abs(seedPlane.distanceToPoint(nb));
-            const d3 = Math.abs(seedPlane.distanceToPoint(nc));
-            if (d1 <= eps && d2 <= eps && d3 <= eps) {
-                visited.add(nt);
-                queue.push(nt);
-            }
+            visited.add(nt);
+            queue.push(nt);
+            avgNormal.add(n).normalize();
+            plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
         }
     }
 
-    // Collect unique vertex indices & create overlay geometry
-    const idx = geom.index!.array as ArrayLike<number>;
-    const posAttr = geom.getAttribute('position') as THREE.BufferAttribute;
-    const triIndices: number[] = [];
+    // boundary edges (welded) with count==1
+    const edgeCount = new Map<string, number>();
     for (const t of region) {
-        triIndices.push(idx[t*3], idx[t*3+1], idx[t*3+2]);
+        const [a,b,c] = triToWelded[t];
+        const edges: [number,number][] = [[a,b],[b,c],[c,a]];
+        for (const [u0,v0] of edges) {
+            const u = Math.min(u0, v0), v = Math.max(u0, v0);
+            const ekey = `${u}_${v}`;
+            edgeCount.set(ekey, (edgeCount.get(ekey)||0)+1);
+        }
+    }
+    const boundaryEdges: [number,number][] = [];
+    for (const [ekey, cnt] of edgeCount.entries()) {
+        if (cnt === 1) {
+            const [u,v] = ekey.split('_').map(Number);
+            boundaryEdges.push([u,v]);
+        }
     }
 
-    // Build a separate BufferGeometry for the region, in WORLD space, to avoid z-fighting issues we offset slightly along normal
-    const worldPositions: number[] = [];
-    for (let i = 0; i < triIndices.length; i++) {
-        const vi = triIndices[i];
-        const v = new THREE.Vector3().fromBufferAttribute(posAttr, vi).applyMatrix4(mesh.matrixWorld);
-        // small offset along normal
-        const vOff = v.clone().addScaledVector(seedNormal, 1e-4 * Math.max(1, scaleMag));
-        worldPositions.push(vOff.x, vOff.y, vOff.z);
+    // order boundary into loops
+    const adjacency = new Map<number, number[]>();
+    for (const [u,v] of boundaryEdges) {
+        if (!adjacency.has(u)) adjacency.set(u, []);
+        if (!adjacency.has(v)) adjacency.set(v, []);
+        adjacency.get(u)!.push(v);
+        adjacency.get(v)!.push(u);
     }
-    const regionGeom = new THREE.BufferGeometry();
-    regionGeom.setAttribute('position', new THREE.Float32BufferAttribute(worldPositions, 3));
-    // Non-indexed triangles are okay for a highlight overlay
 
-    return {
-        triangles: region,
-        geometryWorld: regionGeom,
-        seedNormal
-    };
+    const boundaryLoops: number[][] = [];
+    const used = new Set<string>();
+    const edgeKey = (u:number,v:number)=> u<=v?`${u}_${v}`:`${v}_${u}`;
+
+    for (const [start] of adjacency) {
+        const nbrs = adjacency.get(start)!;
+        let hasUnused = false;
+        for (const nx of nbrs) if (!used.has(edgeKey(start,nx))) { hasUnused = true; break; }
+        if (!hasUnused) continue;
+
+        const loop: number[] = [start];
+        let prev = -1, curr = start;
+        while (true) {
+            const ns = adjacency.get(curr) || [];
+            let next = -1;
+            for (const n of ns) {
+                const e = edgeKey(curr, n);
+                if (used.has(e)) continue;
+                if (n === prev) continue;
+                next = n; used.add(e); break;
+            }
+            if (next === -1) break;
+            if (next === start) { loop.push(next); break; }
+            loop.push(next);
+            prev = curr; curr = next;
+        }
+        if (loop.length > 2) boundaryLoops.push(loop);
+    }
+
+    return { triangles: region, normal: avgNormal.clone(), plane, boundaryLoops, weldedToWorld: weldedIdToWorld };
 };
+
+const buildFaceOverlayFromHit = (
+    scene: THREE.Scene,
+    mesh: THREE.Mesh,
+    seedTri: number,
+    color: number,
+    opacity: number
+): THREE.Mesh | null => {
+    const res = growRegion(mesh, seedTri);
+    if (res.boundaryLoops.length === 0) return null;
+
+    const n = res.normal.clone().normalize();
+    const up = Math.abs(n.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+    const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
+    const bitangent = new THREE.Vector3().crossVectors(n, tangent).normalize();
+
+    const loops2D: THREE.Vector2[][] = res.boundaryLoops.map(loop => {
+        const arr: THREE.Vector2[] = [];
+        for (const wid of loop) {
+            const p = res.weldedToWorld.get(wid)!;
+            const x = p.dot(tangent);
+            const y = p.dot(bitangent);
+            arr.push(new THREE.Vector2(x,y));
+        }
+        return arr;
+    });
+
+    const outer = loops2D[0];
+    const holes = loops2D.slice(1);
+    const triangles = THREE.ShapeUtils.triangulateShape(outer, holes);
+
+    // 3D reconstruction: choose origin on plane
+    const origin = res.weldedToWorld.values().next().value.clone();
+    const to3D = (v: THREE.Vector2) => origin.clone().addScaledVector(tangent, v.x - outer[0].x).addScaledVector(bitangent, v.y - outer[0].y);
+
+    const verts: number[] = [];
+    const all2D = outer.concat(...holes);
+    for (const v2 of all2D) {
+        const p3 = to3D(v2).addScaledVector(n, 1e-4);
+        verts.push(p3.x, p3.y, p3.z);
+    }
+
+    const indices: number[] = [];
+    for (const tri of triangles) for (const i of tri) indices.push(i);
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setIndex(indices);
+    g.computeVertexNormals();
+
+    const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const overlay = new THREE.Mesh(g, mat);
+    overlay.renderOrder = 999;
+    scene.add(overlay);
+    return overlay;
+};
+/** ===== End Robust Planar Region Selection ===== **/
 
 
 export const highlightFace = (
@@ -478,38 +572,15 @@ export const highlightFace = (
     opacity: number = 0.6
 ): FaceHighlight | null => {
     clearFaceHighlight(scene);
-
-    if (!hit.face || hit.faceIndex === undefined) {
-        console.warn('No face data in intersection');
-        return null;
-    }
-
+    if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;
-    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) {
-        console.warn('Mesh has no position attribute');
-        return null;
-    }
+    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
 
-    // Collect full planar region from the clicked triangle
-    const region = collectCoplanarRegion(mesh, hit.faceIndex, 2, 1e-4);
+    // Build a SINGLE overlay mesh for the entire planar region
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
+    if (!overlay) return null;
 
-    // Build highlight mesh in world space
-    const mat = new THREE.MeshBasicMaterial({
-        color,
-        opacity,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide
-    });
-    const overlay = new THREE.Mesh(region.geometryWorld, mat);
-    overlay.renderOrder = 999; // draw on top
-    scene.add(overlay);
-
-    currentHighlight = {
-        mesh: overlay,
-        faceIndex: hit.faceIndex,
-        shapeId: shape.id
-    };
+    currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     return currentHighlight;
 };
 
