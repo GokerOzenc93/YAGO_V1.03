@@ -86,6 +86,50 @@ export const getFaceArea = (vertices: THREE.Vector3[]): number => {
  */
 
 /**
+ * Epsilon-based vertex eşitlik kontrolü
+ */
+const verticesEqual = (v1: THREE.Vector3, v2: THREE.Vector3): boolean => {
+  const EPSILON = 1e-4;
+  return v1.distanceToSquared(v2) < EPSILON;
+};
+
+/**
+ * Komşu face'leri bul (koordinat bazlı vertex karşılaştırması)
+ */
+const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): number[] => {
+  const neighbors: number[] = [];
+  const totalFaces = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+
+  const thisVerts = getFaceVertices(geometry, faceIndex);
+  if (thisVerts.length === 0) return neighbors;
+
+  for (let i = 0; i < totalFaces; i++) {
+    if (i === faceIndex) continue;
+    
+    const otherVerts = getFaceVertices(geometry, i);
+    if (otherVerts.length === 0) continue;
+
+    // Kaç ortak vertex var?
+    let sharedCount = 0;
+    for (const v1 of thisVerts) {
+      for (const v2 of otherVerts) {
+        if (verticesEqual(v1, v2)) {
+          sharedCount++;
+          break; // Aynı vertex'i birden fazla kez sayma
+        }
+      }
+    }
+    
+    // Tam 2 ortak vertex = komşu (ortak kenar)
+    if (sharedCount === 2) {
+      neighbors.push(i);
+    }
+  }
+  
+  return neighbors;
+};
+
+/**
  * Flood-fill algoritması ile sadece tıklanan yüzeyi bulma
  */
 export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFaceIndex: number): THREE.Vector3[] => {
