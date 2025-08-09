@@ -523,14 +523,25 @@ const buildFaceOverlayFromHit = (
     const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
     const bitangent = new THREE.Vector3().crossVectors(n, tangent).normalize();
 
+    // Yüzeyin gerçek merkezini hesapla (world space'de)
+    const surfaceCenter = new THREE.Vector3();
+    let totalVertices = 0;
+    for (const wid of res.boundaryLoops[0]) {
+        const p = res.weldedToWorld.get(wid)!;
+        surfaceCenter.add(p);
+        totalVertices++;
+    }
+    surfaceCenter.divideScalar(totalVertices);
+
     const loops2D: THREE.Vector2[][] = res.boundaryLoops.map(loop => {
         const arr: THREE.Vector2[] = [];
         for (const wid of loop) {
             const p = res.weldedToWorld.get(wid)!;
-            const x = p.dot(tangent);
-            const y = p.dot(bitangent);
-            // use coordinates relative to origin
-        arr.push(new THREE.Vector2(x, y));
+            // Yüzey merkezine göre relative koordinatlar
+            const relative = p.clone().sub(surfaceCenter);
+            const x = relative.dot(tangent);
+            const y = relative.dot(bitangent);
+            arr.push(new THREE.Vector2(x, y));
         }
         return arr;
     });
@@ -539,18 +550,16 @@ const buildFaceOverlayFromHit = (
     const holes = loops2D.slice(1);
     const triangles = THREE.ShapeUtils.triangulateShape(outer, holes);
 
-    // 3D reconstruction: choose origin on plane
-    // Choose plane origin as seed point projected to plane
-const origin = res.weldedToWorld.values().next().value.clone();
-// project positions: x = (p-origin).tangent, y = (p-origin).bitangent
-const to3D = (v: THREE.Vector2) => origin.clone()
+    // 3D reconstruction: yüzey merkezini origin olarak kullan
+    const to3D = (v: THREE.Vector2) => surfaceCenter.clone()
     .addScaledVector(tangent, v.x)
     .addScaledVector(bitangent, v.y);
 
     const verts: number[] = [];
     const all2D = outer.concat(...holes);
     for (const v2 of all2D) {
-        const p3 = to3D(v2).addScaledVector(n, 1e-4);
+        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset)
+        const p3 = to3D(v2).addScaledVector(n, 0.5);
         verts.push(p3.x, p3.y, p3.z);
     }
 
