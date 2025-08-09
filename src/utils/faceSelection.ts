@@ -427,7 +427,8 @@ export const getCurrentHighlight = (): FaceHighlight | null => {
 };
 
 /**
- * 🎯 ENHANCED: Aynı konumda sıralı yüzey döngüsü - Her tıklamada arkadaki yüzeyi göster
+ * Tıklanan konumun hizasındaki yüzeyleri (ışın doğrultusunda) sıralı dolaşır.
+ * Aynı konuma her sol tıklamada bir sonraki yüzeyi seçer.
  */
 export const cycleFaceUnderMouse = (
     event: MouseEvent,
@@ -438,53 +439,48 @@ export const cycleFaceUnderMouse = (
     shape: Shape,
     color: number = 0xff6b35,
     opacity: number = 0.6
-): FaceHighlight | null => {
-    console.log('🎯 Face cycling started');
+) => {
+    // Build BVH lazily
+    const geom: any = mesh.geometry;
+    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+        geom.computeBoundsTree();
+    }
 
     const mouseNDC = _mouseToNDC(event, canvas);
     const raycaster = new THREE.Raycaster();
-    raycaster.params.Points!.threshold = 0.1;
-    raycaster.params.Line!.threshold = 0.1;
+    (raycaster as any).firstHitOnly = false; // we want ALL intersects through the mesh
     raycaster.setFromCamera(mouseNDC, camera);
 
-    // Mouse hareket etmiş mi veya mesh değişmiş mi kontrol et
+    // reset stack if mouse moved significantly or mesh changed
     const moved = !_lastMouseNDC || mouseNDC.distanceTo(_lastMouseNDC) > 1e-4;
     const meshId = (mesh as any).id ?? 0;
     const meshChanged = _lastMeshId !== null && _lastMeshId !== meshId;
 
-    // Yeni konum veya mesh değişikliği varsa hit stack'i yenile
     if (moved || meshChanged || _hitStack.length === 0) {
-        console.log('🎯 Rebuilding hit stack - mouse moved or mesh changed');
-        
-        // Tüm intersectionları al (recursive = false, sadece bu mesh)
-        const allHits = raycaster.intersectObject(mesh, false);
-        
-        // Sadece face index'i olan ve benzersiz face'leri tut
+        _hitStack = raycaster.intersectObject(mesh, false) as THREE.Intersection[];
+        // keep only unique face indices in order of distance
         const seen = new Set<number>();
-        _hitStack = allHits.filter(h => {
+        _hitStack = _hitStack.filter(h => {
             if (h.faceIndex === undefined) return false;
             if (seen.has(h.faceIndex)) return false;
             seen.add(h.faceIndex);
             return true;
         });
-        
-        // Mesafeye göre sırala (yakından uzağa)
-        _hitStack.sort((a, b) => a.distance - b.distance);
-        
         _hitIndex = -1;
         _lastMouseNDC = mouseNDC.clone();
         _lastMeshId = meshId;
-        
-        console.log(`🎯 Hit stack rebuilt: ${_hitStack.length} unique faces found`);
     }
 
     if (_hitStack.length === 0) {
-        console.log('🎯 No faces under cursor');
+        // no face under cursor
         return null;
     }
 
-    // Index'i ilerlet (döngü şeklinde)
+    // advance index (cycle)
     _hitIndex = (_hitIndex + 1) % _hitStack.length;
     const hit = _hitStack[_hitIndex];
-}
 
+    // highlight this face (planar region fill)
+    const hl = highlightFace(scene, hit, shape, color, opacity);
+    return hl;
+};
