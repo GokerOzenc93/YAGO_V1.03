@@ -312,75 +312,207 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
 /**
  * Yüzey highlight'ı ekle (Flood-Fill tabanlı)
  */
+
+/** ---------- Robust Coplanar Face Region Utilities (added) ---------- **/
+
+/**
+ * Ensure geometry is indexed; returns the same geometry (possibly converted).
+ */
+const ensureIndexedGeometry = (geom: THREE.BufferGeometry): THREE.BufferGeometry => {
+    if (!geom.index) {
+        geom = geom.toNonIndexed(); // ensure predictable indexing first
+        geom = geom.toNonIndexed(); // stay non-indexed, we'll create an index below
+        // Build an explicit index so we can get triangle adjacency
+        const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+        const indices = [];
+        for (let i = 0; i < pos.count; i++) indices.push(i);
+        geom.setIndex(indices);
+    }
+    return geom;
+};
+
+/**
+ * Build adjacency: for each triangle, find neighboring triangles that share an edge.
+ */
+const buildTriangleNeighbors = (geom: THREE.BufferGeometry): Map<number, number[]> => {
+    const index = geom.index!;
+    const neighbors = new Map<number, number[]>();
+    const edgeMap = new Map<string, number>(); // key = "min_max", value = triIndex
+
+    const idxArray = index.array as ArrayLike<number>;
+    const triCount = Math.floor(idxArray.length / 3);
+    for (let t = 0; t < triCount; t++) {
+        const a = idxArray[t*3], b = idxArray[t*3+1], c = idxArray[t*3+2];
+        const edges: [number,number][] = [[a,b],[b,c],[c,a]];
+        for (const [u,v] of edges) {
+            const key = u < v ? `${u}_${v}` : `${v}_${u}`;
+            if (edgeMap.has(key)) {
+                const other = edgeMap.get(key)!;
+                if (!neighbors.has(t)) neighbors.set(t, []);
+                if (!neighbors.has(other)) neighbors.set(other, []);
+                neighbors.get(t)!.push(other);
+                neighbors.get(other)!.push(t);
+            } else {
+                edgeMap.set(key, t);
+            }
+        }
+    }
+    return neighbors;
+};
+
+/**
+ * Get triangle vertices in WORLD space
+ */
+const getTriangleVerticesWorld = (mesh: THREE.Mesh, triIndex: number): [THREE.Vector3, THREE.Vector3, THREE.Vector3] => {
+    const geom = mesh.geometry as THREE.BufferGeometry;
+    const index = geom.index!;
+    const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+    const ia = index.getX(triIndex*3), ib = index.getX(triIndex*3+1), ic = index.getX(triIndex*3+2);
+    const a = new THREE.Vector3().fromBufferAttribute(pos, ia).applyMatrix4(mesh.matrixWorld);
+    const b = new THREE.Vector3().fromBufferAttribute(pos, ib).applyMatrix4(mesh.matrixWorld);
+    const c = new THREE.Vector3().fromBufferAttribute(pos, ic).applyMatrix4(mesh.matrixWorld);
+    return [a,b,c];
+};
+
+/**
+ * Compute normalized face normal in WORLD space for a given triangle.
+ */
+const getTriangleNormalWorld = (mesh: THREE.Mesh, triIndex: number): THREE.Vector3 => {
+    const [a,b,c] = getTriangleVerticesWorld(mesh, triIndex);
+    const n = new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize();
+    return n;
+};
+
+/**
+ * BFS to collect all coplanar triangles connected to the seed triangle the user clicked.
+ * Uses angle tolerance (degrees) and plane distance epsilon (in world units).
+ */
+const collectCoplanarRegion = (
+    mesh: THREE.Mesh,
+    seedTri: number,
+    angleToleranceDeg: number = 2,
+    planeEpsilon: number = 1e-4
+) => {
+    let geom = mesh.geometry as THREE.BufferGeometry;
+    geom = ensureIndexedGeometry(geom);
+    const neighbors = buildTriangleNeighbors(geom);
+
+    // Seed plane (world)
+    const [sa,sb,sc] = getTriangleVerticesWorld(mesh, seedTri);
+    const seedNormal = new THREE.Vector3().subVectors(sb,sa).cross(new THREE.Vector3().subVectors(sc,sa)).normalize();
+    const seedPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(seedNormal, sa);
+
+    // Adjust epsilon based on object scale magnitude (avoid too strict on big meshes)
+    const scale = new THREE.Vector3();
+    const posQ = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    mesh.matrixWorld.decompose(posQ, quat, scale);
+    const scaleMag = (Math.abs(scale.x) + Math.abs(scale.y) + Math.abs(scale.z)) / 3;
+    const eps = planeEpsilon * Math.max(1, scaleMag);
+
+    const cosThresh = Math.cos(THREE.MathUtils.degToRad(angleToleranceDeg));
+
+    const visited = new Set<number>();
+    const region: number[] = [];
+    const queue: number[] = [seedTri];
+    visited.add(seedTri);
+
+    while (queue.length) {
+        const tri = queue.shift()!;
+        region.push(tri);
+
+        const neighs = neighbors.get(tri) || [];
+        for (const nt of neighs) {
+            if (visited.has(nt)) continue;
+
+            const nNormal = getTriangleNormalWorld(mesh, nt);
+            // Normal similarity check
+            if (nNormal.dot(seedNormal) < cosThresh) continue;
+
+            // Coplanarity check: all vertices close to seed plane
+            const [na,nb,nc] = getTriangleVerticesWorld(mesh, nt);
+            const d1 = Math.abs(seedPlane.distanceToPoint(na));
+            const d2 = Math.abs(seedPlane.distanceToPoint(nb));
+            const d3 = Math.abs(seedPlane.distanceToPoint(nc));
+            if (d1 <= eps && d2 <= eps && d3 <= eps) {
+                visited.add(nt);
+                queue.push(nt);
+            }
+        }
+    }
+
+    // Collect unique vertex indices & create overlay geometry
+    const idx = geom.index!.array as ArrayLike<number>;
+    const posAttr = geom.getAttribute('position') as THREE.BufferAttribute;
+    const triIndices: number[] = [];
+    for (const t of region) {
+        triIndices.push(idx[t*3], idx[t*3+1], idx[t*3+2]);
+    }
+
+    // Build a separate BufferGeometry for the region, in WORLD space, to avoid z-fighting issues we offset slightly along normal
+    const worldPositions: number[] = [];
+    for (let i = 0; i < triIndices.length; i++) {
+        const vi = triIndices[i];
+        const v = new THREE.Vector3().fromBufferAttribute(posAttr, vi).applyMatrix4(mesh.matrixWorld);
+        // small offset along normal
+        const vOff = v.clone().addScaledVector(seedNormal, 1e-4 * Math.max(1, scaleMag));
+        worldPositions.push(vOff.x, vOff.y, vOff.z);
+    }
+    const regionGeom = new THREE.BufferGeometry();
+    regionGeom.setAttribute('position', new THREE.Float32BufferAttribute(worldPositions, 3));
+    // Non-indexed triangles are okay for a highlight overlay
+
+    return {
+        triangles: region,
+        geometryWorld: regionGeom,
+        seedNormal
+    };
+};
+
+
 export const highlightFace = (
     scene: THREE.Scene,
     hit: THREE.Intersection,
-    shape: Shape, // Shape objesi artık id içerecek
+    shape: Shape,
     color: number = 0xff6b35,
     opacity: number = 0.6
 ): FaceHighlight | null => {
-    // Önce eski highlight'ı temizle
     clearFaceHighlight(scene);
-    
+
     if (!hit.face || hit.faceIndex === undefined) {
         console.warn('No face data in intersection');
         return null;
     }
-    
+
     const mesh = hit.object as THREE.Mesh;
-    const geometry = mesh.geometry as THREE.BufferGeometry;
-    
-    console.log(`🎯 Highlighting face ${hit.faceIndex} on ${shape.type} (${shape.id})`);
-    
-    // Tüm yüzeyi bul (komşu üçgenleri dahil et)
-    const fullSurfaceVertices = getFullSurfaceVertices(geometry, hit.faceIndex);
-    
-    console.log(`📊 Full surface vertices: ${fullSurfaceVertices.length}`);
-    
-    // Eğer tam yüzey bulunamadıysa (örneğin sadece tek bir üçgen varsa)
-    // veya flood-fill başarısız olursa, yine de bir şey göstermek için 
-    // başlangıç üçgeninin vertexlerini kullanabiliriz.
-    const surfaceVertices = fullSurfaceVertices.length >= 3 ? fullSurfaceVertices : getFaceVertices(geometry, hit.faceIndex);
-    
-    if (surfaceVertices.length < 3) {
-        console.warn('Not enough vertices to create a highlight mesh.');
+    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) {
+        console.warn('Mesh has no position attribute');
         return null;
     }
 
-    console.log(`✅ Using ${surfaceVertices.length} vertices for highlight`);
-    
-    // World matrix'i al
-    const worldMatrix = mesh.matrixWorld.clone();
-    
-    // Highlight mesh'i oluştur
-    const highlightMesh = createFaceHighlight(surfaceVertices, worldMatrix, color, opacity);
-    
-    // Sahneye ekle
-    scene.add(highlightMesh);
-    
-    // Face bilgilerini logla
-    const faceNormal = getFaceNormal(surfaceVertices);
-    const faceCenter = getFaceCenter(surfaceVertices);
-    const faceArea = getFaceArea(surfaceVertices);
-    
-    console.log('🎯 Face highlighted:', {
-        shapeId: shape.id,
-        shapeType: shape.type,
-        faceIndex: hit.faceIndex,
-        faceCenter: faceCenter.toArray().map(v => v.toFixed(1)),
-        faceNormal: faceNormal.toArray().map(v => v.toFixed(2)),
-        faceArea: faceArea.toFixed(1),
-        vertexCount: surfaceVertices.length
+    // Collect full planar region from the clicked triangle
+    const region = collectCoplanarRegion(mesh, hit.faceIndex, 2, 1e-4);
+
+    // Build highlight mesh in world space
+    const mat = new THREE.MeshBasicMaterial({
+        color,
+        opacity,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
     });
-    
+    const overlay = new THREE.Mesh(region.geometryWorld, mat);
+    overlay.renderOrder = 999; // draw on top
+    scene.add(overlay);
+
     currentHighlight = {
-        mesh: highlightMesh,
+        mesh: overlay,
         faceIndex: hit.faceIndex,
         shapeId: shape.id
     };
-    
     return currentHighlight;
 };
+
 
 /**
  * Raycaster ile yüzey tespiti
