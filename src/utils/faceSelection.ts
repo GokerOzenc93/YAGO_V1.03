@@ -150,9 +150,10 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
       // Hem normal hem düzlem mesafesi uygunsa ekle
       if (normalAngle < NORMAL_TOLERANCE && distanceToPlane < DISTANCE_TOLERANCE) {
         queue.push(neighborIndex);
-        console.log(`➕ Added neighbor ${neighborIndex} to queue`);
+        console.log(`➕ Added neighbor ${neighborIndex} to queue (angle: ${(normalAngle * 180 / Math.PI).toFixed(1)}°, dist: ${distanceToPlane.toFixed(1)}mm)`);
       } else {
-        console.log(`❌ Rejected neighbor ${neighborIndex}: ${normalAngle >= NORMAL_TOLERANCE ? 'normal' : 'distance'} failed`);
+        const reason = normalAngle >= NORMAL_TOLERANCE ? `normal (${(normalAngle * 180 / Math.PI).toFixed(1)}° > ${(NORMAL_TOLERANCE * 180 / Math.PI).toFixed(1)}°)` : `distance (${distanceToPlane.toFixed(1)}mm > ${DISTANCE_TOLERANCE}mm)`;
+        console.log(`❌ Rejected neighbor ${neighborIndex}: ${reason}`);
       }
     }
   }
