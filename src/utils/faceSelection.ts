@@ -84,40 +84,6 @@ export const getFaceArea = (vertices: THREE.Vector3[]): number => {
 /**
  * Komşu yüzleri bulma (ortak vertex kontrolü ile)
  */
-const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): number[] => {
-  const indexAttr = geometry.index;
-  const neighbors: number[] = [];
-  if (!indexAttr) return neighbors;
-
-  // Mevcut face'in vertex indekslerini al
-  const currentFaceVertices = [
-    indexAttr.getX(faceIndex * 3 + 0),
-    indexAttr.getX(faceIndex * 3 + 1),
-    indexAttr.getX(faceIndex * 3 + 2)
-  ];
-
-  const totalFaces = indexAttr.count / 3;
-
-  for (let i = 0; i < totalFaces; i++) {
-    if (i === faceIndex) continue;
-    
-    const otherFaceVertices = [
-      indexAttr.getX(i * 3 + 0),
-      indexAttr.getX(i * 3 + 1),
-      indexAttr.getX(i * 3 + 2)
-    ];
-    
-    // Ortak vertex sayısını hesapla
-    const sharedVerts = otherFaceVertices.filter(v => currentFaceVertices.includes(v));
-    
-    // Tam 2 ortak vertex = ortak kenar = komşu
-    if (sharedVerts.length === 2) {
-      neighbors.push(i);
-    }
-  }
-
-  return neighbors;
-};
 
 /**
  * Flood-fill algoritması ile sadece tıklanan yüzeyi bulma
