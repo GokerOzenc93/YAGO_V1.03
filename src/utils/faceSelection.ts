@@ -89,28 +89,36 @@ const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): nu
   const neighbors: number[] = [];
   if (!indexAttr) return neighbors;
 
-  const faceVertsIdx = [
-    indexAttr.getX(faceIndex * 3),
+  // Mevcut face'in vertex indekslerini al
+  const currentFaceVertices = [
+    indexAttr.getX(faceIndex * 3 + 0),
     indexAttr.getX(faceIndex * 3 + 1),
     indexAttr.getX(faceIndex * 3 + 2)
   ];
 
   const totalFaces = indexAttr.count / 3;
 
+  console.log(`🔍 Face ${faceIndex} vertices: [${currentFaceVertices.join(', ')}]`);
+
   for (let i = 0; i < totalFaces; i++) {
     if (i === faceIndex) continue;
-    const vertsIdx = [
-      indexAttr.getX(i * 3),
+    
+    const otherFaceVertices = [
+      indexAttr.getX(i * 3 + 0),
       indexAttr.getX(i * 3 + 1),
       indexAttr.getX(i * 3 + 2)
     ];
-    const sharedVerts = vertsIdx.filter(v => faceVertsIdx.includes(v));
-    // Sadece tam 2 ortak vertex olan komşuları al (ortak kenar)
+    
+    // Ortak vertex sayısını hesapla
+    const sharedVerts = otherFaceVertices.filter(v => currentFaceVertices.includes(v));
+    
+    // Tam 2 ortak vertex = ortak kenar = komşu
     if (sharedVerts.length === 2) {
       neighbors.push(i);
     }
   }
 
+  console.log(`👥 Face ${faceIndex} has ${neighbors.length} neighbors: [${neighbors.join(', ')}]`);
   return neighbors;
 };
 
@@ -122,52 +130,66 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
   const index = geometry.index;
   if (!pos) return [];
 
-  // Hedef yüzeyin normalini hesapla
-  const startVerts = getFaceVertices(geometry, startFaceIndex);
-  const targetNormal = getFaceNormal(startVerts);
+  console.log(`🎯 Starting surface detection from face ${startFaceIndex}`);
+  
+  // 1. Başlangıç face'inin normalini hesapla
+  const startVertices = getFaceVertices(geometry, startFaceIndex);
+  const targetNormal = getFaceNormal(startVertices);
+  
+  console.log(`🎯 Target normal: [${targetNormal.x.toFixed(3)}, ${targetNormal.y.toFixed(3)}, ${targetNormal.z.toFixed(3)}]`);
 
   const visited = new Set<number>();
-  const allVertices: THREE.Vector3[] = [];
-  const uniqueVertices = new Map<string, THREE.Vector3>();
+  const surfaceFaces: number[] = [];
 
   const stack = [startFaceIndex];
 
-  console.log(`🔍 Starting surface detection from face ${startFaceIndex}`);
-  console.log(`🎯 Target normal: [${targetNormal.x.toFixed(3)}, ${targetNormal.y.toFixed(3)}, ${targetNormal.z.toFixed(3)}]`);
   while (stack.length > 0) {
     const faceIndex = stack.pop()!;
     if (visited.has(faceIndex)) continue;
     visited.add(faceIndex);
 
+    // Bu face'in normalini hesapla
     const faceVerts = getFaceVertices(geometry, faceIndex);
     const normal = getFaceNormal(faceVerts);
 
+    // Normal benzerliğini kontrol et
     const angle = normal.angleTo(targetNormal);
+    
     console.log(`📐 Face ${faceIndex} angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
     
-    // Daha geniş tolerans - 30 derece
-    if (angle < 0.52) { // 0.52 radyan = ~30 derece
-      // Unique vertices ekle (duplicate'leri önlemek için)
-      faceVerts.forEach(vertex => {
-        const key = `${vertex.x.toFixed(2)},${vertex.y.toFixed(2)},${vertex.z.toFixed(2)}`;
-        if (!uniqueVertices.has(key)) {
-          uniqueVertices.set(key, vertex);
-          allVertices.push(vertex);
-        }
-      });
+    // Çok geniş tolerans - 45 derece
+    if (angle < 0.785) { // 0.785 radyan = ~45 derece
+      surfaceFaces.push(faceIndex);
+      console.log(`✅ Face ${faceIndex} added to surface`);
 
-      // Komşu üçgenleri bul (ortak kenarı olanlar)
+      // Bu face'in komşularını bul
       const neighbors = getNeighborFaces(geometry, faceIndex);
-      console.log(`👥 Face ${faceIndex} has ${neighbors.length} neighbors: [${neighbors.join(', ')}]`);
       neighbors.forEach(n => {
         if (!visited.has(n)) stack.push(n);
       });
     } else {
-      console.log(`❌ Face ${faceIndex} rejected - angle too large: ${(angle * 180 / Math.PI).toFixed(1)}°`);
+      console.log(`❌ Face ${faceIndex} rejected - angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
     }
   }
 
-  console.log(`🎯 Full surface found: ${visited.size} triangles, ${allVertices.length} unique vertices`);
+  console.log(`🎯 Surface detection complete: ${surfaceFaces.length} faces found`);
+  
+  // 2. Tüm surface face'lerinin vertex'lerini topla
+  const allVertices: THREE.Vector3[] = [];
+  const uniqueVertices = new Map<string, THREE.Vector3>();
+  
+  surfaceFaces.forEach(faceIndex => {
+    const vertices = getFaceVertices(geometry, faceIndex);
+    vertices.forEach(vertex => {
+      const key = `${vertex.x.toFixed(1)},${vertex.y.toFixed(1)},${vertex.z.toFixed(1)}`;
+      if (!uniqueVertices.has(key)) {
+        uniqueVertices.set(key, vertex);
+        allVertices.push(vertex);
+      }
+    });
+  });
+  
+  console.log(`📊 Final surface: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
   return allVertices;
 };
 
@@ -180,10 +202,15 @@ export const createFaceHighlight = (
   color: number = 0xff6b35,
   opacity: number = 0.6
 ): THREE.Mesh => {
-  // World space'e dönüştür
-  const worldVertices = vertices.map(v => v.clone().applyMatrix4(worldMatrix));
+  console.log(`🎨 Creating highlight mesh with ${vertices.length} vertices`);
   
-  // Çokgen geometri oluştur (triangulation ile)
+  // World space'e dönüştür
+  const worldVertices = vertices.map(v => {
+    const worldVertex = v.clone().applyMatrix4(worldMatrix);
+    return worldVertex;
+  });
+  
+  // Convex hull veya basit triangulation
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(worldVertices.length * 3);
   
@@ -195,25 +222,48 @@ export const createFaceHighlight = (
   
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   
-  // Triangulation - basit fan triangulation
+  // Daha gelişmiş triangulation
   const indices: number[] = [];
-  for (let i = 1; i < worldVertices.length - 1; i++) {
-    indices.push(0, i, i + 1);
+  
+  if (worldVertices.length >= 3) {
+    // Convex hull yaklaşımı - tüm vertex'leri birleştir
+    for (let i = 1; i < worldVertices.length - 1; i++) {
+      indices.push(0, i, i + 1);
+    }
+    
+    // Eğer çok fazla vertex varsa, daha akıllı triangulation
+    if (worldVertices.length > 20) {
+      // Delaunay triangulation benzeri basit yaklaşım
+      const center = new THREE.Vector3();
+      worldVertices.forEach(v => center.add(v));
+      center.divideScalar(worldVertices.length);
+      
+      // Her vertex'i merkeze bağla
+      for (let i = 0; i < worldVertices.length; i++) {
+        const next = (i + 1) % worldVertices.length;
+        indices.push(i, next, 0); // İlk vertex'i merkez olarak kullan
+      }
+    }
   }
+  
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   
-  // Highlight material
+  // Daha belirgin highlight material
   const material = new THREE.MeshBasicMaterial({
     color: color,
     transparent: true,
-    opacity: opacity,
+    opacity: Math.min(opacity + 0.2, 0.9), // Daha görünür
     side: THREE.DoubleSide,
     depthTest: true,
-    depthWrite: false
+    depthWrite: false,
+    wireframe: false
   });
   
-  return new THREE.Mesh(geometry, material);
+  const mesh = new THREE.Mesh(geometry, material);
+  console.log(`✅ Highlight mesh created with ${indices.length / 3} triangles`);
+  
+  return mesh;
 };
 
 /**
