@@ -337,10 +337,32 @@ const posKey = (v: THREE.Vector3, eps: number) => {
 };
 
 const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
-    let geom = mesh.geometry as THREE.BufferGeometry;
-    if (!geom.index) geom = geom.toNonIndexed();
-    const index = geom.index!;
+    // Clone geometry to prevent side effects on shared instances
+    let geom = (mesh.geometry as THREE.BufferGeometry).clone();
+    
+    // Ensure geometry is indexed
+    if (!geom.index) {
+        // Create sequential indices for non-indexed geometry
+        const posCount = geom.getAttribute('position').count;
+        const indices = new Uint32Array(posCount);
+        for (let i = 0; i < posCount; i++) {
+            indices[i] = i;
+        }
+        geom.setIndex(new THREE.BufferAttribute(indices, 1));
+    }
+    
+    const index = geom.index;
+    if (!index) {
+        console.error('Failed to create geometry index');
+        return { neighbors: new Map(), triToWelded: [], weldedIdToWorld: new Map(), index: null, posAttr: null };
+    }
+    
     const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+    if (!pos) {
+        console.error('Geometry missing position attribute');
+        return { neighbors: new Map(), triToWelded: [], weldedIdToWorld: new Map(), index: null, posAttr: null };
+    }
+    
     const idx = index.array as ArrayLike<number>;
     const triCount = Math.floor(idx.length / 3);
 
@@ -407,6 +429,18 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
         mesh, QUANT_EPS * (() => { const s = new THREE.Vector3(); const p = new THREE.Vector3(); const q = new THREE.Quaternion(); mesh.matrixWorld.decompose(p,q,s); return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; })()
     );
+
+    // Check for null returns from buildNeighborsWithWeld
+    if (!index || !posAttr) {
+        console.error('Failed to build neighbors with weld - invalid geometry');
+        return {
+            triangles: [seedTri],
+            normal: new THREE.Vector3(0, 1, 0),
+            plane: new THREE.Plane(),
+            boundaryLoops: [],
+            weldedToWorld: new Map()
+        };
+    }
 
     const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
     mesh.matrixWorld.decompose(pvec, q, svec);
