@@ -120,87 +120,86 @@ const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): nu
 };
 
 /**
- * Tüm yüzeyi bulma - aynı normale sahip komşu üçgenleri birleştirme
+ * Flood-fill algoritması ile sadece tıklanan yüzeyi bulma
  */
 export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFaceIndex: number): THREE.Vector3[] => {
   const pos = geometry.attributes.position;
   const index = geometry.index;
   if (!pos) return [];
 
-  console.log(`🎯 Starting surface detection from face ${startFaceIndex}`);
+  console.log(`🎯 Flood-fill surface detection from face ${startFaceIndex}`);
   
-  // 1. Başlangıç face'inin normalini hesapla ve normalize et
+  // Başlangıç face'inin bilgilerini al
   const startVertices = getFaceVertices(geometry, startFaceIndex);
-  const targetNormal = getFaceNormal(startVertices).normalize();
+  const startNormal = getFaceNormal(startVertices).normalize();
+  const startCenter = getFaceCenter(startVertices);
   
-  console.log(`🎯 Target normal: [${targetNormal.x.toFixed(3)}, ${targetNormal.y.toFixed(3)}, ${targetNormal.z.toFixed(3)}]`);
+  console.log(`🎯 Start face normal: [${startNormal.x.toFixed(3)}, ${startNormal.y.toFixed(3)}, ${startNormal.z.toFixed(3)}]`);
+  console.log(`🎯 Start face center: [${startCenter.x.toFixed(1)}, ${startCenter.y.toFixed(1)}, ${startCenter.z.toFixed(1)}]`);
 
   const visited = new Set<number>();
   const surfaceFaces: number[] = [];
+  const queue = [startFaceIndex];
+  
+  // Çok sıkı toleranslar - sadece gerçekten aynı yüzey
+  const NORMAL_TOLERANCE = 0.017; // ~1 derece
+  const DISTANCE_TOLERANCE = 1.0; // 1mm düzlem mesafesi toleransı
 
-  // İlk olarak tüm face'leri tara ve aynı düzlemdekileri bul
-  const totalFaces = index ? index.count / 3 : pos.count / 9;
-  const candidateFaces: number[] = [];
-  
-  // Önce tüm face'leri kontrol et - aynı düzlemde olanları bul
-  for (let i = 0; i < totalFaces; i++) {
-    const faceVerts = getFaceVertices(geometry, i);
-    const normal = getFaceNormal(faceVerts).normalize();
-    
-    // Normal benzerliğini kontrol et - hem pozitif hem negatif yönleri kontrol et
-    const angle = normal.angleTo(targetNormal);
-    const reverseAngle = normal.angleTo(targetNormal.clone().negate());
-    const minAngle = Math.min(angle, reverseAngle);
-    
-    // Çok dar tolerans - 5 derece
-    if (minAngle < 0.087) { // 0.087 radyan = ~5 derece
-      candidateFaces.push(i);
-    }
-  }
-  
-  console.log(`🎯 Found ${candidateFaces.length} candidate faces with similar normals`);
-  
-  // Şimdi komşuluk kontrolü ile bağlı olanları bul
-  const stack = [startFaceIndex];
+  // Başlangıç düzlemini hesapla (point-normal form)
+  const planeNormal = startNormal.clone();
+  const planePoint = startCenter.clone();
+  const planeD = -planeNormal.dot(planePoint);
 
-  while (stack.length > 0) {
-    const faceIndex = stack.pop()!;
+  // Flood-fill algoritması - BFS ile komşu face'leri tara
+  while (queue.length > 0) {
+    const faceIndex = queue.shift()!;
     if (visited.has(faceIndex)) continue;
     visited.add(faceIndex);
+    surfaceFaces.push(faceIndex);
 
-    // Bu face candidate listesinde mi?
-    if (candidateFaces.includes(faceIndex)) {
-      surfaceFaces.push(faceIndex);
-      console.log(`✅ Face ${faceIndex} added to surface`);
+    console.log(`✅ Processing face ${faceIndex}`);
 
-      // Bu face'in komşularını bul
-      const neighbors = getNeighborFaces(geometry, faceIndex);
-      neighbors.forEach(n => {
-        if (!visited.has(n) && candidateFaces.includes(n)) {
-          stack.push(n);
-        }
-      });
+    // Bu face'in komşularını bul ve kontrol et
+    const neighbors = getNeighborFaces(geometry, faceIndex);
+    
+    for (const neighborIndex of neighbors) {
+      if (visited.has(neighborIndex)) continue;
+      
+      // Komşu face'in bilgilerini al
+      const neighborVertices = getFaceVertices(geometry, neighborIndex);
+      const neighborNormal = getFaceNormal(neighborVertices).normalize();
+      const neighborCenter = getFaceCenter(neighborVertices);
+      
+      // 1. Normal kontrolü - çok sıkı tolerans
+      const normalAngle = Math.min(
+        neighborNormal.angleTo(startNormal),
+        neighborNormal.angleTo(startNormal.clone().negate())
+      );
+      
+      // 2. Düzlem mesafesi kontrolü
+      const distanceToPlane = Math.abs(planeNormal.dot(neighborCenter) + planeD);
+      
+      console.log(`🔍 Neighbor ${neighborIndex}: angle=${(normalAngle * 180 / Math.PI).toFixed(1)}°, distance=${distanceToPlane.toFixed(1)}mm`);
+      
+      // Hem normal hem düzlem mesafesi uygunsa ekle
+      if (normalAngle < NORMAL_TOLERANCE && distanceToPlane < DISTANCE_TOLERANCE) {
+        queue.push(neighborIndex);
+        console.log(`➕ Added neighbor ${neighborIndex} to queue`);
+      } else {
+        console.log(`❌ Rejected neighbor ${neighborIndex}: ${normalAngle >= NORMAL_TOLERANCE ? 'normal' : 'distance'} failed`);
+      }
     }
   }
-
-  // Eğer komşuluk ile bulunamayan ama aynı düzlemde olan face'ler varsa onları da ekle
-  candidateFaces.forEach(faceIndex => {
-    if (!surfaceFaces.includes(faceIndex)) {
-      surfaceFaces.push(faceIndex);
-      console.log(`🔄 Added isolated face ${faceIndex} from same plane`);
-    }
-  });
-
-  console.log(`🎯 Surface detection complete: ${surfaceFaces.length} faces found`);
+  console.log(`🎯 Flood-fill complete: ${surfaceFaces.length} connected faces found`);
   
-  // 2. Tüm surface face'lerinin vertex'lerini topla
+  // Tüm surface face'lerinin vertex'lerini topla
   const allVertices: THREE.Vector3[] = [];
   const uniqueVertices = new Map<string, THREE.Vector3>();
   
   surfaceFaces.forEach(faceIndex => {
     const vertices = getFaceVertices(geometry, faceIndex);
     vertices.forEach(vertex => {
-      const key = `${vertex.x.toFixed(1)},${vertex.y.toFixed(1)},${vertex.z.toFixed(1)}`;
+      const key = `${vertex.x.toFixed(2)},${vertex.y.toFixed(2)},${vertex.z.toFixed(2)}`;
       if (!uniqueVertices.has(key)) {
         uniqueVertices.set(key, vertex);
         allVertices.push(vertex);
@@ -208,7 +207,7 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
     });
   });
   
-  console.log(`📊 Final surface: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
+  console.log(`📊 Final flood-fill surface: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
   return allVertices;
 };
 
