@@ -354,37 +354,6 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
     console.log(`📊 Final result: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
     return allVertices;
 };
-                queue.push(neighborIndex);
-            } else {
-                const reason = normalAngle >= NORMAL_TOLERANCE ? 
-                    `normal (${(normalAngle * 180 / Math.PI).toFixed(1)}° > ${(NORMAL_TOLERANCE * 180 / Math.PI).toFixed(1)}°)` : 
-                    `distance (${distanceToPlane.toFixed(1)}mm > ${DISTANCE_TOLERANCE}mm)`;
-                console.log(`❌ Rejected neighbor ${neighborIndex}: ${reason}`);
-            }
-        }
-    }
-    console.log(`🎯 Flood-fill complete: ${surfaceFaces.length} connected faces found`);
-    
-    // Tüm surface face'lerinin benzersiz vertex'lerini topla
-    const allVertices: THREE.Vector3[] = [];
-    // Vertex'leri string anahtarlarla saklayarak benzersizliği sağla
-    const uniqueVerticesMap = new Map<string, THREE.Vector3>(); 
-    
-    surfaceFaces.forEach(faceIndex => {
-        const vertices = getFaceVertices(geometry, faceIndex);
-        vertices.forEach(vertex => {
-            // Vertex koordinatlarını hassas bir string anahtara dönüştür
-            const key = `${vertex.x.toFixed(4)},${vertex.y.toFixed(4)},${vertex.z.toFixed(4)}`;
-            if (!uniqueVerticesMap.has(key)) {
-                uniqueVerticesMap.set(key, vertex);
-                allVertices.push(vertex);
-            }
-        });
-    });
-    
-    console.log(`📊 Final flood-fill surface: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
-    return allVertices;
-};
 
 /**
  * Yüzey highlight mesh'i oluştur
