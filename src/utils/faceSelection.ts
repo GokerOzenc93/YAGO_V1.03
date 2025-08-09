@@ -339,10 +339,19 @@ const posKey = (v: THREE.Vector3, eps: number) => {
 const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
     let geom = mesh.geometry as THREE.BufferGeometry;
     if (!geom.index) geom = geom.toNonIndexed();
-    const index = geom.index!;
+    
+    // Index array'i güvenli şekilde al
+    let idxArray: ArrayLike<number>;
+    if (geom.index) {
+        idxArray = geom.index.array;
+    } else {
+        // Non-indexed geometry için sequential index oluştur
+        const posCount = geom.getAttribute('position').count;
+        idxArray = Array.from({length: posCount}, (_, i) => i);
+    }
+    
     const pos = geom.getAttribute('position') as THREE.BufferAttribute;
-    const idx = index.array as ArrayLike<number>;
-    const triCount = Math.floor(idx.length / 3);
+    const triCount = Math.floor(idxArray.length / 3);
 
     const keyToId = new Map<string, number>();
     const weldedIdToWorld = new Map<number, THREE.Vector3>();
@@ -367,9 +376,9 @@ const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
     const triToWelded: [number, number, number][] = [];
 
     for (let t = 0; t < triCount; t++) {
-        const a = (idx[t*3] as number) | 0;
-        const b = (idx[t*3+1] as number) | 0;
-        const c = (idx[t*3+2] as number) | 0;
+        const a = (idxArray[t*3] as number) | 0;
+        const b = (idxArray[t*3+1] as number) | 0;
+        const c = (idxArray[t*3+2] as number) | 0;
         const wa = vertToWelded.get(a)!;
         const wb = vertToWelded.get(b)!;
         const wc = vertToWelded.get(c)!;
@@ -392,11 +401,13 @@ const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
         }
     }
 
-    return { neighbors, triToWelded, weldedIdToWorld, index: index, posAttr: pos };
+    return { neighbors, triToWelded, weldedIdToWorld, idxArray: idxArray, posAttr: pos };
 };
 
-const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferAttribute, pos: THREE.BufferAttribute) => {
-    const ia = index.getX(triIndex*3), ib = index.getX(triIndex*3+1), ic = index.getX(triIndex*3+2);
+const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, idxArray: ArrayLike<number>, pos: THREE.BufferAttribute) => {
+    const ia = idxArray[triIndex*3] as number;
+    const ib = idxArray[triIndex*3+1] as number; 
+    const ic = idxArray[triIndex*3+2] as number;
     const a = new THREE.Vector3().fromBufferAttribute(pos, ia).applyMatrix4(mesh.matrixWorld);
     const b = new THREE.Vector3().fromBufferAttribute(pos, ib).applyMatrix4(mesh.matrixWorld);
     const c = new THREE.Vector3().fromBufferAttribute(pos, ic).applyMatrix4(mesh.matrixWorld);
@@ -404,7 +415,7 @@ const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferA
 };
 
 const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
-    const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
+    const { neighbors, triToWelded, weldedIdToWorld, idxArray, posAttr } = buildNeighborsWithWeld(
         mesh, QUANT_EPS * (() => { const s = new THREE.Vector3(); const p = new THREE.Vector3(); const q = new THREE.Quaternion(); mesh.matrixWorld.decompose(p,q,s); return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; })()
     );
 
@@ -414,7 +425,7 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const planeEps = PLANE_EPS * Math.max(1, scaleMag);
     const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG));
 
-    let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
+    let avgNormal = triNormalWorld(mesh, seedTri, idxArray, posAttr);
     const seedW = triToWelded[seedTri];
     const seedPoint = weldedIdToWorld.get(seedW[0])!.clone();
     let plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
@@ -430,7 +441,7 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
         const neighs = neighbors.get(t) || [];
         for (const nt of neighs) {
             if (visited.has(nt)) continue;
-            const n = triNormalWorld(mesh, nt, index, posAttr);
+            const n = triNormalWorld(mesh, nt, idxArray, posAttr);
             if (n.dot(avgNormal) < angleCos) continue;
 
             const wids = triToWelded[nt];
