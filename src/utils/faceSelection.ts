@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
+(THREE.Mesh as any).prototype.raycast = acceleratedRaycast;
 
 // --- Shape Interface and Flood-Fill Face Utility Functions ---
 
@@ -527,7 +529,8 @@ const buildFaceOverlayFromHit = (
             const p = res.weldedToWorld.get(wid)!;
             const x = p.dot(tangent);
             const y = p.dot(bitangent);
-            arr.push(new THREE.Vector2(x,y));
+            // use coordinates relative to origin
+        arr.push(new THREE.Vector2(x, y));
         }
         return arr;
     });
@@ -537,8 +540,12 @@ const buildFaceOverlayFromHit = (
     const triangles = THREE.ShapeUtils.triangulateShape(outer, holes);
 
     // 3D reconstruction: choose origin on plane
-    const origin = res.weldedToWorld.values().next().value.clone();
-    const to3D = (v: THREE.Vector2) => origin.clone().addScaledVector(tangent, v.x - outer[0].x).addScaledVector(bitangent, v.y - outer[0].y);
+    // Choose plane origin as seed point projected to plane
+const origin = res.weldedToWorld.values().next().value.clone();
+// project positions: x = (p-origin).tangent, y = (p-origin).bitangent
+const to3D = (v: THREE.Vector2) => origin.clone()
+    .addScaledVector(tangent, v.x)
+    .addScaledVector(bitangent, v.y);
 
     const verts: number[] = [];
     const all2D = outer.concat(...holes);
@@ -563,6 +570,15 @@ const buildFaceOverlayFromHit = (
 };
 /** ===== End Robust Planar Region Selection ===== **/
 
+
+
+// === BVH Acceleration Optional Usage ===
+// Before heavy selection usage:
+//   (mesh.geometry as any).computeBoundsTree = MeshBVH.prototype.build;
+//   (mesh.geometry as any).disposeBoundsTree = MeshBVH.prototype.dispose;
+//   mesh.geometry.computeBoundsTree();
+// After done:
+//   mesh.geometry.disposeBoundsTree();
 
 export const highlightFace = (
     scene: THREE.Scene,
@@ -603,7 +619,14 @@ export const detectFaceAtMouse = (
     
     // Raycaster oluştur
     const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
+    
+    // Build BVH lazily for faster and robust raycasting
+    const geom = (mesh.geometry as any);
+    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+        geom.computeBoundsTree();
+    }
+    (raycaster as any).firstHitOnly = true;
+raycaster.setFromCamera(mouse, camera);
     
     // Intersection test
     const intersects = raycaster.intersectObject(mesh, false);
