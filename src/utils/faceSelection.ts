@@ -337,9 +337,22 @@ const posKey = (v: THREE.Vector3, eps: number) => {
 };
 
 const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
-    let geom = mesh.geometry as THREE.BufferGeometry;
-    if (!geom.index) geom = geom.toNonIndexed();
-    const index = geom.index!;
+    const geom = mesh.geometry as THREE.BufferGeometry;
+    let index: THREE.BufferAttribute;
+    
+    if (geom.index) {
+        // Indexed geometry - use existing index
+        index = geom.index;
+    } else {
+        // Non-indexed geometry - create virtual index
+        const vertexCount = geom.attributes.position.count;
+        const indexArray = new Uint32Array(vertexCount);
+        for (let i = 0; i < vertexCount; i++) {
+            indexArray[i] = i;
+        }
+        index = new THREE.BufferAttribute(indexArray, 1);
+    }
+    
     const pos = geom.getAttribute('position') as THREE.BufferAttribute;
     const idx = index.array as ArrayLike<number>;
     const triCount = Math.floor(idx.length / 3);
