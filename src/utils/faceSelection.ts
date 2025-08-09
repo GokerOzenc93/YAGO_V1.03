@@ -98,8 +98,6 @@ const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): nu
 
   const totalFaces = indexAttr.count / 3;
 
-  console.log(`🔍 Face ${faceIndex} vertices: [${currentFaceVertices.join(', ')}]`);
-
   for (let i = 0; i < totalFaces; i++) {
     if (i === faceIndex) continue;
     
@@ -118,7 +116,6 @@ const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): nu
     }
   }
 
-  console.log(`👥 Face ${faceIndex} has ${neighbors.length} neighbors: [${neighbors.join(', ')}]`);
   return neighbors;
 };
 
@@ -132,9 +129,9 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
 
   console.log(`🎯 Starting surface detection from face ${startFaceIndex}`);
   
-  // 1. Başlangıç face'inin normalini hesapla
+  // 1. Başlangıç face'inin normalini hesapla ve normalize et
   const startVertices = getFaceVertices(geometry, startFaceIndex);
-  const targetNormal = getFaceNormal(startVertices);
+  const targetNormal = getFaceNormal(startVertices).normalize();
   
   console.log(`🎯 Target normal: [${targetNormal.x.toFixed(3)}, ${targetNormal.y.toFixed(3)}, ${targetNormal.z.toFixed(3)}]`);
 
@@ -148,19 +145,21 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
     if (visited.has(faceIndex)) continue;
     visited.add(faceIndex);
 
-    // Bu face'in normalini hesapla
+    // Bu face'in normalini hesapla ve normalize et
     const faceVerts = getFaceVertices(geometry, faceIndex);
-    const normal = getFaceNormal(faceVerts);
+    const normal = getFaceNormal(faceVerts).normalize();
 
-    // Normal benzerliğini kontrol et
+    // Normal benzerliğini kontrol et - hem pozitif hem negatif yönleri kontrol et
     const angle = normal.angleTo(targetNormal);
+    const reverseAngle = normal.angleTo(targetNormal.clone().negate());
+    const minAngle = Math.min(angle, reverseAngle);
     
-    console.log(`📐 Face ${faceIndex} angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
+    console.log(`📐 Face ${faceIndex} angle: ${(angle * 180 / Math.PI).toFixed(1)}°, reverse: ${(reverseAngle * 180 / Math.PI).toFixed(1)}°, min: ${(minAngle * 180 / Math.PI).toFixed(1)}°`);
     
-    // Çok geniş tolerans - 45 derece
-    if (angle < 0.785) { // 0.785 radyan = ~45 derece
+    // Çok geniş tolerans - 10 derece (hem normal hem ters yön)
+    if (minAngle < 0.175) { // 0.175 radyan = ~10 derece
       surfaceFaces.push(faceIndex);
-      console.log(`✅ Face ${faceIndex} added to surface`);
+      console.log(`✅ Face ${faceIndex} added to surface (angle: ${(minAngle * 180 / Math.PI).toFixed(1)}°)`);
 
       // Bu face'in komşularını bul
       const neighbors = getNeighborFaces(geometry, faceIndex);
@@ -168,7 +167,7 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
         if (!visited.has(n)) stack.push(n);
       });
     } else {
-      console.log(`❌ Face ${faceIndex} rejected - angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
+      console.log(`❌ Face ${faceIndex} rejected - min angle: ${(minAngle * 180 / Math.PI).toFixed(1)}°`);
     }
   }
 
@@ -181,7 +180,7 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
   surfaceFaces.forEach(faceIndex => {
     const vertices = getFaceVertices(geometry, faceIndex);
     vertices.forEach(vertex => {
-      const key = `${vertex.x.toFixed(1)},${vertex.y.toFixed(1)},${vertex.z.toFixed(1)}`;
+      const key = `${vertex.x.toFixed(2)},${vertex.y.toFixed(2)},${vertex.z.toFixed(2)}`;
       if (!uniqueVertices.has(key)) {
         uniqueVertices.set(key, vertex);
         allVertices.push(vertex);
