@@ -165,185 +165,69 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
 
     const visited = new Set<number>();
     const surfaceFaces: number[] = [];
+    const queue = [startFaceIndex];
     
-    // İlk olarak tüm face'leri tara ve aynı yüzeyde olanları bul
-    const totalFaces = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
-    const candidateFaces: number[] = [];
-    
-    // Çok gevşek toleranslar - karmaşık şekiller için
-    const NORMAL_TOLERANCE = THREE.MathUtils.degToRad(15); // 15° tolerans
-    const DISTANCE_TOLERANCE = 10.0; // 10mm düzlem mesafesi toleransı
+    // Gevşetilmiş toleranslar
+    const NORMAL_TOLERANCE = THREE.MathUtils.degToRad(5); // 5° tolerans
+    const DISTANCE_TOLERANCE = 3.0; // 3mm düzlem mesafesi toleransı
 
-    console.log(`🎯 Relaxed Tolerances: Normal=${(NORMAL_TOLERANCE * 180 / Math.PI).toFixed(1)}°, Distance=${DISTANCE_TOLERANCE}mm`);
+    console.log(`🎯 Tolerances: Normal=${(NORMAL_TOLERANCE * 180 / Math.PI).toFixed(1)}°, Distance=${DISTANCE_TOLERANCE}mm`);
 
     // Başlangıç düzlemini hesapla (point-normal form)
     const planeNormal = startNormal.clone();
     const planePoint = startCenter.clone();
     const planeD = -planeNormal.dot(planePoint);
 
-    // 1. AŞAMA: Tüm face'leri tara ve aynı düzlemde olanları bul
-    console.log(`🎯 Phase 1: Scanning all ${totalFaces} faces for coplanar candidates`);
-    
-    for (let i = 0; i < totalFaces; i++) {
-        if (i === startFaceIndex) {
-            candidateFaces.push(i);
-            continue;
-        }
-        
-        const faceVertices = getFaceVertices(geometry, i);
-        if (faceVertices.length === 0) continue;
-        
-        const faceNormal = getFaceNormal(faceVertices).normalize();
-        const faceCenter = getFaceCenter(faceVertices);
-        
-        // Normal kontrolü - iki yönü de kabul et
-        const normalAngle = Math.min(
-            faceNormal.angleTo(startNormal),
-            faceNormal.angleTo(startNormal.clone().negate())
-        );
-        
-        // Düzlem mesafesi kontrolü
-        const distanceToPlane = Math.abs(planeNormal.dot(faceCenter) + planeD);
-        
-        if (normalAngle < NORMAL_TOLERANCE && distanceToPlane < DISTANCE_TOLERANCE) {
-            candidateFaces.push(i);
-        }
-    }
-    
-    console.log(`🎯 Phase 1 complete: Found ${candidateFaces.length} coplanar faces`);
-    
-    // 2. AŞAMA: Flood-fill ile bağlı olanları seç
-    const queue = [startFaceIndex];
-    
+    // Flood-fill algoritması - BFS ile komşu face'leri tara
     while (queue.length > 0) {
         const faceIndex = queue.shift()!;
         if (visited.has(faceIndex)) continue;
         visited.add(faceIndex);
         surfaceFaces.push(faceIndex);
 
-        // Bu face'in komşularını bul
+        // Bu face'in komşularını bul ve kontrol et
         const neighbors = getNeighborFaces(geometry, faceIndex);
         
         for (const neighborIndex of neighbors) {
-            if (visited.has(neighborIndex) || !candidateFaces.includes(neighborIndex)) continue;
+            if (visited.has(neighborIndex)) continue;
             
-            // Komşu aynı düzlemde ise queue'ya ekle
-            queue.push(neighborIndex);
-        }
-    }
-    
-    console.log(`🎯 Phase 2 complete: Connected ${surfaceFaces.length} faces via flood-fill`);
-    
-    // 3. AŞAMA: Kalan coplanar face'leri de ekle (izole alanlar için)
-    let isolatedCount = 0;
-    for (const candidateIndex of candidateFaces) {
-        if (!surfaceFaces.includes(candidateIndex)) {
-            surfaceFaces.push(candidateIndex);
-            isolatedCount++;
-        }
-    }
-    
-    if (isolatedCount > 0) {
-        console.log(`🎯 Phase 3: Added ${isolatedCount} isolated coplanar faces`);
-    }
-    
-    // 4. AŞAMA: Yakın komşu face'leri de kontrol et (gap'ler için)
-    const nearbyFaces: number[] = [];
-    const NEARBY_TOLERANCE = DISTANCE_TOLERANCE * 2; // 2x mesafe toleransı
-    
-    for (let i = 0; i < totalFaces; i++) {
-        if (surfaceFaces.includes(i)) continue;
-        
-        const faceVertices = getFaceVertices(geometry, i);
-        if (faceVertices.length === 0) continue;
-        
-        const faceCenter = getFaceCenter(faceVertices);
-        
-        // En yakın surface face'e mesafeyi kontrol et
-        let minDistance = Infinity;
-        for (const surfaceFaceIndex of surfaceFaces) {
-            const surfaceVertices = getFaceVertices(geometry, surfaceFaceIndex);
-            const surfaceCenter = getFaceCenter(surfaceVertices);
-            const distance = faceCenter.distanceTo(surfaceCenter);
-            minDistance = Math.min(minDistance, distance);
-        }
-        
-        if (minDistance < NEARBY_TOLERANCE) {
-            const faceNormal = getFaceNormal(faceVertices).normalize();
+            // Komşu face'in bilgilerini al
+            const neighborVertices = getFaceVertices(geometry, neighborIndex);
+            const neighborNormal = getFaceNormal(neighborVertices).normalize();
+            const neighborCenter = getFaceCenter(neighborVertices);
+            
+            // 1. Normal kontrolü - iki yönü de kabul et
             const normalAngle = Math.min(
-                faceNormal.angleTo(startNormal),
-                faceNormal.angleTo(startNormal.clone().negate())
+                neighborNormal.angleTo(startNormal),
+                neighborNormal.angleTo(startNormal.clone().negate()) // Ters normali de kontrol et
             );
             
-            if (normalAngle < NORMAL_TOLERANCE * 1.5) { // Biraz daha gevşek normal toleransı
-                nearbyFaces.push(i);
-            }
-        }
-    }
-    
-    if (nearbyFaces.length > 0) {
-        surfaceFaces.push(...nearbyFaces);
-        console.log(`🎯 Phase 4: Added ${nearbyFaces.length} nearby faces to fill gaps`);
-    }
-    
-    // 5. AŞAMA: Vertex tabanlı genişletme (son çare)
-    const expandedFaces: number[] = [];
-    const surfaceVertexSet = new Set<string>();
-    
-    // Mevcut surface'deki tüm vertex'leri topla
-    surfaceFaces.forEach(faceIndex => {
-        const vertices = getFaceVertices(geometry, faceIndex);
-        vertices.forEach(vertex => {
-            const key = `${vertex.x.toFixed(2)},${vertex.y.toFixed(2)},${vertex.z.toFixed(2)}`;
-            surfaceVertexSet.add(key);
-        });
-    });
-    
-    // Diğer face'lerde bu vertex'leri paylaşanları bul
-    for (let i = 0; i < totalFaces; i++) {
-        if (surfaceFaces.includes(i)) continue;
-        
-        const faceVertices = getFaceVertices(geometry, i);
-        if (faceVertices.length === 0) continue;
-        
-        let sharedVertexCount = 0;
-        for (const vertex of faceVertices) {
-            const key = `${vertex.x.toFixed(2)},${vertex.y.toFixed(2)},${vertex.z.toFixed(2)}`;
-            if (surfaceVertexSet.has(key)) {
-                sharedVertexCount++;
-            }
-        }
-        
-        // En az 2 vertex paylaşıyorsa ve normal uygunsa ekle
-        if (sharedVertexCount >= 2) {
-            const faceNormal = getFaceNormal(faceVertices).normalize();
-            const normalAngle = Math.min(
-                faceNormal.angleTo(startNormal),
-                faceNormal.angleTo(startNormal.clone().negate())
-            );
+            // 2. Düzlem mesafesi kontrolü
+            const distanceToPlane = Math.abs(planeNormal.dot(neighborCenter) + planeD);
             
-            if (normalAngle < NORMAL_TOLERANCE * 2) { // Çok gevşek tolerans
-                expandedFaces.push(i);
+            // Hem normal hem düzlem mesafesi uygunsa ekle
+            if (normalAngle < NORMAL_TOLERANCE && distanceToPlane < DISTANCE_TOLERANCE) {
+                queue.push(neighborIndex);
+            } else {
+                const reason = normalAngle >= NORMAL_TOLERANCE ? 
+                    `normal (${(normalAngle * 180 / Math.PI).toFixed(1)}° > ${(NORMAL_TOLERANCE * 180 / Math.PI).toFixed(1)}°)` : 
+                    `distance (${distanceToPlane.toFixed(1)}mm > ${DISTANCE_TOLERANCE}mm)`;
+                console.log(`❌ Rejected neighbor ${neighborIndex}: ${reason}`);
             }
         }
     }
-    
-    if (expandedFaces.length > 0) {
-        surfaceFaces.push(...expandedFaces);
-        console.log(`🎯 Phase 5: Added ${expandedFaces.length} vertex-shared faces`);
-    }
-    
-    console.log(`🎯 Multi-phase surface detection complete: ${surfaceFaces.length} total faces found`);
+    console.log(`🎯 Flood-fill complete: ${surfaceFaces.length} connected faces found`);
     
     // Tüm surface face'lerinin benzersiz vertex'lerini topla
     const allVertices: THREE.Vector3[] = [];
-    const uniqueVerticesMap = new Map<string, THREE.Vector3>();
+    // Vertex'leri string anahtarlarla saklayarak benzersizliği sağla
+    const uniqueVerticesMap = new Map<string, THREE.Vector3>(); 
     
     surfaceFaces.forEach(faceIndex => {
         const vertices = getFaceVertices(geometry, faceIndex);
         vertices.forEach(vertex => {
-            // Daha gevşek vertex precision - karmaşık şekiller için
-            const key = `${vertex.x.toFixed(1)},${vertex.y.toFixed(1)},${vertex.z.toFixed(1)}`;
+            // Vertex koordinatlarını hassas bir string anahtara dönüştür
+            const key = `${vertex.x.toFixed(4)},${vertex.y.toFixed(4)},${vertex.z.toFixed(4)}`;
             if (!uniqueVerticesMap.has(key)) {
                 uniqueVerticesMap.set(key, vertex);
                 allVertices.push(vertex);
@@ -351,7 +235,7 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
         });
     });
     
-    console.log(`📊 Final result: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
+    console.log(`📊 Final flood-fill surface: ${surfaceFaces.length} triangles, ${allVertices.length} unique vertices`);
     return allVertices;
 };
 
