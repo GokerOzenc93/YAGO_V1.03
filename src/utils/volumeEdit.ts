@@ -128,14 +128,14 @@ export const updateVertexPosition = (
  */
 export const createVertexHighlight = (
   worldPosition: THREE.Vector3,
-  color: number = 0x00ff00,
+  color: number = 0x000000,
   size: number = 5
 ): THREE.Mesh => {
   const geometry = new THREE.SphereGeometry(size, 8, 6);
   const material = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
-    opacity: 0.8,
+    opacity: 1.0,
     depthTest: false
   });
   
@@ -214,7 +214,7 @@ export const visualizeFaceVertices = (
   scene: THREE.Scene,
   mesh: THREE.Mesh,
   faceIndex: number,
-  color: number = 0x00ff00,
+  color: number = 0x000000,
   size: number = 10
 ): THREE.Group => {
   const group = new THREE.Group();
@@ -242,6 +242,8 @@ export const visualizeFaceVertices = (
     faceVertices.push(a, a + 1, a + 2);
   }
   
+  console.log(`🎯 Face ${faceIndex} vertices: ${faceVertices.join(', ')}`);
+  
   // Her vertex için highlight oluştur
   faceVertices.forEach((vertexIndex, i) => {
     const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
@@ -251,23 +253,25 @@ export const visualizeFaceVertices = (
     
     // Vertex numarasını göster
     const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
+    canvas.width = 64;
+    canvas.height = 64;
     const context = canvas.getContext('2d')!;
-    context.fillStyle = 'white';
-    context.font = '16px Arial';
+    context.fillStyle = 'red';
+    context.font = 'bold 24px Arial';
     context.textAlign = 'center';
-    context.fillText((i + 1).toString(), 16, 20);
+    context.fillText((i + 1).toString(), 32, 40);
     
     const texture = new THREE.CanvasTexture(canvas);
     const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
     const sprite = new THREE.Sprite(spriteMaterial);
     sprite.position.copy(worldVertex);
-    sprite.position.y += size * 2;
-    sprite.scale.set(size * 2, size * 2, 1);
+    sprite.position.y += size * 3;
+    sprite.scale.set(size * 4, size * 4, 1);
     
     group.add(highlight);
     group.add(sprite);
+    
+    console.log(`🎯 Vertex ${i + 1} at world position: [${worldVertex.x.toFixed(1)}, ${worldVertex.y.toFixed(1)}, ${worldVertex.z.toFixed(1)}]`);
   });
   
   scene.add(group);

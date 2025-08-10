@@ -201,6 +201,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
       
       if (hit && hit.faceIndex !== undefined && meshRef.current) {
+        // Seçilen face'i highlight et (açık gri renk)
+        const faceHighlight = highlightFace(scene, hit, shape, 0xcccccc, 0.4);
+        
         // Önceki vertex görselleştirmesini temizle
         if (vertexVisualizationGroup) {
           clearVertexVisualization(scene, vertexVisualizationGroup);
@@ -211,8 +214,8 @@ const OpenCascadeShape: React.FC<Props> = ({
           scene,
           meshRef.current,
           hit.faceIndex,
-          0x00ff00, // Yeşil renk
-          8 // Vertex boyutu
+          0x000000, // Siyah renk
+          12 // Vertex boyutu (daha büyük)
         );
         
         setVertexVisualizationGroup(newGroup);
