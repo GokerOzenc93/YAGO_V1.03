@@ -16,7 +16,9 @@ import {
   detectVertexAtMouse, 
   updateVertexPosition, 
   getWorldPositionFromMouse,
-  VolumeEditState 
+  VolumeEditState,
+  visualizeFaceVertices,
+  clearVertexVisualization
 } from '../utils/volumeEdit';
 
 interface Props {
@@ -63,6 +65,9 @@ const OpenCascadeShape: React.FC<Props> = ({
     isDragging: false,
     dragStartPosition: null
   });
+  
+  // Volume Edit Vertex Visualization
+  const [vertexVisualizationGroup, setVertexVisualizationGroup] = useState<THREE.Group | null>(null);
 
   // Debug: Log shape information when selected
   useEffect(() => {
@@ -187,23 +192,33 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isVolumeEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      const vertexHit = detectVertexAtMouse(
+      // İlk önce face seçimi yap
+      const hit = detectFaceAtMouse(
         e.nativeEvent,
         camera,
         meshRef.current!,
         gl.domElement
       );
       
-      if (vertexHit) {
-        setVolumeEditState({
-          isActive: true,
-          selectedVertexIndex: vertexHit.vertexIndex,
-          isDragging: true,
-          dragStartPosition: vertexHit.worldPosition.clone()
-        });
-        console.log(`🎯 Volume Edit: Vertex ${vertexHit.vertexIndex} selected for dragging`);
+      if (hit && hit.faceIndex !== undefined && meshRef.current) {
+        // Önceki vertex görselleştirmesini temizle
+        if (vertexVisualizationGroup) {
+          clearVertexVisualization(scene, vertexVisualizationGroup);
+        }
+        
+        // Seçilen face'in vertex'lerini görselleştir
+        const newGroup = visualizeFaceVertices(
+          scene,
+          meshRef.current,
+          hit.faceIndex,
+          0x00ff00, // Yeşil renk
+          8 // Vertex boyutu
+        );
+        
+        setVertexVisualizationGroup(newGroup);
+        console.log(`🎯 Volume Edit: Face ${hit.faceIndex} vertices visualized`);
       } else {
-        console.log('🎯 Volume Edit: No vertex found at mouse position');
+        console.log('🎯 Volume Edit: No face found at mouse position');
       }
       return;
     }
@@ -280,6 +295,12 @@ const OpenCascadeShape: React.FC<Props> = ({
     
     // Volume Edit mode'dan çıkıldığında state'i temizle
     if (!isVolumeEditMode) {
+      // Vertex görselleştirmesini temizle
+      if (vertexVisualizationGroup) {
+        clearVertexVisualization(scene, vertexVisualizationGroup);
+        setVertexVisualizationGroup(null);
+      }
+      
       setVolumeEditState({
         isActive: false,
         selectedVertexIndex: null,
@@ -287,7 +308,6 @@ const OpenCascadeShape: React.FC<Props> = ({
         dragStartPosition: null
       });
     }
-  }, [isFaceEditMode, isVolumeEditMode, scene]);
 
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode

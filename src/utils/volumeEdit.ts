@@ -184,8 +184,8 @@ export const getWorldPositionFromMouse = (
 export const visualizeVertices = (
   scene: THREE.Scene,
   mesh: THREE.Mesh,
-  color: number = 0xff0000,
-  size: number = 3
+  color: number = 0x00ff00,
+  size: number = 8
 ): THREE.Group => {
   const group = new THREE.Group();
   const geometry = mesh.geometry as THREE.BufferGeometry;
@@ -205,4 +205,93 @@ export const visualizeVertices = (
   
   scene.add(group);
   return group;
+};
+
+/**
+ * Seçilen face'in vertex'lerini görselleştir
+ */
+export const visualizeFaceVertices = (
+  scene: THREE.Scene,
+  mesh: THREE.Mesh,
+  faceIndex: number,
+  color: number = 0x00ff00,
+  size: number = 10
+): THREE.Group => {
+  const group = new THREE.Group();
+  const geometry = mesh.geometry as THREE.BufferGeometry;
+  const position = geometry.attributes.position;
+  const index = geometry.index;
+  
+  if (!position) return group;
+  
+  const worldMatrix = mesh.matrixWorld;
+  
+  // Face'in vertex'lerini al
+  const faceVertices: number[] = [];
+  if (index) {
+    // Indexed geometry
+    const a = faceIndex * 3;
+    faceVertices.push(
+      index.getX(a),
+      index.getX(a + 1), 
+      index.getX(a + 2)
+    );
+  } else {
+    // Non-indexed geometry
+    const a = faceIndex * 3;
+    faceVertices.push(a, a + 1, a + 2);
+  }
+  
+  // Her vertex için highlight oluştur
+  faceVertices.forEach((vertexIndex, i) => {
+    const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
+    const worldVertex = vertex.clone().applyMatrix4(worldMatrix);
+    
+    const highlight = createVertexHighlight(worldVertex, color, size);
+    
+    // Vertex numarasını göster
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = 'white';
+    context.font = '16px Arial';
+    context.textAlign = 'center';
+    context.fillText((i + 1).toString(), 16, 20);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.position.copy(worldVertex);
+    sprite.position.y += size * 2;
+    sprite.scale.set(size * 2, size * 2, 1);
+    
+    group.add(highlight);
+    group.add(sprite);
+  });
+  
+  scene.add(group);
+  console.log(`🎯 Face ${faceIndex} vertices visualized: ${faceVertices.length} vertices`);
+  return group;
+};
+
+/**
+ * Vertex görselleştirmesini temizle
+ */
+export const clearVertexVisualization = (scene: THREE.Scene, group: THREE.Group) => {
+  scene.remove(group);
+  
+  // Tüm geometri ve materyalleri temizle
+  group.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      (child.material as THREE.Material).dispose();
+    } else if (child instanceof THREE.Sprite) {
+      (child.material as THREE.SpriteMaterial).map?.dispose();
+      (child.material as THREE.Material).dispose();
+    }
+  });
+  
+  group.clear();
+  console.log('🎯 Vertex visualization cleared');
 };
