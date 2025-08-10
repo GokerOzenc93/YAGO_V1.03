@@ -171,6 +171,34 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     if (intersects.length > 0) {
       let point = intersects[0].point;
       
+      // Kamera görünüşüne göre koordinat düzeltmesi
+      const cameraView = getCurrentCameraView();
+      
+      // Ön görünüşte (front view) Z koordinatını sabit tut, X ve Y kullan
+      if (cameraView === 'front' || cameraView === 'back') {
+        point = new THREE.Vector3(
+          snapToGrid(point.x, gridSize),
+          snapToGrid(point.y, gridSize),
+          0 // Z koordinatını sabit tut
+        );
+      }
+      // Sağ/Sol görünüşte Y ve Z kullan, X sabit
+      else if (cameraView === 'right' || cameraView === 'left') {
+        point = new THREE.Vector3(
+          0, // X koordinatını sabit tut
+          snapToGrid(point.y, gridSize),
+          snapToGrid(point.z, gridSize)
+        );
+      }
+      // Üst/Alt görünüşte (varsayılan) X ve Z kullan, Y=0
+      else {
+        point = new THREE.Vector3(
+          snapToGrid(point.x, gridSize),
+          0,
+          snapToGrid(point.z, gridSize)
+        );
+      }
+      
       const snapPoints = findSnapPoints(
         point, 
         completedShapes, 
@@ -188,11 +216,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         console.log(`Snapped to ${closestSnap.type} at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}]`);
       } else {
         updateDrawingState({ snapPoint: null });
-        point = new THREE.Vector3(
-          snapToGrid(point.x, gridSize),
-          0,
-          snapToGrid(point.z, gridSize)
-        );
       }
       
       return point;
@@ -575,6 +598,30 @@ const focusTerminalForMeasurement = () => {
     <>
       <mesh
         ref={planeRef}
+        position={[0, 0, 0]}
+        rotation={[0, 0, 0]}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        {/* Çoklu düzlem - tüm eksenlerde çizim için */}
+        <planeGeometry args={[100000, 100000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      
+      {/* Ek düzlemler - farklı görünüşler için */}
+      <mesh
+        position={[0, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <planeGeometry args={[100000, 100000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      
+      <mesh
         position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         onPointerDown={handlePointerDown}
