@@ -22,6 +22,8 @@ interface Props {
   isFaceEditMode?: boolean;
   selectedFaceIndex?: number | null;
   onFaceSelect?: (faceIndex: number) => void;
+  // Volume Edit Mode props
+  isVolumeEditMode?: boolean;
 }
 
 const OpenCascadeShape: React.FC<Props> = ({
@@ -33,6 +35,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   isFaceEditMode = false,
   selectedFaceIndex,
   onFaceSelect,
+  // Volume Edit Mode props
+  isVolumeEditMode = false,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -165,6 +169,15 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
     
+    // Volume Edit mode - handle vertex selection and dragging
+    if (isVolumeEditMode && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      
+      // TODO: Implement vertex selection and dragging for volume editing
+      console.log('🎯 Volume Edit Mode - Vertex selection not yet implemented');
+      return;
+    }
+    
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -175,7 +188,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   const handleContextMenu = (e: any) => {
     // Face Edit mode - prevent context menu
-    if (isFaceEditMode) {
+    if (isFaceEditMode || isVolumeEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;
@@ -194,10 +207,9 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
-    if (!isFaceEditMode) {
+    if (!isFaceEditMode && !isVolumeEditMode) {
       clearFaceHighlight(scene);
     }
-  }, [isFaceEditMode, scene]);
 
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
@@ -313,7 +325,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       {isSelected &&
         meshRef.current &&
         !isEditMode &&
-        !isFaceEditMode && (
+        !isFaceEditMode &&
+        !isVolumeEditMode && (
           <TransformControls
             ref={transformRef}
             object={meshRef.current}

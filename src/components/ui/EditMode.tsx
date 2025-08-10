@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Puzzle,
   MousePointer,
+  Edit3,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
@@ -22,6 +23,8 @@ interface EditModeProps {
   setShowFaces: (show: boolean) => void;
   isFaceEditMode: boolean;
   setIsFaceEditMode: (mode: boolean) => void;
+  isVolumeEditMode?: boolean;
+  setIsVolumeEditMode?: (mode: boolean) => void;
 }
 
 const EditMode: React.FC<EditModeProps> = ({
@@ -35,6 +38,8 @@ const EditMode: React.FC<EditModeProps> = ({
   setShowFaces,
   isFaceEditMode,
   setIsFaceEditMode,
+  isVolumeEditMode = false,
+  setIsVolumeEditMode,
 }) => {
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
@@ -192,10 +197,33 @@ const EditMode: React.FC<EditModeProps> = ({
     const newMode = !isFaceEditMode;
     setIsFaceEditMode(newMode);
     
+    // Volume edit modunu kapat
+    if (newMode && setIsVolumeEditMode) {
+      setIsVolumeEditMode(false);
+    }
+    
     if (newMode) {
       console.log('🎯 Face Edit Mode ACTIVATED - Click on faces to select them');
     } else {
       console.log('🎯 Face Edit Mode DEACTIVATED');
+    }
+  };
+
+  const toggleVolumeEditMode = () => {
+    if (!setIsVolumeEditMode) return;
+    
+    const newMode = !isVolumeEditMode;
+    setIsVolumeEditMode(newMode);
+    
+    // Face edit modunu kapat
+    if (newMode) {
+      setIsFaceEditMode(false);
+    }
+    
+    if (newMode) {
+      console.log('🎯 Volume Edit Mode ACTIVATED - Drag vertices to reshape geometry');
+    } else {
+      console.log('🎯 Volume Edit Mode DEACTIVATED');
     }
   };
 
@@ -246,6 +274,20 @@ const EditMode: React.FC<EditModeProps> = ({
                     <MousePointer size={12} />
                     Face Select
                   </button>
+                  
+                  <div className="mt-2">
+                    <button
+                      onClick={toggleVolumeEditMode}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                        isVolumeEditMode
+                          ? 'bg-blue-600/90 text-white'
+                          : 'bg-gray-600/50 text-gray-300 hover:bg-gray-600/70'
+                      }`}
+                    >
+                      <Edit3 size={12} />
+                      Volume Edit
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
