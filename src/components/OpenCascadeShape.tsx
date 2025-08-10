@@ -326,8 +326,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       {isSelected &&
         meshRef.current &&
         !isEditMode &&
-        !isFaceEditMode &&
-        !isVolumeEditMode && (
+        !isFaceEditMode && (
           <TransformControls
             ref={transformRef}
             object={meshRef.current}
