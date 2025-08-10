@@ -166,38 +166,23 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera({ x, y }, camera);
-    const intersects = raycaster.intersectObject(planeRef.current);
+    
+    // Tüm düzlemlerle intersection test et
+    const allPlanes = [planeRef.current];
+    if (frontPlaneRef.current) allPlanes.push(frontPlaneRef.current);
+    if (sidePlaneRef.current) allPlanes.push(sidePlaneRef.current);
+    
+    const intersects = raycaster.intersectObjects(allPlanes);
 
     if (intersects.length > 0) {
       let point = intersects[0].point;
       
-      // Kamera görünüşüne göre koordinat düzeltmesi
-      const cameraView = getCurrentCameraView();
-      
-      // Ön görünüşte (front view) Z koordinatını sabit tut, X ve Y kullan
-      if (cameraView === 'front' || cameraView === 'back') {
-        point = new THREE.Vector3(
-          snapToGrid(point.x, gridSize),
-          snapToGrid(point.y, gridSize),
-          0 // Z koordinatını sabit tut
-        );
-      }
-      // Sağ/Sol görünüşte Y ve Z kullan, X sabit
-      else if (cameraView === 'right' || cameraView === 'left') {
-        point = new THREE.Vector3(
-          0, // X koordinatını sabit tut
-          snapToGrid(point.y, gridSize),
-          snapToGrid(point.z, gridSize)
-        );
-      }
-      // Üst/Alt görünüşte (varsayılan) X ve Z kullan, Y=0
-      else {
-        point = new THREE.Vector3(
-          snapToGrid(point.x, gridSize),
-          0,
-          snapToGrid(point.z, gridSize)
-        );
-      }
+      // Grid snapping uygula
+      point = new THREE.Vector3(
+        snapToGrid(point.x, gridSize),
+        snapToGrid(point.y, gridSize),
+        snapToGrid(point.z, gridSize)
+      );
       
       const snapPoints = findSnapPoints(
         point, 
@@ -594,36 +579,43 @@ const focusTerminalForMeasurement = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTool, drawingState.isDrawing, drawingState.points, setActiveTool, drawingState.waitingForMeasurement, addShape, selectShape, gridSize, setEditingPolylineId]);
 
+  // Düzlem referansları
+  const frontPlaneRef = useRef<THREE.Mesh>(null);
+  const sidePlaneRef = useRef<THREE.Mesh>(null);
+
   return (
     <>
+      {/* Ana düzlem - XZ düzlemi (üst görünüş) */}
       <mesh
         ref={planeRef}
+        position={[0, -0.1, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <planeGeometry args={[100000, 100000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      
+      {/* Ön düzlem - XY düzlemi (ön görünüş) */}
+      <mesh
+        ref={frontPlaneRef}
         position={[0, 0, 0]}
         rotation={[0, 0, 0]}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        {/* Çoklu düzlem - tüm eksenlerde çizim için */}
         <planeGeometry args={[100000, 100000]} />
         <meshBasicMaterial visible={false} />
       </mesh>
       
-      {/* Ek düzlemler - farklı görünüşler için */}
+      {/* Yan düzlem - YZ düzlemi (sağ görünüş) */}
       <mesh
+        ref={sidePlaneRef}
         position={[0, 0, 0]}
         rotation={[0, Math.PI / 2, 0]}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      >
-        <planeGeometry args={[100000, 100000]} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
-      
-      <mesh
-        position={[0, 0, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
