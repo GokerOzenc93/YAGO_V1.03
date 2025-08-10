@@ -308,6 +308,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         dragStartPosition: null
       });
     }
+  }, [isFaceEditMode, isVolumeEditMode, scene, vertexVisualizationGroup]);
 
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
