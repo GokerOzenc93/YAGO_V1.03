@@ -166,23 +166,10 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera({ x, y }, camera);
-    
-    // Tüm düzlemlerle intersection test et
-    const allPlanes = [planeRef.current];
-    if (frontPlaneRef.current) allPlanes.push(frontPlaneRef.current);
-    if (sidePlaneRef.current) allPlanes.push(sidePlaneRef.current);
-    
-    const intersects = raycaster.intersectObjects(allPlanes);
+    const intersects = raycaster.intersectObject(planeRef.current);
 
     if (intersects.length > 0) {
       let point = intersects[0].point;
-      
-      // Grid snapping uygula
-      point = new THREE.Vector3(
-        snapToGrid(point.x, gridSize),
-        snapToGrid(point.y, gridSize),
-        snapToGrid(point.z, gridSize)
-      );
       
       const snapPoints = findSnapPoints(
         point, 
@@ -201,6 +188,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         console.log(`Snapped to ${closestSnap.type} at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}]`);
       } else {
         updateDrawingState({ snapPoint: null });
+        point = new THREE.Vector3(
+          snapToGrid(point.x, gridSize),
+          0,
+          snapToGrid(point.z, gridSize)
+        );
       }
       
       return point;
@@ -276,17 +268,14 @@ const focusTerminalForMeasurement = () => {
       return;
     }
     
-    // Get the drawing view from the pending shape
-    const drawingView = (pendingShape as any).drawingView || 'top';
-    
     // Create extruded 3D shape
-    extrudeShape(pendingShape, addShape, heightInMm, gridSize, drawingView);
+    extrudeShape(pendingShape, addShape, heightInMm, gridSize);
     
     // Cleanup
     setCompletedShapes(prev => prev.filter(s => s.id !== pendingShape.id));
     setPendingShape(null);
     
-    console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm from ${drawingView} view`);
+    console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm`);
   };
   // Expose measurement input handler globally
   useEffect(() => {
@@ -334,15 +323,9 @@ const focusTerminalForMeasurement = () => {
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
-    // Mevcut kamera görünüşünü tespit et
-    const currentView = getCurrentCameraView();
-    
     // Show extrude input dialog instead of immediate conversion
     setPendingShape(shape);
-    console.log(`${shape.type} completed from ${currentView} view, waiting for extrude height in terminal`);
-    
-    // Store the drawing view for later use
-    (shape as any).drawingView = currentView;
+    console.log(`${shape.type} completed, waiting for extrude height in terminal`);
   };
 
   // UNIFIED: Finish drawing function
@@ -588,43 +571,12 @@ const focusTerminalForMeasurement = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTool, drawingState.isDrawing, drawingState.points, setActiveTool, drawingState.waitingForMeasurement, addShape, selectShape, gridSize, setEditingPolylineId]);
 
-  // Düzlem referansları
-  const frontPlaneRef = useRef<THREE.Mesh>(null);
-  const sidePlaneRef = useRef<THREE.Mesh>(null);
-
   return (
     <>
-      {/* Ana düzlem - XZ düzlemi (üst görünüş) */}
       <mesh
         ref={planeRef}
-        position={[0, -0.1, 0]}
+        position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      >
-        <planeGeometry args={[100000, 100000]} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
-      
-      {/* Ön düzlem - XY düzlemi (ön görünüş) */}
-      <mesh
-        ref={frontPlaneRef}
-        position={[0, 0, 0]}
-        rotation={[0, 0, 0]}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      >
-        <planeGeometry args={[100000, 100000]} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
-      
-      {/* Yan düzlem - YZ düzlemi (sağ görünüş) */}
-      <mesh
-        ref={sidePlaneRef}
-        position={[0, 0, 0]}
-        rotation={[0, Math.PI / 2, 0]}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
