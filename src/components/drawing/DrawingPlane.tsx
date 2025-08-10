@@ -157,6 +157,20 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     }));
   };
 
+  
+// helper: terminal input'a odaklan
+const focusTerminalForMeasurement = () => {
+  setTimeout(() => {
+    if ((window as any).terminalInputRef?.current) {
+      (window as any).terminalInputRef.current.focus();
+      (window as any).terminalInputRef.current.select();
+      console.log('Terminal input auto-focused for polyline measurement');
+    } else {
+      console.warn('Terminal input ref not found for focusing');
+    }
+  }, 80);
+};
+
   // Handle measurement input from terminal
   const handleMeasurementInput = (distance: number) => {
     if (!drawingState.currentPoint || !drawingState.currentDirection || !drawingState.isDrawing || ![Tool.POLYLINE, Tool.POLYGON].includes(activeTool)) {
@@ -293,13 +307,14 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         finishDrawing();
       } else {
         setDrawingState(prev => ({
-          ...prev,
-          points: [...prev.points, point],
-          currentPoint: point,
-          waitingForMeasurement: false,
-          measurementApplied: false
-        }));
-        console.log(`${activeTool} point added: ${drawingState.points.length + 1} points total`);
+        ...prev,
+        points: [...prev.points, point],
+        currentPoint: point,
+        waitingForMeasurement: true,
+        measurementApplied: false
+      }));
+      focusTerminalForMeasurement();
+      console.log(`${activeTool} point added: ${drawingState.points.length + 1} points total`);
       }
     }
   };
