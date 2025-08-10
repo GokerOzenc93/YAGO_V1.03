@@ -226,12 +226,16 @@ export const visualizeFaceVertices = (
   
   const worldMatrix = mesh.matrixWorld;
   
-  // Face'in vertex'lerini al
-  const faceVertices: number[] = [];
+  // Tüm face'leri tara ve seçilen face ile aynı düzlemde olanları bul
+  const allFaceVertices = new Set<number>();
+  const tolerance = 0.1; // Düzlem toleransı
+  
+  // Önce seçilen face'in bilgilerini al
+  const selectedFaceVertices: number[] = [];
   if (index) {
     // Indexed geometry
     const a = faceIndex * 3;
-    faceVertices.push(
+    selectedFaceVertices.push(
       index.getX(a),
       index.getX(a + 1), 
       index.getX(a + 2)
@@ -239,13 +243,61 @@ export const visualizeFaceVertices = (
   } else {
     // Non-indexed geometry
     const a = faceIndex * 3;
-    faceVertices.push(a, a + 1, a + 2);
+    selectedFaceVertices.push(a, a + 1, a + 2);
   }
   
-  console.log(`🎯 Face ${faceIndex} vertices: ${faceVertices.join(', ')}`);
+  // Seçilen face'in düzlemini hesapla
+  const v1 = new THREE.Vector3().fromBufferAttribute(position, selectedFaceVertices[0]);
+  const v2 = new THREE.Vector3().fromBufferAttribute(position, selectedFaceVertices[1]);
+  const v3 = new THREE.Vector3().fromBufferAttribute(position, selectedFaceVertices[2]);
+  
+  const edge1 = new THREE.Vector3().subVectors(v2, v1);
+  const edge2 = new THREE.Vector3().subVectors(v3, v1);
+  const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+  const planeD = -faceNormal.dot(v1);
+  
+  console.log(`🎯 Selected face ${faceIndex} normal: [${faceNormal.x.toFixed(3)}, ${faceNormal.y.toFixed(3)}, ${faceNormal.z.toFixed(3)}]`);
+  
+  // Tüm face'leri kontrol et ve aynı düzlemde olanları bul
+  const totalFaces = index ? index.count / 3 : position.count / 3;
+  
+  for (let f = 0; f < totalFaces; f++) {
+    const faceVerts: number[] = [];
+    
+    if (index) {
+      const a = f * 3;
+      faceVerts.push(
+        index.getX(a),
+        index.getX(a + 1),
+        index.getX(a + 2)
+      );
+    } else {
+      const a = f * 3;
+      faceVerts.push(a, a + 1, a + 2);
+    }
+    
+    // Bu face'in vertex'lerinin düzlemde olup olmadığını kontrol et
+    let onSamePlane = true;
+    for (const vertexIndex of faceVerts) {
+      const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
+      const distanceToPlane = Math.abs(faceNormal.dot(vertex) + planeD);
+      
+      if (distanceToPlane > tolerance) {
+        onSamePlane = false;
+        break;
+      }
+    }
+    
+    // Aynı düzlemdeyse vertex'leri ekle
+    if (onSamePlane) {
+      faceVerts.forEach(v => allFaceVertices.add(v));
+    }
+  }
+  
+  console.log(`🎯 Found ${allFaceVertices.size} vertices on the same plane as face ${faceIndex}`);
   
   // Her vertex için highlight oluştur
-  faceVertices.forEach((vertexIndex, i) => {
+  Array.from(allFaceVertices).forEach((vertexIndex, i) => {
     const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
     const worldVertex = vertex.clone().applyMatrix4(worldMatrix);
     
@@ -275,7 +327,7 @@ export const visualizeFaceVertices = (
   });
   
   scene.add(group);
-  console.log(`🎯 Face ${faceIndex} vertices visualized: ${faceVertices.length} vertices`);
+  console.log(`🎯 Face ${faceIndex} plane vertices visualized: ${allFaceVertices.size} vertices`);
   return group;
 };
 
