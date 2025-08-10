@@ -276,14 +276,17 @@ const focusTerminalForMeasurement = () => {
       return;
     }
     
+    // Get the drawing view from the pending shape
+    const drawingView = (pendingShape as any).drawingView || 'top';
+    
     // Create extruded 3D shape
-    extrudeShape(pendingShape, addShape, heightInMm, gridSize);
+    extrudeShape(pendingShape, addShape, heightInMm, gridSize, drawingView);
     
     // Cleanup
     setCompletedShapes(prev => prev.filter(s => s.id !== pendingShape.id));
     setPendingShape(null);
     
-    console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm`);
+    console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm from ${drawingView} view`);
   };
   // Expose measurement input handler globally
   useEffect(() => {
@@ -331,9 +334,15 @@ const focusTerminalForMeasurement = () => {
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
+    // Mevcut kamera görünüşünü tespit et
+    const currentView = getCurrentCameraView();
+    
     // Show extrude input dialog instead of immediate conversion
     setPendingShape(shape);
-    console.log(`${shape.type} completed, waiting for extrude height in terminal`);
+    console.log(`${shape.type} completed from ${currentView} view, waiting for extrude height in terminal`);
+    
+    // Store the drawing view for later use
+    (shape as any).drawingView = currentView;
   };
 
   // UNIFIED: Finish drawing function

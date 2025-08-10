@@ -8,7 +8,8 @@ export const convertTo3DShape = (
   shape: CompletedShape,
   addShape: (shape: Shape) => void,
   selectShape: (id: string) => void,
-  gridSize: number = 50
+  gridSize: number = 50,
+  drawingView?: string
 ): Shape | null => {
   if (!shape.isClosed && shape.type !== 'polyline' && shape.type !== 'polygon') return null;
 
@@ -16,37 +17,70 @@ export const convertTo3DShape = (
   let geometry: THREE.BufferGeometry;
   let position: [number, number, number];
   let shapeType: string;
+  
+  // Ön görünüşten çizim kontrolü
+  const isFromFrontView = drawingView === 'front' || drawingView === 'back';
 
   console.log(`Converting ${shape.type} to 3D selectable shape with ID: ${shape.id}`);
+  if (isFromFrontView) {
+    console.log(`🎯 Front view drawing detected - will extrude forward`);
+  }
 
   switch (shape.type) {
     case 'rectangle': {
       const width = Math.abs(shape.points[2].x - shape.points[0].x);
-      const depth = Math.abs(shape.points[2].z - shape.points[0].z);
-      geometry = new THREE.BoxGeometry(width, height, depth);
-      position = [
-        shape.points[0].x + width / 2,
-        height / 2,
-        shape.points[0].z + depth / 2
-      ];
+      
+      if (isFromFrontView) {
+        // Ön görünüşten: Y ekseni height, Z ekseni depth (öne doğru)
+        const rectHeight = Math.abs(shape.points[2].y - shape.points[0].y);
+        const depth = height; // Sabit derinlik öne doğru
+        geometry = new THREE.BoxGeometry(width, rectHeight, depth);
+        position = [
+          shape.points[0].x + width / 2,
+          shape.points[0].y + rectHeight / 2,
+          depth / 2 // Öne doğru extrude
+        ];
+      } else {
+        // Üst görünüş: Normal davranış
+        const depth = Math.abs(shape.points[2].z - shape.points[0].z);
+        geometry = new THREE.BoxGeometry(width, height, depth);
+        position = [
+          shape.points[0].x + width / 2,
+          height / 2,
+          shape.points[0].z + depth / 2
+        ];
+      }
       shapeType = 'rectangle2d';
       break;
     }
     case 'circle': {
       const radius = shape.points[0].distanceTo(shape.points[1]);
       geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-      position = [shape.points[0].x, height / 2, shape.points[0].z];
+      
+      if (isFromFrontView) {
+        // Ön görünüşten: Silindir yatay (Z ekseni boyunca)
+        geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+        geometry.rotateZ(Math.PI / 2); // Yatay hale getir
+        position = [shape.points[0].x, shape.points[0].y, height / 2];
+      } else {
+        // Üst görünüş: Normal dikey silindir
+        position = [shape.points[0].x, height / 2, shape.points[0].z];
+      }
       shapeType = 'circle2d';
       break;
     }
     case 'polyline':
     case 'polygon': {
-      geometry = createPolylineGeometry(shape.points, height, gridSize);
-      // Keep the shape exactly where it was drawn - don't move to center
-      // Position at ground level (Y=0) so the extruded shape sits on the drawing plane
-      // Calculate the actual center of the drawn polyline to position the solid there
+      geometry = createPolylineGeometry(shape.points, height, gridSize, isFromFrontView);
       const center = calculatePolylineCenter(shape.points);
-      position = [center.x, 0, center.z];
+      
+      if (isFromFrontView) {
+        // Ön görünüşten: XY düzleminde çizildi, Z ekseni boyunca extrude
+        position = [center.x, center.y, height / 2];
+      } else {
+        // Üst görünüş: XZ düzleminde çizildi, Y ekseni boyunca extrude
+        position = [center.x, 0, center.z];
+      }
       shapeType = shape.type === 'polygon' ? 'polygon2d' : 'polyline2d';
       break;
     }
@@ -81,7 +115,7 @@ export const convertTo3DShape = (
   addShape(newShape);
   selectShape(newShape.id);
 
-  console.log(`2D shape converted to 3D selectable shape at GROUND LEVEL: [${position.join(', ')}]`);
+  console.log(`2D shape converted to 3D selectable shape at: [${position.join(', ')}]${isFromFrontView ? ' (FRONT VIEW - EXTRUDED FORWARD)' : ' (TOP VIEW)'}`);
   return newShape;
 };
 
@@ -89,47 +123,79 @@ export const extrudeShape = (
   shape: CompletedShape,
   addShape: (shape: Shape) => void,
   height: number = 500,
-  gridSize: number = 50
+  gridSize: number = 50,
+  drawingView: string = 'top'
 ): Shape | null => {
   let geometry: THREE.BufferGeometry;
   let position: [number, number, number];
   let shapeType: string;
+  
+  // Ön görünüşten çizim kontrolü
+  const isFromFrontView = drawingView === 'front' || drawingView === 'back';
 
-  console.log(`Extruding ${shape.type} shape with ID: ${shape.id}`);
+  console.log(`Extruding ${shape.type} shape with ID: ${shape.id} from ${drawingView} view`);
 
   switch (shape.type) {
     case 'rectangle': {
       const width = Math.abs(shape.points[2].x - shape.points[0].x);
-      const depth = Math.abs(shape.points[2].z - shape.points[0].z);
-      geometry = new THREE.BoxGeometry(width, height, depth);
-      position = [
-        shape.points[0].x + width / 2,
-        height / 2,
-        shape.points[0].z + depth / 2
-      ];
+      
+      if (isFromFrontView) {
+        // Ön görünüşten: Y ekseni height, Z ekseni depth (öne doğru)
+        const rectHeight = Math.abs(shape.points[2].y - shape.points[0].y);
+        geometry = new THREE.BoxGeometry(width, rectHeight, height);
+        position = [
+          shape.points[0].x + width / 2,
+          shape.points[0].y + rectHeight / 2,
+          height / 2 // Öne doğru extrude
+        ];
+      } else {
+        // Üst görünüş: Normal davranış
+        const depth = Math.abs(shape.points[2].z - shape.points[0].z);
+        geometry = new THREE.BoxGeometry(width, height, depth);
+        position = [
+          shape.points[0].x + width / 2,
+          height / 2,
+          shape.points[0].z + depth / 2
+        ];
+      }
       shapeType = 'box';
-      console.log(`Rectangle extruded: ${width}x${height}x${depth}mm`);
+      console.log(`Rectangle extruded from ${drawingView} view`);
       break;
     }
     case 'circle': {
       const radius = shape.points[0].distanceTo(shape.points[1]);
       geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-      position = [shape.points[0].x, height / 2, shape.points[0].z];
+      
+      if (isFromFrontView) {
+        // Ön görünüşten: Silindir yatay (Z ekseni boyunca)
+        geometry.rotateZ(Math.PI / 2); // Yatay hale getir
+        position = [shape.points[0].x, shape.points[0].y, height / 2];
+      } else {
+        // Üst görünüş: Normal dikey silindir
+        position = [shape.points[0].x, height / 2, shape.points[0].z];
+      }
       shapeType = 'cylinder';
-      console.log(`Circle extruded: radius ${radius}mm, height ${height}mm`);
+      console.log(`Circle extruded from ${drawingView} view: radius ${radius}mm, height ${height}mm`);
       break;
     }
     case 'polyline':
     case 'polygon': {
       // Create centered geometry
-      geometry = createPolylineGeometry(shape.points, height, gridSize);
+      geometry = createPolylineGeometry(shape.points, height, gridSize, isFromFrontView);
       
       // Calculate the center of the original polyline points for positioning
       const center = calculatePolylineCenter(shape.points);
-      position = [center.x, height / 2, center.z]; // Position at polyline center with proper Y offset
+      
+      if (isFromFrontView) {
+        // Ön görünüşten: XY düzleminde çizildi, Z ekseni boyunca extrude
+        position = [center.x, center.y, height / 2];
+      } else {
+        // Üst görünüş: XZ düzleminde çizildi, Y ekseni boyunca extrude
+        position = [center.x, height / 2, center.z];
+      }
       
       shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
-      console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm at position [${position.join(', ')}]`);
+      console.log(`${shape.type} extruded from ${drawingView} view: ${shape.points.length} points, height ${height}mm at position [${position.join(', ')}]`);
       break;
     }
     default:
@@ -160,6 +226,6 @@ export const extrudeShape = (
   };
 
   addShape(newShape);
-  console.log(`3D shape created with ID: ${newShape.id}`);
+  console.log(`3D shape created with ID: ${newShape.id} from ${drawingView} view`);
   return newShape;
 };

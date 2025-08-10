@@ -4,7 +4,7 @@ export const createPolylineGeometry = (
   points: THREE.Vector3[],
   height: number,
   gridSize: number = 50,
-  keepOriginalPosition: boolean = true
+  isFromFrontView: boolean = false
 ): THREE.BufferGeometry => {
   try {
     // Create a 2D shape from the points
@@ -23,8 +23,15 @@ export const createPolylineGeometry = (
       ? points.slice(0, -1)
       : points;
     
-    // Create shape at origin (0,0) - geometry will be centered at origin
-    const relativePoints = uniquePoints.map(point => new THREE.Vector2(point.x, -point.z));
+    let relativePoints: THREE.Vector2[];
+    
+    if (isFromFrontView) {
+      // Ön görünüş: XY düzleminde çizildi, Z ekseni boyunca extrude
+      relativePoints = uniquePoints.map(point => new THREE.Vector2(point.x, point.y));
+    } else {
+      // Üst görünüş: XZ düzleminde çizildi, Y ekseni boyunca extrude
+      relativePoints = uniquePoints.map(point => new THREE.Vector2(point.x, -point.z));
+    }
     
     // Move to the first point
     shape.moveTo(relativePoints[0].x, relativePoints[0].y);
@@ -48,8 +55,11 @@ export const createPolylineGeometry = (
     // Create the extruded geometry
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
-    // Rotate to make it horizontal (lying on XZ plane)
-    geometry.rotateX(-Math.PI / 2);
+    if (!isFromFrontView) {
+      // Üst görünüş: Rotate to make it horizontal (lying on XZ plane)
+      geometry.rotateX(-Math.PI / 2);
+    }
+    // Ön görünüş: Geometry zaten doğru yönde (Z ekseni boyunca extrude)
     
     // Center the geometry at origin - this ensures gizmo appears at center
     geometry.computeBoundingBox();
@@ -62,7 +72,7 @@ export const createPolylineGeometry = (
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     
-    console.log(`🎯 Polyline geometry created centered at origin with height: ${height}mm`);
+    console.log(`🎯 Polyline geometry created centered at origin with height: ${height}mm${isFromFrontView ? ' (FRONT VIEW - FORWARD EXTRUDE)' : ' (TOP VIEW)'}`);
     
     return geometry;
     
