@@ -4,8 +4,11 @@ export interface VolumeEditState {
   isActive: boolean;
   selectedVertices: THREE.Vector3[];
   selectedFaceIndex: number | null;
+  selectedFaceIndex: number | null;
   isDragging: boolean;
   dragStartPosition: THREE.Vector3 | null;
+  selectedVertexIndex: number | null;
+  draggedVertexIndex: number | null;
 }
 
 export interface FaceHighlight {
@@ -188,6 +191,103 @@ export const createVertexVisualization = (
   });
 
   return visualObjects;
+};
+
+/**
+ * Mouse pozisyonundan 3D world pozisyonu hesapla
+ */
+export const getWorldPositionFromMouse = (
+  event: MouseEvent,
+  camera: THREE.Camera,
+  canvas: HTMLCanvasElement
+): THREE.Vector3 | null => {
+  const rect = canvas.getBoundingClientRect();
+  const mouse = new THREE.Vector2();
+  
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  
+  // Y=0 düzleminde intersection bul (drawing plane)
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const intersection = new THREE.Vector3();
+  
+  if (raycaster.ray.intersectPlane(plane, intersection)) {
+    return intersection;
+  }
+  
+  return null;
+};
+
+/**
+ * Vertex pozisyonunu güncelle
+ */
+export const updateVertexPosition = (
+  mesh: THREE.Mesh,
+  vertexIndex: number,
+  newPosition: THREE.Vector3
+): void => {
+  const geometry = mesh.geometry as THREE.BufferGeometry;
+  const positionAttribute = geometry.attributes.position;
+  
+  if (!positionAttribute) {
+    console.warn('Geometry has no position attribute');
+    return;
+  }
+  
+  // World pozisyonunu local pozisyona dönüştür
+  const localPosition = newPosition.clone();
+  mesh.worldToLocal(localPosition);
+  
+  // Vertex pozisyonunu güncelle
+  positionAttribute.setXYZ(vertexIndex, localPosition.x, localPosition.y, localPosition.z);
+  positionAttribute.needsUpdate = true;
+  
+  // Geometry'yi yeniden hesapla
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  
+  console.log(`🎯 Vertex ${vertexIndex} updated to local position:`, localPosition.toArray().map(v => v.toFixed(1)));
+};
+
+/**
+ * Mouse pozisyonunda vertex tespit et
+ */
+export const detectVertexAtMouse = (
+  event: MouseEvent,
+  camera: THREE.Camera,
+  canvas: HTMLCanvasElement,
+  vertexPositions: THREE.Vector3[],
+  tolerance: number = 20
+): number | null => {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+  
+  // Her vertex'in screen pozisyonunu hesapla
+  for (let i = 0; i < vertexPositions.length; i++) {
+    const vertex = vertexPositions[i];
+    const screenPosition = vertex.clone().project(camera);
+    
+    // Normalized device coordinates'den screen coordinates'e dönüştür
+    const screenX = (screenPosition.x * 0.5 + 0.5) * rect.width;
+    const screenY = (-screenPosition.y * 0.5 + 0.5) * rect.height;
+    
+    // Mouse ile vertex arasındaki mesafe
+    const distance = Math.sqrt(
+      Math.pow(mouseX - screenX, 2) + Math.pow(mouseY - screenY, 2)
+    );
+    
+    if (distance <= tolerance) {
+      console.log(`🎯 Vertex ${i} detected at screen position [${screenX.toFixed(1)}, ${screenY.toFixed(1)}], distance: ${distance.toFixed(1)}px`);
+      return i;
+    }
+  }
+  
+  return null;
 };
 
 /**

@@ -61,13 +61,17 @@ const OpenCascadeShape: React.FC<Props> = ({
   // Volume Edit State
   const [volumeEditState, setVolumeEditState] = useState<VolumeEditState>({
     isActive: false,
-    selectedVertexIndex: null,
+    selectedVertices: [],
+    selectedFaceIndex: null,
     isDragging: false,
-    dragStartPosition: null
+    dragStartPosition: null,
+    selectedVertexIndex: null,
+    draggedVertexIndex: null
   });
   
   // Volume Edit Vertex Visualization
   const [vertexVisualizationGroup, setVertexVisualizationGroup] = useState<THREE.Group | null>(null);
+  const [currentVertexPositions, setCurrentVertexPositions] = useState<THREE.Vector3[]>([]);
 
   // Debug: Log shape information when selected
   useEffect(() => {
