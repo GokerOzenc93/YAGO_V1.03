@@ -351,7 +351,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
-  const { scene, camera, gl } = useThree();
+  const { scene, camera, gl, raycaster } = useThree();
   const {
     activeTool,
     selectedShapeId,
