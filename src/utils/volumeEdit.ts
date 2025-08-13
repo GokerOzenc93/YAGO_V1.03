@@ -476,10 +476,12 @@
         let highlightMesh: THREE.Mesh | null = null;
         let controlsDiv: HTMLElement, infoDiv: HTMLElement;
 
-        // New global variables for node editing
-        let nodeMeshes: THREE.Mesh[] = []; // Stores the visual sphere meshes for node points
-        let activeNode: { mesh: THREE.Mesh; shape: Shape; pointIndex: number; offset: THREE.Vector3; dragPlane: THREE.Plane; } | null = null;
-        let isDraggingNode = false;
+        // Global variables for node editing
+        let vertexEditMeshes: THREE.Mesh[] = []; // Stores the visual sphere meshes for editable vertices
+        let activeVertex: { mesh: THREE.Mesh; shape: Shape; pointIndex: number; offset: THREE.Vector3; dragPlane: THREE.Plane; } | null = null;
+        let isDraggingVertex = false;
+        let hoveredVertexMesh: THREE.Mesh | null = null; // For hover effect
+        let originalVertexColor: THREE.Color | null = null; // To restore color after hover
 
         function init() {
             scene = new THREE.Scene();
@@ -519,14 +521,14 @@
             document.getElementById('addPolygon')!.addEventListener('click', addPolygon);
         }
 
-        // --- Node Editing Functions ---
+        // --- Vertex Editing Functions ---
 
-        function createNodePoints(shape: Shape) {
-            clearNodePoints(); // Clear existing nodes first
+        function createEditableVerticesForPolygon(shape: Shape) {
+            clearEditableVertices(); // Clear existing nodes first
 
             if (shape.type === 'polygon3d' && shape.originalPoints && shape.mesh) {
-                const nodeMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Mavi düğüm noktası
-                const nodeGeometry = new THREE.SphereGeometry(20, 16, 16); // Küçük küre
+                const vertexMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Mavi düğüm noktası
+                const vertexGeometry = new THREE.SphereGeometry(20, 16, 16); // Küçük küre
 
                 const shapeWorldMatrix = shape.mesh.matrixWorld;
 
@@ -539,33 +541,39 @@
                     // Yerel noktayı dünya koordinatlarına dönüştür
                     const worldPoint = point.clone().applyMatrix4(shapeWorldMatrix);
 
-                    const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial.clone());
-                    nodeMesh.position.copy(worldPoint);
-                    nodeMesh.userData = { isNode: true, shape: shape, pointIndex: index, originalColor: nodeMaterial.color.clone() }; // Veriyi sakla
-                    scene.add(nodeMesh);
-                    nodeMeshes.push(nodeMesh);
+                    const vertexMesh = new THREE.Mesh(vertexGeometry, vertexMaterial.clone());
+                    vertexMesh.position.copy(worldPoint);
+                    // Store data: isEditableVertex flag, shape reference, original point index, original color
+                    vertexMesh.userData = { 
+                        isEditableVertex: true, 
+                        shape: shape, 
+                        pointIndex: index, 
+                        originalColor: vertexMaterial.color.clone() 
+                    }; 
+                    scene.add(vertexMesh);
+                    vertexEditMeshes.push(vertexMesh);
                 });
-                console.log(`✨ ${nodeMeshes.length} düğüm noktası oluşturuldu: ${shape.id}`);
+                console.log(`✨ ${vertexEditMeshes.length} düzenlenebilir düğüm noktası oluşturuldu: ${shape.id}`);
             }
         }
 
-        function clearNodePoints() {
-            nodeMeshes.forEach(nodeMesh => {
-                scene.remove(nodeMesh);
-                nodeMesh.geometry.dispose();
-                (nodeMesh.material as THREE.Material).dispose();
+        function clearEditableVertices() {
+            vertexEditMeshes.forEach(vertexMesh => {
+                scene.remove(vertexMesh);
+                vertexMesh.geometry.dispose();
+                (vertexMesh.material as THREE.Material).dispose();
             });
-            nodeMeshes = [];
-            activeNode = null;
-            isDraggingNode = false; // Sürükleme durumunu da sıfırla
-            if (hoveredNode && hoveredNode.material) { // Hovered düğümü de sıfırla
-                (hoveredNode.material as THREE.MeshBasicMaterial).color.copy(hoveredNode.userData.originalColor);
-                hoveredNode = null;
-                originalNodeColor = null;
+            vertexEditMeshes = [];
+            activeVertex = null;
+            isDraggingVertex = false; // Sürükleme durumunu da sıfırla
+            if (hoveredVertexMesh && hoveredVertexMesh.material) { // Hovered düğümü de sıfırla
+                (hoveredVertexMesh.material as THREE.MeshBasicMaterial).color.copy(hoveredVertexMesh.userData.originalColor);
+                hoveredVertexMesh = null;
+                originalVertexColor = null;
             }
         }
 
-        function updateShapeFromNodeDrag(node: typeof activeNode) {
+        function updateShapeFromVertexDrag(node: typeof activeVertex) {
             if (!node || !node.shape.originalPoints || !node.shape.mesh) return;
 
             const shape = node.shape;
@@ -573,12 +581,16 @@
             const newWorldPosition = node.mesh.position;
 
             // Yeni dünya pozisyonunu şeklin yerel koordinatlarına dönüştür (XZ düzlemi için)
+            // Önce şeklin güncel dünya matrisini al
+            shape.mesh.updateMatrixWorld(true); // Mesh'in matrixWorld'ünü güncellediğinden emin ol
             const inverseShapeWorldMatrix = shape.mesh.matrixWorld.clone().invert();
             const newLocalPosition = newWorldPosition.clone().applyMatrix4(inverseShapeWorldMatrix);
 
             // originalPoints dizisini güncelle (sadece X ve Z için)
             shape.originalPoints[pointIndex].x = newLocalPosition.x;
             shape.originalPoints[pointIndex].z = newLocalPosition.z;
+            // Y koordinatını sabit tut (poligonun düzlemselliğini korumak için)
+            shape.originalPoints[pointIndex].y = 0; 
 
             // Eğer poligon kapalıysa (ilk ve son nokta aynıysa), son noktayı da güncelle
             if (shape.originalPoints.length > 1 && shape.originalPoints[0].equals(shape.originalPoints[shape.originalPoints.length - 1])) {
@@ -602,11 +614,17 @@
             
             // Highlight mesh'i yeni şekli yansıtacak şekilde güncelle
             if (currentHighlight && currentHighlight.shapeId === shape.id) {
-                // Aynı yüzeyi tekrar vurgulayarak highlight mesh'i güncelle
-                // Bu, yeni geometriye göre highlight'ın yeniden oluşturulmasını sağlar.
+                // Flood-fill tabanlı highlight için, yeni geometri ve ilk intersection'ın faceIndex'i ile yeniden vurgula
+                // Burada intersection.point ve normal'i yeniden hesaplamak gerekebilir
+                // veya basitçe highlightFace'i currentHighlight.faceIndex ile çağırabiliriz
+                // Ancak highlightFace'in bir THREE.Intersection objesi beklediğini unutmayın.
+                // Basit bir geçici intersection objesi oluşturabiliriz.
+                
+                // Geçici bir intersection objesi oluştur
                 const tempIntersection = {
-                    point: newWorldPosition, // Sadece yüzeyde bir nokta
-                    face: { normal: getFaceNormal(getFaceVertices(newGeometry, currentHighlight!.faceIndex)).applyQuaternion(shape.mesh.quaternion) }, // Dünya normali
+                    point: newWorldPosition, // Sürüklenen noktanın dünya pozisyonu
+                    // Normali, şeklin quaternion'ı ile dönüştürülmüş orijinal yüzey normali olabilir
+                    face: { normal: getFaceNormal(getFaceVertices(newGeometry, currentHighlight!.faceIndex)).applyQuaternion(shape.mesh.quaternion) }, 
                     faceIndex: currentHighlight!.faceIndex,
                     object: shape.mesh
                 } as THREE.Intersection; 
@@ -615,50 +633,53 @@
             }
 
             // Düğüm noktalarını da yeni şekle göre yeniden oluştur
-            createNodePoints(shape);
+            createEditableVerticesForPolygon(shape);
             console.log(`✅ Şekil güncellendi: ${shape.id}`);
         }
 
         // --- Modified Event Handlers ---
 
-        let hoveredNode: THREE.Mesh | null = null;
-        let originalNodeColor: THREE.Color | null = null;
-
         function onDocumentMouseMove(event: MouseEvent) {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            if (isDraggingNode && activeNode) {
+            if (isDraggingVertex && activeVertex) {
                 raycaster.setFromCamera(mouse, camera);
                 const intersectionPoint = new THREE.Vector3();
                 // Fareyi sürükleme düzlemine yansıt
-                raycaster.ray.intersectPlane(activeNode.dragPlane, intersectionPoint);
+                // Düzlemle kesişim bulunamıyorsa null dönebilir, kontrol et
+                const intersected = raycaster.ray.intersectPlane(activeVertex.dragPlane, intersectionPoint);
                 
-                // Düğüm mesh'inin pozisyonunu güncelle
-                activeNode.mesh.position.copy(intersectionPoint.sub(activeNode.offset));
+                if (intersected) {
+                    // Düğüm mesh'inin pozisyonunu güncelle
+                    activeVertex.mesh.position.copy(intersectionPoint.sub(activeVertex.offset));
+                }
             } else {
                 // Düğüm noktaları için hover efekti
                 raycaster.setFromCamera(mouse, camera);
-                const intersectsNodes = raycaster.intersectObjects(nodeMeshes);
+                const intersectsVertices = raycaster.intersectObjects(vertexEditMeshes);
 
-                if (intersectsNodes.length > 0) {
-                    const newHoveredNode = intersectsNodes[0].object as THREE.Mesh;
-                    if (newHoveredNode !== hoveredNode) {
+                if (intersectsVertices.length > 0) {
+                    const newHoveredVertexMesh = intersectsVertices[0].object as THREE.Mesh;
+                    if (newHoveredVertexMesh !== hoveredVertexMesh) {
                         // Önceki hovered düğümün rengini geri yükle
-                        if (hoveredNode && hoveredNode.userData.originalColor) {
-                            (hoveredNode.material as THREE.MeshBasicMaterial).color.copy(hoveredNode.userData.originalColor);
+                        if (hoveredVertexMesh && hoveredVertexMesh.userData.originalColor) {
+                            (hoveredVertexMesh.material as THREE.MeshBasicMaterial).color.copy(hoveredVertexMesh.userData.originalColor);
                         }
                         // Yeni hovered düğümün rengini kırmızı yap
-                        hoveredNode = newHoveredNode;
-                        hoveredNode.userData.originalColor = (hoveredNode.material as THREE.MeshBasicMaterial).color.clone(); // Orijinal rengi sakla
-                        (hoveredNode.material as THREE.MeshBasicMaterial).color.set(0xff0000); // Kırmızı
+                        hoveredVertexMesh = newHoveredVertexMesh;
+                        // Orijinal rengi userData'dan al, eğer yoksa varsayılanı kullan
+                        hoveredVertexMesh.userData.originalColor = (hoveredVertexMesh.material as THREE.MeshBasicMaterial).color.clone(); 
+                        (hoveredVertexMesh.material as THREE.MeshBasicMaterial).color.set(0xff0000); // Kırmızı
+                        document.body.style.cursor = 'grab'; // İmleci değiştir
                     }
                 } else {
                     // Hiçbir düğüm hovered değil
-                    if (hoveredNode && hoveredNode.userData.originalColor) {
-                        (hoveredNode.material as THREE.MeshBasicMaterial).color.copy(hoveredNode.userData.originalColor);
-                        hoveredNode = null;
+                    if (hoveredVertexMesh && hoveredVertexMesh.userData.originalColor) {
+                        (hoveredVertexMesh.material as THREE.MeshBasicMaterial).color.copy(hoveredVertexMesh.userData.originalColor);
+                        hoveredVertexMesh = null;
                     }
+                    document.body.style.cursor = 'default'; // İmleci varsayılana çevir
                 }
             }
         }
@@ -673,34 +694,36 @@
             raycaster.setFromCamera(mouse, camera);
 
             // Önce, bir düğüm noktasına tıklanıp tıklanmadığını kontrol et
-            const intersectsNodes = raycaster.intersectObjects(nodeMeshes);
-            if (intersectsNodes.length > 0) {
-                const clickedNodeMesh = intersectsNodes[0].object as THREE.Mesh;
-                const nodeData = clickedNodeMesh.userData;
+            const intersectsVertices = raycaster.intersectObjects(vertexEditMeshes);
+            if (intersectsVertices.length > 0) {
+                const clickedVertexMesh = intersectsVertices[0].object as THREE.Mesh;
+                const vertexData = clickedVertexMesh.userData;
 
-                if (nodeData.isNode) {
-                    isDraggingNode = true;
+                if (vertexData.isEditableVertex) {
+                    isDraggingVertex = true;
                     
                     // Tıklama noktasından düğüm merkezine olan ofseti hesapla
-                    const intersectionPoint = intersectsNodes[0].point;
-                    const offset = new THREE.Vector3().subVectors(intersectionPoint, clickedNodeMesh.position);
+                    const intersectionPoint = intersectsVertices[0].point;
+                    const offset = new THREE.Vector3().subVectors(intersectionPoint, clickedVertexMesh.position);
 
                     // Düğüm için bir sürükleme düzlemi tanımla (örn. poligon yüzeyinin düzlemi)
                     // Poligonlar için originalPoints XZ düzlemindedir, bu yüzden Y=0 düzlemi iyi bir seçimdir.
                     // Bu düzlemi dünya koordinatlarına dönüştürmemiz gerekiyor.
-                    const shape = nodeData.shape;
+                    const shape = vertexData.shape;
                     // Şeklin yerel XZ düzlemini dünya koordinatlarına dönüştür
+                    // Bu düzlem, şeklin mevcut dünya pozisyonu ve rotasyonu ile hizalanmalıdır.
                     const localPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Y=0 düzlemi
                     const worldPlane = localPlane.clone().applyMatrix4(shape.mesh!.matrixWorld);
 
-                    activeNode = {
-                        mesh: clickedNodeMesh,
+                    activeVertex = {
+                        mesh: clickedVertexMesh,
                         shape: shape,
-                        pointIndex: nodeData.pointIndex,
+                        pointIndex: vertexData.pointIndex,
                         offset: offset,
                         dragPlane: worldPlane // Sürükleme düzlemini sakla
                     };
-                    console.log(`✨ Düğüm ${nodeData.pointIndex} (${shape.id}) sürüklenmeye başlandı.`);
+                    console.log(`✨ Düğüm ${vertexData.pointIndex} (${shape.id}) sürüklenmeye başlandı.`);
+                    document.body.style.cursor = 'grabbing'; // İmleci değiştir
                     event.preventDefault(); // Varsayılan sürükleme davranışını engelle
                     return; // Bir düğüm sürükleniyorsa, şekil tıklamasını işleme
                 }
@@ -720,7 +743,7 @@
 
                     // Eğer farklı bir şekil tıklanırsa, önceki düğüm noktalarını temizle
                     if (currentHighlight && currentHighlight.shapeId !== targetShape.id) {
-                        clearNodePoints();
+                        clearEditableVertices();
                     }
 
                     const highlightResult = highlightFace(
@@ -737,39 +760,40 @@
                         
                         // Vurgulanan şekil bir poligon ise düğüm noktalarını oluştur
                         if (targetShape.type === 'polygon3d') {
-                            createNodePoints(targetShape);
+                            createEditableVerticesForPolygon(targetShape);
                         } else {
-                            clearNodePoints(); // Poligon değilse düğüm noktalarını temizle
+                            clearEditableVertices(); // Poligon değilse düğüm noktalarını temizle
                         }
 
                     } else {
                         console.log('Yüzey vurgulanamadı.');
                         removeHighlight();
-                        clearNodePoints();
+                        clearEditableVertices();
                     }
                 } else {
                     console.warn('Tıklanan mesh, bilinen bir Shape objesine ait değil.');
                     removeHighlight();
-                    clearNodePoints();
+                    clearEditableVertices();
                 }
             } else {
                 console.log('Hiçbir nesneye tıklanmadı, vurgulama kaldırılıyor.');
                 removeHighlight();
-                clearNodePoints();
+                clearEditableVertices();
             }
         }
 
         function onDocumentMouseUp(event: MouseEvent) {
-            if (isDraggingNode && activeNode) {
-                isDraggingNode = false;
-                console.log(`✨ Düğüm ${activeNode.pointIndex} (${activeNode.shape.id}) sürüklenmesi durduruldu.`);
-                updateShapeFromNodeDrag(activeNode); // Sürükleme bittikten sonra şekil geometrisini güncelle
-                activeNode = null;
+            if (isDraggingVertex && activeVertex) {
+                isDraggingVertex = false;
+                console.log(`✨ Düğüm ${activeVertex.pointIndex} (${activeVertex.shape.id}) sürüklenmesi durduruldu.`);
+                updateShapeFromVertexDrag(activeVertex); // Sürükleme bittikten sonra şekil geometrisini güncelle
+                activeVertex = null;
+                document.body.style.cursor = 'default'; // İmleci varsayılana çevir
             }
             // Fare yukarı kalktığında, hover durumunu da kontrol et ve sıfırla
-            if (hoveredNode && hoveredNode.userData.originalColor) {
-                (hoveredNode.material as THREE.MeshBasicMaterial).color.copy(hoveredNode.userData.originalColor);
-                hoveredNode = null;
+            if (hoveredVertexMesh && hoveredVertexMesh.userData.originalColor) {
+                (hoveredVertexMesh.material as THREE.MeshBasicMaterial).color.copy(hoveredVertexMesh.userData.originalColor);
+                hoveredVertexMesh = null;
             }
         }
 
