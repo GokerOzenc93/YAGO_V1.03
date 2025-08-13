@@ -303,16 +303,64 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
 
-    const newPosition = getWorldPositionFromMouse(event, camera, gl.domElement);
-    if (newPosition && meshRef.current) {
-      updateVertexPosition(meshRef.current, volumeEditState.draggedVertexIndex, newPosition);
-      
+    // Mouse pozisyonundan world pozisyonu hesapla
+    const rect = gl.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Y=0 düzleminde intersection bul (drawing plane)
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersection = new THREE.Vector3();
+    
+    if (raycaster.ray.intersectPlane(plane, intersection)) {
       // Vertex pozisyonunu güncelle
       const updatedPositions = [...currentVertexPositions];
       if (volumeEditState.draggedVertexIndex < updatedPositions.length) {
-        updatedPositions[volumeEditState.draggedVertexIndex] = newPosition.clone();
+        updatedPositions[volumeEditState.draggedVertexIndex] = intersection.clone();
         setCurrentVertexPositions(updatedPositions);
+        
+        // Mesh geometry'sini güncelle
+        if (meshRef.current) {
+          const geometry = meshRef.current.geometry as THREE.BufferGeometry;
+          const positionAttribute = geometry.attributes.position;
+          
+          if (positionAttribute) {
+            // World pozisyonunu local pozisyona dönüştür
+            const localPosition = intersection.clone();
+            meshRef.current.worldToLocal(localPosition);
+            
+            // Vertex pozisyonunu güncelle
+            positionAttribute.setXYZ(volumeEditState.draggedVertexIndex, localPosition.x, localPosition.y, localPosition.z);
+            positionAttribute.needsUpdate = true;
+            
+            // Geometry'yi yeniden hesapla
+            geometry.computeVertexNormals();
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+            
+            // Vertex görselleştirmesini güncelle
+            if (vertexVisualizationGroup) {
+              const spheres = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Mesh);
+              if (spheres[volumeEditState.draggedVertexIndex]) {
+                spheres[volumeEditState.draggedVertexIndex].position.copy(intersection);
+              }
+              
+              const sprites = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Sprite);
+              if (sprites[volumeEditState.draggedVertexIndex]) {
+                sprites[volumeEditState.draggedVertexIndex].position.copy(intersection);
+                sprites[volumeEditState.draggedVertexIndex].position.y += 20;
+              }
+            }
+          }
+        }
       }
+      
+      console.log(`🎯 Vertex ${volumeEditState.draggedVertexIndex} dragged to:`, intersection.toArray().map(v => v.toFixed(1)));
     }
   }, [isVolumeEditMode, volumeEditState.isDragging, volumeEditState.draggedVertexIndex, camera, gl.domElement, currentVertexPositions]);
 
@@ -335,10 +383,16 @@ const OpenCascadeShape: React.FC<Props> = ({
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       
+      // Cursor'u dragging moduna geçir
+      document.body.style.cursor = 'grabbing';
+      
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'default';
       };
+    } else {
+      document.body.style.cursor = 'default';
     }
   }, [isVolumeEditMode, volumeEditState.isDragging, handleMouseMove, handleMouseUp]);
 
