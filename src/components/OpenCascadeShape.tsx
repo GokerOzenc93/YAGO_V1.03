@@ -343,6 +343,11 @@ const OpenCascadeShape: React.FC<Props> = ({
             geometry.computeBoundingBox();
             geometry.computeBoundingSphere();
             
+            // Mark geometry as needing update
+            geometry.attributes.position.needsUpdate = true;
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+            
             // Vertex görselleştirmesini güncelle
             if (vertexVisualizationGroup) {
               const spheres = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Mesh);
