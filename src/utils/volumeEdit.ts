@@ -226,36 +226,72 @@ export const visualizeFaceVertices = (
   
   const worldMatrix = mesh.matrixWorld;
   
-  // Face'in vertex'lerini al
-  const faceVertices: number[] = [];
+  // Face'in vertex'lerini al - TÜM VERTEX'LERİ BUL
+  const faceVertices = new Set<number>(); // Benzersiz vertex'ler için Set kullan
+  
   if (index) {
     // Indexed geometry
-    const a = faceIndex * 3;
-    faceVertices.push(
-      index.getX(a),
-      index.getX(a + 1), 
-      index.getX(a + 2)
-    );
+    const triangleStart = faceIndex * 3;
+    for (let i = 0; i < 3; i++) {
+      faceVertices.add(index.getX(triangleStart + i));
+    }
+    
+    // Aynı pozisyondaki diğer vertex'leri de bul (quad face için)
+    const currentVertices = Array.from(faceVertices);
+    const currentPositions = currentVertices.map(vi => {
+      const vertex = new THREE.Vector3().fromBufferAttribute(position, vi);
+      return vertex.applyMatrix4(worldMatrix);
+    });
+    
+    // Tüm vertex'leri kontrol et ve aynı pozisyondakileri ekle
+    for (let vi = 0; vi < position.count; vi++) {
+      if (faceVertices.has(vi)) continue;
+      
+      const vertex = new THREE.Vector3().fromBufferAttribute(position, vi);
+      const worldVertex = vertex.applyMatrix4(worldMatrix);
+      
+      // Bu vertex mevcut face vertex'lerinden birine çok yakın mı?
+      for (const currentPos of currentPositions) {
+        if (worldVertex.distanceTo(currentPos) < 0.1) { // 0.1mm tolerans
+          faceVertices.add(vi);
+          break;
+        }
+      }
+    }
   } else {
     // Non-indexed geometry
-    const a = faceIndex * 3;
-    faceVertices.push(a, a + 1, a + 2);
+    const triangleStart = faceIndex * 3;
+    for (let i = 0; i < 3; i++) {
+      faceVertices.add(triangleStart + i);
+    }
   }
   
-  console.log(`🎯 Face ${faceIndex} vertices: ${faceVertices.join(', ')}`);
+  const vertexArray = Array.from(faceVertices);
+  console.log(`🎯 Face ${faceIndex} vertices: ${vertexArray.join(', ')} (${vertexArray.length} total)`);
   
   // Her vertex için highlight oluştur
-  faceVertices.forEach((vertexIndex, i) => {
+  vertexArray.forEach((vertexIndex, i) => {
     const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
     const worldVertex = vertex.clone().applyMatrix4(worldMatrix);
     
+    // Vertex highlight sphere oluştur
     const highlight = createVertexHighlight(worldVertex, color, size);
     
-    // Vertex numarasını göster
+    // Hover detection için userData ekle
+    highlight.userData = {
+      isVertexHighlight: true,
+      vertexIndex: vertexIndex,
+      originalColor: color,
+      worldPosition: worldVertex.clone()
+    };
+    
+    // Vertex numarasını göster (kırmızı renk)
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
     const context = canvas.getContext('2d')!;
+    context.fillStyle = 'white';
+    context.fillRect(0, 0, 64, 64);
     context.fillStyle = 'red';
     context.font = 'bold 24px Arial';
     context.textAlign = 'center';
@@ -275,8 +311,150 @@ export const visualizeFaceVertices = (
   });
   
   scene.add(group);
-  console.log(`🎯 Face ${faceIndex} vertices visualized: ${faceVertices.length} vertices`);
+  console.log(`🎯 Face ${faceIndex} vertices visualized: ${vertexArray.length} vertices`);
   return group;
+};
+
+/**
+ * Vertex hover detection
+ */
+export const detectVertexHover = (
+  event: MouseEvent,
+  camera: THREE.Camera,
+  scene: THREE.Scene,
+  canvas: HTMLCanvasElement
+): THREE.Object3D | null => {
+  const rect = canvas.getBoundingClientRect();
+  const mouse = new THREE.Vector2();
+  
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  
+  // Sadece vertex highlight'ları kontrol et
+  const vertexHighlights: THREE.Object3D[] = [];
+  scene.traverse((child) => {
+    if (child.userData.isVertexHighlight) {
+      vertexHighlights.push(child);
+    }
+  });
+  
+  const intersects = raycaster.intersectObjects(vertexHighlights);
+  
+  if (intersects.length > 0) {
+    return intersects[0].object;
+  }
+  
+  return null;
+};
+
+/**
+ * Vertex hover state'ini güncelle
+ */
+export const updateVertexHoverState = (
+  scene: THREE.Scene,
+  hoveredVertex: THREE.Object3D | null
+): void => {
+  // Tüm vertex'leri normal renge çevir
+  scene.traverse((child) => {
+    if (child.userData.isVertexHighlight && child instanceof THREE.Mesh) {
+      const material = child.material as THREE.MeshBasicMaterial;
+      material.color.setHex(child.userData.originalColor);
+    }
+  });
+  
+  // Hover edilen vertex'i mavi yap
+  if (hoveredVertex && hoveredVertex instanceof THREE.Mesh) {
+    const material = hoveredVertex.material as THREE.MeshBasicMaterial;
+    material.color.setHex(0x0066ff); // Mavi renk
+  }
+};
+
+/**
+ * Transform controls oluştur
+ */
+export const createVertexTransformControls = (
+  scene: THREE.Scene,
+  position: THREE.Vector3,
+  camera: THREE.Camera,
+  domElement: HTMLElement
+): THREE.Group => {
+  const group = new THREE.Group();
+  group.position.copy(position);
+  
+  // X ekseni (kırmızı)
+  const xGeometry = new THREE.CylinderGeometry(0.5, 0.5, 20, 8);
+  const xMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const xArrow = new THREE.Mesh(xGeometry, xMaterial);
+  xArrow.rotation.z = -Math.PI / 2;
+  xArrow.position.x = 10;
+  
+  // X ok başı
+  const xHeadGeometry = new THREE.ConeGeometry(2, 6, 8);
+  const xHead = new THREE.Mesh(xHeadGeometry, xMaterial);
+  xHead.rotation.z = -Math.PI / 2;
+  xHead.position.x = 23;
+  
+  // Y ekseni (yeşil)
+  const yGeometry = new THREE.CylinderGeometry(0.5, 0.5, 20, 8);
+  const yMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  const yArrow = new THREE.Mesh(yGeometry, yMaterial);
+  yArrow.position.y = 10;
+  
+  // Y ok başı
+  const yHeadGeometry = new THREE.ConeGeometry(2, 6, 8);
+  const yHead = new THREE.Mesh(yHeadGeometry, yMaterial);
+  yHead.position.y = 23;
+  
+  // Z ekseni (mavi)
+  const zGeometry = new THREE.CylinderGeometry(0.5, 0.5, 20, 8);
+  const zMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+  const zArrow = new THREE.Mesh(zGeometry, zMaterial);
+  zArrow.rotation.x = Math.PI / 2;
+  zArrow.position.z = 10;
+  
+  // Z ok başı
+  const zHeadGeometry = new THREE.ConeGeometry(2, 6, 8);
+  const zHead = new THREE.Mesh(zHeadGeometry, zMaterial);
+  zHead.rotation.x = Math.PI / 2;
+  zHead.position.z = 23;
+  
+  group.add(xArrow, xHead, yArrow, yHead, zArrow, zHead);
+  
+  // Transform controls için userData
+  group.userData = {
+    isTransformControls: true,
+    vertexPosition: position.clone()
+  };
+  
+  scene.add(group);
+  return group;
+};
+
+/**
+ * Transform controls'u temizle
+ */
+export const clearVertexTransformControls = (scene: THREE.Scene) => {
+  const toRemove: THREE.Object3D[] = [];
+  scene.traverse((child) => {
+    if (child.userData.isTransformControls) {
+      toRemove.push(child);
+    }
+  });
+  
+  toRemove.forEach(obj => {
+    scene.remove(obj);
+    if (obj instanceof THREE.Group) {
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          (child.material as THREE.Material).dispose();
+        }
+      });
+    }
+  });
 };
 
 /**

@@ -18,7 +18,11 @@ import {
   getWorldPositionFromMouse,
   VolumeEditState,
   visualizeFaceVertices,
-  clearVertexVisualization
+  clearVertexVisualization,
+  detectVertexHover,
+  updateVertexHoverState,
+  createVertexTransformControls,
+  clearVertexTransformControls
 } from '../utils/volumeEdit';
 
 interface Props {
@@ -303,6 +307,11 @@ const OpenCascadeShape: React.FC<Props> = ({
         clearVertexVisualization(scene, vertexVisualizationGroup);
         setVertexVisualizationGroup(null);
       }
+      
+      // Transform controls'u temizle
+      clearVertexTransformControls(scene);
+      setTransformControls(null);
+      setHoveredVertex(null);
       
       setVolumeEditState({
         isActive: false,
