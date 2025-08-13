@@ -346,11 +346,38 @@ export const createFaceHighlight = (
 };
 
 /**
- * Volume edit görselleştirmesini temizle
+ * Face vertex'lerini görselleştir
  */
-export const clearVolumeEditVisualization = (scene: THREE.Scene, objects: THREE.Object3D[]) => {
+export const visualizeFaceVertices = (
+  scene: THREE.Scene,
+  mesh: THREE.Mesh,
+  faceIndex: number,
+  color: number = 0x000000,
+  size: number = 12
+): THREE.Group => {
+  const geometry = mesh.geometry as THREE.BufferGeometry;
+  const vertices = getAllVerticesOnPlane(geometry, faceIndex);
+  
+  const group = new THREE.Group();
+  const visualObjects = createVertexVisualization(vertices, mesh.matrixWorld, scene);
+  
+  visualObjects.forEach(obj => group.add(obj));
+  scene.add(group);
+  
+  console.log(`✅ Visualized ${vertices.length} vertices for face ${faceIndex}`);
+  return group;
+};
+
+/**
+ * Vertex görselleştirmesini temizle
+ */
+export const clearVertexVisualization = (scene: THREE.Scene, group: THREE.Group) => {
+  if (!group) return;
+  
+  // Group içindeki tüm objeleri temizle
+  const objects = [...group.children];
   objects.forEach(obj => {
-    scene.remove(obj);
+    group.remove(obj);
     if (obj instanceof THREE.Mesh) {
       obj.geometry.dispose();
       if (obj.material instanceof THREE.Material) {
@@ -363,5 +390,8 @@ export const clearVolumeEditVisualization = (scene: THREE.Scene, objects: THREE.
       obj.material.dispose();
     }
   });
-  console.log(`🧹 Cleared ${objects.length} volume edit visualization objects`);
+  
+  // Group'u scene'den kaldır
+  scene.remove(group);
+  console.log(`🧹 Cleared ${objects.length} vertex visualization objects`);
 };
