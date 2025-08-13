@@ -303,70 +303,62 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
 
+    if (!meshRef.current) return;
+
     // Mouse pozisyonundan world pozisyonu hesapla
-    const rect = gl.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2();
+    const worldPosition = getWorldPositionFromMouse(event, camera, gl.domElement);
+    if (!worldPosition) return;
+
+    const geometry = meshRef.current.geometry as THREE.BufferGeometry;
+    const positionAttribute = geometry.attributes.position;
     
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    if (!positionAttribute) return;
+
+    // World pozisyonunu local pozisyona dönüştür
+    const localPosition = worldPosition.clone();
+    meshRef.current.worldToLocal(localPosition);
+
+    // Sürüklenen vertex'in tüm instance'larını bul ve güncelle
+    const draggedWorldPos = currentVertexPositions[volumeEditState.draggedVertexIndex];
+    const tolerance = 0.1; // 0.1mm tolerance
     
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
+    // Geometry'deki tüm vertex'leri tara
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const vertex = new THREE.Vector3().fromBufferAttribute(positionAttribute, i);
+      const worldVertex = vertex.clone().applyMatrix4(meshRef.current.matrixWorld);
+      
+      // Eğer bu vertex sürüklenen vertex ile aynı pozisyondaysa güncelle
+      if (worldVertex.distanceTo(draggedWorldPos) < tolerance) {
+        positionAttribute.setXYZ(i, localPosition.x, localPosition.y, localPosition.z);
+      }
+    }
     
-    // Y=0 düzleminde intersection bul (drawing plane)
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const intersection = new THREE.Vector3();
+    // Geometry'yi güncelle
+    positionAttribute.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
     
-    if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Vertex pozisyonunu güncelle
-      const updatedPositions = [...currentVertexPositions];
-      if (volumeEditState.draggedVertexIndex < updatedPositions.length) {
-        updatedPositions[volumeEditState.draggedVertexIndex] = intersection.clone();
-        setCurrentVertexPositions(updatedPositions);
-        
-        // Mesh geometry'sini güncelle
-        if (meshRef.current) {
-          const geometry = meshRef.current.geometry as THREE.BufferGeometry;
-          const positionAttribute = geometry.attributes.position;
-          
-          if (positionAttribute) {
-            // World pozisyonunu local pozisyona dönüştür
-            const localPosition = intersection.clone();
-            meshRef.current.worldToLocal(localPosition);
-            
-            // Vertex pozisyonunu güncelle
-            positionAttribute.setXYZ(volumeEditState.draggedVertexIndex, localPosition.x, localPosition.y, localPosition.z);
-            positionAttribute.needsUpdate = true;
-            
-            // Geometry'yi yeniden hesapla
-            geometry.computeVertexNormals();
-            geometry.computeBoundingBox();
-            geometry.computeBoundingSphere();
-            
-            // Mark geometry as needing update
-            geometry.attributes.position.needsUpdate = true;
-            geometry.computeBoundingBox();
-            geometry.computeBoundingSphere();
-            
-            // Vertex görselleştirmesini güncelle
-            if (vertexVisualizationGroup) {
-              const spheres = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Mesh);
-              if (spheres[volumeEditState.draggedVertexIndex]) {
-                spheres[volumeEditState.draggedVertexIndex].position.copy(intersection);
-              }
-              
-              const sprites = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Sprite);
-              if (sprites[volumeEditState.draggedVertexIndex]) {
-                sprites[volumeEditState.draggedVertexIndex].position.copy(intersection);
-                sprites[volumeEditState.draggedVertexIndex].position.y += 20;
-              }
-            }
-          }
-        }
+    // Vertex görselleştirmesini güncelle
+    const updatedPositions = [...currentVertexPositions];
+    updatedPositions[volumeEditState.draggedVertexIndex] = worldPosition.clone();
+    setCurrentVertexPositions(updatedPositions);
+    
+    // Vertex görselleştirme objelerini güncelle
+    if (vertexVisualizationGroup) {
+      const spheres = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Mesh);
+      if (spheres[volumeEditState.draggedVertexIndex]) {
+        spheres[volumeEditState.draggedVertexIndex].position.copy(worldPosition);
       }
       
-      console.log(`🎯 Vertex ${volumeEditState.draggedVertexIndex} dragged to:`, intersection.toArray().map(v => v.toFixed(1)));
+      const sprites = vertexVisualizationGroup.children.filter(child => child instanceof THREE.Sprite);
+      if (sprites[volumeEditState.draggedVertexIndex]) {
+        sprites[volumeEditState.draggedVertexIndex].position.copy(worldPosition);
+        sprites[volumeEditState.draggedVertexIndex].position.y += 20;
+      }
     }
+    
+    console.log(`🎯 Vertex ${volumeEditState.draggedVertexIndex} moved to:`, worldPosition.toArray().map(v => v.toFixed(1)));
   }, [isVolumeEditMode, volumeEditState.isDragging, volumeEditState.draggedVertexIndex, camera, gl.domElement, currentVertexPositions]);
 
   // Handle mouse up for volume edit
