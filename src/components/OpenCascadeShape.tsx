@@ -18,7 +18,8 @@ import {
   getWorldPositionFromMouse,
   VolumeEditState,
   visualizeFaceVertices,
-  clearVertexVisualization
+  clearVertexVisualization,
+  getAllVerticesOnPlane
 } from '../utils/volumeEdit';
 
 interface Props {
@@ -196,7 +197,31 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isVolumeEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      // İlk önce face seçimi yap
+      // Eğer vertex'ler görünürse, önce vertex seçimi dene
+      if (currentVertexPositions.length > 0) {
+        const vertexIndex = detectVertexAtMouse(
+          e.nativeEvent,
+          camera,
+          gl.domElement,
+          currentVertexPositions,
+          25 // 25px tolerance
+        );
+        
+        if (vertexIndex !== null) {
+          // Vertex seçildi, dragging başlat
+          setVolumeEditState(prev => ({
+            ...prev,
+            selectedVertexIndex: vertexIndex,
+            draggedVertexIndex: vertexIndex,
+            isDragging: true,
+            dragStartPosition: currentVertexPositions[vertexIndex].clone()
+          }));
+          console.log(`🎯 Volume Edit: Vertex ${vertexIndex} selected for dragging`);
+          return;
+        }
+      }
+      
+      // Vertex seçilmemişse, face seçimi yap
       const hit = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -208,12 +233,22 @@ const OpenCascadeShape: React.FC<Props> = ({
         // Seçilen face'i highlight et (açık gri renk)
         const faceHighlight = highlightFace(scene, hit, shape, 0xcccccc, 0.4);
         
+        // Seçilen face'in vertex'lerini bul ve görselleştir
+        const faceVertices = getAllVerticesOnPlane(meshRef.current.geometry as THREE.BufferGeometry, hit.faceIndex);
+        
+        // World space'e dönüştür
+        const worldVertices = faceVertices.map(vertex => {
+          return vertex.clone().applyMatrix4(meshRef.current!.matrixWorld);
+        });
+        
+        setCurrentVertexPositions(worldVertices);
+        
         // Önceki vertex görselleştirmesini temizle
         if (vertexVisualizationGroup) {
           clearVertexVisualization(scene, vertexVisualizationGroup);
         }
         
-        // Seçilen face'in vertex'lerini görselleştir
+        // Yeni vertex görselleştirmesi oluştur
         const newGroup = visualizeFaceVertices(
           scene,
           meshRef.current,
@@ -223,6 +258,11 @@ const OpenCascadeShape: React.FC<Props> = ({
         );
         
         setVertexVisualizationGroup(newGroup);
+        setVolumeEditState(prev => ({
+          ...prev,
+          selectedFaceIndex: hit.faceIndex,
+          selectedVertices: faceVertices
+        }));
         console.log(`🎯 Volume Edit: Face ${hit.faceIndex} vertices visualized`);
       } else {
         console.log('🎯 Volume Edit: No face found at mouse position');
@@ -259,15 +299,22 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Handle mouse move for volume edit dragging
   const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isVolumeEditMode || !volumeEditState.isDragging || volumeEditState.selectedVertexIndex === null) {
+    if (!isVolumeEditMode || !volumeEditState.isDragging || volumeEditState.draggedVertexIndex === null) {
       return;
     }
 
     const newPosition = getWorldPositionFromMouse(event, camera, gl.domElement);
     if (newPosition && meshRef.current) {
-      updateVertexPosition(meshRef.current, volumeEditState.selectedVertexIndex, newPosition);
+      updateVertexPosition(meshRef.current, volumeEditState.draggedVertexIndex, newPosition);
+      
+      // Vertex pozisyonunu güncelle
+      const updatedPositions = [...currentVertexPositions];
+      if (volumeEditState.draggedVertexIndex < updatedPositions.length) {
+        updatedPositions[volumeEditState.draggedVertexIndex] = newPosition.clone();
+        setCurrentVertexPositions(updatedPositions);
+      }
     }
-  }, [isVolumeEditMode, volumeEditState.isDragging, volumeEditState.selectedVertexIndex, camera, gl.domElement]);
+  }, [isVolumeEditMode, volumeEditState.isDragging, volumeEditState.draggedVertexIndex, camera, gl.domElement, currentVertexPositions]);
 
   // Handle mouse up for volume edit
   const handleMouseUp = useCallback(() => {
@@ -275,7 +322,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       setVolumeEditState(prev => ({
         ...prev,
         isDragging: false,
-        dragStartPosition: null
+        dragStartPosition: null,
+        draggedVertexIndex: null
       }));
       console.log('🎯 Volume Edit: Dragging finished');
     }
@@ -308,11 +356,15 @@ const OpenCascadeShape: React.FC<Props> = ({
         setVertexVisualizationGroup(null);
       }
       
+      setCurrentVertexPositions([]);
       setVolumeEditState({
         isActive: false,
-        selectedVertexIndex: null,
+        selectedVertices: [],
+        selectedFaceIndex: null,
         isDragging: false,
-        dragStartPosition: null
+        dragStartPosition: null,
+        selectedVertexIndex: null,
+        draggedVertexIndex: null
       });
     }
   }, [isFaceEditMode, isVolumeEditMode, scene, vertexVisualizationGroup]);
