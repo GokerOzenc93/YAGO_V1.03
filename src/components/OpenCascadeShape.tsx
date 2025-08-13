@@ -411,7 +411,7 @@ const OpenCascadeShape: React.FC<Props> = ({
             newVertexMeshes.push(vertexMesh);
         });
         setVertexEditMeshes(newVertexMeshes);
-        console.log(`✨ ${newVertexMeshes.length} editable vertex meshes created for ${targetShape.id}`);
+        console.log(`✨ ${newVertexMeshes.length} düzenlenebilir düğüm noktası oluşturuldu for ${targetShape.id}`);
     }
   }, [scene, hoveredVertexMesh, vertexEditMeshes]); // Add vertexEditMeshes to deps to ensure cleanup is correct
 
@@ -497,26 +497,38 @@ const OpenCascadeShape: React.FC<Props> = ({
   // --- Event Handlers ---
 
   const onMeshClick = useCallback((e: any) => {
-    // Prevent default three.js pointer events from propagating to transform controls
-    // e.stopPropagation(); // This might interfere with TransformControls if not careful
+    // Stop propagation to prevent multiple handlers from firing for the same click
+    e.stopPropagation(); 
+    // Prevent default browser behavior (e.g., text selection during drag)
+    e.nativeEvent.preventDefault();
 
-    // Volume Edit mode - handle vertex selection and dragging
+    // Ensure meshRef.current is available
+    if (!meshRef.current) return;
+
+    // Update raycaster with current mouse position
+    const mouseLocal = new THREE.Vector2();
+    mouseLocal.x = (e.nativeEvent.clientX / window.innerWidth) * 2 - 1;
+    mouseLocal.y = -(e.nativeEvent.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouseLocal, camera);
+
+    // --- Volume Edit mode ---
     if (isVolumeEditMode && e.nativeEvent.button === 0) {
-      // Check if a vertex was clicked
-      const clickedVertexMesh = vertexEditMeshes.find(vMesh => {
-        const intersects = raycaster.intersectObject(vMesh);
-        return intersects.length > 0;
-      });
+      // 1. Check if an editable vertex was clicked
+      const intersectsVertices = raycaster.intersectObjects(vertexEditMeshes);
 
-      if (clickedVertexMesh) {
+      if (intersectsVertices.length > 0) {
+        const clickedVertexMesh = intersectsVertices[0].object as THREE.Mesh;
         const vertexData = clickedVertexMesh.userData;
+
         if (vertexData.isEditableVertex) {
             setIsDraggingVertex(true);
-            const intersectionPoint = raycaster.intersectObject(clickedVertexMesh)[0].point;
+            const intersectionPoint = intersectsVertices[0].point;
             const offset = new THREE.Vector3().subVectors(intersectionPoint, clickedVertexMesh.position);
 
             const targetShape = vertexData.shape;
-            targetShape.mesh!.updateMatrixWorld(true); // Ensure mesh world matrix is updated
+            // Ensure mesh world matrix is updated before creating drag plane
+            targetShape.mesh!.updateMatrixWorld(true); 
+            // Create a drag plane aligned with the polygon's local XZ plane, but in world coordinates
             const localPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Y=0 plane in local space
             const worldPlane = localPlane.clone().applyMatrix4(targetShape.mesh!.matrixWorld);
 
@@ -529,72 +541,55 @@ const OpenCascadeShape: React.FC<Props> = ({
             });
             console.log(`🎯 Volume Edit: Vertex ${vertexData.pointIndex} selected for dragging.`);
             document.body.style.cursor = 'grabbing';
-            e.nativeEvent.preventDefault(); // Prevent default browser drag behavior
-            return;
+            return; // Vertex was clicked, stop here
         }
       }
       
-      // If no vertex was clicked, proceed with face selection
-      const hit = detectFaceAtMouse(e.nativeEvent, camera, meshRef.current!, gl.domElement);
+      // 2. If no vertex was clicked, proceed with face selection (for polygon base plane)
+      const hit = detectFaceAtMouse(e.nativeEvent, camera, meshRef.current, gl.domElement);
       
-      if (hit && hit.faceIndex !== undefined && meshRef.current) {
-        const faceHighlight = highlightFace(scene, hit, shape, 0xcccccc, 0.4);
-        
-        if (faceHighlight) {
-            // Visualize vertices on the selected face
-            const faceVertices = getAllVerticesOnPlane(meshRef.current.geometry as THREE.BufferGeometry, hit.faceIndex);
-            // We need to map these local vertices to world positions for visualization
-            const worldVertices = faceVertices.map(v => v.clone().applyMatrix4(meshRef.current!.matrixWorld));
+      if (hit && hit.faceIndex !== undefined) {
+        // Highlight the selected face
+        highlightFace(scene, hit, shape, 0xcccccc, 0.4); // Highlight in light gray
 
-            // Clear previous vertex meshes and create new ones
-            clearEditableVertices(); // Clear existing visual meshes
-            
-            // Create new visual meshes for the selected face's vertices
-            // Note: visualizeFaceVertices is a utility, not directly used for draggable nodes
-            // We need to create the actual draggable nodes if the shape is a polygon
-            if (shape.type === 'polygon3d') {
-                createEditableVerticesForPolygon(shape); // Recreate draggable nodes for the polygon
-            } else {
-                clearEditableVertices(); // Clear nodes if not a polygon
-            }
-
-            // Update state for volume edit
-            // setVolumeEditState(prev => ({ ...prev, selectedFaceIndex: hit.faceIndex, selectedVertices: faceVertices })); // VolumeEditState is removed
-            console.log(`🎯 Volume Edit: Face ${hit.faceIndex} selected, vertices visualized.`);
+        // If it's a polygon, create/recreate draggable vertices for it
+        if (shape.type === 'polygon3d') {
+            createEditableVerticesForPolygon(shape); 
+        } else {
+            clearEditableVertices(); // Clear nodes if not a polygon
         }
+        console.log(`🎯 Volume Edit: Face ${hit.faceIndex} selected.`);
       } else {
-        console.log('🎯 Volume Edit: No face found at mouse position.');
+        console.log('🎯 Volume Edit: No face or vertex found at mouse position.');
         clearFaceHighlight(scene);
         clearEditableVertices();
       }
-      return;
+      return; // Volume Edit mode handled, stop here
     }
 
-    // Face Edit mode - handle face selection
+    // --- Face Edit mode ---
     if (isFaceEditMode && e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      const hit = detectFaceAtMouse(e.nativeEvent, camera, meshRef.current!, gl.domElement);
+      const hit = detectFaceAtMouse(e.nativeEvent, camera, meshRef.current, gl.domElement);
       if (!hit || hit.faceIndex === undefined) {
         console.warn('🎯 No face detected');
         clearFaceHighlight(scene);
         if (onFaceSelect) onFaceSelect(null);
         return;
       }
-      const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
-      if (highlight && onFaceSelect) {
+      highlightFace(scene, hit, shape, 0xff6b35, 0.6); // Highlight in orange
+      if (onFaceSelect) {
         onFaceSelect(hit.faceIndex);
         console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
       }
-      return;
+      return; // Face Edit mode handled, stop here
     }
     
-    // Normal selection mode - only left click
+    // --- Normal selection mode ---
     if (e.nativeEvent.button === 0) {
-      e.stopPropagation();
       useAppStore.getState().selectShape(shape.id);
       console.log(`Shape clicked: ${shape.type} (ID: ${shape.id})`);
     }
-  }, [isFaceEditMode, isVolumeEditMode, camera, gl.domElement, meshRef, scene, shape, onFaceSelect, vertexEditMeshes, clearEditableVertices, createEditableVerticesForPolygon]);
+  }, [isFaceEditMode, isVolumeEditMode, camera, gl.domElement, meshRef, scene, shape, onFaceSelect, vertexEditMeshes, createEditableVerticesForPolygon, clearEditableVertices]);
 
 
   const handleContextMenu = useCallback((e: any) => {
