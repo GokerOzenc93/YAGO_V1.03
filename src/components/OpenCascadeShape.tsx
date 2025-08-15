@@ -12,12 +12,6 @@ import {
   clearFaceHighlight,
   getCurrentHighlight 
 } from '../utils/faceSelection';
-import { 
-  detectVertexAtMouse, 
-  updateVertexPosition, 
-  getWorldPositionFromMouse,
-  VolumeEditState 
-} from '../utils/volumeEdit';
 
 interface Props {
   shape: Shape;
@@ -55,14 +49,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode, // 🎯 NEW: Get current view mode
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
-
-  // Volume Edit State
-  const [volumeEditState, setVolumeEditState] = useState<VolumeEditState>({
-    isActive: false,
-    selectedVertexIndex: null,
-    isDragging: false,
-    dragStartPosition: null
-  });
 
   // Debug: Log shape information when selected
   useEffect(() => {
@@ -187,24 +173,8 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isVolumeEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      const vertexHit = detectVertexAtMouse(
-        e.nativeEvent,
-        camera,
-        meshRef.current!,
-        gl.domElement
-      );
-      
-      if (vertexHit) {
-        setVolumeEditState({
-          isActive: true,
-          selectedVertexIndex: vertexHit.vertexIndex,
-          isDragging: true,
-          dragStartPosition: vertexHit.worldPosition.clone()
-        });
-        console.log(`🎯 Volume Edit: Vertex ${vertexHit.vertexIndex} selected for dragging`);
-      } else {
-        console.log('🎯 Volume Edit: No vertex found at mouse position');
-      }
+      // TODO: Implement vertex selection and dragging for volume editing
+      console.log('🎯 Volume Edit Mode - Vertex selection not yet implemented');
       return;
     }
     
@@ -235,57 +205,10 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
   };
 
-  // Handle mouse move for volume edit dragging
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isVolumeEditMode || !volumeEditState.isDragging || volumeEditState.selectedVertexIndex === null) {
-      return;
-    }
-
-    const newPosition = getWorldPositionFromMouse(event, camera, gl.domElement);
-    if (newPosition && meshRef.current) {
-      updateVertexPosition(meshRef.current, volumeEditState.selectedVertexIndex, newPosition);
-    }
-  }, [isVolumeEditMode, volumeEditState.isDragging, volumeEditState.selectedVertexIndex, camera, gl.domElement]);
-
-  // Handle mouse up for volume edit
-  const handleMouseUp = useCallback(() => {
-    if (volumeEditState.isDragging) {
-      setVolumeEditState(prev => ({
-        ...prev,
-        isDragging: false,
-        dragStartPosition: null
-      }));
-      console.log('🎯 Volume Edit: Dragging finished');
-    }
-  }, [volumeEditState.isDragging]);
-
-  // Add/remove mouse event listeners for volume edit
-  useEffect(() => {
-    if (isVolumeEditMode && volumeEditState.isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isVolumeEditMode, volumeEditState.isDragging, handleMouseMove, handleMouseUp]);
-
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
-    if (!isFaceEditMode) {
+    if (!isFaceEditMode && !isVolumeEditMode) {
       clearFaceHighlight(scene);
-    }
-    
-    // Volume Edit mode'dan çıkıldığında state'i temizle
-    if (!isVolumeEditMode) {
-      setVolumeEditState({
-        isActive: false,
-        selectedVertexIndex: null,
-        isDragging: false,
-        dragStartPosition: null
-      });
     }
   }, [isFaceEditMode, isVolumeEditMode, scene]);
 
