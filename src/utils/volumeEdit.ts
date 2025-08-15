@@ -44,10 +44,23 @@ export function updateVolumeEditHandles(scene: THREE.Scene) {
       return;
     }
 
+    // HATA ÖNLEME: Kodun, iç içe geçmiş (interleaved) buffer'ları desteklemediğini kontrol et.
+    // Bu tür geometriler hataya neden olabilir, bu yüzden şimdilik atlıyoruz.
+    if (positionAttribute.isInterleavedBufferAttribute) {
+        console.error("Hacim düzenleme modu, iç içe geçmiş (interleaved) pozisyon verilerini henüz desteklemiyor.");
+        return;
+    }
+
     const indexAttribute = geometry.getIndex();
     const verticesToDraw: THREE.Vector3[] = [];
 
     if (indexAttribute) {
+      // HATA ÖNLEME: Kodun, iç içe geçmiş (interleaved) index buffer'larını desteklemediğini kontrol et.
+      if (indexAttribute.isInterleavedBufferAttribute) {
+        console.error("Hacim düzenleme modu, iç içe geçmiş (interleaved) indeks verilerini henüz desteklemiyor.");
+        return;
+      }
+
       // Indexed Geometri (köşe noktaları tekrar kullanılır)
       const i1 = indexAttribute.getX(selectedFaceIndex * 3);
       const i2 = indexAttribute.getY(selectedFaceIndex * 3);
