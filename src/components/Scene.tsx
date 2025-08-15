@@ -17,7 +17,7 @@ import {
   MeasurementUnit,
   ViewMode,
 } from '../store/appStore';
-import OpenCascadeShape from './OpenCascadeShape'; // Original, correct import
+import OpenCascadeShape from './OpenCascadeShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
@@ -62,11 +62,6 @@ interface MeasurementOverlayProps {
 }
 
 // NEW: Interface for face selection popup
-interface FaceSelectionOption {
-  // Define properties for FaceSelectionOption if it's used
-  // Example: label: string; value: string;
-}
-
 interface FaceSelectionPopupProps {
   options: FaceSelectionOption[];
   position: { x: number; y: number };
