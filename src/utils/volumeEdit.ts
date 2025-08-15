@@ -1,208 +1,101 @@
 import * as THREE from 'three';
-import { Shape } from '../types/shapes';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { useAppStore } from '../store/appStore';
 
-export interface VolumeEditState {
-  isActive: boolean;
-  selectedVertexIndex: number | null;
-  isDragging: boolean;
-  dragStartPosition: THREE.Vector3 | null;
-}
+let transformControls: TransformControls | null = null;
 
-export interface VertexHit {
-  vertexIndex: number;
-  worldPosition: THREE.Vector3;
-  distance: number;
+/**
+ * Verilen pozisyonda bir düzenleme düğümü (küre) oluşturur ve sahneye ekler.
+ * @param position Düğümün dünya koordinatlarındaki pozisyonu.
+ * @param scene Düğümün ekleneceği Three.js sahnesi.
+ * @returns Oluşturulan Mesh nesnesi.
+ */
+function createHandle(position: THREE.Vector3, scene: THREE.Scene): THREE.Mesh {
+  const handleGeometry = new THREE.SphereGeometry(0.075); // Boyut ayarlandı
+  const handleMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000, // Kırmızı renk
+    depthTest: false, // Diğer nesnelerin arkasında kalsa bile görünür olmasını sağlar
+  });
+  const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+  handle.position.copy(position);
+  handle.userData.isVolumeHandle = true; // Bu nesnenin bir düğüm olduğunu belirtir
+  handle.renderOrder = 999; // En son (en üstte) render edilmesini sağlar
+  scene.add(handle);
+  return handle;
 }
 
 /**
- * Vertex selection için raycasting
+ * Seçili yüzeye göre düzenleme düğümlerini günceller (eskileri siler, yenileri oluşturur).
+ * @param scene Three.js sahnesi.
  */
-export const detectVertexAtMouse = (
-  event: MouseEvent,
-  camera: THREE.Camera,
-  mesh: THREE.Mesh,
-  canvas: HTMLCanvasElement,
-  tolerance: number = 20 // pixel tolerance
-): VertexHit | null => {
-  const rect = canvas.getBoundingClientRect();
-  const mouse = new THREE.Vector2();
-  
-  // Mouse koordinatlarını normalize et
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  
-  const geometry = mesh.geometry as THREE.BufferGeometry;
-  const position = geometry.attributes.position;
-  
-  if (!position) {
-    console.warn('Geometry has no position attribute');
-    return null;
-  }
-  
-  const worldMatrix = mesh.matrixWorld;
-  const vertices: VertexHit[] = [];
-  
-  // Tüm vertex'leri kontrol et
-  for (let i = 0; i < position.count; i++) {
-    const vertex = new THREE.Vector3().fromBufferAttribute(position, i);
-    const worldVertex = vertex.clone().applyMatrix4(worldMatrix);
-    
-    // World space'den screen space'e dönüştür
-    const screenVertex = worldVertex.clone().project(camera);
-    
-    // Screen koordinatlarını pixel'e çevir
-    const screenX = (screenVertex.x * 0.5 + 0.5) * canvas.clientWidth;
-    const screenY = (-screenVertex.y * 0.5 + 0.5) * canvas.clientHeight;
-    
-    // Mouse ile vertex arasındaki mesafeyi hesapla
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-    
-    const distance = Math.sqrt(
-      Math.pow(screenX - mouseX, 2) + Math.pow(screenY - mouseY, 2)
-    );
-    
-    if (distance <= tolerance) {
-      vertices.push({
-        vertexIndex: i,
-        worldPosition: worldVertex,
-        distance
-      });
+export function updateVolumeEditHandles(scene: THREE.Scene) {
+  const { selectedShape, selectedFaceIndex } = useAppStore.getState();
+
+  // Sahnedeki mevcut tüm düzenleme düğümlerini temizle
+  const handles = scene.children.filter((child) => child.userData.isVolumeHandle);
+  handles.forEach((handle) => scene.remove(handle));
+
+  if (selectedShape && selectedFaceIndex !== null && selectedShape.geometry) {
+    const geometry = selectedShape.geometry;
+    const positionAttribute = geometry.getAttribute('position');
+
+    if (!positionAttribute) {
+      console.error('Seçili nesnenin geometrisinde pozisyon verisi bulunamadı.');
+      return;
     }
-  }
-  
-  // En yakın vertex'i döndür
-  if (vertices.length > 0) {
-    vertices.sort((a, b) => a.distance - b.distance);
-    const closest = vertices[0];
-    
-    console.log('🎯 Vertex detected:', {
-      index: closest.vertexIndex,
-      worldPosition: closest.worldPosition.toArray().map(v => v.toFixed(1)),
-      screenDistance: closest.distance.toFixed(1)
+
+    const indexAttribute = geometry.getIndex();
+    const verticesToDraw: THREE.Vector3[] = [];
+
+    if (indexAttribute) {
+      // Indexed Geometri (köşe noktaları tekrar kullanılır)
+      const i1 = indexAttribute.getX(selectedFaceIndex * 3);
+      const i2 = indexAttribute.getY(selectedFaceIndex * 3);
+      const i3 = indexAttribute.getZ(selectedFaceIndex * 3);
+
+      const uniqueVertexIndices = [...new Set([i1, i2, i3])];
+
+      uniqueVertexIndices.forEach((vertexIndex) => {
+        const vertex = new THREE.Vector3().fromBufferAttribute(
+          positionAttribute,
+          vertexIndex,
+        );
+        verticesToDraw.push(vertex);
+      });
+    } else {
+      // Non-indexed Geometri (her yüzeyin kendi köşe noktaları vardır)
+      const baseIndex = selectedFaceIndex * 3;
+      const v1 = new THREE.Vector3().fromBufferAttribute(positionAttribute, baseIndex + 0);
+      const v2 = new THREE.Vector3().fromBufferAttribute(positionAttribute, baseIndex + 1);
+      const v3 = new THREE.Vector3().fromBufferAttribute(positionAttribute, baseIndex + 2);
+      verticesToDraw.push(v1, v2, v3);
+    }
+
+    // Nesnenin dünya matrisinin güncel olduğundan emin ol
+    selectedShape.updateWorldMatrix(true, false);
+
+    // Lokal köşe noktası pozisyonlarını dünya koordinatlarına çevir ve düğümleri oluştur
+    verticesToDraw.forEach((vertex) => {
+      vertex.applyMatrix4(selectedShape.matrixWorld);
+      createHandle(vertex, scene);
     });
-    
-    return closest;
   }
-  
-  return null;
-};
+}
 
-/**
- * Vertex pozisyonunu güncelle
- */
-export const updateVertexPosition = (
-  mesh: THREE.Mesh,
-  vertexIndex: number,
-  newWorldPosition: THREE.Vector3
-): void => {
-  const geometry = mesh.geometry as THREE.BufferGeometry;
-  const position = geometry.attributes.position;
-  
-  if (!position) {
-    console.warn('Geometry has no position attribute');
-    return;
-  }
-  
-  // World space'den local space'e dönüştür
-  const inverseMatrix = mesh.matrixWorld.clone().invert();
-  const localPosition = newWorldPosition.clone().applyMatrix4(inverseMatrix);
-  
-  // Vertex pozisyonunu güncelle
-  position.setXYZ(vertexIndex, localPosition.x, localPosition.y, localPosition.z);
-  position.needsUpdate = true;
-  
-  // Geometry'yi yeniden hesapla
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  
-  console.log(`🎯 Vertex ${vertexIndex} updated:`, {
-    worldPosition: newWorldPosition.toArray().map(v => v.toFixed(1)),
-    localPosition: localPosition.toArray().map(v => v.toFixed(1))
-  });
-};
-
-/**
- * Vertex highlight mesh'i oluştur
- */
-export const createVertexHighlight = (
-  worldPosition: THREE.Vector3,
-  color: number = 0x00ff00,
-  size: number = 5
-): THREE.Mesh => {
-  const geometry = new THREE.SphereGeometry(size, 8, 6);
-  const material = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.8,
-    depthTest: false
-  });
-  
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.copy(worldPosition);
-  mesh.renderOrder = 1000;
-  
-  return mesh;
-};
-
-/**
- * Mouse pozisyonundan 3D pozisyon hesapla (plane intersection)
- */
-export const getWorldPositionFromMouse = (
-  event: MouseEvent,
-  camera: THREE.Camera,
-  canvas: HTMLCanvasElement,
-  constraintPlane?: THREE.Plane
-): THREE.Vector3 | null => {
-  const rect = canvas.getBoundingClientRect();
-  const mouse = new THREE.Vector2();
-  
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(mouse, camera);
-  
-  if (constraintPlane) {
-    // Belirli bir düzlemle kesişim
-    const intersection = new THREE.Vector3();
-    const intersected = raycaster.ray.intersectPlane(constraintPlane, intersection);
-    return intersected;
-  } else {
-    // XZ düzlemi ile kesişim (Y=0)
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const intersection = new THREE.Vector3();
-    const intersected = raycaster.ray.intersectPlane(plane, intersection);
-    return intersected;
-  }
-};
-
-/**
- * Vertex'leri görselleştir (debug amaçlı)
- */
-export const visualizeVertices = (
+export function createVolumeEditControls(
+  camera: THREE.PerspectiveCamera,
+  domElement: HTMLElement,
   scene: THREE.Scene,
-  mesh: THREE.Mesh,
-  color: number = 0xff0000,
-  size: number = 3
-): THREE.Group => {
-  const group = new THREE.Group();
-  const geometry = mesh.geometry as THREE.BufferGeometry;
-  const position = geometry.attributes.position;
-  
-  if (!position) return group;
-  
-  const worldMatrix = mesh.matrixWorld;
-  
-  for (let i = 0; i < position.count; i++) {
-    const vertex = new THREE.Vector3().fromBufferAttribute(position, i);
-    const worldVertex = vertex.clone().applyMatrix4(worldMatrix);
-    
-    const highlight = createVertexHighlight(worldVertex, color, size);
-    group.add(highlight);
+) {
+  transformControls = new TransformControls(camera, domElement);
+  scene.add(transformControls);
+  return transformControls;
+}
+
+export function disposeVolumeEditControls() {
+  if (transformControls) {
+    transformControls.dispose();
+    transformControls.removeFromParent();
+    transformControls = null;
   }
-  
-  scene.add(group);
-  return group;
-};
+}
