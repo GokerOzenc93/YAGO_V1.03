@@ -351,7 +351,8 @@ const OpenCascadeShape: React.FC<Props> = ({
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
-  const { scene, camera, gl } = useThree();
+  // Destructure raycaster from useThree hook
+  const { scene, camera, gl, raycaster } = useThree(); 
   const {
     activeTool,
     selectedShapeId,
@@ -589,7 +590,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       useAppStore.getState().selectShape(shape.id);
       console.log(`Shape clicked: ${shape.type} (ID: ${shape.id})`);
     }
-  }, [isFaceEditMode, isVolumeEditMode, camera, gl.domElement, meshRef, scene, shape, onFaceSelect, vertexEditMeshes, createEditableVerticesForPolygon, clearEditableVertices]);
+  }, [isFaceEditMode, isVolumeEditMode, camera, gl.domElement, meshRef, scene, shape, onFaceSelect, vertexEditMeshes, createEditableVerticesForPolygon, clearEditableVertices, raycaster]);
 
 
   const handleContextMenu = useCallback((e: any) => {
@@ -608,7 +609,7 @@ const OpenCascadeShape: React.FC<Props> = ({
   const handleMouseMove = useCallback((event: MouseEvent) => {
     // Handle vertex dragging
     if (isDraggingVertex && activeVertex) {
-        const raycasterLocal = new THREE.Raycaster(); // Use a local raycaster for this event
+        const raycasterLocal = raycaster; // Use the raycaster from useThree hook
         const mouseLocal = new THREE.Vector2();
         mouseLocal.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouseLocal.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -626,7 +627,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
     // Handle vertex hover effect (only if not dragging)
     if (isVolumeEditMode && meshRef.current) {
-        const raycasterLocal = new THREE.Raycaster();
+        const raycasterLocal = raycaster; // Use the raycaster from useThree hook
         const mouseLocal = new THREE.Vector2();
         mouseLocal.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouseLocal.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -658,7 +659,7 @@ const OpenCascadeShape: React.FC<Props> = ({
             document.body.style.cursor = 'default';
         }
     }
-  }, [isDraggingVertex, activeVertex, camera, vertexEditMeshes, hoveredVertexMesh, isVolumeEditMode, meshRef]);
+  }, [isDraggingVertex, activeVertex, camera, vertexEditMeshes, hoveredVertexMesh, isVolumeEditMode, meshRef, raycaster]);
 
 
   const handleMouseUp = useCallback(() => {
