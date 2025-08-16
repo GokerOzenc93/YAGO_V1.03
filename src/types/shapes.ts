@@ -6,7 +6,8 @@ export interface Shape {
   position: [number, number, number];
   rotation: [number, number, number];
   scale: [number, number, number];
-  geometry: THREE.BufferGeometry;
+  // HATA DÜZELTMESİ: Geometri artık opsiyonel. Bileşen içinde oluşturulacak.
+  geometry?: THREE.BufferGeometry;
   parameters: Record<string, any>;
   originalPoints?: THREE.Vector3[]; // For 2D shapes converted to 3D
   is2DShape?: boolean; // Mark if this is a converted 2D shape
