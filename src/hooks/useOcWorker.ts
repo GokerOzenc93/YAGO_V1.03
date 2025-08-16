@@ -33,20 +33,7 @@ export const useOcWorker = () => {
     });
   }, [setInitialized]);
 
-  // Bu fonksiyonlar yer tutucudur
-  const createBox = (width: number, height: number, depth: number) => {
-    console.log(`Creating Box with size: ${width}, ${height}, ${depth}`);
-    return { success: true, message: 'Box created' };
-  };
-
-  const createCylinder = (radius: number, height: number) => {
-    console.log(`Creating Cylinder with radius: ${radius}, height: ${height}`);
-    return { success: true, message: 'Cylinder created' };
-  };
-
   return {
     initialized: useAppStore((state) => state.initialized),
-    createBox,
-    createCylinder,
   };
 };
