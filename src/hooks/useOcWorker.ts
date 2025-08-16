@@ -1,6 +1,20 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { initOpenCascade } from '../opencascade.ts'; // Güncellenmiş başlatma fonksiyonunu import ediyoruz
+// Gerekli importları doğrudan bu dosyaya ekliyoruz
+import opencascade from "opencascade.js/dist/opencascade.full.js";
+import opencascadeWasm from "opencascade.js/dist/opencascade.full.wasm?url";
+
+// Başlatma mantığını bu dosyanın içine taşıyoruz
+let ocPromise: Promise<any> | null = null;
+const initOpenCascade = () => {
+  if (!ocPromise) {
+    // @ts-ignore
+    ocPromise = opencascade({
+      locateFile: () => opencascadeWasm,
+    });
+  }
+  return ocPromise;
+};
 
 export const useOcWorker = () => {
   const { setInitialized } = useAppStore();
@@ -10,7 +24,6 @@ export const useOcWorker = () => {
     initOpenCascade().then((ocInstance: unknown) => {
       if (ocInstance) {
         console.log('OpenCascade.js initialized successfully.');
-        // Gerekirse instance'ı global olarak erişilebilir yap
         (window as any).oc = ocInstance;
         setInitialized(true);
       } else {
@@ -20,7 +33,7 @@ export const useOcWorker = () => {
     });
   }, [setInitialized]);
 
-  // Bu fonksiyonlar yer tutucudur, genişletilebilir
+  // Bu fonksiyonlar yer tutucudur
   const createBox = (width: number, height: number, depth: number) => {
     console.log(`Creating Box with size: ${width}, ${height}, ${depth}`);
     return { success: true, message: 'Box created' };
