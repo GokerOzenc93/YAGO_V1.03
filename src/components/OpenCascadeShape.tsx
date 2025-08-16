@@ -1,27 +1,26 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
-import { useAppStore } from '../store/appStore';
-import { TransformControls } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
-import * as THREE from 'three';
-import { Shape } from '../types/shapes';
-import { SHAPE_COLORS } from '../types/shapes';
-import { ViewMode } from '../store/appStore';
+import React, { useRef, useEffect, useMemo, useState } from 'react'
+import { TransformControls } from '@react-three/drei'
+import * as THREE from 'three'
+import { useAppStore, ViewMode } from '../store/appStore'
+import { Shape, SHAPE_COLORS } from '../types/shapes'
 import {
   createBox as createOcBox,
   createCylinder as createOcCylinder,
-  ocShapeToThreeGeometry
-} from '../lib/opencascadeUtils';
+  ocShapeToThreeGeometry,
+} from '../lib/opencascadeUtils'
 
 interface Props {
-  shape: Shape;
-  onContextMenuRequest?: (event: any, shape: Shape) => void;
-  isEditMode?: boolean;
-  isBeingEdited?: boolean;
-  isFaceEditMode?: boolean;
-  selectedFaceIndex?: number | null;
-  onFaceSelect?: (faceIndex: number) => void;
-  isVolumeEditMode?: boolean;
+  shape: Shape
+  onContextMenuRequest?: (event: any, shape: Shape) => void
+  isEditMode?: boolean
+  isBeingEdited?: boolean
+  isFaceEditMode?: boolean
+  selectedFaceIndex?: number | null
+  onFaceSelect?: (faceIndex: number) => void
+  isVolumeEditMode?: boolean
 }
+
+const OCC_POLL_MS = 250
 
 const OpenCascadeShape: React.FC<Props> = ({
   shape,
@@ -29,175 +28,180 @@ const OpenCascadeShape: React.FC<Props> = ({
   isEditMode = false,
   isBeingEdited = false,
   isFaceEditMode = false,
-  onFaceSelect,
   isVolumeEditMode = false,
 }) => {
-  // HATA DÜZELTMESİ: Bileşenin en başında, 'shape' prop'unun geçerli olup olmadığını kontrol et.
-  // Bu, 'position' gibi özelliklere erişmeye çalışırken oluşan çökmeyi engeller.
-  if (!shape) {
-    return null;
-  }
+  // 1) Erken dönüş: shape yoksa render etme
+  if (!shape) return null
 
-  const meshRef = useRef<THREE.Mesh>(null);
-  const transformRef = useRef<any>(null);
-  const {
-    activeTool,
-    selectedShapeId,
-    gridSize,
-    setSelectedObjectPosition,
-    viewMode,
-  } = useAppStore();
-  const isSelected = selectedShapeId === shape.id;
+  const objectGroupRef = useRef<THREE.Group>(null)
+  const transformRef = useRef<any>(null)
+  const meshRef = useRef<THREE.Mesh>(null)
 
-  // Geometriyi bileşenin kendi içinde state olarak tutuyoruz.
-  const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
+  const { activeTool, selectedShapeId, setSelectedObjectPosition, viewMode } = useAppStore()
+  const isSelected = selectedShapeId === shape.id
 
-  // Bu effect, bileşen yüklendiğinde OCC ile geometriyi oluşturur.
+  // Geometri state
+  const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null)
+
+  // --- OCC ile geometri oluşturma + hazır değilse polling ---
   useEffect(() => {
-    let isMounted = true;
-    const generateGeometry = async () => {
-      const ocInstance = (window as any).oc;
-      if (!ocInstance) {
-        console.warn("OCC instance'ı hazır değil, bekleniyor:", shape.id);
-        return;
-      }
+    let isMounted = true
+    let poll: any
 
-      let ocShape;
+    const build = async () => {
+      const ocInstance = (window as any)?.oc
+      if (!ocInstance) return
+
       try {
+        let ocShape: any
         if (shape.type === 'box') {
-          const { width, height, depth } = shape.parameters;
-          ocShape = createOcBox(ocInstance, width, height, depth);
+          const { width, height, depth } = shape.parameters as any
+          ocShape = createOcBox(ocInstance, width, height, depth)
         } else if (shape.type === 'cylinder') {
-          const { radius, height } = shape.parameters;
-          ocShape = createOcCylinder(ocInstance, radius, height);
+          const { radius, height } = shape.parameters as any
+          ocShape = createOcCylinder(ocInstance, radius, height)
         } else {
-          return;
+          // Desteklenmeyen tip: geometriyi temizle
+          if (isMounted) setGeometry(null)
+          return
         }
 
-        if (ocShape) {
-          const threeGeom = ocShapeToThreeGeometry(ocInstance, ocShape);
-          if (threeGeom && isMounted) {
-            setGeometry(threeGeom); // Oluşturulan geometriyi state'e kaydet
-          }
+        const threeGeom = ocShapeToThreeGeometry(ocInstance, ocShape)
+        if (threeGeom) {
+          // Normaller yoksa bazı materyallerde kararma olur
+          if (!threeGeom.getAttribute('normal')) threeGeom.computeVertexNormals()
+          if (isMounted) setGeometry(threeGeom)
         }
-      } catch (error) {
-        console.error(`'${shape.id}' ID'li şekil için geometri oluşturulurken hata:`, error);
+      } catch (err) {
+        console.error(`Geometri oluşturulurken hata (shape: ${shape.id})`, err)
       }
-    };
+    }
 
-    generateGeometry();
+    // İlk dene, yoksa poll ile bekle
+    if ((window as any)?.oc) {
+      build()
+    } else {
+      poll = setInterval(() => {
+        if ((window as any)?.oc) {
+          clearInterval(poll)
+          build()
+        }
+      }, OCC_POLL_MS)
+    }
 
     return () => {
-      isMounted = false;
-    };
-  }, [shape.id, shape.type, shape.parameters]);
-
-  const edgesGeometry = useMemo(() => {
-    if (!geometry) return null;
-    const newGeom = new THREE.BufferGeometry();
-    newGeom.setAttribute('position', geometry.attributes.position);
-    if (geometry.index) {
-      newGeom.setIndex(geometry.index);
+      isMounted = false
+      if (poll) clearInterval(poll)
+      // Leak önleme
+      setGeometry((g) => {
+        if (g) g.dispose()
+        return null
+      })
     }
-    return new THREE.EdgesGeometry(newGeom);
-  }, [geometry]);
+  }, [shape.id, shape.type, shape.parameters])
 
+  // Kenar geometrisi (EdgesGeometry) — BufferGeometry’dan doğrudan üret
+  const edgesGeometry = useMemo(() => {
+    if (!geometry) return null
+    const eg = new THREE.EdgesGeometry(geometry)
+    return eg
+  }, [geometry])
+
+  // Kenar geometri temizliği
   useEffect(() => {
-    const controls = transformRef.current;
-    if (!controls) return;
-    
+    return () => {
+      if (edgesGeometry) edgesGeometry.dispose()
+    }
+  }, [edgesGeometry])
+
+  // TransformControls değişiminde store’u güncelle
+  useEffect(() => {
+    const controls = transformRef.current
+    const target = objectGroupRef.current
+    if (!controls || !target) return
+
     const handleObjectChange = () => {
-      const mesh = meshRef.current;
-      if (!mesh) return;
-      const { position, rotation, scale } = mesh;
+      const { position, rotation, scale } = target
       useAppStore.getState().updateShape(shape.id, {
         position: position.toArray() as [number, number, number],
-        rotation: rotation.toArray().slice(0, 3) as [number, number, number],
+        rotation: new THREE.Euler().copy(rotation).toArray().slice(0, 3) as [number, number, number],
         scale: scale.toArray() as [number, number, number],
-      });
-      if (isSelected) {
-        setSelectedObjectPosition(position.toArray() as [number, number, number]);
-      }
-    };
+      })
+      if (isSelected) setSelectedObjectPosition(position.toArray() as [number, number, number])
+    }
 
-    controls.addEventListener('objectChange', handleObjectChange);
-    return () => controls.removeEventListener('objectChange', handleObjectChange);
-  }, [shape.id, isSelected, setSelectedObjectPosition]);
+    const handleDraggingChanged = (e: any) => {
+      // İsterseniz burada OrbitControls devre dışı/etkin yapılabilir
+      // window.dispatchEvent(new CustomEvent('r3f-dragging', { detail: e.value }))
+    }
 
-  // HATA DÜZELTMESİ: Geometri hazır olana kadar hiçbir şey render etme.
-  if (!geometry || !edgesGeometry) {
-    return null;
+    controls.addEventListener('objectChange', handleObjectChange)
+    controls.addEventListener('dragging-changed', handleDraggingChanged)
+    return () => {
+      controls.removeEventListener('objectChange', handleObjectChange)
+      controls.removeEventListener('dragging-changed', handleDraggingChanged)
+    }
+  }, [shape.id, isSelected, setSelectedObjectPosition])
+
+  // Geometri hazır değilse hiç render etme
+  if (!geometry || !edgesGeometry) return null
+
+  const getShapeColor = () => {
+    if (isBeingEdited) return '#ff6b35'
+    if (isSelected) return '#60a5fa'
+    if (isEditMode && !isBeingEdited) return '#6b7280'
+    return SHAPE_COLORS[shape.type as keyof typeof SHAPE_COLORS] || '#94a3b8'
   }
 
-  const handleClick = (e: any) => {
-    if (e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      useAppStore.getState().selectShape(shape.id);
-    }
-  };
+  const handlePointerDown = (e: any) => {
+    // Sadece sol tık
+    if (e.button !== 0) return
+    e.stopPropagation()
+    useAppStore.getState().selectShape(shape.id)
+  }
 
   const handleContextMenu = (e: any) => {
-    if (isSelected && onContextMenuRequest) {
-      e.stopPropagation();
-      e.nativeEvent.preventDefault();
-      onContextMenuRequest(e, shape);
-    }
-  };
-  
-  const getShapeColor = () => {
-    if (isBeingEdited) return '#ff6b35';
-    if (isSelected) return '#60a5fa';
-    if (isEditMode && !isBeingEdited) return '#6b7280';
-    return SHAPE_COLORS[shape.type as keyof typeof SHAPE_COLORS] || '#94a3b8';
-  };
+    if (!isSelected || !onContextMenuRequest) return
+    e.stopPropagation()
+    e.nativeEvent.preventDefault()
+    onContextMenuRequest(e, shape)
+  }
 
+  const color = getShapeColor()
+
+  // Mesh + edges aynı grup altında; TransformControls gruba uygulanır
   return (
-    <group>
-      <mesh
-        ref={meshRef}
-        geometry={geometry}
+    <group key={shape.id}>
+      <group
+        ref={objectGroupRef}
         position={shape.position}
-        rotation={shape.rotation}
+        rotation={new THREE.Euler(...(shape.rotation as any))}
         scale={shape.scale}
-        onClick={handleClick}
+        onPointerDown={handlePointerDown}
         onContextMenu={handleContextMenu}
-        castShadow
-        receiveShadow
-        visible={viewMode === ViewMode.SOLID}
+        // raycast sadece mesh’e delege edilsin isterseniz: raycast={THREE.Mesh.prototype.raycast}
       >
-        <meshPhysicalMaterial 
-          color={getShapeColor()}
-          transparent={true}
-          opacity={0.9} // Görünürlüğü artır
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+        <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow visible={viewMode === ViewMode.SOLID}>
+          <meshPhysicalMaterial color={color} transparent opacity={0.9} side={THREE.DoubleSide} />
+        </mesh>
 
-      <lineSegments
-        geometry={edgesGeometry}
-        position={shape.position}
-        rotation={shape.rotation}
-        scale={shape.scale}
-        visible={true}
-      >
-        <lineBasicMaterial
-          color={viewMode === ViewMode.SOLID ? '#000000' : getShapeColor()}
-        />
-      </lineSegments>
+        <lineSegments geometry={edgesGeometry} visible>
+          <lineBasicMaterial color={viewMode === ViewMode.SOLID ? '#000000' : color} />
+        </lineSegments>
+      </group>
 
-      {isSelected && meshRef.current && !isEditMode && !isFaceEditMode && (
-          <TransformControls
-            ref={transformRef}
-            object={meshRef.current}
-            mode={
-              activeTool === 'Move' ? 'translate' :
-              activeTool === 'Rotate' ? 'rotate' :
-              'scale'
-            }
-          />
-        )}
+      {isSelected && !isEditMode && !isFaceEditMode && (
+        <TransformControls
+          ref={transformRef}
+          object={objectGroupRef.current as unknown as THREE.Object3D | undefined}
+          mode={
+            activeTool === 'Move' ? 'translate' : activeTool === 'Rotate' ? 'rotate' : 'scale'
+          }
+          // scale ile uniform/xyz ayrı ayrı istiyorsanız snapping/axis props ekleyin
+        />
+      )}
     </group>
-  );
-};
+  )
+}
 
-export default OpenCascadeShape;
+export default OpenCascadeShape
