@@ -5,8 +5,8 @@ import Toolbar from './components/Toolbar';
 import StatusBar from './components/StatusBar';
 import Terminal from './components/Terminal';
 import { useAppStore } from './store/appStore';
-import { useOcWorker } from './hooks/useOcWorker'; // Hook'u import ediyoruz
-import { oc } from './opencascade.ts'; // HATA DÜZELTİLDİ: .ts uzantısı eklendi
+import { useOcWorker } from './hooks/useOcWorker';
+import { initOpenCascade } from './opencascade.ts'; // Güncellenmiş başlatma fonksiyonunu import ediyoruz
 import { 
   createBox as createOcBox, 
   createCylinder as createOcCylinder, 
@@ -27,7 +27,8 @@ function App() {
       
       const createTestShapes = async () => {
         try {
-          const ocInstance = await oc;
+          // Başlatma fonksiyonunu çağırarak instance'ı alıyoruz
+          const ocInstance = await initOpenCascade();
 
           // 1. OpenCascade ile bir kutu oluştur
           const ocBox = createOcBox(ocInstance, 500, 500, 500);
