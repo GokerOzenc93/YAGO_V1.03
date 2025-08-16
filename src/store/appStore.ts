@@ -56,9 +56,10 @@ export enum SnapType {
   NEAREST = 'nearest',
 }
 
+// 🎯 NEW: View Mode Enum - Tel, Saydam, Katı görünümler
 export enum ViewMode {
-  WIREFRAME = 'wireframe',
-  SOLID = 'solid'
+  WIREFRAME = 'wireframe',    // Tel görünüş
+  SOLID = 'solid'             // Katı görünüş
 }
 
 export interface SnapSettings {
@@ -97,12 +98,9 @@ export const UNIT_CONVERSIONS = {
 };
 
 interface AppState {
-  initialized: boolean; // OCC'nin yüklenip yüklenmediğini kontrol eder
-  setInitialized: (initialized: boolean) => void;
   activeTool: Tool;
   setActiveTool: (tool: Tool) => void;
   shapes: Shape[];
-  setShapes: (shapes: Shape[]) => void; // Şekilleri toplu güncellemek için
   addShape: (shape: Shape) => void;
   updateShape: (id: string, updates: Partial<Shape>) => void;
   deleteShape: (id: string) => void;
@@ -130,15 +128,18 @@ interface AppState {
   setSnapTolerance: (tolerance: number) => void;
   editingPolylineId: string | null;
   setEditingPolylineId: (id: string | null) => void;
+  // Edit mode isolation
   isEditMode: boolean;
   setEditMode: (enabled: boolean) => void;
   editingShapeId: string | null;
   setEditingShapeId: (id: string | null) => void;
   hiddenShapeIds: string[];
   setHiddenShapeIds: (ids: string[]) => void;
+  // 🎯 NEW: View Mode State - Görünüm modları
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   cycleViewMode: () => void;
+  // Panel mode states
   isAddPanelMode: boolean;
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
@@ -179,8 +180,6 @@ cylinder.position = [750, 250, 0];
 `;
 
 export const useAppStore = create<AppState>((set, get) => ({
-  initialized: false,
-  setInitialized: (initialized) => set({ initialized }),
   activeTool: Tool.SELECT,
   setActiveTool: (tool) => set({ activeTool: tool }),
   
@@ -205,6 +204,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   editingPolylineId: null,
   setEditingPolylineId: (id) => set({ editingPolylineId: id }),
   
+  // Edit mode isolation
   isEditMode: false,
   setEditMode: (enabled) => set({ isEditMode: enabled }),
   
@@ -214,12 +214,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   hiddenShapeIds: [],
   setHiddenShapeIds: (ids) => set({ hiddenShapeIds: ids }),
   
+  // 🎯 NEW: View Mode State - Varsayılan olarak SOLID
   viewMode: ViewMode.SOLID,
   setViewMode: (mode) => {
     set({ viewMode: mode });
     console.log(`View mode changed to: ${mode}`);
   },
   
+  // 🎯 NEW: Cycle through view modes - Sırayla geçiş
   cycleViewMode: () => {
     const { viewMode } = get();
     const nextMode = viewMode === ViewMode.SOLID ? ViewMode.WIREFRAME : ViewMode.SOLID;
@@ -228,12 +230,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     console.log(`🎯 View mode cycled from ${viewMode} to ${nextMode}`);
   },
   
+  // Panel mode states
   isAddPanelMode: false,
   setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
   
+  // Snap settings - all enabled by default
   snapSettings: {
     [SnapType.ENDPOINT]: true,
     [SnapType.MIDPOINT]: true,
@@ -260,7 +264,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     })),
     
-  snapTolerance: 25,
+  snapTolerance: 25, // Default snap tolerance in pixels
   setSnapTolerance: (tolerance) => set({ snapTolerance: tolerance }),
   
   convertToDisplayUnit: (value) => {
@@ -280,11 +284,115 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const newShapes: Shape[] = [...shapes];
 
-    // ... (modifyShape içeriği aynı kalır)
+    switch (params.type) {
+      case ModificationType.MIRROR: {
+        if (!params.mirror) return;
+        const { axis, distance } = params.mirror;
+        const mirroredShape: Shape = {
+          ...shape,
+          id: Math.random().toString(36).substr(2, 9),
+          position: [...shape.position] as [number, number, number],
+        };
+
+        mirroredShape.position[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] += distance;
+        newShapes.push(mirroredShape);
+        break;
+      }
+
+      case ModificationType.ARRAY: {
+        if (!params.array) return;
+        const { count, spacing, direction } = params.array;
+        const dirIndex = direction === 'x' ? 0 : direction === 'y' ? 1 : 2;
+
+        for (let i = 1; i < count; i++) {
+          const newShape: Shape = {
+            ...shape,
+            id: Math.random().toString(36).substr(2, 9),
+            position: [...shape.position] as [number, number, number],
+          };
+          newShape.position[dirIndex] += spacing * i;
+          newShapes.push(newShape);
+        }
+        break;
+      }
+
+      case ModificationType.FILLET: {
+        if (!params.fillet || shape.type !== 'box') return;
+        const { radius } = params.fillet;
+        const { width, height, depth } = shape.parameters;
+
+        // Create new geometry with rounded corners
+        const geometry = new THREE.BoxGeometry(
+          width - radius * 2,
+          height - radius * 2,
+          depth - radius * 2
+        );
+
+        newShapes[shapes.indexOf(shape)] = {
+          ...shape,
+          geometry,
+          parameters: {
+            ...shape.parameters,
+            radius,
+          },
+        };
+        break;
+      }
+
+      case ModificationType.CHAMFER: {
+        if (!params.chamfer || shape.type !== 'box') return;
+        const { distance } = params.chamfer;
+        const { width, height, depth } = shape.parameters;
+
+        // Create new geometry with chamfered edges
+        const geometry = new THREE.BoxGeometry(
+          width - distance * 2,
+          height - distance * 2,
+          depth - distance * 2
+        );
+
+        newShapes[shapes.indexOf(shape)] = {
+          ...shape,
+          geometry,
+          parameters: {
+            ...shape.parameters,
+            chamfer: distance,
+          },
+        };
+        break;
+      }
+    }
+
+    set({ shapes: newShapes });
   },
   
-  shapes: [], // Başlangıçta boş bir dizi
-  setShapes: (shapes) => set({ shapes }), // Yeni eklenen fonksiyon
+  shapes: [
+    {
+      id: '1',
+      type: 'box',
+      position: [0, 250, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      geometry: new THREE.BoxGeometry(500, 500, 500),
+      parameters: {
+        width: 500,
+        height: 500,
+        depth: 500,
+      },
+    },
+    {
+      id: '2',
+      type: 'cylinder',
+      position: [750, 250, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      geometry: new THREE.CylinderGeometry(250, 250, 500, 32),
+      parameters: {
+        radius: 250,
+        height: 500,
+      },
+    },
+  ],
   
   addShape: (shape) => 
     set((state) => ({ 
@@ -313,6 +421,51 @@ export const useAppStore = create<AppState>((set, get) => ({
     future: [],
   },
   
-  undo: () => set((state) => { /* ... */ }),
-  redo: () => set((state) => { /* ... */ }),
+  undo: () => 
+    set((state) => {
+      if (state.history.past.length === 0) return state;
+      
+      const newPast = [...state.history.past];
+      const prevState = newPast.pop();
+      
+      if (!prevState) return state;
+      
+      return {
+        ...prevState,
+        history: {
+          past: newPast,
+          future: [
+            {
+              ...state,
+              history: state.history,
+            },
+            ...state.history.future,
+          ],
+        },
+      };
+    }),
+    
+  redo: () =>
+    set((state) => {
+      if (state.history.future.length === 0) return state;
+      
+      const newFuture = [...state.history.future];
+      const nextState = newFuture.shift();
+      
+      if (!nextState) return state;
+      
+      return {
+        ...nextState,
+        history: {
+          past: [
+            ...state.history.past,
+            {
+              ...state,
+              history: state.history,
+            },
+          ],
+          future: newFuture,
+        },
+      };
+    }),
 }));
