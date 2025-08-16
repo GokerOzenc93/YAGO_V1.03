@@ -6,7 +6,7 @@ import StatusBar from './components/StatusBar';
 import Terminal from './components/Terminal';
 import { useAppStore } from './store/appStore';
 import { useOcWorker } from './hooks/useOcWorker'; // Hook'u import ediyoruz
-import { oc } from './opencascade';
+import { oc } from './opencascade.ts'; // HATA DÜZELTİLDİ: .ts uzantısı eklendi
 import { 
   createBox as createOcBox, 
   createCylinder as createOcCylinder, 
