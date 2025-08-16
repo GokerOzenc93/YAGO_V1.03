@@ -67,7 +67,6 @@ const OpenCascadeShape: React.FC<Props> = ({
         positionMatch: localPos.toArray().map((v, i) => Math.abs(v - shape.position[i]) < 0.1)
       });
       
-      // Check if mesh position matches shape position
       const positionDiff = localPos.toArray().map((v, i) => Math.abs(v - shape.position[i]));
       if (positionDiff.some(diff => diff > 0.1)) {
         console.warn('🚨 POSITION MISMATCH - Mesh position does not match shape position!', {
@@ -80,9 +79,24 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, shape]);
 
   const shapeGeometry = useMemo(() => shape.geometry, [shape.geometry]);
+
+  // HATA DÜZELTMESİ: Gelen geometriyi EdgesGeometry için güvenli hale getiriyoruz.
+  // Bu, OCC'den gelen geometrinin iç yapısındaki uyumsuzlukları giderir.
+  const sanitizedGeometry = useMemo(() => {
+    if (shapeGeometry && shapeGeometry.attributes.position) {
+      const newGeom = new THREE.BufferGeometry();
+      newGeom.setAttribute('position', shapeGeometry.attributes.position);
+      if (shapeGeometry.index) {
+        newGeom.setIndex(shapeGeometry.index);
+      }
+      return newGeom;
+    }
+    return new THREE.BufferGeometry(); // Fallback olarak boş bir geometri döndür
+  }, [shapeGeometry]);
+
   const edgesGeometry = useMemo(
-    () => new THREE.EdgesGeometry(shapeGeometry),
-    [shapeGeometry]
+    () => new THREE.EdgesGeometry(sanitizedGeometry),
+    [sanitizedGeometry]
   );
 
   useEffect(() => {
@@ -110,9 +124,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       });
 
       useAppStore.getState().updateShape(shape.id, {
-        position: position,
-        rotation: rotation,
-        scale: scale,
+        position: position as [number, number, number],
+        rotation: rotation as [number, number, number],
+        scale: scale as [number, number, number],
       });
 
       if (isSelected) {
@@ -142,11 +156,9 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id]);
 
   const handleClick = (e: any) => {
-    // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      // Three.js tabanlı face detection
       const hit = detectFaceAtMouse(
         e.nativeEvent, 
         camera, 
@@ -159,7 +171,6 @@ const OpenCascadeShape: React.FC<Props> = ({
         return;
       }
       
-      // Face highlight ekle
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
       
       if (highlight && onFaceSelect) {
@@ -169,16 +180,12 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
     
-    // Volume Edit mode - handle vertex selection and dragging
     if (isVolumeEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
-      
-      // TODO: Implement vertex selection and dragging for volume editing
       console.log('🎯 Volume Edit Mode - Vertex selection not yet implemented');
       return;
     }
     
-    // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
       useAppStore.getState().selectShape(shape.id);
@@ -187,14 +194,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Face Edit mode - prevent context menu
     if (isFaceEditMode || isVolumeEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;
     }
     
-    // Normal context menu - only show for selected shapes
     if (isSelected && onContextMenuRequest) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
@@ -205,89 +210,59 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
   };
 
-  // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
     if (!isFaceEditMode && !isVolumeEditMode) {
       clearFaceHighlight(scene);
     }
   }, [isFaceEditMode, isVolumeEditMode, scene]);
 
-  // Calculate shape center for transform controls positioning
-  // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {
-    if (isBeingEdited) return '#ff6b35'; // Orange for being edited
-    if (isSelected) return '#60a5fa'; // Blue for selected
-    if (isEditMode && !isBeingEdited) return '#6b7280'; // Gray for other objects in edit mode
+    if (isBeingEdited) return '#ff6b35';
+    if (isSelected) return '#60a5fa';
+    if (isEditMode && !isBeingEdited) return '#6b7280';
     return SHAPE_COLORS[shape.type as keyof typeof SHAPE_COLORS] || '#94a3b8';
   };
 
-  // 🎯 NEW: Get opacity based on view mode
   const getOpacity = () => {
-    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
-
-    // Always hide mesh, only show edges
+    if (shape.type === 'REFERENCE_CUBE' || (shape as any).isReference) return 0.2;
     return 0;
   };
 
-  // 🎯 NEW: Get edge visibility based on view mode
   const shouldShowEdges = () => {
-    if (viewMode === ViewMode.SOLID) {
-      // Solid mode: Only show outline edges
-      return true;
-    } else {
-      // Wireframe mode: Show all edges
-      return true;
-    }
+    return true;
   };
 
-  // 🎯 NEW: Get edge opacity based on view mode
   const getEdgeOpacity = () => {
-    // Always full opacity
     return 1.0;
   };
 
-  // 🎯 NEW: Get edge color based on view mode
   const getEdgeColor = () => {
     if (viewMode === ViewMode.SOLID) {
-      // Solid mode: Black outline edges
       return '#000000';
     } else {
-      // Wireframe mode: Black edges
       return '#000000';
     }
   };
 
-  // 🎯 RESPONSIVE LINE WIDTH - Tablet ve küçük ekranlar için optimize edildi
   const getEdgeLineWidth = () => {
     const screenWidth = window.innerWidth;
-
-    if (screenWidth < 768) {
-      // Mobile/Tablet
-      return 0.4; // Çok ince çizgiler
-    } else if (screenWidth < 1024) {
-      // Small desktop
-      return 0.7; // Orta kalınlık
-    } else {
-      // Large desktop
-      return 1.0; // Normal kalınlık
-    }
+    if (screenWidth < 768) return 0.4;
+    if (screenWidth < 1024) return 0.7;
+    return 1.0;
   };
 
-  // 🎯 NEW: Get material properties based on view mode
   const getMaterialProps = () => {
-    const opacityValue = 0.05; // 👈 Solid modda bile şeffaf görünüm
-
+    const opacityValue = 0.05;
     return {
       color: getShapeColor(),
-      transparent: true, // 👈 Şeffaflık aktif
+      transparent: true,
       opacity: opacityValue,
-      visible: false, // Solid modda şekil görünür
+      visible: false,
     };
   };
 
   return (
     <group>
-      {/* Main shape mesh */}
       <mesh
         ref={meshRef}
         geometry={shapeGeometry}
@@ -298,31 +273,29 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={viewMode === ViewMode.SOLID} // Show mesh in solid mode
+        visible={viewMode === ViewMode.SOLID}
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
 
-      {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
       {shouldShowEdges() && (
         <lineSegments
           geometry={edgesGeometry}
           position={shape.position}
           rotation={shape.rotation}
           scale={shape.scale}
-          visible={true} // Always show edges
+          visible={true}
         >
           <lineBasicMaterial
             color={getEdgeColor()}
             transparent
             opacity={getEdgeOpacity()}
-            depthTest={viewMode === ViewMode.SOLID} // 🎯 Her yerden görünür
+            depthTest={viewMode === ViewMode.SOLID}
             linewidth={getEdgeLineWidth()}
           />
         </lineSegments>
       )}
 
-      {/* Transform controls - DISABLED in edit mode and panel mode */}
       {isSelected &&
         meshRef.current &&
         !isEditMode &&
