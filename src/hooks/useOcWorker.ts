@@ -1,15 +1,16 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { oc } from '../opencascade.ts'; // HATA DÜZELTİLDİ: .ts uzantısı eklendi
+import { initOpenCascade } from '../opencascade.ts'; // Güncellenmiş başlatma fonksiyonunu import ediyoruz
 
 export const useOcWorker = () => {
   const { setInitialized } = useAppStore();
 
   useEffect(() => {
-    oc.then((ocInstance: unknown) => {
+    // Başlatma fonksiyonunu çağırıyoruz
+    initOpenCascade().then((ocInstance: unknown) => {
       if (ocInstance) {
         console.log('OpenCascade.js initialized successfully.');
-        // Make the instance globally available if needed, e.g., for debugging
+        // Gerekirse instance'ı global olarak erişilebilir yap
         (window as any).oc = ocInstance;
         setInitialized(true);
       } else {
@@ -19,16 +20,14 @@ export const useOcWorker = () => {
     });
   }, [setInitialized]);
 
-  // Placeholder functions, these can be expanded or moved
+  // Bu fonksiyonlar yer tutucudur, genişletilebilir
   const createBox = (width: number, height: number, depth: number) => {
     console.log(`Creating Box with size: ${width}, ${height}, ${depth}`);
-    // Actual implementation will be in opencascadeUtils.ts
     return { success: true, message: 'Box created' };
   };
 
   const createCylinder = (radius: number, height: number) => {
     console.log(`Creating Cylinder with radius: ${radius}, height: ${height}`);
-     // Actual implementation will be in opencascadeUtils.ts
     return { success: true, message: 'Cylinder created' };
   };
 
