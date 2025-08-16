@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { oc } from '../opencascade';
+import { oc } from '../opencascade.ts'; // HATA DÜZELTİLDİ: .ts uzantısı eklendi
 
 export const useOcWorker = () => {
   const { setInitialized } = useAppStore();
