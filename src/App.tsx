@@ -6,7 +6,7 @@ import StatusBar from './components/StatusBar';
 import Terminal from './components/Terminal';
 import { useAppStore } from './store/appStore';
 import { useOcWorker } from './hooks/useOcWorker';
-import { initOpenCascade } from './opencascade.ts'; // Güncellenmiş başlatma fonksiyonunu import ediyoruz
+// opencascade.ts import'u kaldırıldı.
 import { 
   createBox as createOcBox, 
   createCylinder as createOcCylinder, 
@@ -15,25 +15,27 @@ import {
 import { Shape } from './types/shapes';
 
 function App() {
-  // Bu hook, uygulama başladığında OCC'nin arka planda yüklenmesini tetikler.
   useOcWorker(); 
   
   const { initialized, addShape } = useAppStore();
 
-  // Bu useEffect, 'initialized' durumu true olduğunda (yani OCC yüklendiğinde) çalışır.
   useEffect(() => {
     if (initialized) {
       console.log("✅ OpenCascade.js hazır. Test şekilleri oluşturuluyor.");
       
       const createTestShapes = async () => {
         try {
-          // Başlatma fonksiyonunu çağırarak instance'ı alıyoruz
-          const ocInstance = await initOpenCascade();
+          // 'oc' instance'ına global window nesnesinden erişiyoruz
+          const ocInstance = (window as any).oc;
+          if (!ocInstance) {
+            console.error("OpenCascade instance bulunamadı.");
+            return;
+          }
 
           // 1. OpenCascade ile bir kutu oluştur
           const ocBox = createOcBox(ocInstance, 500, 500, 500);
           const boxGeom = ocShapeToThreeGeometry(ocInstance, ocBox);
-          ocBox.delete(); // Bellek sızıntısını önlemek için OCC nesnesini sil
+          ocBox.delete(); 
 
           if (boxGeom) {
             const boxShape: Shape = {
@@ -52,7 +54,7 @@ function App() {
           // 2. OpenCascade ile bir silindir oluştur
           const ocCylinder = createOcCylinder(ocInstance, 250, 500);
           const cylinderGeom = ocShapeToThreeGeometry(ocInstance, ocCylinder);
-          ocCylinder.delete(); // Bellek sızıntısını önlemek için OCC nesnesini sil
+          ocCylinder.delete();
 
           if (cylinderGeom) {
              const cylinderShape: Shape = {
@@ -74,7 +76,7 @@ function App() {
 
       createTestShapes();
     }
-  }, [initialized, addShape]); // Bu effect sadece 'initialized' durumu değiştiğinde çalışır.
+  }, [initialized, addShape]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-200">
