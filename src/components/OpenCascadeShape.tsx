@@ -38,6 +38,11 @@ const OpenCascadeShape: React.FC<Props> = ({
   // Volume Edit Mode props
   isVolumeEditMode = false,
 }) => {
+  // Geometri verisi hazır değilse bileşeni render etme.
+  if (!shape || !shape.geometry || !shape.geometry.attributes.position) {
+    return null;
+  }
+
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
   const { scene, camera, gl } = useThree();
@@ -46,7 +51,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     selectedShapeId,
     gridSize,
     setSelectedObjectPosition,
-    viewMode, // 🎯 NEW: Get current view mode
+    viewMode,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
 
@@ -80,8 +85,6 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   const shapeGeometry = useMemo(() => shape.geometry, [shape.geometry]);
 
-  // HATA DÜZELTMESİ: Gelen geometriyi EdgesGeometry için güvenli hale getiriyoruz.
-  // Bu, OCC'den gelen geometrinin iç yapısındaki uyumsuzlukları giderir.
   const sanitizedGeometry = useMemo(() => {
     if (shapeGeometry && shapeGeometry.attributes.position) {
       const newGeom = new THREE.BufferGeometry();
@@ -91,7 +94,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
       return newGeom;
     }
-    return new THREE.BufferGeometry(); // Fallback olarak boş bir geometri döndür
+    return new THREE.BufferGeometry();
   }, [shapeGeometry]);
 
   const edgesGeometry = useMemo(
@@ -322,4 +325,7 @@ const OpenCascadeShape: React.FC<Props> = ({
   );
 };
 
-export default React.memo(OpenCascadeShape);
+// HATA DÜZELTMESİ: React.memo kaldırıldı.
+// Bu, bileşenin her zaman en güncel prop'larla yeniden render edilmesini sağlar
+// ve eski geometri verisinden kaynaklanan hataları önler.
+export default OpenCascadeShape;
