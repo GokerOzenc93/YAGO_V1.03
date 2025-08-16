@@ -35,7 +35,8 @@ function App() {
           // 1. OpenCascade ile bir kutu oluştur
           const ocBox = createOcBox(ocInstance, 500, 500, 500);
           const boxGeom = ocShapeToThreeGeometry(ocInstance, ocBox);
-          ocBox.delete(); 
+          // HATA DÜZELTİLDİ: ocBox.delete() satırı kaldırıldı.
+          // Bu nesnenin belleği, onu oluşturan yardımcı fonksiyon içinde yönetiliyor.
 
           if (boxGeom) {
             const boxShape: Shape = {
@@ -54,7 +55,7 @@ function App() {
           // 2. OpenCascade ile bir silindir oluştur
           const ocCylinder = createOcCylinder(ocInstance, 250, 500);
           const cylinderGeom = ocShapeToThreeGeometry(ocInstance, ocCylinder);
-          ocCylinder.delete();
+          // HATA DÜZELTİLDİ: ocCylinder.delete() satırı kaldırıldı.
 
           if (cylinderGeom) {
              const cylinderShape: Shape = {
