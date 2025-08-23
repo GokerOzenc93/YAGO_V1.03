@@ -1,10 +1,6 @@
-diff --git a/src/components/OpenCascadeShape.tsx b/src/components/OpenCascadeShape.tsx
-index 24433e4d1fd4666e3735d47242f56b1b2949cbf5..902ec0a5205c9b6c69f8d8a853ee4bd6a6c37448 100644
---- a/src/components/OpenCascadeShape.tsx
-+++ b/src/components/OpenCascadeShape.tsx
-@@ -1,72 +1,74 @@
--import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-+import React, { useRef, useEffect, useMemo } from 'react';
+
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
  import { useAppStore } from '../store/appStore';
  import { TransformControls } from '@react-three/drei';
  import { useThree } from '@react-three/fiber';
