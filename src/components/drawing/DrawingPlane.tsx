@@ -444,6 +444,7 @@ const focusTerminalForMeasurement = () => {
       
       if (!drawingState.waitingForMeasurement && !drawingState.measurementApplied && direction.length() > 0) {
         setDrawingState(prev => ({ ...prev, waitingForMeasurement: true }));
+        focusTerminalForMeasurement();
         console.log('Ready for measurement input - move mouse to set direction, then type distance in terminal');
       }
     }

@@ -19,18 +19,26 @@ const Terminal: React.FC = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { 
-    activeTool, 
-    selectedShapeId, 
-    shapes, 
-    cameraType, 
-    measurementUnit, 
-    cameraPosition, 
-    convertToDisplayUnit, 
+    activeTool,
+    selectedShapeId,
+    shapes,
+    cameraType,
+    measurementUnit,
+    cameraPosition,
+    convertToDisplayUnit,
     convertToBaseUnit,
     viewMode, // 🎯 NEW: Get current view mode
     setViewMode, // 🎯 NEW: Set view mode
     cycleViewMode // 🎯 NEW: Cycle view mode
   } = useAppStore();
+
+  // Expose terminal input ref globally for external focus control
+  useEffect(() => {
+    (window as any).terminalInputRef = inputRef;
+    return () => {
+      delete (window as any).terminalInputRef;
+    };
+  }, []);
 
   const addEntry = (type: TerminalEntry['type'], message: string, details?: string) => {
     const newEntry: TerminalEntry = {
