@@ -185,7 +185,7 @@ index 24433e4d1fd4666e3735d47242f56b1b2949cbf5..902ec0a5205c9b6c69f8d8a853ee4bd6
      }
      
      // Normal context menu - only show for selected shapes
-     if (isSelected && onContextMenuRequest) {
+     if (isSelected && onContextMenuRequest) 
 
       e.stopPropagation();
       e.nativeEvent.preventDefault();
