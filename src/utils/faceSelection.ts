@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
+import { acceleratedRaycast } from 'three-mesh-bvh';
 (THREE.Mesh as any).prototype.raycast = acceleratedRaycast;
 
 // --- Shape Interface and Flood-Fill Face Utility Functions ---
@@ -29,7 +29,8 @@ export interface FaceHighlight {
     shapeId: string;
 }
 
-let currentHighlight: FaceHighlight | null = null;
+// Keep track of highlighted faces. The last item represents the most recent highlight
+let currentHighlights: FaceHighlight[] = [];
 
 /**
  * BufferGeometry'den face vertices'lerini al
@@ -302,11 +303,13 @@ export const createFaceHighlight = (
  * Mevcut highlight'ı temizle
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
-    if (currentHighlight) {
-        scene.remove(currentHighlight.mesh);
-        currentHighlight.mesh.geometry.dispose();
-        (currentHighlight.mesh.material as THREE.Material).dispose();
-        currentHighlight = null;
+    if (currentHighlights.length > 0) {
+        currentHighlights.forEach(h => {
+            scene.remove(h.mesh);
+            h.mesh.geometry.dispose();
+            (h.mesh.material as THREE.Material).dispose();
+        });
+        currentHighlights = [];
         console.log('🎯 Face highlight cleared');
     }
 };
@@ -607,10 +610,24 @@ export const highlightFace = (
     hit: THREE.Intersection,
     shape: Shape,
     color: number = 0xff6b35,
-    opacity: number = 0.6
+    opacity: number = 0.6,
+    append: boolean = false
 ): FaceHighlight | null => {
-    clearFaceHighlight(scene);
+    if (!append) {
+        clearFaceHighlight(scene);
+    }
     if (!hit.face || hit.faceIndex === undefined) return null;
+
+    // Avoid highlighting the same face twice when appending
+    if (
+        append &&
+        currentHighlights.some(
+            h => h.shapeId === shape.id && h.faceIndex === hit.faceIndex
+        )
+    ) {
+        return null;
+    }
+
     const mesh = hit.object as THREE.Mesh;
     if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
 
@@ -618,8 +635,13 @@ export const highlightFace = (
     const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
     if (!overlay) return null;
 
-    currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
-    return currentHighlight;
+    const highlight: FaceHighlight = {
+        mesh: overlay,
+        faceIndex: hit.faceIndex,
+        shapeId: shape.id,
+    };
+    currentHighlights.push(highlight);
+    return highlight;
 };
 
 
@@ -648,7 +670,7 @@ export const detectFaceAtMouse = (
         geom.computeBoundsTree();
     }
     (raycaster as any).firstHitOnly = true;
-raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, camera);
     
     // Intersection test
     const intersects = raycaster.intersectObject(mesh, false);
@@ -671,5 +693,33 @@ raycaster.setFromCamera(mouse, camera);
  * Mevcut highlight'ı al
  */
 export const getCurrentHighlight = (): FaceHighlight | null => {
-    return currentHighlight;
+    return currentHighlights.length > 0
+        ? currentHighlights[currentHighlights.length - 1]
+        : null;
+};
+
+/**
+ * Return all faces along the ray for sequential selection
+ */
+export const detectFacesAtMouse = (
+    event: MouseEvent,
+    camera: THREE.Camera,
+    mesh: THREE.Mesh,
+    canvas: HTMLCanvasElement
+): THREE.Intersection[] => {
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    const geom = (mesh.geometry as any);
+    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+        geom.computeBoundsTree();
+    }
+    (raycaster as any).firstHitOnly = false;
+    raycaster.setFromCamera(mouse, camera);
+
+    return raycaster.intersectObject(mesh, false);
 };
