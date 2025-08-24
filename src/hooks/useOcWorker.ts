@@ -1,17 +1,39 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
+// Gerekli importları doğrudan bu dosyaya ekliyoruz
+import opencascade from "opencascade.js/dist/opencascade.full.js";
+import opencascadeWasm from "opencascade.js/dist/opencascade.full.wasm?url";
+
+// Başlatma mantığını bu dosyanın içine taşıyoruz
+let ocPromise: Promise<any> | null = null;
+const initOpenCascade = () => {
+  if (!ocPromise) {
+    // @ts-ignore
+    ocPromise = opencascade({
+      locateFile: () => opencascadeWasm,
+    });
+  }
+  return ocPromise;
+};
 
 export const useOcWorker = () => {
   const { setInitialized } = useAppStore();
 
   useEffect(() => {
-    // Since we don't have OpenCascade.js yet, we'll initialize immediately
-    setInitialized(true);
+    // Başlatma fonksiyonunu çağırıyoruz
+    initOpenCascade().then((ocInstance: unknown) => {
+      if (ocInstance) {
+        console.log('OpenCascade.js initialized successfully.');
+        (window as any).oc = ocInstance;
+        setInitialized(true);
+      } else {
+        console.error('Failed to initialize OpenCascade.js');
+        setInitialized(false);
+      }
+    });
   }, [setInitialized]);
 
   return {
-    initialized: true,
-    createBox: () => ({ success: true, message: 'Box created' }),
-    createCylinder: () => ({ success: true, message: 'Cylinder created' })
+    initialized: useAppStore((state) => state.initialized),
   };
 };

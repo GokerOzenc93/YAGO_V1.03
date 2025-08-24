@@ -1,3 +1,4 @@
+<<<<<<< HEAD
  import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
  import React, { useRef, useEffect, useMemo } from 'react';
  import { useAppStore } from '../store/appStore';
@@ -182,101 +183,166 @@ index 24433e4d1fd4666e3735d47242f56b1b2949cbf5..902ec0a5205c9b6c69f8d8a853ee4bd6
      // Normal context menu - only show for selected shapes
      if (isSelected && onContextMenuRequest) 
 
+=======
+import React, { useRef, useEffect, useMemo, useState } from 'react';
+import { useAppStore } from '../store/appStore';
+import { TransformControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { Shape } from '../types/shapes';
+import { SHAPE_COLORS } from '../types/shapes';
+import { ViewMode } from '../store/appStore';
+import {
+  createBox as createOcBox,
+  createCylinder as createOcCylinder,
+  ocShapeToThreeGeometry
+} from '../lib/opencascadeUtils';
+
+interface Props {
+  shape: Shape;
+  onContextMenuRequest?: (event: any, shape: Shape) => void;
+  isEditMode?: boolean;
+  isBeingEdited?: boolean;
+  isFaceEditMode?: boolean;
+  selectedFaceIndex?: number | null;
+  onFaceSelect?: (faceIndex: number) => void;
+  isVolumeEditMode?: boolean;
+}
+
+const OpenCascadeShape: React.FC<Props> = ({
+  shape,
+  onContextMenuRequest,
+  isEditMode = false,
+  isBeingEdited = false,
+  isFaceEditMode = false,
+  onFaceSelect,
+  isVolumeEditMode = false,
+}) => {
+  // HATA DÜZELTMESİ: Bileşenin en başında, 'shape' prop'unun geçerli olup olmadığını kontrol et.
+  // Bu, 'position' gibi özelliklere erişmeye çalışırken oluşan çökmeyi engeller.
+  if (!shape) {
+    return null;
+  }
+
+  const meshRef = useRef<THREE.Mesh>(null);
+  const transformRef = useRef<any>(null);
+  const {
+    activeTool,
+    selectedShapeId,
+    gridSize,
+    setSelectedObjectPosition,
+    viewMode,
+  } = useAppStore();
+  const isSelected = selectedShapeId === shape.id;
+
+  // Geometriyi bileşenin kendi içinde state olarak tutuyoruz.
+  const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
+
+  // Bu effect, bileşen yüklendiğinde OCC ile geometriyi oluşturur.
+  useEffect(() => {
+    let isMounted = true;
+    const generateGeometry = async () => {
+      const ocInstance = (window as any).oc;
+      if (!ocInstance) {
+        console.warn("OCC instance'ı hazır değil, bekleniyor:", shape.id);
+        return;
+      }
+
+      let ocShape;
+      try {
+        if (shape.type === 'box') {
+          const { width, height, depth } = shape.parameters;
+          ocShape = createOcBox(ocInstance, width, height, depth);
+        } else if (shape.type === 'cylinder') {
+          const { radius, height } = shape.parameters;
+          ocShape = createOcCylinder(ocInstance, radius, height);
+        } else {
+          return;
+        }
+
+        if (ocShape) {
+          const threeGeom = ocShapeToThreeGeometry(ocInstance, ocShape);
+          if (threeGeom && isMounted) {
+            setGeometry(threeGeom); // Oluşturulan geometriyi state'e kaydet
+          }
+        }
+      } catch (error) {
+        console.error(`'${shape.id}' ID'li şekil için geometri oluşturulurken hata:`, error);
+      }
+    };
+
+    generateGeometry();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shape.id, shape.type, shape.parameters]);
+
+  const edgesGeometry = useMemo(() => {
+    if (!geometry) return null;
+    const newGeom = new THREE.BufferGeometry();
+    newGeom.setAttribute('position', geometry.attributes.position);
+    if (geometry.index) {
+      newGeom.setIndex(geometry.index);
+    }
+    return new THREE.EdgesGeometry(newGeom);
+  }, [geometry]);
+
+  useEffect(() => {
+    const controls = transformRef.current;
+    if (!controls) return;
+    
+    const handleObjectChange = () => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
+      const { position, rotation, scale } = mesh;
+      useAppStore.getState().updateShape(shape.id, {
+        position: position.toArray() as [number, number, number],
+        rotation: rotation.toArray().slice(0, 3) as [number, number, number],
+        scale: scale.toArray() as [number, number, number],
+      });
+      if (isSelected) {
+        setSelectedObjectPosition(position.toArray() as [number, number, number]);
+      }
+    };
+
+    controls.addEventListener('objectChange', handleObjectChange);
+    return () => controls.removeEventListener('objectChange', handleObjectChange);
+  }, [shape.id, isSelected, setSelectedObjectPosition]);
+
+  // HATA DÜZELTMESİ: Geometri hazır olana kadar hiçbir şey render etme.
+  if (!geometry || !edgesGeometry) {
+    return null;
+  }
+
+  const handleClick = (e: any) => {
+    if (e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      useAppStore.getState().selectShape(shape.id);
+    }
+  };
+
+  const handleContextMenu = (e: any) => {
+    if (isSelected && onContextMenuRequest) {
+>>>>>>> parent of 06cd4d0 (Updated App.tsx)
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       onContextMenuRequest(e, shape);
-      console.log(
-        `Context menu requested for shape: ${shape.type} (ID: ${shape.id})`
-      );
     }
   };
-
-  // Face Edit mode'dan çıkıldığında highlight'ı temizle
-  useEffect(() => {
-    if (!isFaceEditMode) {
-      clearFaceHighlight(scene);
-    }
-  }, [isFaceEditMode, scene]);
-
-  // Calculate shape center for transform controls positioning
-  // 🎯 NEW: Get appropriate color based on view mode
+  
   const getShapeColor = () => {
-    if (isBeingEdited) return '#ff6b35'; // Orange for being edited
-    if (isSelected) return '#60a5fa'; // Blue for selected
-    if (isEditMode && !isBeingEdited) return '#6b7280'; // Gray for other objects in edit mode
+    if (isBeingEdited) return '#ff6b35';
+    if (isSelected) return '#60a5fa';
+    if (isEditMode && !isBeingEdited) return '#6b7280';
     return SHAPE_COLORS[shape.type as keyof typeof SHAPE_COLORS] || '#94a3b8';
-  };
-
-  // 🎯 NEW: Get opacity based on view mode
-  const getOpacity = () => {
-    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
-
-    // Always hide mesh, only show edges
-    return 0;
-  };
-
-  // 🎯 NEW: Get edge visibility based on view mode
-  const shouldShowEdges = () => {
-    if (viewMode === ViewMode.SOLID) {
-      // Solid mode: Only show outline edges
-      return true;
-    } else {
-      // Wireframe mode: Show all edges
-      return true;
-    }
-  };
-
-  // 🎯 NEW: Get edge opacity based on view mode
-  const getEdgeOpacity = () => {
-    // Always full opacity
-    return 1.0;
-  };
-
-  // 🎯 NEW: Get edge color based on view mode
-  const getEdgeColor = () => {
-    if (viewMode === ViewMode.SOLID) {
-      // Solid mode: Black outline edges
-      return '#000000';
-    } else {
-      // Wireframe mode: Black edges
-      return '#000000';
-    }
-  };
-
-  // 🎯 RESPONSIVE LINE WIDTH - Tablet ve küçük ekranlar için optimize edildi
-  const getEdgeLineWidth = () => {
-    const screenWidth = window.innerWidth;
-
-    if (screenWidth < 768) {
-      // Mobile/Tablet
-      return 0.4; // Çok ince çizgiler
-    } else if (screenWidth < 1024) {
-      // Small desktop
-      return 0.7; // Orta kalınlık
-    } else {
-      // Large desktop
-      return 1.0; // Normal kalınlık
-    }
-  };
-
-  // 🎯 NEW: Get material properties based on view mode
-  const getMaterialProps = () => {
-    const opacityValue = 0.05; // 👈 Solid modda bile şeffaf görünüm
-
-    return {
-      color: getShapeColor(),
-      transparent: true, // 👈 Şeffaflık aktif
-      opacity: opacityValue,
-      visible: false, // Solid modda şekil görünür
-    };
   };
 
   return (
     <group>
-      {/* Main shape mesh */}
       <mesh
         ref={meshRef}
-        geometry={shapeGeometry}
+        geometry={geometry}
         position={shape.position}
         rotation={shape.rotation}
         scale={shape.scale}
@@ -284,55 +350,41 @@ index 24433e4d1fd4666e3735d47242f56b1b2949cbf5..902ec0a5205c9b6c69f8d8a853ee4bd6
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={viewMode === ViewMode.SOLID} // Show mesh in solid mode
+        visible={viewMode === ViewMode.SOLID}
       >
-        <meshPhysicalMaterial {...getMaterialProps()} />
+        <meshPhysicalMaterial 
+          color={getShapeColor()}
+          transparent={true}
+          opacity={0.9} // Görünürlüğü artır
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
-      {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
-      {shouldShowEdges() && (
-        <lineSegments
-          geometry={edgesGeometry}
-          position={shape.position}
-          rotation={shape.rotation}
-          scale={shape.scale}
-          visible={true} // Always show edges
-        >
-          <lineBasicMaterial
-            color={getEdgeColor()}
-            transparent
-            opacity={getEdgeOpacity()}
-            depthTest={viewMode === ViewMode.SOLID} // 🎯 Her yerden görünür
-            linewidth={getEdgeLineWidth()}
-          />
-        </lineSegments>
-      )}
+      <lineSegments
+        geometry={edgesGeometry}
+        position={shape.position}
+        rotation={shape.rotation}
+        scale={shape.scale}
+        visible={true}
+      >
+        <lineBasicMaterial
+          color={viewMode === ViewMode.SOLID ? '#000000' : getShapeColor()}
+        />
+      </lineSegments>
 
-      {/* Transform controls - DISABLED in edit mode and panel mode */}
-      {isSelected &&
-        meshRef.current &&
-        !isEditMode &&
-        !isFaceEditMode && (
+      {isSelected && meshRef.current && !isEditMode && !isFaceEditMode && (
           <TransformControls
             ref={transformRef}
             object={meshRef.current}
             mode={
-              activeTool === 'Move'
-                ? 'translate'
-                : activeTool === 'Rotate'
-                ? 'rotate'
-                : activeTool === 'Scale'
-                ? 'scale'
-                : 'translate'
+              activeTool === 'Move' ? 'translate' :
+              activeTool === 'Rotate' ? 'rotate' :
+              'scale'
             }
-            size={0.8}
-            onObjectChange={() => {
-              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
-            }}
           />
         )}
     </group>
   );
 };
 
-export default React.memo(OpenCascadeShape);
+export default OpenCascadeShape;
