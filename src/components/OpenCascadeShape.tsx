@@ -406,6 +406,7 @@ const OpenCascadeShape: React.FC<Props> = ({
             shape: targetShape, 
             // Store the original local vertex position and its index in the geometry's position attribute
             // We need to find the actual index in the geometry's position attribute for updateVertexPosition
+            originalLocalPosition: localVertex.clone(), // Store the local position of the vertex
             geometryVertexIndex: findGeometryVertexIndex(targetShape.mesh!.geometry as THREE.BufferGeometry, localVertex),
             originalColor: vertexMaterial.color.clone() 
         }; 
@@ -467,16 +468,11 @@ const OpenCascadeShape: React.FC<Props> = ({
 
     // Find all occurrences of the original vertex in the geometry's position attribute
     // and update them. This handles shared vertices across faces.
-    const originalLocalPosition = node.mesh.userData.originalLocalPosition; // This was stored in userData
-    const geometryVertexIndex = node.mesh.userData.geometryVertexIndex; // The specific index to update
-
-    // Update the specific vertex in the geometry's position attribute
-    // This will update all instances of this vertex if they are truly shared (same index)
-    // If vertices are duplicated (different indices but same position), we need to iterate
-    // over all vertices to find and update them.
+    const originalLocalPosition = node.mesh.userData.originalLocalPosition; 
+    
     for (let i = 0; i < positionAttribute.count; i++) {
         const currentVertex = new THREE.Vector3().fromBufferAttribute(positionAttribute, i);
-        if (currentVertex.distanceTo(originalLocalPosition) < EPSILON) { // Compare with original local position
+        if (currentVertex.distanceTo(originalLocalPosition) < EPSILON) { 
             positionAttribute.setXYZ(i, newLocalPosition.x, newLocalPosition.y, newLocalPosition.z);
         }
     }
@@ -487,21 +483,23 @@ const OpenCascadeShape: React.FC<Props> = ({
     geometry.computeBoundingSphere();
     
     // Update the shape in the global store to trigger re-render
-    // We need to clone the geometry to ensure immutability for React/Zustand
-    const updatedGeometry = geometry.clone(); // Clone the modified geometry
+    const updatedGeometry = geometry.clone(); 
     useAppStore.getState().updateShape(targetShape.id, {
         geometry: updatedGeometry,
         // For polygon3d, also update originalPoints if it's the case
-        // This part needs to be more robust if originalPoints is the source of truth
         originalPoints: targetShape.type === 'polygon3d' && targetShape.originalPoints 
-                        ? targetShape.originalPoints.map((p, idx) => 
-                            idx === node.pointIndex ? newLocalPosition.clone().setY(0) : p.clone() // Update only the dragged point
-                          )
+                        ? targetShape.originalPoints.map((p, idx) => {
+                            // Find the corresponding localVertex from verticesOnPlane that was used to create this visual node
+                            const visualNodeIndex = vertexEditMeshes.findIndex(vMesh => vMesh.uuid === node.mesh.uuid);
+                            if (visualNodeIndex !== -1 && idx === node.pointIndex) { // Check if it's the specific originalPoint for this visual node
+                                return newLocalPosition.clone().setY(0);
+                            }
+                            return p.clone();
+                          })
                         : undefined,
     });
 
     // Re-create editable vertices for the updated shape and face
-    // This will clear old ones and create new ones based on the updated geometry
     if (currentHighlight) {
         createAndVisualizeEditableVertices(targetShape, currentHighlight.faceIndex);
     }
@@ -518,7 +516,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
 
     console.log(`✅ Shape ${targetShape.id} updated after vertex drag.`);
-  }, [scene, createAndVisualizeEditableVertices]);
+  }, [scene, createAndVisualizeEditableVertices, vertexEditMeshes]);
 
 
   // --- Event Handlers ---
@@ -556,7 +554,7 @@ const OpenCascadeShape: React.FC<Props> = ({
             setActiveVertex({
                 mesh: clickedVertexMesh,
                 shape: targetShape,
-                pointIndex: vertexData.pointIndex, // This index is for the visual vertex mesh (not geometry attribute)
+                pointIndex: vertexData.pointIndex, 
                 offset: offset,
                 dragPlane: worldPlane
             });
