@@ -216,6 +216,24 @@ const focusTerminalForMeasurement = () => {
     console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm`);
   };
   // Expose measurement input handler globally
+  // Handle extrude submit
+  const handleExtrudeSubmit = () => {
+    if (!extrudeHeight || !pendingShape) return;
+    
+    const height = parseFloat(extrudeHeight);
+    if (!isNaN(height) && height > 0) {
+      handleExtrudeInput(height);
+      setExtrudeHeight('');
+    }
+  };
+
+  // Handle extrude cancel
+  const handleExtrudeCancel = () => {
+    setPendingShape(null);
+    setExtrudeHeight('');
+    console.log('Extrude operation cancelled');
+  };
+
   useEffect(() => {
     (window as any).handlePolylineMeasurement = handleMeasurementInput;
     
