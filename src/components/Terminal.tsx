@@ -223,7 +223,7 @@ const Terminal: React.FC = () => {
   };
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 transition-all duration-300 z-50 ${
+    <div className={`fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 transition-all duration-300 z-30 ${
       isExpanded ? 'h-80' : 'h-10'
     }`}>
       {/* Header */}
