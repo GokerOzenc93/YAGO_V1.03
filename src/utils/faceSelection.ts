@@ -624,14 +624,14 @@ export const highlightFace = (
 
 
 /**
- * Raycaster ile yüzey tespiti
+ * Raycaster ile yüzey tespiti - tüm intersectionları döndür
  */
 export const detectFaceAtMouse = (
     event: MouseEvent,
     camera: THREE.Camera,
     mesh: THREE.Mesh,
     canvas: HTMLCanvasElement
-): THREE.Intersection | null => {
+): THREE.Intersection[] => {
     const rect = canvas.getBoundingClientRect();
     const mouse = new THREE.Vector2();
     
@@ -647,24 +647,21 @@ export const detectFaceAtMouse = (
     if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
         geom.computeBoundsTree();
     }
-    (raycaster as any).firstHitOnly = true;
-raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, camera);
     
     // Intersection test
     const intersects = raycaster.intersectObject(mesh, false);
     
     if (intersects.length > 0) {
-        const hit = intersects[0];
         console.log('🎯 Face detected:', {
-            faceIndex: hit.faceIndex,
-            distance: hit.distance.toFixed(2),
-            point: hit.point.toArray().map(v => v.toFixed(1)),
-            normal: hit.face?.normal.toArray().map(v => v.toFixed(2))
+            count: intersects.length,
+            firstFaceIndex: intersects[0].faceIndex,
+            distance: intersects[0].distance.toFixed(2)
         });
-        return hit;
+        return intersects;
     }
     
-    return null;
+    return [];
 };
 
 /**

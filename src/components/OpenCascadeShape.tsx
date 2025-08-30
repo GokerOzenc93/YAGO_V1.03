@@ -7,7 +7,7 @@ import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode } from '../store/appStore';
 import {
-  detectFacesAtMouse,
+  detectFaceAtMouse,
   highlightFace,
   clearFaceHighlight
 } from '../utils/faceSelection';
@@ -131,7 +131,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
-      const hits = detectFacesAtMouse(
+      const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
         meshRef.current!,
