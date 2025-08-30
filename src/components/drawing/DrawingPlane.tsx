@@ -49,63 +49,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
 
-  // Helper function to get current camera view direction
-  const getCurrentCameraView = (): string => {
-    const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-    
-    // Normalize direction for comparison
-    const absX = Math.abs(cameraDirection.x);
-    const absY = Math.abs(cameraDirection.y);
-    const absZ = Math.abs(cameraDirection.z);
-    
-    // Determine primary axis
-    if (absY > absX && absY > absZ) {
-      return cameraDirection.y > 0 ? 'bottom' : 'top';
-    } else if (absX > absZ) {
-      return cameraDirection.x > 0 ? 'left' : 'right';
-    } else {
-      return cameraDirection.z > 0 ? 'back' : 'front';
-    }
-  };
-
-  // Helper function to switch to appropriate view for polyline drawing
-  const switchToDrawingView = () => {
-    const currentView = getCurrentCameraView();
-    console.log(`Current camera view detected: ${currentView}`);
-    
-    // Switch to orthographic if not already
-    if (cameraType !== CameraType.ORTHOGRAPHIC) {
-      setCameraType(CameraType.ORTHOGRAPHIC);
-      console.log('Switched to Orthographic camera for polyline drawing');
-    }
-    
-    // Switch to appropriate view based on current camera direction
-    setTimeout(() => {
-      let targetView = 't'; // default to top
-      
-      switch (currentView) {
-        case 'front':
-        case 'back':
-          targetView = 'f'; // front view for front/back
-          break;
-        case 'right':
-        case 'left':
-          targetView = 'r'; // right view for right/left
-          break;
-        case 'top':
-        case 'bottom':
-        default:
-          targetView = 't'; // top view for top/bottom or default
-          break;
-      }
-      
-      const event = new KeyboardEvent('keydown', { key: targetView });
-      window.dispatchEvent(event);
-      console.log(`Auto-switched to ${targetView.toUpperCase()} VIEW for polyline drawing from ${currentView} view`);
-    }, 50);
-  };
-
   // Helper function to update drawing state
   const updateDrawingState = (updates: Partial<DrawingState>) => {
     setDrawingState(prev => ({ ...prev, ...updates }));
@@ -120,22 +63,17 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         setPreviousCameraType(cameraType);
       }
       
-      // Use adaptive view switching for polyline, keep top view for other tools
-      if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
-        switchToDrawingView();
-      } else {
-        // Rectangle and Circle always use top view
-        if (cameraType !== CameraType.ORTHOGRAPHIC) {
-          setCameraType(CameraType.ORTHOGRAPHIC);
-          console.log(`Switched to Orthographic camera for ${activeTool} drawing`);
-        }
-        
-        setTimeout(() => {
-          const event = new KeyboardEvent('keydown', { key: 't' });
-          window.dispatchEvent(event);
-          console.log(`Auto-switched to TOP VIEW for ${activeTool} drawing`);
-        }, 50);
+      if (cameraType !== CameraType.ORTHOGRAPHIC) {
+        setCameraType(CameraType.ORTHOGRAPHIC);
+        console.log(`Switched to Orthographic camera for ${activeTool} drawing`);
       }
+      
+      // IMMEDIATE top view switch for all drawing tools
+      setTimeout(() => {
+        const event = new KeyboardEvent('keydown', { key: 't' });
+        window.dispatchEvent(event);
+        console.log(`Auto-switched to TOP VIEW for ${activeTool} drawing`);
+      }, 50);
     }
     
     if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT].includes(activeTool) && previousCameraType !== null) {

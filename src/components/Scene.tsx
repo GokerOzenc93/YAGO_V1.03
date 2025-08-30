@@ -246,9 +246,6 @@ const Scene: React.FC = () => {
   // 🔴 NEW: Panel Edit Mode State
   const [isFaceEditMode, setIsFaceEditMode] = useState(false);
 
-  // 🔴 NEW: Volume Edit Mode State
-  const [isVolumeEditMode, setIsVolumeEditMode] = useState(false);
-
   // Face selection state
   const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
 
@@ -474,9 +471,6 @@ const Scene: React.FC = () => {
     // Reset face edit mode
     setIsFaceEditMode(false);
     setSelectedFaceIndex(null);
-    
-    // Reset volume edit mode
-    setIsVolumeEditMode(false);
 
     console.log('Edit mode deactivated. All shapes visible again');
   };
@@ -598,8 +592,6 @@ const Scene: React.FC = () => {
           setShowFaces={() => {}}
           isFaceEditMode={isFaceEditMode}
           setIsFaceEditMode={setIsFaceEditMode}
-          isVolumeEditMode={isVolumeEditMode}
-          setIsVolumeEditMode={setIsVolumeEditMode}
         />
       )}
 
@@ -744,8 +736,6 @@ const Scene: React.FC = () => {
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
               selectedFaceIndex={selectedFaceIndex}
               onFaceSelect={handleFaceSelect}
-              // Volume Edit Mode props
-              isVolumeEditMode={isVolumeEditMode && isCurrentlyEditing}
             />
           );
         })}
@@ -822,22 +812,13 @@ const Scene: React.FC = () => {
               <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">Face Edit Mode</span>
             </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Volume Edit Mode Indicator */}
-      {isVolumeEditMode &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed top-32 right-4 bg-blue-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Volume Edit Mode</span>
+            <div className="text-xs text-orange-200 mt-1">
+              Click on faces to select them
             </div>
           </div>,
           document.body
         )}
+
     </div>
   );
 };

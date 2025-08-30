@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Puzzle,
   MousePointer,
-  Edit3,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
@@ -23,8 +22,6 @@ interface EditModeProps {
   setShowFaces: (show: boolean) => void;
   isFaceEditMode: boolean;
   setIsFaceEditMode: (mode: boolean) => void;
-  isVolumeEditMode?: boolean;
-  setIsVolumeEditMode?: (mode: boolean) => void;
 }
 
 const EditMode: React.FC<EditModeProps> = ({
@@ -38,8 +35,6 @@ const EditMode: React.FC<EditModeProps> = ({
   setShowFaces,
   isFaceEditMode,
   setIsFaceEditMode,
-  isVolumeEditMode = false,
-  setIsVolumeEditMode,
 }) => {
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
@@ -197,33 +192,10 @@ const EditMode: React.FC<EditModeProps> = ({
     const newMode = !isFaceEditMode;
     setIsFaceEditMode(newMode);
     
-    // Volume edit modunu kapat
-    if (newMode && setIsVolumeEditMode) {
-      setIsVolumeEditMode(false);
-    }
-    
     if (newMode) {
       console.log('🎯 Face Edit Mode ACTIVATED - Click on faces to select them');
     } else {
       console.log('🎯 Face Edit Mode DEACTIVATED');
-    }
-  };
-
-  const toggleVolumeEditMode = () => {
-    if (!setIsVolumeEditMode) return;
-    
-    const newMode = !isVolumeEditMode;
-    setIsVolumeEditMode(newMode);
-    
-    // Face edit modunu kapat
-    if (newMode) {
-      setIsFaceEditMode(false);
-    }
-    
-    if (newMode) {
-      console.log('🎯 Volume Edit Mode ACTIVATED - Drag vertices to reshape geometry');
-    } else {
-      console.log('🎯 Volume Edit Mode DEACTIVATED');
     }
   };
 
@@ -259,37 +231,22 @@ const EditMode: React.FC<EditModeProps> = ({
                   )}
                 </button>
                 
-                <button
-                  onClick={toggleFaceEditMode}
-                  className={`${getIconButtonColorClasses('orange', isFaceEditMode)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                  title="Face Select"
-                >
-                  <div className="flex-shrink-0">
-                    <MousePointer size={12} />
-                  </div>
-                  <span className="text-xs font-medium truncate">Face Select</span>
-                  {isFaceEditMode && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
-                    </div>
-                  )}
-                </button>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-500/60 to-transparent my-2"></div>
                 
-                <button
-                  onClick={toggleVolumeEditMode}
-                  className={`${getIconButtonColorClasses('blue', isVolumeEditMode)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                  title="Volume Edit"
-                >
-                  <div className="flex-shrink-0">
-                    <Edit3 size={12} />
-                  </div>
-                  <span className="text-xs font-medium truncate">Volume Edit</span>
-                  {isVolumeEditMode && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                    </div>
-                  )}
-                </button>
+                <div className="px-2">
+                  <h3 className="text-gray-400 text-xs font-medium mb-2">Face Edit</h3>
+                  <button
+                    onClick={toggleFaceEditMode}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                      isFaceEditMode
+                        ? 'bg-orange-600/90 text-white'
+                        : 'bg-gray-600/50 text-gray-300 hover:bg-gray-600/70'
+                    }`}
+                  >
+                    <MousePointer size={12} />
+                    Face Select
+                  </button>
+                </div>
               </div>
             )}
           </div>
