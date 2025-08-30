@@ -72,10 +72,3 @@ const Terminal: React.FC = () => {
 };
 
 export default Terminal;
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Terminal;
