@@ -6,6 +6,13 @@ import * as THREE from 'three';
 import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { snapToGrid } from './utils';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
+import { 
+  DimensionDisplay, 
+  DimensionPreview, 
+  createDimension, 
+  DimensionLine,
+  INITIAL_DIMENSIONS_STATE 
+} from './dimensionsSystem';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 
@@ -67,6 +74,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [extrudeHeight, setExtrudeHeight] = useState('');
   const [pendingExtrudeShape, setPendingExtrudeShape] = useState<CompletedShape | null>(null);
   
+  // Dimensions state
+  const [dimensionsState, setDimensionsState] = useState(INITIAL_DIMENSIONS_STATE);
+  
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
 
@@ -123,12 +133,26 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       enableAutoSnap(activeTool);
     } else if (activeTool === Tool.POINT_TO_POINT_MOVE) {
       enableAutoSnap(activeTool);
+    } else if (activeTool === Tool.DIMENSION) {
+      // Dimension tool için sadece endpoint snap'i aç
+      const { snapSettings, setSnapSetting } = useAppStore.getState();
+      
+      // Önce tüm snap'leri kapat
+      Object.keys(snapSettings).forEach(snapType => {
+        setSnapSetting(snapType as any, false);
+      });
+      
+      // Sadece endpoint'i aç
+      setSnapSetting('endpoint' as any, true);
+      
+      console.log('🎯 Dimension tool: Only endpoint snap enabled');
     } else {
       disableAutoSnap();
     }
     
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
+    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE, Tool.DIMENSION].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
+      setDimensionsState(INITIAL_DIMENSIONS_STATE);
       
       // Polyline status'u temizle
       if ((window as any).setPolylineStatus) {
@@ -617,6 +641,42 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    // Handle Dimension tool
+    if (activeTool === Tool.DIMENSION) {
+      if (event.nativeEvent.button !== 0) return;
+      
+      const point = getIntersectionPoint(event.nativeEvent);
+      if (!point) return;
+      
+      event.stopPropagation();
+      
+      if (!dimensionsState.firstPoint) {
+        // İlk nokta seçimi
+        setDimensionsState({
+          ...dimensionsState,
+          isActive: true,
+          firstPoint: point,
+        });
+        console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+      } else {
+        // İkinci nokta seçimi - dimension oluştur
+        const newDimension = createDimension(dimensionsState.firstPoint, point);
+        
+        setDimensionsState({
+          ...dimensionsState,
+          dimensions: [...dimensionsState.dimensions, newDimension],
+          firstPoint: null,
+          previewPoint: null,
+          isActive: false,
+        });
+        
+        console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}mm between two points`);
+        
+        // Dimension tool'da kal, yeni ölçüm için hazır ol
+      }
+      return;
+    }
+
     // Handle Point to Point Move
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       if (event.nativeEvent.button !== 0) return;
@@ -720,6 +780,15 @@ const focusTerminalForMeasurement = () => {
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
+
+    // Handle Dimension tool preview
+    if (activeTool === Tool.DIMENSION && dimensionsState.firstPoint) {
+      setDimensionsState({
+        ...dimensionsState,
+        previewPoint: point,
+      });
+      return;
+    }
 
     // Handle Point to Point Move preview
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
@@ -992,6 +1061,25 @@ const focusTerminalForMeasurement = () => {
 
       {/* Snap Point Indicator */}
       <SnapPointIndicators snapPoint={drawingState.snapPoint} />
+
+      {/* Dimension Display */}
+      <DimensionDisplay
+        dimensions={dimensionsState.dimensions}
+        measurementUnit={measurementUnit}
+        convertToDisplayUnit={convertToDisplayUnit}
+      />
+
+      {/* Dimension Preview */}
+      {activeTool === Tool.DIMENSION && 
+       dimensionsState.firstPoint && 
+       dimensionsState.previewPoint && (
+        <DimensionPreview
+          firstPoint={dimensionsState.firstPoint}
+          previewPoint={dimensionsState.previewPoint}
+          measurementUnit={measurementUnit}
+          convertToDisplayUnit={convertToDisplayUnit}
+        />
+      )}
 
       {/* Point to Point Move Indicators */}
       {activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive && (
