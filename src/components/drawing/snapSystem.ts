@@ -4,6 +4,74 @@ import { SnapType, SnapSettings } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import { findLineIntersection } from './utils';
 
+// Helper function to get edges from 3D shape geometry
+const getShapeEdges = (shape: Shape): THREE.Line3[] => {
+  const edges: THREE.Line3[] = [];
+  const geometry = shape.geometry;
+  
+  if (!geometry.attributes.position) return edges;
+  
+  // Create edges geometry to get the outline edges
+  const edgesGeometry = new THREE.EdgesGeometry(geometry);
+  const positions = edgesGeometry.attributes.position;
+  
+  // Transform matrix for shape position, rotation, scale
+  const matrix = new THREE.Matrix4();
+  matrix.compose(
+    new THREE.Vector3(...shape.position),
+    new THREE.Euler(...shape.rotation),
+    new THREE.Vector3(...shape.scale)
+  );
+  
+  // Extract edge lines
+  for (let i = 0; i < positions.count; i += 2) {
+    const start = new THREE.Vector3().fromBufferAttribute(positions, i).applyMatrix4(matrix);
+    const end = new THREE.Vector3().fromBufferAttribute(positions, i + 1).applyMatrix4(matrix);
+    
+    // Project to XZ plane (Y = 0) for 2D drawing
+    start.y = 0;
+    end.y = 0;
+    
+    edges.push(new THREE.Line3(start, end));
+  }
+  
+  return edges;
+};
+
+// Helper function to get vertices from 3D shape geometry
+const getShapeVertices = (shape: Shape): THREE.Vector3[] => {
+  const vertices: THREE.Vector3[] = [];
+  const geometry = shape.geometry;
+  
+  if (!geometry.attributes.position) return vertices;
+  
+  // Transform matrix for shape position, rotation, scale
+  const matrix = new THREE.Matrix4();
+  matrix.compose(
+    new THREE.Vector3(...shape.position),
+    new THREE.Euler(...shape.rotation),
+    new THREE.Vector3(...shape.scale)
+  );
+  
+  // Get unique vertices by using a Set with string keys
+  const uniqueVertices = new Map<string, THREE.Vector3>();
+  const positions = geometry.attributes.position;
+  
+  for (let i = 0; i < positions.count; i++) {
+    const vertex = new THREE.Vector3().fromBufferAttribute(positions, i).applyMatrix4(matrix);
+    
+    // Project to XZ plane (Y = 0) for 2D drawing
+    vertex.y = 0;
+    
+    // Use rounded coordinates as key to avoid duplicates
+    const key = `${Math.round(vertex.x)},${Math.round(vertex.z)}`;
+    if (!uniqueVertices.has(key)) {
+      uniqueVertices.set(key, vertex);
+    }
+  }
+  
+  return Array.from(uniqueVertices.values());
+};
 export const findSnapPoints = (
   mousePoint: THREE.Vector3,
   completedShapes: CompletedShape[],
@@ -17,6 +85,7 @@ export const findSnapPoints = (
 
   // Endpoint snapping
   if (snapSettings[SnapType.ENDPOINT]) {
+    // 2D completed shapes
     completedShapes.forEach(shape => {
       if (!shape.points || shape.points.length === 0) return;
 
@@ -34,10 +103,27 @@ export const findSnapPoints = (
         }
       });
     });
+
+    // 3D shapes vertices (endpoints)
+    shapes.forEach(shape => {
+      const vertices = getShapeVertices(shape);
+      vertices.forEach(vertex => {
+        const distance = mousePoint.distanceTo(vertex);
+        if (distance <= tolerance) {
+          snapPoints.push({
+            point: vertex.clone(),
+            type: SnapType.ENDPOINT,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      });
+    });
   }
 
   // Midpoint snapping
   if (snapSettings[SnapType.MIDPOINT]) {
+    // 2D completed shapes
     completedShapes.forEach(shape => {
       for (let i = 0; i < shape.points.length - 1; i++) {
         if (shape.isClosed && i === shape.points.length - 2) continue;
@@ -57,10 +143,28 @@ export const findSnapPoints = (
         }
       }
     });
+
+    // 3D shapes edges midpoints
+    shapes.forEach(shape => {
+      const edges = getShapeEdges(shape);
+      edges.forEach(edge => {
+        const midpoint = new THREE.Vector3().addVectors(edge.start, edge.end).multiplyScalar(0.5);
+        const distance = mousePoint.distanceTo(midpoint);
+        if (distance <= tolerance) {
+          snapPoints.push({
+            point: midpoint,
+            type: SnapType.MIDPOINT,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      });
+    });
   }
 
   // Center snapping
   if (snapSettings[SnapType.CENTER]) {
+    // 2D completed shapes
     completedShapes.forEach(shape => {
       if (shape.type === 'circle' && shape.points.length >= 2) {
         const center = shape.points[0];
@@ -109,6 +213,7 @@ export const findSnapPoints = (
 
   // Quadrant snapping
   if (snapSettings[SnapType.QUADRANT]) {
+    // 2D completed shapes
     completedShapes.forEach(shape => {
       if (shape.type === 'circle' && shape.points.length >= 2) {
         const center = shape.points[0];
@@ -134,10 +239,39 @@ export const findSnapPoints = (
         });
       }
     });
+
+    // 3D shapes quadrants (for cylinders and circular shapes)
+    shapes.forEach(shape => {
+      if (shape.type === 'cylinder') {
+        const center = new THREE.Vector3(...shape.position);
+        center.y = 0;
+        const radius = shape.parameters.radius || 250;
+        
+        const quadrants = [
+          new THREE.Vector3(center.x + radius, 0, center.z),
+          new THREE.Vector3(center.x - radius, 0, center.z),
+          new THREE.Vector3(center.x, 0, center.z + radius),
+          new THREE.Vector3(center.x, 0, center.z - radius),
+        ];
+
+        quadrants.forEach(quadPoint => {
+          const distance = mousePoint.distanceTo(quadPoint);
+          if (distance <= tolerance) {
+            snapPoints.push({
+              point: quadPoint,
+              type: SnapType.QUADRANT,
+              shapeId: shape.id,
+              distance
+            });
+          }
+        });
+      }
+    });
   }
 
   // Intersection snapping
   if (snapSettings[SnapType.INTERSECTION]) {
+    // 2D shape intersections
     for (let i = 0; i < completedShapes.length; i++) {
       for (let j = i + 1; j < completedShapes.length; j++) {
         const shape1 = completedShapes[i];
@@ -164,10 +298,46 @@ export const findSnapPoints = (
         }
       }
     }
+
+    // 3D shape edge intersections
+    const allEdges: { edge: THREE.Line3; shapeId: string }[] = [];
+    
+    // Collect all 3D shape edges
+    shapes.forEach(shape => {
+      const edges = getShapeEdges(shape);
+      edges.forEach(edge => {
+        allEdges.push({ edge, shapeId: shape.id });
+      });
+    });
+    
+    // Find intersections between 3D shape edges
+    for (let i = 0; i < allEdges.length; i++) {
+      for (let j = i + 1; j < allEdges.length; j++) {
+        const edge1 = allEdges[i].edge;
+        const edge2 = allEdges[j].edge;
+        
+        const intersection = findLineIntersection(
+          edge1.start, edge1.end,
+          edge2.start, edge2.end
+        );
+        
+        if (intersection) {
+          const distance = mousePoint.distanceTo(intersection);
+          if (distance <= tolerance) {
+            snapPoints.push({
+              point: intersection,
+              type: SnapType.INTERSECTION,
+              distance
+            });
+          }
+        }
+      }
+    }
   }
 
   // Perpendicular snapping
   if (snapSettings[SnapType.PERPENDICULAR] && currentPoint && currentDirection) {
+    // 2D completed shapes
     completedShapes.forEach(shape => {
       for (let i = 0; i < shape.points.length - 1; i++) {
         const lineStart = shape.points[i];
@@ -192,10 +362,35 @@ export const findSnapPoints = (
         }
       }
     });
+
+    // 3D shape edges
+    shapes.forEach(shape => {
+      const edges = getShapeEdges(shape);
+      edges.forEach(edge => {
+        const lineDir = new THREE.Vector3().subVectors(edge.end, edge.start).normalize();
+        
+        const dot = Math.abs(currentDirection.dot(lineDir));
+        if (dot < 0.1) { // Perpendicular tolerance
+          const closestPoint = new THREE.Vector3();
+          edge.closestPointToPoint(mousePoint, true, closestPoint);
+          
+          const distance = mousePoint.distanceTo(closestPoint);
+          if (distance <= tolerance) {
+            snapPoints.push({
+              point: closestPoint,
+              type: SnapType.PERPENDICULAR,
+              shapeId: shape.id,
+              distance
+            });
+          }
+        }
+      });
+    });
   }
 
   // Nearest point snapping
   if (snapSettings[SnapType.NEAREST]) {
+    // 2D completed shapes
     completedShapes.forEach(shape => {
       for (let i = 0; i < shape.points.length - 1; i++) {
         const lineStart = shape.points[i];
@@ -214,6 +409,25 @@ export const findSnapPoints = (
           });
         }
       }
+    });
+
+    // 3D shape edges
+    shapes.forEach(shape => {
+      const edges = getShapeEdges(shape);
+      edges.forEach(edge => {
+        const closestPoint = new THREE.Vector3();
+        edge.closestPointToPoint(mousePoint, true, closestPoint);
+        
+        const distance = mousePoint.distanceTo(closestPoint);
+        if (distance <= tolerance) {
+          snapPoints.push({
+            point: closestPoint,
+            type: SnapType.NEAREST,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      });
     });
   }
 
