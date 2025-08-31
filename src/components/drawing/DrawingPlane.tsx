@@ -89,6 +89,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
       
+      // Polyline status'u temizle
+      if ((window as any).setPolylineStatus) {
+        (window as any).setPolylineStatus(null);
+      }
+      
       if (activeTool !== Tool.POLYLINE_EDIT) {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
@@ -714,51 +719,44 @@ const focusTerminalForMeasurement = () => {
       )}
 
       {/* Angle Display for Polyline Drawing */}
+      {/* Ölçü bilgilerini terminal üstündeki durum çubuğuna gönder */}
       {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && 
        drawingState.isDrawing && 
        drawingState.currentPoint && 
        drawingState.previewPoint && 
-       drawingState.currentDirection && drawingState.points.length > 0 && (
-        <group>
-          <Text
-            position={[
-              drawingState.currentPoint.x + 400, 
-              50,
-              drawingState.currentPoint.z + 400
-            ]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={80}
-            color="#000000"
-            anchorX="center"
-            anchorY="middle"
-            material-side={THREE.DoubleSide}
-          >
-            {(() => {
-              const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
-              
-              // Açı hesaplama - önceki segment ile mevcut segment arasındaki açı
-              let angleText = '';
-              if (drawingState.points.length >= 2) {
-                const lastPoint = drawingState.points[drawingState.points.length - 1];
-                const secondLastPoint = drawingState.points[drawingState.points.length - 2];
-                const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
-                const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
-                
-                // İki vektör arasındaki açıyı hesapla
-                let angle = previousDirection.angleTo(currentDirection);
-                angle = THREE.MathUtils.radToDeg(angle);
-                
-                // 0-180 derece arasında göster
-                if (angle > 180) angle = 360 - angle;
-                
-                angleText = ` ∠${angle.toFixed(1)}°`;
-              }
-              
-              return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}${angleText}`;
-            })()}
-          </Text>
-        </group>
-      )}
+       drawingState.currentDirection && drawingState.points.length > 0 && 
+       (() => {
+         const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+         
+         // Açı hesaplama - önceki segment ile mevcut segment arasındaki açı
+         let angle: number | undefined;
+         if (drawingState.points.length >= 2) {
+           const lastPoint = drawingState.points[drawingState.points.length - 1];
+           const secondLastPoint = drawingState.points[drawingState.points.length - 2];
+           const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
+           const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
+           
+           // İki vektör arasındaki açıyı hesapla
+           let calculatedAngle = previousDirection.angleTo(currentDirection);
+           calculatedAngle = THREE.MathUtils.radToDeg(calculatedAngle);
+           
+           // 0-180 derece arasında göster
+           if (calculatedAngle > 180) calculatedAngle = 360 - calculatedAngle;
+           
+           angle = calculatedAngle;
+         }
+         
+         // Terminal'e durum bilgisini gönder
+         if ((window as any).setPolylineStatus) {
+           (window as any).setPolylineStatus({
+             distance: convertToDisplayUnit(distance),
+             angle,
+             unit: measurementUnit
+           });
+         }
+         
+         return null; // Hiçbir görsel element render etme
+       })()}
 
       {/* Snap Point Indicator */}
       {drawingState.snapPoint && (

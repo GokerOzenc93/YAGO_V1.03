@@ -6,10 +6,18 @@ const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');
   const { activeTool } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [polylineStatus, setPolylineStatus] = useState<{
+    distance: number;
+    angle?: number;
+    unit: string;
+  } | null>(null);
 
   // Expose terminal input ref globally for external focus control
   useEffect(() => {
     (window as any).terminalInputRef = inputRef;
+    
+    // Expose polyline status setter globally
+    (window as any).setPolylineStatus = setPolylineStatus;
     
     // 🎯 GLOBAL KEYBOARD CAPTURE - Tüm klavye girişlerini terminale yönlendir
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -66,6 +74,7 @@ const Terminal: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown, true);
       delete (window as any).terminalInputRef;
+      delete (window as any).setPolylineStatus;
     };
   }, []);
 
@@ -103,7 +112,40 @@ const Terminal: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-30" style={{ height: '5mm' }}>
+    <>
+      {/* Status Display */}
+      {polylineStatus && (
+        <div className="fixed bottom-5 left-0 right-0 bg-gray-700/95 backdrop-blur-sm border-t border-gray-600 z-20" style={{ height: '4mm' }}>
+          <div className="flex items-center justify-between h-full px-3">
+            {/* Sol taraf - Tool bilgisi */}
+            <div className="flex items-center gap-4 text-xs text-gray-300">
+              <span className="font-medium">
+                Tool: <span className="text-white">{activeTool}</span>
+              </span>
+            </div>
+
+            {/* Orta - Polyline ölçü bilgileri */}
+            <div className="flex items-center gap-4 text-xs">
+              <span className="text-gray-300">
+                Length: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
+              </span>
+              {polylineStatus.angle !== undefined && (
+                <span className="text-gray-300">
+                  Angle: <span className="text-blue-400 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+                </span>
+              )}
+            </div>
+
+            {/* Sağ taraf - Durum bilgileri */}
+            <div className="flex items-center gap-4 text-xs text-gray-300">
+              <span>Ready</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terminal */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-30" style={{ height: '5mm' }}>
       <div className="flex items-center h-full px-2">
         <span className="text-green-400 font-mono text-xs mr-2">$</span>
         <input
@@ -122,7 +164,8 @@ const Terminal: React.FC = () => {
           <Send className="w-2 h-2" />
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
