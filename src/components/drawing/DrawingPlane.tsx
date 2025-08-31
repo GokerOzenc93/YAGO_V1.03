@@ -825,23 +825,3 @@ const focusTerminalForMeasurement = () => {
 };
 
 export default DrawingPlane;
-              {(() => {
-                const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
-                const angle = getPreviousSegmentAngle(drawingState.points, drawingState.currentDirection);
-                
-                if (angle !== null) {
-                  return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit} ∠${angle.toFixed(1)}°`;
-                } else {
-                  return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`;
-                }
-              })()}
-            </Text>
-          </mesh>
-        </Billboard>
-      )}
-      {/* Extrude Height Input Dialog */}
-    </>
-  );
-};
-
-export default DrawingPlane;
