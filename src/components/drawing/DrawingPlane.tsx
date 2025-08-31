@@ -739,7 +739,7 @@ const focusTerminalForMeasurement = () => {
           <Text
             position={[
               drawingState.currentPoint.x + 200, 
-             50, 
+             5, 
               drawingState.currentPoint.z + 1
             ]}
             fontSize={60}
