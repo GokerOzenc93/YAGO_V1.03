@@ -40,6 +40,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     gridSize,
     setSelectedObjectPosition,
     viewMode,
+    updateShape,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -104,11 +105,33 @@ const OpenCascadeShape: React.FC<Props> = ({
 
       meshRef.current.position.set(...snappedPosition);
       setSelectedObjectPosition(snappedPosition);
+      
+      // 🎯 UPDATE SHAPE POSITION IN STORE - 2D ve 3D şekiller için
+      updateShape(shape.id, {
+        position: snappedPosition
+      });
+      
+      console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
     };
 
+    const handleObjectChangeEnd = () => {
+      if (!meshRef.current) return;
+      
+      // Final position update
+      const finalPosition = meshRef.current.position.toArray() as [number, number, number];
+      updateShape(shape.id, {
+        position: finalPosition
+      });
+      
+      console.log(`🎯 Shape ${shape.id} final position:`, finalPosition);
+    };
     controls.addEventListener('objectChange', handleObjectChange);
+    controls.addEventListener('mouseUp', handleObjectChangeEnd);
+    
     return () =>
       controls.removeEventListener('objectChange', handleObjectChange);
+      controls.removeEventListener('mouseUp', handleObjectChangeEnd);
+    };
   }, [shape.id, gridSize, isSelected, setSelectedObjectPosition]);
 
   useEffect(() => {
@@ -220,7 +243,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // Always hide mesh, only show edges
+    // 🎯 2D şekiller için hafif görünürlük (gizmo etkileşimi için)
+    if (shape.is2DShape) {
+      return isSelected ? 0.1 : 0.05; // Seçiliyken biraz daha görünür
+    }
+    
+    // 3D şekiller için tamamen gizli
     return 0;
   };
 
@@ -270,13 +298,13 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get material properties based on view mode
   const getMaterialProps = () => {
-    const opacityValue = 0.05; // 👈 Solid modda bile şeffaf görünüm
+    const opacityValue = getOpacity(); // 👈 Dinamik opacity
 
     return {
       color: getShapeColor(),
       transparent: true, // 👈 Şeffaflık aktif
       opacity: opacityValue,
-      visible: false, // Solid modda şekil görünür
+      visible: true, // 👈 2D şekiller için görünür (gizmo etkileşimi için)
     };
   };
 
@@ -293,7 +321,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={viewMode === ViewMode.SOLID} // Show mesh in solid mode
+        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
@@ -317,7 +345,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         </lineSegments>
       )}
 
-      {/* Transform controls - DISABLED in edit mode and panel mode */}
+      {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
       {isSelected &&
         meshRef.current &&
         !isEditMode &&
@@ -335,6 +363,9 @@ const OpenCascadeShape: React.FC<Props> = ({
                 : 'translate'
             }
             size={0.8}
+            showX={true}
+            showY={shape.is2DShape ? false : true} // 2D şekillerde Y ekseni gizli
+            showZ={true}
             onObjectChange={() => {
               console.log('🎯 GIZMO CHANGE - Transform controls object changed');
             }}

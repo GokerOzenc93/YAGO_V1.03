@@ -533,6 +533,14 @@ const Scene: React.FC = () => {
       }
       setMeasurementOverlay(null);
       setMeasurementInput('');
+      
+      // 🎯 2D şekil seçildiğinde otomatik Move tool'a geç
+      if (shape.is2DShape) {
+        useAppStore.getState().setActiveTool('Move');
+        console.log(`2D shape selected, switched to Move tool: ${shape.type} (ID: ${shape.id})`);
+      } else {
+        console.log(`3D shape selected: ${shape.type} (ID: ${shape.id})`);
+      }
     }
   };
 
