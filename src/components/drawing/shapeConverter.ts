@@ -10,15 +10,12 @@ export const convertTo3DShape = (
   selectShape: (id: string) => void,
   gridSize: number = 50
 ): Shape | null => {
-  // Allow all shape types to be converted to selectable objects
   console.log(`Converting ${shape.type} to selectable 2D shape with ID: ${shape.id}`);
 
-  const height = 10; // Minimal height for 2D shapes
+  const height = 18; // 18mm height for 2D shapes
   let geometry: THREE.BufferGeometry;
   let position: [number, number, number];
   let shapeType: string;
-
-  console.log(`Converting ${shape.type} to 3D selectable shape with ID: ${shape.id}`);
 
   switch (shape.type) {
     case 'rectangle': {
@@ -79,7 +76,7 @@ export const convertTo3DShape = (
   addShape(newShape);
   selectShape(newShape.id);
 
-  console.log(`2D shape converted to 3D selectable shape at GROUND LEVEL: [${position.join(', ')}]`);
+  console.log(`2D shape converted to selectable shape with 18mm height: [${position.join(', ')}]`);
   return newShape;
 };
 
