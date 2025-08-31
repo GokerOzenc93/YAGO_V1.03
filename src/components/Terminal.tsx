@@ -1,15 +1,56 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore, Tool } from '../store/appStore';
 
 const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');
+  const { activeTool } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Expose terminal input ref globally for external focus control
   useEffect(() => {
     (window as any).terminalInputRef = inputRef;
+    
+    // 🎯 GLOBAL KEYBOARD CAPTURE - Tüm klavye girişlerini terminale yönlendir
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Eğer zaten bir input alanında yazıyorsa, yakalama
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Özel tuşları hariç tut (Ctrl, Alt, F1-F12, Arrow keys, etc.)
+      if (e.ctrlKey || e.altKey || e.metaKey || 
+          e.key.startsWith('F') || 
+          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape'].includes(e.key)) {
+        return;
+      }
+      
+      // Sayılar, harfler, nokta, virgül, +, -, *, /, parantez ve boşluk karakterlerini yakala
+      if (/^[a-zA-Z0-9\.\,\+\-\*\/\(\)\s]$/.test(e.key) || e.key === 'Backspace') {
+        e.preventDefault();
+        
+        // Terminal input'a odaklan
+        if (inputRef.current) {
+          inputRef.current.focus();
+          
+          // Backspace ise son karakteri sil
+          if (e.key === 'Backspace') {
+            setCommandInput(prev => prev.slice(0, -1));
+          } else {
+            // Karakteri ekle
+            setCommandInput(prev => prev + e.key);
+          }
+          
+          console.log(`🎯 Global key captured: "${e.key}" -> Terminal input`);
+        }
+      }
+    };
+    
+    // Global event listener ekle
+    window.addEventListener('keydown', handleGlobalKeyDown, true); // capture phase
+    
     return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown, true);
       delete (window as any).terminalInputRef;
     };
   }, []);
@@ -58,7 +99,7 @@ const Terminal: React.FC = () => {
           onChange={(e) => setCommandInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Enter command or value..."
-          className="flex-1 bg-transparent text-gray-300 font-mono text-xs outline-none placeholder-gray-500"
+          className="flex-1 bg-transparent text-white font-mono text-xs outline-none placeholder-gray-500"
         />
         <button
           onClick={() => executeCommand(commandInput)}

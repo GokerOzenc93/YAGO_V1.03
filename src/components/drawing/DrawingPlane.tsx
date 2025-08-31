@@ -68,11 +68,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         console.log(`Switched to Orthographic camera for ${activeTool} drawing`);
       }
       
-      // IMMEDIATE top view switch for all drawing tools
+      // IMMEDIATE top view switch for all drawing tools - especially for POLYLINE
       setTimeout(() => {
         const event = new KeyboardEvent('keydown', { key: 't' });
         window.dispatchEvent(event);
-        console.log(`Auto-switched to TOP VIEW for ${activeTool} drawing`);
+        console.log(`🎯 Auto-switched to TOP VIEW for ${activeTool} drawing`);
       }, 50);
     }
     
@@ -174,7 +174,7 @@ const focusTerminalForMeasurement = () => {
   // Handle measurement input from terminal
   const handleMeasurementInput = (distance: number) => {
     if (!drawingState.currentPoint || !drawingState.currentDirection || !drawingState.isDrawing || ![Tool.POLYLINE, Tool.POLYGON].includes(activeTool)) {
-      console.log('Cannot apply measurement: missing context');
+      console.log('🎯 Cannot apply measurement: missing context');
       return;
     }
 
@@ -190,7 +190,7 @@ const focusTerminalForMeasurement = () => {
       measurementApplied: true
     });
     
-    console.log(`${activeTool} segment added: ${distance.toFixed(1)}mm`);
+    console.log(`🎯 ${activeTool} segment added via TERMINAL: ${distance.toFixed(1)}mm`);
   };
 
   // Handle extrude height input from terminal
@@ -548,8 +548,9 @@ const focusTerminalForMeasurement = () => {
             <lineBasicMaterial 
               color={
                 editingPolylineId === shape.id ? "#f59e0b" : 
-                hoveredShapeId === shape.id ? "#60a5fa" : "#2563eb"
+                hoveredShapeId === shape.id ? "#333333" : "#000000"
               } 
+              linewidth={2}
             />
           </line>
           
@@ -657,7 +658,7 @@ const focusTerminalForMeasurement = () => {
       {/* Preview Shape */}
       {previewGeometry && (
         <line geometry={previewGeometry}>
-          <lineBasicMaterial color="#2563eb" opacity={0.5} transparent />
+          <lineBasicMaterial color="#000000" opacity={0.8} transparent linewidth={2} />
         </line>
       )}
 
