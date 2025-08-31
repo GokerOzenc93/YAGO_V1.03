@@ -407,11 +407,16 @@ const focusTerminalForMeasurement = () => {
       if (isClosing && drawingState.points.length >= 3) {
         const shapeId = Math.random().toString(36).substr(2, 9);
         const allPoints = [...drawingState.points, firstPoint];
+        
+        // Fare yönüne göre dikdörtgen oluştur
+        const actualWidth = newPoint.x - drawingState.currentPoint.x;
+        const actualHeight = newPoint.z - drawingState.currentPoint.z;
+        
         const newShape: CompletedShape = {
           id: shapeId,
-          type: activeTool === Tool.POLYGON ? 'polygon' : 'polyline',
-          points: allPoints,
-          dimensions: {},
+          type: 'rectangle',
+          points: rectPoints,
+          dimensions: { width: Math.abs(actualWidth), height: Math.abs(actualHeight) },
           isClosed: true
         };
         
