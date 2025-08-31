@@ -191,7 +191,7 @@ export const findSnapPoints = (
       if (shape.type === 'box' || shape.type === 'rectangle2d') {
         const { endpoints } = getBoxSnapPoints(shape);
         console.log(`🎯 BOX ENDPOINTS: Found ${endpoints.length} endpoints for shape ${shape.id}`);
-        endpoints.forEach(endpoint => {
+        endpoints.forEach((endpoint, index) => {
           const distance = mousePoint.distanceTo(endpoint);
           console.log(`🎯 BOX ENDPOINT ${index}: [${endpoint.x.toFixed(1)}, ${endpoint.y.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
@@ -207,7 +207,7 @@ export const findSnapPoints = (
       } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
         const { endpoints } = getCylinderSnapPoints(shape);
         console.log(`🎯 CYLINDER ENDPOINTS: Found ${endpoints.length} endpoints for shape ${shape.id}`);
-        endpoints.forEach(endpoint => {
+        endpoints.forEach((endpoint, index) => {
           const distance = mousePoint.distanceTo(endpoint);
           console.log(`🎯 CYLINDER ENDPOINT ${index}: [${endpoint.x.toFixed(1)}, ${endpoint.y.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
@@ -224,7 +224,7 @@ export const findSnapPoints = (
         // Fallback for other shape types
         const vertices = getShapeVertices(shape);
         console.log(`🎯 GENERIC VERTICES: Found ${vertices.length} vertices for shape ${shape.id} (${shape.type})`);
-        vertices.forEach(vertex => {
+        vertices.forEach((vertex, index) => {
           const distance = mousePoint.distanceTo(vertex);
           console.log(`🎯 GENERIC VERTEX ${index}: [${vertex.x.toFixed(1)}, ${vertex.y.toFixed(1)}, ${vertex.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
