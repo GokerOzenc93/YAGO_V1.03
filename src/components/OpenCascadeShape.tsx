@@ -248,12 +248,20 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 TÜM ŞEKILLER ŞEFFAF - Seçiliyken daha görünür
+    // 🎯 SOLID MODE: Sadece dış çizgiler, içi tamamen şeffaf
+    if (viewMode === ViewMode.SOLID) {
+      if (isBeingEdited) {
+        return 0.1; // Edit edilen şekiller çok az görünür
+      }
+      return 0.0; // Diğer şekiller tamamen şeffaf (sadece çizgiler görünür)
+    }
+    
+    // 🎯 WIREFRAME MODE: Normal şeffaflık
     if (isSelected || isBeingEdited) {
       return 0.4; // Seçili şekiller daha görünür
     }
     
-    // Tüm şekiller şeffaf
+    // Diğer şekiller şeffaf
     return 0.2;
   };
 
