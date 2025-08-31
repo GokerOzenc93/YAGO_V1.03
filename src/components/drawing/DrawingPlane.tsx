@@ -736,93 +736,45 @@ const focusTerminalForMeasurement = () => {
        drawingState.previewPoint && 
        drawingState.currentDirection && (
         <group>
-          {/* Profesyonel ölçü bilgi kutusu - farenin ucunda */}
-          <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-            <group position={[drawingState.previewPoint.x + 100, 50, drawingState.previewPoint.z + 100]}>
-              {/* Arka plan kutusu */}
-              <mesh>
-                <planeGeometry args={[180, 80]} />
-                <meshBasicMaterial 
-                  color="#1f2937" 
-                  transparent 
-                  opacity={0.95}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
+          <Text
+            position={[
+              drawingState.currentPoint.x + 200, 
+             5,
+              drawingState.currentPoint.z + 1
+            ]}
+           rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={60}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={3}
+            outlineColor="#000000"
+            material-side={THREE.DoubleSide}
+          >
+            {(() => {
+              const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
               
-              {/* Başlık - POLYLINE */}
-              <Text
-                position={[0, 25, 0.1]}
-                fontSize={12}
-                color="#60a5fa"
-                anchorX="center"
-                anchorY="middle"
-                font="/fonts/inter-medium.woff"
-              >
-                POLYLINE
-              </Text>
+              // Açı hesaplama - önceki segment ile mevcut segment arasındaki açı
+              let angleText = '';
+              if (drawingState.points.length >= 2) {
+                const lastPoint = drawingState.points[drawingState.points.length - 1];
+                const secondLastPoint = drawingState.points[drawingState.points.length - 2];
+                const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
+                const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
+                
+                // İki vektör arasındaki açıyı hesapla
+                let angle = previousDirection.angleTo(currentDirection);
+                angle = THREE.MathUtils.radToDeg(angle);
+                
+                // 0-180 derece arasında göster
+                if (angle > 180) angle = 360 - angle;
+                
+                angleText = ` ∠${angle.toFixed(1)}°`;
+              }
               
-              {/* Uzunluk bilgisi */}
-              <Text
-                position={[0, 5, 0.1]}
-                fontSize={10}
-                color="#10b981"
-                anchorX="center"
-                anchorY="middle"
-                font="/fonts/inter-regular.woff"
-              >
-                {(() => {
-                  const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
-                  return `Uzunluk: ${convertToDisplayUnit(distance).toFixed(1)} ${measurementUnit}`;
-                })()}
-              </Text>
-              
-              {/* Açı bilgisi */}
-              <Text
-                position={[0, -15, 0.1]}
-                fontSize={10}
-                color="#f59e0b"
-                anchorX="center"
-                anchorY="middle"
-                font="/fonts/inter-regular.woff"
-              >
-                {(() => {
-                  if (drawingState.points.length >= 2) {
-                    const lastPoint = drawingState.points[drawingState.points.length - 1];
-                    const secondLastPoint = drawingState.points[drawingState.points.length - 2];
-                    const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
-                    const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
-                    
-                    let angle = previousDirection.angleTo(currentDirection);
-                    angle = THREE.MathUtils.radToDeg(angle);
-                    
-                    if (angle > 180) angle = 360 - angle;
-                    
-                    return `Açı: ${angle.toFixed(1)}°`;
-                  }
-                  return 'Açı: --°';
-                })()}
-              </Text>
-              
-              {/* Çerçeve */}
-              <lineSegments>
-                <bufferGeometry>
-                  {(() => {
-                    const points = [
-                      new THREE.Vector3(-90, -40, 0.2),
-                      new THREE.Vector3(90, -40, 0.2),
-                      new THREE.Vector3(90, 40, 0.2),
-                      new THREE.Vector3(-90, 40, 0.2),
-                      new THREE.Vector3(-90, -40, 0.2),
-                    ];
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    return geometry;
-                  })()}
-                </bufferGeometry>
-                <lineBasicMaterial color="#374151" linewidth={1} />
-              </lineSegments>
-            </group>
-          </Billboard>
+              return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}${angleText}`;
+            })()}
+          </Text>
         </group>
       )}
 
