@@ -135,13 +135,12 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       enableAutoSnap(activeTool);
     } else if (activeTool === Tool.DIMENSION) {
       enableAutoSnap(activeTool);
-    } else {
+    } else if (activeTool !== Tool.DIMENSION) {
       disableAutoSnap();
     }
     
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE, Tool.DIMENSION].includes(activeTool)) {
+    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
-      setDimensionsState(INITIAL_DIMENSIONS_STATE);
       
       // Polyline status'u temizle
       if ((window as any).setPolylineStatus) {
@@ -158,6 +157,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       if (activeTool !== Tool.POINT_TO_POINT_MOVE) {
         resetPointToPointMove();
       }
+    }
+    
+    // Dimensions state'i sadece tool değiştiğinde temizle, ölçüm sonrası değil
+    if (activeTool !== Tool.DIMENSION) {
+      setDimensionsState(INITIAL_DIMENSIONS_STATE);
     }
   }, [activeTool, setEditingPolylineId, resetPointToPointMove]);
 
