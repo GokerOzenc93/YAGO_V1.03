@@ -126,7 +126,7 @@ export const extrudeShape = (
       const center = calculatePolylineCenter(shape.points);
       position = [center.x, height / 2, center.z]; // Position at polyline center with proper Y offset
       
-      shapeType = shape.type === 'polygon' ? 'polygon3d' : 'polyline3d';
+      shapeType = 'box'; // Extrude edilmiş şekiller box olarak işaretlenir
       console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm at position [${position.join(', ')}]`);
       break;
     }

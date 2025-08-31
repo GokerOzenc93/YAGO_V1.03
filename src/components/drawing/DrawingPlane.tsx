@@ -424,6 +424,14 @@ const focusTerminalForMeasurement = () => {
       if ((window as any).terminalInputRef?.current) {
         (window as any).terminalInputRef.current.focus();
         console.log(`${shape.type} tamamlandı. Terminal'e extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne olarak ekleyin`);
+        
+        // Terminal'de extrude mesajını göster
+        if ((window as any).setPolylineStatus) {
+          (window as any).setPolylineStatus({
+            distance: 0,
+            unit: 'Extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne'
+          });
+        }
       }
     }, 100);
   };

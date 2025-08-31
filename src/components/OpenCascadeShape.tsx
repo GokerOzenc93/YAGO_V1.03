@@ -236,6 +236,11 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isBeingEdited) return '#ff6b35'; // Orange for being edited
     if (isSelected) return '#60a5fa'; // Blue for selected
     if (isEditMode && !isBeingEdited) return '#6b7280'; // Gray for other objects in edit mode
+    
+    // Extrude edilmiş şekiller için normal renkler
+    if (shape.type === 'box') return '#2563eb'; // Mavi
+    if (shape.type === 'cylinder') return '#0d9488'; // Teal
+    
     return SHAPE_COLORS[shape.type as keyof typeof SHAPE_COLORS] || '#94a3b8';
   };
 
@@ -248,8 +253,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       return isSelected ? 0.1 : 0.05; // Seçiliyken biraz daha görünür
     }
     
-    // 3D şekiller için tamamen gizli
-    return 0;
+    // 3D şekiller için normal görünürlük
+    return 1.0;
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
