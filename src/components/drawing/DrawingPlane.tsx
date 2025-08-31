@@ -75,23 +75,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   useEffect(() => {
     const drawingTools = [Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE];
     
-    if (drawingTools.includes(activeTool) && !drawingState.isDrawing) {
-      if (previousCameraType === null) {
-        setPreviousCameraType(cameraType);
-      }
-      
-      if (cameraType !== CameraType.ORTHOGRAPHIC) {
-        setCameraType(CameraType.ORTHOGRAPHIC);
-        console.log(`Switched to Orthographic camera for ${activeTool} drawing`);
-      }
-      
-      // IMMEDIATE top view switch for all drawing tools - especially for POLYLINE
-      setTimeout(() => {
-        const event = new KeyboardEvent('keydown', { key: 't' });
-        window.dispatchEvent(event);
-        console.log(`🎯 Auto-switched to TOP VIEW for ${activeTool} drawing`);
-      }, 50);
-    }
+    // Kamera otomatik değişimi tamamen kaldırıldı - kullanıcı hangi açıdaysa o açıda çizim yapar
     
     if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT].includes(activeTool) && previousCameraType !== null) {
       setCameraType(previousCameraType);
@@ -734,7 +718,7 @@ const focusTerminalForMeasurement = () => {
        drawingState.isDrawing && 
        drawingState.currentPoint && 
        drawingState.previewPoint && 
-       drawingState.currentDirection && (
+       drawingState.currentDirection && drawingState.points.length > 0 && (
         <group>
           <Text
             position={[
@@ -747,7 +731,6 @@ const focusTerminalForMeasurement = () => {
             color="#000000"
             anchorX="center"
             anchorY="middle"
-            font="Inter"
             material-side={THREE.DoubleSide}
           >
             {(() => {
@@ -801,7 +784,6 @@ const focusTerminalForMeasurement = () => {
             color="#000000"
             anchorX="center"
             anchorY="middle"
-            font="Inter"
             material-side={THREE.DoubleSide}
           >
             {drawingState.snapPoint.type.toUpperCase()}
