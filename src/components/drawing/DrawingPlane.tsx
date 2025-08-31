@@ -736,45 +736,113 @@ const focusTerminalForMeasurement = () => {
        drawingState.previewPoint && 
        drawingState.currentDirection && (
         <group>
-          <Text
-            position={[
-              drawingState.currentPoint.x + 200, 
-             5,
-              drawingState.currentPoint.z + 1
-            ]}
-           rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={60}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={3}
-            outlineColor="#000000"
-            material-side={THREE.DoubleSide}
-          >
-            {(() => {
-              const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+          {(() => {
+            const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+            const midPoint = new THREE.Vector3()
+              .addVectors(drawingState.currentPoint, drawingState.previewPoint)
+              .multiplyScalar(0.5);
+            
+            // Açı hesaplama
+            let angleText = '';
+            let anglePosition = null;
+            if (drawingState.points.length >= 2) {
+              const lastPoint = drawingState.points[drawingState.points.length - 1];
+              const secondLastPoint = drawingState.points[drawingState.points.length - 2];
+              const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
+              const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
               
-              // Açı hesaplama - önceki segment ile mevcut segment arasındaki açı
-              let angleText = '';
-              if (drawingState.points.length >= 2) {
-                const lastPoint = drawingState.points[drawingState.points.length - 1];
-                const secondLastPoint = drawingState.points[drawingState.points.length - 2];
-                const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
-                const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
-                
-                // İki vektör arasındaki açıyı hesapla
-                let angle = previousDirection.angleTo(currentDirection);
-                angle = THREE.MathUtils.radToDeg(angle);
-                
-                // 0-180 derece arasında göster
-                if (angle > 180) angle = 360 - angle;
-                
-                angleText = ` ∠${angle.toFixed(1)}°`;
-              }
+              let angle = previousDirection.angleTo(currentDirection);
+              angle = THREE.MathUtils.radToDeg(angle);
               
-              return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}${angleText}`;
-            })()}
-          </Text>
+              if (angle > 180) angle = 360 - angle;
+              angleText = `${angle.toFixed(1)}°`;
+              anglePosition = lastPoint.clone();
+            }
+            
+            return (
+              <>
+                {/* Mesafe ölçüsü - segment ortasında */}
+                <group position={[midPoint.x, 25, midPoint.z]}>
+                  {/* Arka plan kutusu */}
+                  <mesh>
+                    <planeGeometry args={[120, 30]} />
+                    <meshBasicMaterial 
+                      color="#1f2937" 
+                      transparent 
+                      opacity={0.9}
+                      depthTest={false}
+                    />
+                  </mesh>
+                  {/* Mesafe yazısı */}
+                  <Text
+                    position={[0, 0, 1]}
+                    rotation={[-Math.PI / 2, 0, 0]}
+                    fontSize={18}
+                    color="#10b981"
+                    anchorX="center"
+                    anchorY="middle"
+                    font="/fonts/inter-medium.woff"
+                    material-side={THREE.DoubleSide}
+                    material-depthTest={false}
+                  >
+                    {convertToDisplayUnit(distance).toFixed(1)} {measurementUnit}
+                  </Text>
+                </group>
+                
+                {/* Açı ölçüsü - köşe noktasında */}
+                {angleText && anglePosition && (
+                  <group position={[anglePosition.x + 80, 25, anglePosition.z + 80]}>
+                    {/* Arka plan kutusu */}
+                    <mesh>
+                      <planeGeometry args={[80, 25]} />
+                      <meshBasicMaterial 
+                        color="#1f2937" 
+                        transparent 
+                        opacity={0.9}
+                        depthTest={false}
+                      />
+                    </mesh>
+                    {/* Açı yazısı */}
+                    <Text
+                      position={[0, 0, 1]}
+                      rotation={[-Math.PI / 2, 0, 0]}
+                      fontSize={14}
+                      color="#f59e0b"
+                      anchorX="center"
+                      anchorY="middle"
+                      font="/fonts/inter-medium.woff"
+                      material-side={THREE.DoubleSide}
+                      material-depthTest={false}
+                    >
+                      ∠{angleText}
+                    </Text>
+                  </group>
+                )}
+                
+                {/* Ölçü çizgileri */}
+                <line>
+                  <bufferGeometry>
+                    <bufferAttribute
+                      attach="attributes-position"
+                      array={new Float32Array([
+                        drawingState.currentPoint.x, 2, drawingState.currentPoint.z,
+                        drawingState.previewPoint.x, 2, drawingState.previewPoint.z
+                      ])}
+                      count={2}
+                      itemSize={3}
+                    />
+                  </bufferGeometry>
+                  <lineBasicMaterial 
+                    color="#10b981" 
+                    linewidth={2}
+                    transparent
+                    opacity={0.8}
+                    depthTest={false}
+                  />
+                </line>
+              </>
+            );
+          })()}
         </group>
       )}
 
@@ -795,19 +863,32 @@ const focusTerminalForMeasurement = () => {
               }
             />
           </mesh>
-          <Text
-           position={[drawingState.snapPoint.point.x, 30, drawingState.snapPoint.point.z + 1]}
-           rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={40}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={2}
-            outlineColor="#000000"
-            material-side={THREE.DoubleSide}
-          >
-            {drawingState.snapPoint.type.toUpperCase()}
-          </Text>
+          <group position={[drawingState.snapPoint.point.x + 60, 15, drawingState.snapPoint.point.z + 60]}>
+            {/* Arka plan kutusu */}
+            <mesh>
+              <planeGeometry args={[100, 20]} />
+              <meshBasicMaterial 
+                color="#374151" 
+                transparent 
+                opacity={0.95}
+                depthTest={false}
+              />
+            </mesh>
+            {/* Snap yazısı */}
+            <Text
+              position={[0, 0, 1]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={12}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              font="/fonts/inter-medium.woff"
+              material-side={THREE.DoubleSide}
+              material-depthTest={false}
+            >
+              {drawingState.snapPoint.type.toUpperCase()}
+            </Text>
+          </group>
         </group>
       )}
 
