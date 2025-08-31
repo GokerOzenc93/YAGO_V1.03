@@ -734,40 +734,38 @@ const focusTerminalForMeasurement = () => {
         <group>
           {/* Profesyonel ölçü bilgi kutusu - farenin ucunda */}
           <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-            {/* 🎯 GÜNCELLEME: Şeffaf arka plan, siyah yazı ve kontur */}
-            <mesh position={[drawingState.previewPoint.x + 100, 200, drawingState.previewPoint.z + 100]}>
-              <planeGeometry args={[200, 100]} />
-              <meshBasicMaterial 
-                color="#F5F5F5" 
-                transparent 
-                opacity={0.2} 
-                side={THREE.DoubleSide}
-              />
+            <group position={[drawingState.previewPoint.x + 100, 50, drawingState.previewPoint.z + 100]}>
+              {/* Arka plan kutusu */}
+              <mesh>
+                <planeGeometry args={[180, 80]} />
+                <meshBasicMaterial 
+                  color="#1f2937" 
+                  transparent 
+                  opacity={0.95}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
               
               {/* Başlık - POLYLINE */}
               <Text
-                position={[0, 30, 0.2]}
-                fontSize={15}
-                color="#000000"
-                font="Inter"
+                position={[0, 25, 0.1]}
+                fontSize={12}
+                color="#60a5fa"
                 anchorX="center"
                 anchorY="middle"
-                outlineWidth={0.5}
-                outlineColor="#FFFFFF"
+                font="/fonts/inter-medium.woff"
               >
                 POLYLINE
               </Text>
               
               {/* Uzunluk bilgisi */}
               <Text
-                position={[0, 0, 0.2]}
-                fontSize={15}
-                color="#000000"
-                font="Inter"
+                position={[0, 5, 0.1]}
+                fontSize={10}
+                color="#10b981"
                 anchorX="center"
                 anchorY="middle"
-                outlineWidth={0.5}
-                outlineColor="#FFFFFF"
+                font="/fonts/inter-regular.woff"
               >
                 {(() => {
                   const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
@@ -777,14 +775,12 @@ const focusTerminalForMeasurement = () => {
               
               {/* Açı bilgisi */}
               <Text
-                position={[0, -30, 0.2]}
-                fontSize={15}
-                color="#000000"
-                font="Inter"
+                position={[0, -15, 0.1]}
+                fontSize={10}
+                color="#f59e0b"
                 anchorX="center"
                 anchorY="middle"
-                outlineWidth={0.5}
-                outlineColor="#FFFFFF"
+                font="/fonts/inter-regular.woff"
               >
                 {(() => {
                   if (drawingState.points.length >= 2) {
@@ -803,7 +799,26 @@ const focusTerminalForMeasurement = () => {
                   return 'Açı: --°';
                 })()}
               </Text>
-            </mesh>
+              
+              {/* Çerçeve */}
+              <lineSegments>
+                <bufferGeometry attach="geometry">
+                  <bufferAttribute
+                    attach="attributes-position"
+                    count={5}
+                    array={new Float32Array([
+                      -90, -40, 0.2,
+                      90, -40, 0.2,
+                      90, 40, 0.2,
+                      -90, 40, 0.2,
+                      -90, -40, 0.2,
+                    ])}
+                    itemSize={3}
+                  />
+                </bufferGeometry>
+                <lineBasicMaterial color="#374151" linewidth={1} />
+              </lineSegments>
+            </group>
           </Billboard>
         </group>
       )}
