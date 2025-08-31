@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode } from '../store/appStore';
-import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube } from 'lucide-react';
+import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler } from 'lucide-react';
 import * as THREE from 'three';
 
 const Toolbar: React.FC = () => {
@@ -148,6 +148,10 @@ const Toolbar: React.FC = () => {
     { id: Tool.MOVE, icon: <Move size={12} />, label: 'Move', shortcut: 'M' },
     { id: Tool.ROTATE, icon: <RotateCcw size={12} />, label: 'Rotate', shortcut: 'Ro' },
     { id: Tool.SCALE, icon: <Maximize size={12} />, label: 'Scale', shortcut: 'S' },
+  ];
+
+  const measurementTools = [
+    { id: Tool.DIMENSION, icon: <Ruler size={12} />, label: 'Dimension', shortcut: 'D' },
   ];
 
   const snapTools = [
@@ -560,14 +564,58 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Snap Tools */}
+        {/* Measurement Tools */}
+        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+          {measurementTools.map((tool) => (
+            <button
+              key={tool.id}
+              className={`p-1 rounded transition-all ${
+                activeTool === tool.id
+                  ? 'bg-green-600/90 text-white shadow-sm'
+                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+              }`}
+              onClick={() => setActiveTool(tool.id)}
+              title={`${tool.label} (${tool.shortcut})`}
+            >
+              {tool.icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+
+        {/* Snap Tools - Individual Buttons */}
+        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+          {snapTools.map((snap) => (
+            <button
+              key={snap.id}
+              className={`p-1 rounded transition-all ${
+                snapSettings[snap.id]
+                  ? 'bg-blue-600/90 text-white shadow-sm'
+                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+              }`}
+              onClick={() => handleSnapToggle(snap.id)}
+              title={`${snap.label} (${snap.shortcut}) - ${snapSettings[snap.id] ? 'Enabled' : 'Disabled'}`}
+            >
+              {snap.icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+
+        {/* Snap Settings Menu */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           <button
-            className="p-1 rounded text-gray-300 hover:bg-gray-600/50 hover:text-gray-100 transition-colors"
+            className={`p-1 rounded transition-all ${
+              showSnapMenu ? 'bg-gray-600/90 text-white' : 'text-gray-300 hover:bg-gray-600/50 hover:text-gray-100'
+            }`}
             onClick={() => setShowSnapMenu(!showSnapMenu)}
-            title="Snap Settings"
+            title="Snap Settings Menu"
           >
-            <Target size={12} />
+            <Settings size={12} />
           </button>
         </div>
 
