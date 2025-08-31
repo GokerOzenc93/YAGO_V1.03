@@ -320,6 +320,17 @@ const focusTerminalForMeasurement = () => {
     // Create extruded 3D shape
     extrudeShape(pendingExtrudeShape, addShape, heightInMm, gridSize);
     
+    // Select the newly created shape for immediate transform access
+    setTimeout(() => {
+      const shapes = useAppStore.getState().shapes;
+      const newestShape = shapes[shapes.length - 1];
+      if (newestShape) {
+        useAppStore.getState().selectShape(newestShape.id);
+        useAppStore.getState().setActiveTool('Move');
+        console.log(`🎯 New extruded shape selected and Move tool activated: ${newestShape.id}`);
+      }
+    }, 100);
+    
     // Cleanup
     setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
     setPendingExtrudeShape(null);

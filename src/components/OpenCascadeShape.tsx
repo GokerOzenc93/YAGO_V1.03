@@ -352,8 +352,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
       {isSelected &&
         meshRef.current &&
-        !isEditMode &&
-        !isFaceEditMode && (
+        (activeTool === 'Move' || activeTool === 'Rotate' || activeTool === 'Scale') && (
           <TransformControls
             ref={transformRef}
             object={meshRef.current}
