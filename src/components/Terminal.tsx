@@ -95,7 +95,7 @@ const Terminal: React.FC = () => {
       // Fallback: sadece sayı ise extrude height olarak işle
       const numericValue = parseFloat(trimmedCommand);
       if (!isNaN(numericValue)) {
-      // Handle extrude height input
+        // Handle extrude height input
         if ((window as any).handleExtrudeHeight) {
           (window as any).handleExtrudeHeight(numericValue);
           setCommandInput('');

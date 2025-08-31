@@ -61,7 +61,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [previousCameraType, setPreviousCameraType] = useState<CameraType | null>(null);
   const [showExtrudeInput, setShowExtrudeInput] = useState(false);
   const [extrudeHeight, setExtrudeHeight] = useState('');
-  const [pendingShape, setPendingShape] = useState<CompletedShape | null>(null);
+  const [pendingExtrudeShape, setPendingExtrudeShape] = useState<CompletedShape | null>(null);
   
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
@@ -306,7 +306,7 @@ const focusTerminalForMeasurement = () => {
 
   // Handle extrude height input from terminal
   const handleExtrudeInput = (height: number) => {
-    if (!pendingShape) {
+    if (!pendingExtrudeShape) {
       console.log('No pending shape to extrude');
       return;
     }
@@ -318,18 +318,18 @@ const focusTerminalForMeasurement = () => {
     }
     
     // Create extruded 3D shape
-    extrudeShape(pendingShape, addShape, heightInMm, gridSize);
+    extrudeShape(pendingExtrudeShape, addShape, heightInMm, gridSize);
     
     // Cleanup
-    setCompletedShapes(prev => prev.filter(s => s.id !== pendingShape.id));
-    setPendingShape(null);
+    setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
+    setPendingExtrudeShape(null);
     
-    console.log(`${pendingShape.type} extruded with height: ${heightInMm}mm`);
+    console.log(`${pendingExtrudeShape.type} extruded with height: ${heightInMm}mm`);
   };
   // Expose measurement input handler globally
   // Handle extrude submit
   const handleExtrudeSubmit = () => {
-    if (!extrudeHeight || !pendingShape) return;
+    if (!extrudeHeight || !pendingExtrudeShape) return;
     
     const height = parseFloat(extrudeHeight);
     if (!isNaN(height) && height > 0) {
@@ -340,7 +340,7 @@ const focusTerminalForMeasurement = () => {
 
   // Handle extrude cancel
   const handleExtrudeCancel = () => {
-    setPendingShape(null);
+    setPendingExtrudeShape(null);
     setExtrudeHeight('');
     console.log('Extrude operation cancelled');
   };
@@ -355,11 +355,10 @@ const focusTerminalForMeasurement = () => {
       delete (window as any).handlePolylineMeasurement;
       delete (window as any).handleExtrudeHeight;
     };
-  }, [drawingState.currentPoint, drawingState.currentDirection, drawingState.isDrawing, activeTool, pendingShape, convertToBaseUnit, addShape, gridSize]);
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
-    if (pendingShape) {
+    if (pendingExtrudeShape) {
       // Focus terminal input after a short delay
       setTimeout(() => {
         const terminalInput = document.querySelector('input[placeholder*="Enter extrude height"]') as HTMLInputElement;
@@ -370,12 +369,11 @@ const focusTerminalForMeasurement = () => {
         }
       }, 100);
     }
-  }, [pendingShape]);
 
   // Handle keyboard input for extrude height
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (pendingShape) {
+      if (pendingExtrudeShape) {
         if (event.key === 'Enter' && extrudeHeight) {
           handleExtrudeSubmit();
         } else if (event.key === 'Escape') {
@@ -386,15 +384,22 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pendingShape, extrudeHeight]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
-    // Immediately convert to 2D selectable shape and add to store
-    const newShape = convertTo3DShape(shape, addShape, selectShape, gridSize);
-    if (newShape) {
-      console.log(`${shape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
-    }
+    // Kullanıcıya seçenek sun: 2D nesne olarak ekle veya extrude et
+    console.log(`${shape.type} tamamlandı. Extrude için terminal'e yükseklik girin veya Enter'a basın.`);
+    
+    // Pending shape olarak kaydet - kullanıcı extrude edebilir
+    setPendingExtrudeShape(shape);
+    
+    // Terminal'e odaklan ve kullanıcıyı bilgilendir
+    setTimeout(() => {
+      if ((window as any).terminalInputRef?.current) {
+        (window as any).terminalInputRef.current.focus();
+        console.log('Terminal'e extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne olarak ekleyin');
+      }
+    }, 100);
   };
 
   // UNIFIED: Finish drawing function
@@ -635,6 +640,21 @@ const focusTerminalForMeasurement = () => {
       if (event.key === 'Enter' && (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && drawingState.isDrawing && drawingState.points.length >= 2 && !drawingState.waitingForMeasurement) {
       }
       
+      // Handle Enter key for pending extrude shape - convert to 2D selectable object
+      if (event.key === 'Enter' && pendingExtrudeShape && !drawingState.isDrawing) {
+        console.log(`Converting ${pendingExtrudeShape.type} to 2D selectable object`);
+        
+        // Convert to 2D selectable shape
+        const newShape = convertTo3DShape(pendingExtrudeShape, addShape, selectShape, gridSize);
+        if (newShape) {
+          console.log(`${pendingExtrudeShape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
+        }
+        
+        // Cleanup
+        setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
+        setPendingExtrudeShape(null);
+      }
+      
       if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
@@ -646,7 +666,6 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTool, drawingState.isDrawing, drawingState.points, setActiveTool, drawingState.waitingForMeasurement, addShape, selectShape, gridSize, setEditingPolylineId]);
 
   return (
     <>
