@@ -242,6 +242,8 @@ const Scene: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         selectShape(null);
+        // Reset Point to Point Move when pressing Escape
+        useAppStore.getState().resetPointToPointMove();
         // Exit edit mode when pressing Escape
         if (isEditMode) {
           exitEditMode();

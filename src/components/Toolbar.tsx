@@ -146,6 +146,7 @@ const Toolbar: React.FC = () => {
   const transformTools = [
     { id: Tool.SELECT, icon: <MousePointer2 size={12} />, label: 'Select', shortcut: 'V' },
     { id: Tool.MOVE, icon: <Move size={12} />, label: 'Move', shortcut: 'M' },
+    { id: Tool.POINT_TO_POINT_MOVE, icon: <Navigation size={12} />, label: 'Point to Point', shortcut: 'P2P' },
     { id: Tool.ROTATE, icon: <RotateCcw size={12} />, label: 'Rotate', shortcut: 'Ro' },
     { id: Tool.SCALE, icon: <Maximize size={12} />, label: 'Scale', shortcut: 'S' },
   ];

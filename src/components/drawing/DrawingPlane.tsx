@@ -47,7 +47,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     snapTolerance,
     shapes,
     editingPolylineId,
-    setEditingPolylineId
+    setEditingPolylineId,
+    pointToPointMoveState,
+    setPointToPointMoveState,
+    resetPointToPointMove,
+    updateShape
   } = useAppStore();
   
   // Drawing state
@@ -84,7 +88,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
 
   // Reset drawing state when tool changes
   useEffect(() => {
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT].includes(activeTool)) {
+    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
       
       // Polyline status'u temizle
@@ -97,8 +101,12 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         setDraggedNodeIndex(null);
         setIsDragging(false);
       }
+      
+      // Point to Point Move'u temizle
+      if (activeTool !== Tool.POINT_TO_POINT_MOVE) {
+        resetPointToPointMove();
+      }
     }
-  }, [activeTool, setEditingPolylineId]);
 
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
     if (!planeRef.current) return null;
@@ -570,6 +578,57 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    // Handle Point to Point Move
+    if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
+      if (event.nativeEvent.button !== 0) return;
+      
+      const point = getIntersectionPoint(event.nativeEvent);
+      if (!point) return;
+      
+      event.stopPropagation();
+      
+      if (!pointToPointMoveState.sourcePoint) {
+        // İlk nokta seçimi - kaynak snap noktası
+        setPointToPointMoveState({
+          sourcePoint: point,
+        });
+        console.log(`🎯 Point to Point Move: Source point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+      } else {
+        // İkinci nokta seçimi - hedef snap noktası ve taşıma işlemi
+        const sourcePoint = pointToPointMoveState.sourcePoint;
+        const targetPoint = point;
+        const shapeId = pointToPointMoveState.selectedShapeId;
+        
+        if (shapeId) {
+          const shape = shapes.find(s => s.id === shapeId);
+          if (shape) {
+            // Taşıma vektörünü hesapla
+            const moveVector = new THREE.Vector3().subVectors(targetPoint, sourcePoint);
+            
+            // Yeni pozisyonu hesapla
+            const newPosition = new THREE.Vector3(...shape.position).add(moveVector);
+            
+            // Grid'e snap yap
+            const snappedPosition: [number, number, number] = [
+              snapToGrid(newPosition.x, gridSize),
+              snapToGrid(newPosition.y, gridSize),
+              snapToGrid(newPosition.z, gridSize),
+            ];
+            
+            // Shape'i güncelle
+            updateShape(shapeId, { position: snappedPosition });
+            
+            console.log(`🎯 Point to Point Move completed: Shape ${shapeId} moved from [${sourcePoint.x.toFixed(1)}, ${sourcePoint.y.toFixed(1)}, ${sourcePoint.z.toFixed(1)}] to [${targetPoint.x.toFixed(1)}, ${targetPoint.y.toFixed(1)}, ${targetPoint.z.toFixed(1)}]`);
+          }
+        }
+        
+        // Point to Point Move'u bitir
+        resetPointToPointMove();
+        setActiveTool(Tool.SELECT);
+      }
+      return;
+    }
+
     // Handle polyline editing mode
     if (activeTool === Tool.POLYLINE_EDIT) {
       if (event.nativeEvent.button !== 0) return;
@@ -623,6 +682,37 @@ const focusTerminalForMeasurement = () => {
     const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
     if (!point) return;
 
+    // Handle Point to Point Move preview
+    if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
+      // Snap detection for target point
+      const rect = gl.domElement.getBoundingClientRect();
+      const mouseScreenPos = new THREE.Vector2(
+        event.nativeEvent.clientX - rect.left, 
+        event.nativeEvent.clientY - rect.top
+      );
+      
+      const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 5 : 1);
+      
+      const snapPoints = findSnapPoints(
+        point,
+        completedShapes, 
+        shapes, 
+        snapSettings, 
+        perspectiveTolerance,
+        null,
+        null,
+        camera,
+        gl.domElement,
+        mouseScreenPos
+      );
+      
+      if (snapPoints.length > 0) {
+        updateDrawingState({ snapPoint: snapPoints[0] });
+      } else {
+        updateDrawingState({ snapPoint: null });
+      }
+      return;
+    }
     // Handle polyline editing mode
     if (activeTool === Tool.POLYLINE_EDIT && isDragging && draggedNodeIndex !== null && editingPolylineId) {
       updatePolylinePoint(editingPolylineId, draggedNodeIndex, point);
@@ -685,6 +775,7 @@ const focusTerminalForMeasurement = () => {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
         setIsDragging(false);
+        resetPointToPointMove();
         console.log('Drawing cancelled');
       }
       
@@ -948,6 +1039,48 @@ const focusTerminalForMeasurement = () => {
         </group>
       )}
 
+      {/* Point to Point Move Indicators */}
+      {activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive && (
+        <>
+          {/* Source Point Indicator */}
+          {pointToPointMoveState.sourcePoint && (
+            <Billboard position={pointToPointMoveState.sourcePoint}>
+              <mesh>
+                <sphereGeometry args={[25]} />
+                <meshBasicMaterial color="#10b981" transparent opacity={0.8} />
+              </mesh>
+              <Text
+                position={[0, 50, 0]}
+                fontSize={20}
+                color="#10b981"
+                anchorX="center"
+                anchorY="middle"
+              >
+                SOURCE
+              </Text>
+            </Billboard>
+          )}
+          
+          {/* Current Snap Point Indicator for Point to Point Move */}
+          {drawingState.snapPoint && (
+            <Billboard position={drawingState.snapPoint.point}>
+              <mesh>
+                <sphereGeometry args={[20]} />
+                <meshBasicMaterial color="#ef4444" transparent opacity={0.9} />
+              </mesh>
+              <Text
+                position={[0, 45, 0]}
+                fontSize={18}
+                color="#ef4444"
+                anchorX="center"
+                anchorY="middle"
+              >
+                TARGET
+              </Text>
+            </Billboard>
+          )}
+        </>
+      )}
       {/* Preview Shape */}
       {previewGeometry && (
         <line geometry={previewGeometry}>

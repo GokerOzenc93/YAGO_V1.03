@@ -26,6 +26,7 @@ export enum Tool {
   BOOLEAN_UNION = 'Union',
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
+  POINT_TO_POINT_MOVE = 'Point to Point Move',
 }
 
 export enum CameraType {
@@ -128,6 +129,20 @@ interface AppState {
   setSnapTolerance: (tolerance: number) => void;
   editingPolylineId: string | null;
   setEditingPolylineId: (id: string | null) => void;
+  // Point to Point Move state
+  pointToPointMoveState: {
+    isActive: boolean;
+    sourcePoint: THREE.Vector3 | null;
+    targetPoint: THREE.Vector3 | null;
+    selectedShapeId: string | null;
+  };
+  setPointToPointMoveState: (state: Partial<{
+    isActive: boolean;
+    sourcePoint: THREE.Vector3 | null;
+    targetPoint: THREE.Vector3 | null;
+    selectedShapeId: string | null;
+  }>) => void;
+  resetPointToPointMove: () => void;
   // Edit mode isolation
   isEditMode: boolean;
   setEditMode: (enabled: boolean) => void;
@@ -266,6 +281,32 @@ export const useAppStore = create<AppState>((set, get) => ({
     
   snapTolerance: 25, // Default snap tolerance in pixels
   
+  // Point to Point Move state
+  pointToPointMoveState: {
+    isActive: false,
+    sourcePoint: null,
+    targetPoint: null,
+    selectedShapeId: null,
+  },
+  
+  setPointToPointMoveState: (updates) =>
+    set((state) => ({
+      pointToPointMoveState: {
+        ...state.pointToPointMoveState,
+        ...updates,
+      },
+    })),
+    
+  resetPointToPointMove: () =>
+    set({
+      pointToPointMoveState: {
+        isActive: false,
+        sourcePoint: null,
+        targetPoint: null,
+        selectedShapeId: null,
+      },
+    }),
+
   convertToDisplayUnit: (value) => {
     const { measurementUnit } = get();
     return value / UNIT_CONVERSIONS[measurementUnit];

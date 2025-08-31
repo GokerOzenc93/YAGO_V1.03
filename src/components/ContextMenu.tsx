@@ -1,5 +1,6 @@
 import React from 'react';
-import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation } from 'lucide-react';
+import { useAppStore, Tool } from '../store/appStore';
 
 interface ContextMenuProps {
   position: { x: number; y: number };
@@ -26,6 +27,22 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onDelete,
   onToggleVisibility,
 }) => {
+  const { setActiveTool, setPointToPointMoveState, selectShape } = useAppStore();
+
+  const handlePointToPointMove = () => {
+    // Point to Point Move modunu başlat
+    setActiveTool(Tool.POINT_TO_POINT_MOVE);
+    setPointToPointMoveState({
+      isActive: true,
+      selectedShapeId: shapeId,
+      sourcePoint: null,
+      targetPoint: null,
+    });
+    selectShape(shapeId);
+    console.log(`Point to Point Move started for shape: ${shapeId}`);
+    onClose();
+  };
+
   const menuItems = [
     {
       icon: <Edit size={14} />,
@@ -43,11 +60,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       shortcut: 'Ctrl+C'
     },
     {
-      icon: <Move size={14} />,
-      label: 'Move',
-      action: onMove,
-      enabled: false, // Şimdilik devre dışı
-      shortcut: 'M'
+      icon: <Navigation size={14} />,
+      label: 'Point to Point Move',
+      action: handlePointToPointMove,
+      enabled: true,
+      shortcut: 'P2P',
+      description: 'Move object from one snap point to another'
     },
     {
       icon: <RotateCcw size={14} />,
