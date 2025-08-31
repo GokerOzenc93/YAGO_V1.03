@@ -195,25 +195,17 @@ const focusTerminalForMeasurement = () => {
         return;
       }
       
-      // Fare yönüne göre dikdörtgen oluştur
-      if (!drawingState.previewPoint) {
-        console.log('🎯 No preview point for direction reference');
-        return;
-      }
-      
-      // Fare yönünü hesapla
-      const mouseDirection = new THREE.Vector3()
-        .subVectors(drawingState.previewPoint, drawingState.currentPoint)
-        .normalize();
-      
+      const startPoint = drawingState.currentPoint;
+      let mouseDirection = new THREE.Vector3().subVectors(drawingState.previewPoint, startPoint).normalize();
+
       // Fare yönüne göre width ve height'ı uygula
       const deltaX = mouseDirection.x >= 0 ? width : -width;
       const deltaZ = mouseDirection.z >= 0 ? height : -height;
       
       const newPoint = new THREE.Vector3(
-        drawingState.currentPoint.x + deltaX,
+        startPoint.x + deltaX,
         0,
-        drawingState.currentPoint.z + deltaZ
+        startPoint.z + deltaZ
       );
       
       newPoint.x = snapToGrid(newPoint.x, gridSize);
@@ -221,17 +213,17 @@ const focusTerminalForMeasurement = () => {
       
       // Complete the rectangle
       const shapeId = Math.random().toString(36).substr(2, 9);
-      const rectPoints = createRectanglePoints(drawingState.currentPoint, newPoint);
+      const rectPoints = createRectanglePoints(startPoint, newPoint);
       const newShape: CompletedShape = {
         id: shapeId,
         type: 'rectangle',
         points: rectPoints,
-        dimensions: { width, height },
+        dimensions: { width: Math.abs(deltaX), height: Math.abs(deltaZ) },
         isClosed: true
       };
       
       setCompletedShapes(prev => [...prev, newShape]);
-      console.log(`Rectangle completed via TERMINAL: ${width}x${height}mm`);
+      console.log(`Rectangle completed via TERMINAL: ${Math.abs(deltaX).toFixed(1)}x${Math.abs(deltaZ).toFixed(1)}mm`);
       
       convertAndCleanup(newShape);
       finishDrawing();
@@ -832,82 +824,87 @@ const focusTerminalForMeasurement = () => {
       )}
 
       {/* Angle Display for Polyline Drawing */}
-      {/* Ölçü bilgilerini terminal üstündeki durum çubuğuna gönder */}
-      {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON || activeTool === Tool.RECTANGLE || activeTool === Tool.CIRCLE) && 
+      {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && 
        drawingState.isDrawing && 
+       drawingState.currentPoint && 
        drawingState.previewPoint && 
-       drawingState.points.length > 0 && 
-       (() => {
-          // Polyline ve Polygon için
-          if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
-            // İlk nokta için başlangıç noktasından, sonrakiler için son noktadan mesafe hesapla
-            const startPoint = drawingState.currentPoint || drawingState.points[drawingState.points.length - 1];
-            const distance = startPoint.distanceTo(drawingState.previewPoint);
-            
-            // Açı hesaplama
-            let angle: number | undefined;
-            
-            if (drawingState.points.length === 1) {
-              // İlk çizgi için X ekseninden açı
-              const direction = drawingState.previewPoint.clone().sub(startPoint).normalize();
-              angle = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
-              // 0-360 derece arasında göster
-              if (angle < 0) angle += 360;
-            } else if (drawingState.points.length >= 2) {
-              // Sonraki çizgiler için önceki segment ile mevcut segment arasındaki açı
-              const lastPoint = drawingState.points[drawingState.points.length - 1];
-              const secondLastPoint = drawingState.points[drawingState.points.length - 2];
-              const currentDirection = drawingState.previewPoint.clone().sub(startPoint).normalize();
-              const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
+       drawingState.currentDirection && (
+        <group>
+          {/* Profesyonel ölçü bilgi kutusu - farenin ucunda */}
+          <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+            {/* 🎯 GÜNCELLEME: Şeffaf arka plan, siyah yazı ve kontur */}
+            <mesh position={[drawingState.previewPoint.x + 100, 200, drawingState.previewPoint.z + 100]}>
+              <planeGeometry args={[200, 100]} />
+              <meshBasicMaterial 
+                color="#F5F5F5" 
+                transparent 
+                opacity={0.2} 
+                side={THREE.DoubleSide}
+              />
               
-              // İki vektör arasındaki açıyı hesapla
-              let calculatedAngle = previousDirection.angleTo(currentDirection);
-              calculatedAngle = THREE.MathUtils.radToDeg(calculatedAngle);
+              {/* Başlık - POLYLINE */}
+              <Text
+                position={[0, 30, 0.2]}
+                fontSize={15}
+                color="#000000"
+                font="Inter"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.5}
+                outlineColor="#FFFFFF"
+              >
+                POLYLINE
+              </Text>
               
-              // 0-180 derece arasında göster
-              if (calculatedAngle > 180) calculatedAngle = 360 - calculatedAngle;
+              {/* Uzunluk bilgisi */}
+              <Text
+                position={[0, 0, 0.2]}
+                fontSize={15}
+                color="#000000"
+                font="Inter"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.5}
+                outlineColor="#FFFFFF"
+              >
+                {(() => {
+                  const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+                  return `Uzunluk: ${convertToDisplayUnit(distance).toFixed(1)} ${measurementUnit}`;
+                })()}
+              </Text>
               
-              angle = calculatedAngle;
-            }
-            
-            // Terminal'e durum bilgisini gönder
-            if ((window as any).setPolylineStatus) {
-              (window as any).setPolylineStatus({
-                distance: convertToDisplayUnit(distance),
-                angle,
-                unit: measurementUnit
-              });
-            }
-          }
-          
-          // Rectangle için boyut bilgileri
-          if (activeTool === Tool.RECTANGLE) {
-            const width = Math.abs(drawingState.previewPoint.x - drawingState.points[0].x);
-            const height = Math.abs(drawingState.previewPoint.z - drawingState.points[0].z);
-            
-            if ((window as any).setPolylineStatus) {
-              (window as any).setPolylineStatus({
-                distance: convertToDisplayUnit(width),
-                angle: convertToDisplayUnit(height), // Height'ı angle alanında göster
-                unit: measurementUnit
-              });
-            }
-          }
-          
-          // Circle için radius bilgisi
-          if (activeTool === Tool.CIRCLE) {
-            const radius = drawingState.points[0].distanceTo(drawingState.previewPoint);
-            
-            if ((window as any).setPolylineStatus) {
-              (window as any).setPolylineStatus({
-                distance: convertToDisplayUnit(radius),
-                unit: measurementUnit
-              });
-            }
-          }
-         
-         return null; // Hiçbir görsel element render etme
-       })()}
+              {/* Açı bilgisi */}
+              <Text
+                position={[0, -30, 0.2]}
+                fontSize={15}
+                color="#000000"
+                font="Inter"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.5}
+                outlineColor="#FFFFFF"
+              >
+                {(() => {
+                  if (drawingState.points.length >= 2) {
+                    const lastPoint = drawingState.points[drawingState.points.length - 1];
+                    const secondLastPoint = drawingState.points[drawingState.points.length - 2];
+                    const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
+                    const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
+                    
+                    let angle = previousDirection.angleTo(currentDirection);
+                    angle = THREE.MathUtils.radToDeg(angle);
+                    
+                    if (angle > 180) angle = 360 - angle;
+                    
+                    return `Açı: ${angle.toFixed(1)}°`;
+                  }
+                  return 'Açı: --°';
+                })()}
+              </Text>
+            </mesh>
+          </Billboard>
+        </group>
+      )}
 
       {/* Snap Point Indicator */}
       {drawingState.snapPoint && (
@@ -927,12 +924,14 @@ const focusTerminalForMeasurement = () => {
             />
           </mesh>
           <Text
-            position={[drawingState.snapPoint.point.x, 80, drawingState.snapPoint.point.z + 200]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={50}
-            color="#000000"
+           position={[drawingState.snapPoint.point.x, 30, drawingState.snapPoint.point.z + 1]}
+           rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={40}
+            color="#ffffff"
             anchorX="center"
             anchorY="middle"
+            outlineWidth={2}
+            outlineColor="#000000"
             material-side={THREE.DoubleSide}
           >
             {drawingState.snapPoint.type.toUpperCase()}
