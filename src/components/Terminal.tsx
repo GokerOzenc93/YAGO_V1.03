@@ -83,7 +83,7 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
-    // Check if it's a measurement input (number or "number,number" format)
+    // Check if it's a measurement input (number, "number,number", or "number," format)
     if (/^[\d.,\s]+$/.test(trimmedCommand)) {
       // Handle measurement input
       if ((window as any).handlePolylineMeasurement) {

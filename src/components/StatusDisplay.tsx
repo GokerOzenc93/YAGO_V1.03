@@ -25,12 +25,38 @@ const StatusDisplay: React.FC<StatusDisplayProps> = ({ polylineStatus }) => {
         {/* Orta - Polyline ölçü bilgileri */}
         {polylineStatus && (
           <div className="flex items-center gap-4 text-xs">
-            <span className="text-gray-300">
-              Length: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
-            </span>
-            {polylineStatus.angle !== undefined && (
+            {/* Polyline/Polygon için uzunluk ve açı */}
+            {(activeTool === 'Polyline' || activeTool === 'Polygon') && (
+              <>
+                <span className="text-gray-300">
+                  Length: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
+                </span>
+                {polylineStatus.angle !== undefined && (
+                  <span className="text-gray-300">
+                    Angle: <span className="text-blue-400 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+                  </span>
+                )}
+              </>
+            )}
+            
+            {/* Rectangle için genişlik ve yükseklik */}
+            {activeTool === 'Rectangle' && (
+              <>
+                <span className="text-gray-300">
+                  Width: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
+                </span>
+                {polylineStatus.angle !== undefined && (
+                  <span className="text-gray-300">
+                    Height: <span className="text-blue-400 font-mono font-medium">{polylineStatus.angle.toFixed(1)}{polylineStatus.unit}</span>
+                  </span>
+                )}
+              </>
+            )}
+            
+            {/* Circle için radius */}
+            {activeTool === 'Circle' && (
               <span className="text-gray-300">
-                Angle: <span className="text-blue-400 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+                Radius: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
               </span>
             )}
           </div>
