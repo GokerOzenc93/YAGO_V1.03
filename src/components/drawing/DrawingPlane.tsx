@@ -776,6 +776,7 @@ const focusTerminalForMeasurement = () => {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
         setIsDragging(false);
+        resetPointToPointMove();
         console.log('Drawing cancelled');
       }
       
