@@ -264,7 +264,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     })),
     
-  snapTolerance: 100, // Increased snap tolerance for better detection
+  snapTolerance: 25, // Default snap tolerance in pixels
   setSnapTolerance: (tolerance) => set({ snapTolerance: tolerance }),
   
   convertToDisplayUnit: (value) => {
