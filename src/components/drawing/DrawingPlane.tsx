@@ -195,11 +195,25 @@ const focusTerminalForMeasurement = () => {
         return;
       }
       
-      // Create rectangle with specified dimensions from current point
+      // Fare yönüne göre dikdörtgen oluştur
+      if (!drawingState.previewPoint) {
+        console.log('🎯 No preview point for direction reference');
+        return;
+      }
+      
+      // Fare yönünü hesapla
+      const mouseDirection = new THREE.Vector3()
+        .subVectors(drawingState.previewPoint, drawingState.currentPoint)
+        .normalize();
+      
+      // Fare yönüne göre width ve height'ı uygula
+      const deltaX = mouseDirection.x >= 0 ? width : -width;
+      const deltaZ = mouseDirection.z >= 0 ? height : -height;
+      
       const newPoint = new THREE.Vector3(
-        drawingState.currentPoint.x + width,
+        drawingState.currentPoint.x + deltaX,
         0,
-        drawingState.currentPoint.z + height
+        drawingState.currentPoint.z + deltaZ
       );
       
       newPoint.x = snapToGrid(newPoint.x, gridSize);
