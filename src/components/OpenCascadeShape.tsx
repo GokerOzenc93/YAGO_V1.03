@@ -177,7 +177,13 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
       useAppStore.getState().selectShape(shape.id);
-      console.log(`Shape clicked: ${shape.type} (ID: ${shape.id})`);
+      console.log(`Shape clicked: ${shape.type} (ID: ${shape.id}) - 2D Shape: ${shape.is2DShape ? 'Yes' : 'No'}`);
+      
+      // Auto-switch to Move tool when selecting any shape (including 2D shapes)
+      if (useAppStore.getState().activeTool === 'Select') {
+        useAppStore.getState().setActiveTool('Move');
+        console.log('🎯 Auto-switched to Move tool for selected shape');
+      }
     }
   };
 
@@ -220,7 +226,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // Always hide mesh, only show edges
+    // 2D shapes: Show with low opacity for gizmo interaction
+    if (shape.is2DShape) {
+      return isSelected ? 0.1 : 0.05; // Slightly visible when selected
+    }
+    
+    // 3D shapes: Hide mesh, only show edges
     return 0;
   };
 
@@ -270,13 +281,13 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get material properties based on view mode
   const getMaterialProps = () => {
-    const opacityValue = 0.05; // 👈 Solid modda bile şeffaf görünüm
+    const opacityValue = getOpacity();
 
     return {
       color: getShapeColor(),
-      transparent: true, // 👈 Şeffaflık aktif
+      transparent: opacityValue < 1,
       opacity: opacityValue,
-      visible: false, // Solid modda şekil görünür
+      visible: true, // Always visible for gizmo interaction
     };
   };
 
@@ -293,7 +304,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={viewMode === ViewMode.SOLID} // Show mesh in solid mode
+        visible={true} // Always visible for gizmo interaction
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
@@ -321,7 +332,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       {isSelected &&
         meshRef.current &&
         !isEditMode &&
-        !isFaceEditMode && (
+        !isFaceEditMode &&
+        (activeTool === 'Move' || activeTool === 'Rotate' || activeTool === 'Scale' || activeTool === 'Select') && (
           <TransformControls
             ref={transformRef}
             object={meshRef.current}
@@ -337,6 +349,15 @@ const OpenCascadeShape: React.FC<Props> = ({
             size={0.8}
             onObjectChange={() => {
               console.log('🎯 GIZMO CHANGE - Transform controls object changed');
+              
+              // Update shape position in store when gizmo moves the object
+              if (meshRef.current) {
+                const newPosition = meshRef.current.position.toArray() as [number, number, number];
+                useAppStore.getState().updateShape(shape.id, {
+                  position: newPosition
+                });
+                console.log(`🎯 Shape ${shape.id} position updated via gizmo:`, newPosition);
+              }
             }}
           />
         )}
