@@ -355,6 +355,7 @@ const focusTerminalForMeasurement = () => {
       delete (window as any).handlePolylineMeasurement;
       delete (window as any).handleExtrudeHeight;
     };
+  }, [handleMeasurementInput, handleExtrudeInput]);
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
@@ -369,6 +370,7 @@ const focusTerminalForMeasurement = () => {
         }
       }, 100);
     }
+  }, [pendingExtrudeShape]);
 
   // Handle keyboard input for extrude height
   useEffect(() => {
@@ -384,6 +386,7 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingExtrudeShape, extrudeHeight, handleExtrudeSubmit, handleExtrudeCancel]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
@@ -666,6 +669,7 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTool, drawingState, pendingExtrudeShape, setEditingPolylineId, setActiveTool, addShape, selectShape, gridSize]);
 
   return (
     <>
