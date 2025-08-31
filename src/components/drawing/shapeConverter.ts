@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
-import { useAppStore } from '../../store/appStore';
 import { createPolylineGeometry } from './geometryCreator';
 import { calculatePolylineCenter } from './utils';
 
@@ -157,14 +156,5 @@ export const extrudeShape = (
 
   addShape(newShape);
   console.log(`3D shape created with ID: ${newShape.id}`);
-  
-  // Auto-select the new shape and activate Move tool
-  setTimeout(() => {
-    const { selectShape, setActiveTool } = useAppStore.getState();
-    selectShape(newShape.id);
-    setActiveTool('Move');
-    console.log(`🎯 New shape auto-selected with Move tool: ${newShape.id}`);
-  }, 50);
-  
   return newShape;
 };

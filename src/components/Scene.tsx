@@ -536,7 +536,7 @@ const Scene: React.FC = () => {
       
       // 🎯 2D şekil seçildiğinde otomatik Move tool'a geç
       if (shape.is2DShape) {
-        setActiveTool('Move');
+        useAppStore.getState().setActiveTool('Move');
         console.log(`2D shape selected, switched to Move tool: ${shape.type} (ID: ${shape.id})`);
       } else {
         console.log(`3D shape selected: ${shape.type} (ID: ${shape.id})`);
