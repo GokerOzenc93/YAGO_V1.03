@@ -4,18 +4,14 @@ import { SnapType, SnapSettings } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import { findLineIntersection } from './utils';
 
-// Helper function to get edges from 3D shape geometry
+// Helper function to get all edges from 3D shape geometry with proper transforms
 const getShapeEdges = (shape: Shape): THREE.Line3[] => {
   const edges: THREE.Line3[] = [];
   const geometry = shape.geometry;
   
   if (!geometry.attributes.position) return edges;
   
-  // Create edges geometry to get the outline edges
-  const edgesGeometry = new THREE.EdgesGeometry(geometry);
-  const positions = edgesGeometry.attributes.position;
-  
-  // Transform matrix for shape position, rotation, scale
+  // Create transform matrix for shape position, rotation, scale
   const matrix = new THREE.Matrix4();
   matrix.compose(
     new THREE.Vector3(...shape.position),
@@ -23,7 +19,11 @@ const getShapeEdges = (shape: Shape): THREE.Line3[] => {
     new THREE.Vector3(...shape.scale)
   );
   
-  // Extract edge lines
+  // Get outline edges only (not all internal edges)
+  const edgesGeometry = new THREE.EdgesGeometry(geometry);
+  const positions = edgesGeometry.attributes.position;
+  
+  // Extract edge lines and transform to world space
   for (let i = 0; i < positions.count; i += 2) {
     const start = new THREE.Vector3().fromBufferAttribute(positions, i).applyMatrix4(matrix);
     const end = new THREE.Vector3().fromBufferAttribute(positions, i + 1).applyMatrix4(matrix);
@@ -38,14 +38,14 @@ const getShapeEdges = (shape: Shape): THREE.Line3[] => {
   return edges;
 };
 
-// Helper function to get vertices from 3D shape geometry
+// Helper function to get all vertices from 3D shape geometry with proper transforms
 const getShapeVertices = (shape: Shape): THREE.Vector3[] => {
   const vertices: THREE.Vector3[] = [];
   const geometry = shape.geometry;
   
   if (!geometry.attributes.position) return vertices;
   
-  // Transform matrix for shape position, rotation, scale
+  // Create transform matrix for shape position, rotation, scale
   const matrix = new THREE.Matrix4();
   matrix.compose(
     new THREE.Vector3(...shape.position),
@@ -55,7 +55,10 @@ const getShapeVertices = (shape: Shape): THREE.Vector3[] => {
   
   // Get unique vertices by using a Set with string keys
   const uniqueVertices = new Map<string, THREE.Vector3>();
-  const positions = geometry.attributes.position;
+  
+  // Use EdgesGeometry to get only outline vertices
+  const edgesGeometry = new THREE.EdgesGeometry(geometry);
+  const positions = edgesGeometry.attributes.position;
   
   for (let i = 0; i < positions.count; i++) {
     const vertex = new THREE.Vector3().fromBufferAttribute(positions, i).applyMatrix4(matrix);
@@ -64,7 +67,7 @@ const getShapeVertices = (shape: Shape): THREE.Vector3[] => {
     vertex.y = 0;
     
     // Use rounded coordinates as key to avoid duplicates
-    const key = `${Math.round(vertex.x)},${Math.round(vertex.z)}`;
+    const key = `${Math.round(vertex.x * 10) / 10},${Math.round(vertex.z * 10) / 10}`;
     if (!uniqueVertices.has(key)) {
       uniqueVertices.set(key, vertex);
     }
@@ -78,24 +81,19 @@ const getBoxSnapPoints = (shape: Shape): { endpoints: THREE.Vector3[], midpoints
   const endpoints: THREE.Vector3[] = [];
   const midpoints: THREE.Vector3[] = [];
   
-  // Get box parameters
-  const width = shape.parameters.width || 500;
-  const height = shape.parameters.height || 500;
-  const depth = shape.parameters.depth || 500;
-  
-  // Apply scale
-  const scaledWidth = width * shape.scale[0];
-  const scaledHeight = height * shape.scale[1];
-  const scaledDepth = depth * shape.scale[2];
+  // Get box parameters with scale applied
+  const width = (shape.parameters.width || 500) * shape.scale[0];
+  const height = (shape.parameters.height || 500) * shape.scale[1];
+  const depth = (shape.parameters.depth || 500) * shape.scale[2];
   
   const [x, y, z] = shape.position;
   
-  // Calculate 8 corner points (endpoints) - projected to Y=0
+  // Calculate 4 corner points (endpoints) - projected to Y=0 for 2D drawing
   const corners = [
-    new THREE.Vector3(x - scaledWidth/2, 0, z - scaledDepth/2), // Bottom-left-front
-    new THREE.Vector3(x + scaledWidth/2, 0, z - scaledDepth/2), // Bottom-right-front
-    new THREE.Vector3(x + scaledWidth/2, 0, z + scaledDepth/2), // Bottom-right-back
-    new THREE.Vector3(x - scaledWidth/2, 0, z + scaledDepth/2), // Bottom-left-back
+    new THREE.Vector3(x - width/2, 0, z - depth/2), // Bottom-left-front
+    new THREE.Vector3(x + width/2, 0, z - depth/2), // Bottom-right-front
+    new THREE.Vector3(x + width/2, 0, z + depth/2), // Bottom-right-back
+    new THREE.Vector3(x - width/2, 0, z + depth/2), // Bottom-left-back
   ];
   
   endpoints.push(...corners);
@@ -150,6 +148,28 @@ const getCylinderSnapPoints = (shape: Shape): { endpoints: THREE.Vector3[], midp
   return { endpoints, midpoints, center, quadrants };
 };
 
+// 🎯 NEW: Convert screen coordinates to world coordinates properly
+const screenToWorld = (
+  screenX: number, 
+  screenY: number, 
+  camera: THREE.Camera, 
+  canvas: HTMLCanvasElement
+): THREE.Vector3 => {
+  const rect = canvas.getBoundingClientRect();
+  const x = ((screenX - rect.left) / rect.width) * 2 - 1;
+  const y = -((screenY - rect.top) / rect.height) * 2 + 1;
+  
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera({ x, y }, camera);
+  
+  // Project ray to Y=0 plane for 2D drawing
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const worldPoint = new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane, worldPoint);
+  
+  return worldPoint || new THREE.Vector3(0, 0, 0);
+};
+
 export const findSnapPoints = (
   mousePoint: THREE.Vector3,
   completedShapes: CompletedShape[],
@@ -161,41 +181,25 @@ export const findSnapPoints = (
 ): SnapPoint[] => {
   const snapPoints: SnapPoint[] = [];
   
-  // 🎯 PERSPECTIVE DEBUG: Mouse point bilgilerini logla
-  console.log(`🎯 SNAP DEBUG: Mouse at [${mousePoint.x.toFixed(1)}, ${mousePoint.y.toFixed(1)}, ${mousePoint.z.toFixed(1)}], tolerance: ${tolerance}`);
+  console.log(`🎯 SNAP SEARCH: Mouse at [${mousePoint.x.toFixed(1)}, ${mousePoint.y.toFixed(1)}, ${mousePoint.z.toFixed(1)}], tolerance: ${tolerance}`);
 
-  // Endpoint snapping
+  // 🎯 ENDPOINT SNAPPING - 3D shapes with specific handling
   if (snapSettings[SnapType.ENDPOINT]) {
-    // 2D completed shapes
-    completedShapes.forEach(shape => {
-      if (!shape.points || shape.points.length === 0) return;
-
-      shape.points.forEach((point, index) => {
-        if (shape.isClosed && index === shape.points.length - 1) return;
-        
-        const distance = mousePoint.distanceTo(point);
-        if (distance <= tolerance) {
-          console.log(`🎯 ENDPOINT SNAP: 2D shape point at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
-          snapPoints.push({
-            point: point.clone(),
-            type: SnapType.ENDPOINT,
-            shapeId: shape.id,
-            distance
-          });
-        }
-      });
-    });
-
-    // 3D shapes - specific handling for each shape type
-    shapes.forEach(shape => {
+    console.log(`🔍 Checking ENDPOINT snap for ${shapes.length} 3D shapes...`);
+    
+    shapes.forEach((shape, shapeIndex) => {
+      console.log(`🔍 Shape ${shapeIndex}: ${shape.type} at [${shape.position.join(', ')}]`);
+      
       if (shape.type === 'box' || shape.type === 'rectangle2d') {
         const { endpoints } = getBoxSnapPoints(shape);
-        console.log(`🎯 BOX ENDPOINTS: Found ${endpoints.length} endpoints for shape ${shape.id}`);
-        endpoints.forEach((endpoint, index) => {
+        console.log(`📦 Box endpoints: ${endpoints.length} points`);
+        
+        endpoints.forEach((endpoint, pointIndex) => {
           const distance = mousePoint.distanceTo(endpoint);
-          console.log(`🎯 BOX ENDPOINT ${index}: [${endpoint.x.toFixed(1)}, ${endpoint.y.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
+          console.log(`   Point ${pointIndex}: [${endpoint.x.toFixed(1)}, ${endpoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
           if (distance <= tolerance) {
-            console.log(`✅ BOX ENDPOINT SNAP: Point ${index} selected`);
+            console.log(`✅ ENDPOINT SNAP: Box point ${pointIndex} selected!`);
             snapPoints.push({
               point: endpoint.clone(),
               type: SnapType.ENDPOINT,
@@ -206,12 +210,14 @@ export const findSnapPoints = (
         });
       } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
         const { endpoints } = getCylinderSnapPoints(shape);
-        console.log(`🎯 CYLINDER ENDPOINTS: Found ${endpoints.length} endpoints for shape ${shape.id}`);
-        endpoints.forEach((endpoint, index) => {
+        console.log(`🔵 Cylinder endpoints: ${endpoints.length} points`);
+        
+        endpoints.forEach((endpoint, pointIndex) => {
           const distance = mousePoint.distanceTo(endpoint);
-          console.log(`🎯 CYLINDER ENDPOINT ${index}: [${endpoint.x.toFixed(1)}, ${endpoint.y.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
+          console.log(`   Point ${pointIndex}: [${endpoint.x.toFixed(1)}, ${endpoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
           if (distance <= tolerance) {
-            console.log(`✅ CYLINDER ENDPOINT SNAP: Point ${index} selected`);
+            console.log(`✅ ENDPOINT SNAP: Cylinder point ${pointIndex} selected!`);
             snapPoints.push({
               point: endpoint.clone(),
               type: SnapType.ENDPOINT,
@@ -221,14 +227,16 @@ export const findSnapPoints = (
           }
         });
       } else {
-        // Fallback for other shape types
+        // Fallback for other shape types using outline vertices
         const vertices = getShapeVertices(shape);
-        console.log(`🎯 GENERIC VERTICES: Found ${vertices.length} vertices for shape ${shape.id} (${shape.type})`);
-        vertices.forEach((vertex, index) => {
+        console.log(`🔧 Generic shape vertices: ${vertices.length} points`);
+        
+        vertices.forEach((vertex, pointIndex) => {
           const distance = mousePoint.distanceTo(vertex);
-          console.log(`🎯 GENERIC VERTEX ${index}: [${vertex.x.toFixed(1)}, ${vertex.y.toFixed(1)}, ${vertex.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
+          console.log(`   Vertex ${pointIndex}: [${vertex.x.toFixed(1)}, ${vertex.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
           if (distance <= tolerance) {
-            console.log(`✅ GENERIC VERTEX SNAP: Point ${index} selected`);
+            console.log(`✅ ENDPOINT SNAP: Generic vertex ${pointIndex} selected!`);
             snapPoints.push({
               point: vertex.clone(),
               type: SnapType.ENDPOINT,
@@ -239,11 +247,93 @@ export const findSnapPoints = (
         });
       }
     });
+
+    // 2D completed shapes endpoints
+    completedShapes.forEach(shape => {
+      if (!shape.points || shape.points.length === 0) return;
+
+      shape.points.forEach((point, pointIndex) => {
+        if (shape.isClosed && pointIndex === shape.points.length - 1) return;
+        
+        const distance = mousePoint.distanceTo(point);
+        if (distance <= tolerance) {
+          console.log(`✅ ENDPOINT SNAP: 2D shape point ${pointIndex} selected!`);
+          snapPoints.push({
+            point: point.clone(),
+            type: SnapType.ENDPOINT,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      });
+    });
   }
 
-  // Midpoint snapping
+  // 🎯 MIDPOINT SNAPPING - 3D shapes with specific handling
   if (snapSettings[SnapType.MIDPOINT]) {
-    // 2D completed shapes
+    console.log(`🔍 Checking MIDPOINT snap for ${shapes.length} 3D shapes...`);
+    
+    shapes.forEach((shape, shapeIndex) => {
+      if (shape.type === 'box' || shape.type === 'rectangle2d') {
+        const { midpoints } = getBoxSnapPoints(shape);
+        console.log(`📦 Box midpoints: ${midpoints.length} points`);
+        
+        midpoints.forEach((midpoint, pointIndex) => {
+          const distance = mousePoint.distanceTo(midpoint);
+          console.log(`   Midpoint ${pointIndex}: [${midpoint.x.toFixed(1)}, ${midpoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
+          if (distance <= tolerance) {
+            console.log(`✅ MIDPOINT SNAP: Box midpoint ${pointIndex} selected!`);
+            snapPoints.push({
+              point: midpoint.clone(),
+              type: SnapType.MIDPOINT,
+              shapeId: shape.id,
+              distance
+            });
+          }
+        });
+      } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+        const { midpoints } = getCylinderSnapPoints(shape);
+        console.log(`🔵 Cylinder midpoints: ${midpoints.length} points`);
+        
+        midpoints.forEach((midpoint, pointIndex) => {
+          const distance = mousePoint.distanceTo(midpoint);
+          console.log(`   Midpoint ${pointIndex}: [${midpoint.x.toFixed(1)}, ${midpoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
+          if (distance <= tolerance) {
+            console.log(`✅ MIDPOINT SNAP: Cylinder midpoint ${pointIndex} selected!`);
+            snapPoints.push({
+              point: midpoint.clone(),
+              type: SnapType.MIDPOINT,
+              shapeId: shape.id,
+              distance
+            });
+          }
+        });
+      } else {
+        // Fallback for other shape types using edge midpoints
+        const edges = getShapeEdges(shape);
+        console.log(`🔧 Generic shape edges: ${edges.length} edges`);
+        
+        edges.forEach((edge, edgeIndex) => {
+          const midpoint = new THREE.Vector3().addVectors(edge.start, edge.end).multiplyScalar(0.5);
+          const distance = mousePoint.distanceTo(midpoint);
+          console.log(`   Edge ${edgeIndex} midpoint: [${midpoint.x.toFixed(1)}, ${midpoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
+          if (distance <= tolerance) {
+            console.log(`✅ MIDPOINT SNAP: Generic edge midpoint ${edgeIndex} selected!`);
+            snapPoints.push({
+              point: midpoint,
+              type: SnapType.MIDPOINT,
+              shapeId: shape.id,
+              distance
+            });
+          }
+        });
+      }
+    });
+
+    // 2D completed shapes midpoints
     completedShapes.forEach(shape => {
       for (let i = 0; i < shape.points.length - 1; i++) {
         if (shape.isClosed && i === shape.points.length - 2) continue;
@@ -263,57 +353,61 @@ export const findSnapPoints = (
         }
       }
     });
-
-    // 3D shapes - specific handling for each shape type
-    shapes.forEach(shape => {
-      if (shape.type === 'box' || shape.type === 'rectangle2d') {
-        const { midpoints } = getBoxSnapPoints(shape);
-        midpoints.forEach(midpoint => {
-          const distance = mousePoint.distanceTo(midpoint);
-          if (distance <= tolerance) {
-            snapPoints.push({
-              point: midpoint.clone(),
-              type: SnapType.MIDPOINT,
-              shapeId: shape.id,
-              distance
-            });
-          }
-        });
-      } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-        const { midpoints } = getCylinderSnapPoints(shape);
-        midpoints.forEach(midpoint => {
-          const distance = mousePoint.distanceTo(midpoint);
-          if (distance <= tolerance) {
-            snapPoints.push({
-              point: midpoint.clone(),
-              type: SnapType.MIDPOINT,
-              shapeId: shape.id,
-              distance
-            });
-          }
-        });
-      } else {
-        // Fallback for other shape types
-        const edges = getShapeEdges(shape);
-        edges.forEach(edge => {
-          const midpoint = new THREE.Vector3().addVectors(edge.start, edge.end).multiplyScalar(0.5);
-          const distance = mousePoint.distanceTo(midpoint);
-          if (distance <= tolerance) {
-            snapPoints.push({
-              point: midpoint,
-              type: SnapType.MIDPOINT,
-              shapeId: shape.id,
-              distance
-            });
-          }
-        });
-      }
-    });
   }
 
-  // Center snapping
+  // 🎯 CENTER SNAPPING - 3D shapes with specific handling
   if (snapSettings[SnapType.CENTER]) {
-    // 2D completed shapes
+    console.log(`🔍 Checking CENTER snap for ${shapes.length} 3D shapes...`);
+    
+    shapes.forEach((shape, shapeIndex) => {
+      if (shape.type === 'box' || shape.type === 'rectangle2d') {
+        const { center } = getBoxSnapPoints(shape);
+        const distance = mousePoint.distanceTo(center);
+        console.log(`📦 Box center: [${center.x.toFixed(1)}, ${center.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+        
+        if (distance <= tolerance) {
+          console.log(`✅ CENTER SNAP: Box center selected!`);
+          snapPoints.push({
+            point: center.clone(),
+            type: SnapType.CENTER,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+        const { center } = getCylinderSnapPoints(shape);
+        const distance = mousePoint.distanceTo(center);
+        console.log(`🔵 Cylinder center: [${center.x.toFixed(1)}, ${center.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+        
+        if (distance <= tolerance) {
+          console.log(`✅ CENTER SNAP: Cylinder center selected!`);
+          snapPoints.push({
+            point: center.clone(),
+            type: SnapType.CENTER,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      } else {
+        // Fallback for other shape types
+        const shapeCenter = new THREE.Vector3(...shape.position);
+        shapeCenter.y = 0;
+        const distance = mousePoint.distanceTo(shapeCenter);
+        console.log(`🔧 Generic shape center: [${shapeCenter.x.toFixed(1)}, ${shapeCenter.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+        
+        if (distance <= tolerance) {
+          console.log(`✅ CENTER SNAP: Generic center selected!`);
+          snapPoints.push({
+            point: shapeCenter,
+            type: SnapType.CENTER,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      }
+    });
+
+    // 2D completed shapes centers
     completedShapes.forEach(shape => {
       if (shape.type === 'circle' && shape.points.length >= 2) {
         const center = shape.points[0];
@@ -343,51 +437,31 @@ export const findSnapPoints = (
         }
       }
     });
-
-    // 3D shapes - specific handling for each shape type
-    shapes.forEach(shape => {
-      if (shape.type === 'box' || shape.type === 'rectangle2d') {
-        const { center } = getBoxSnapPoints(shape);
-        const distance = mousePoint.distanceTo(center);
-        if (distance <= tolerance) {
-          snapPoints.push({
-            point: center.clone(),
-            type: SnapType.CENTER,
-            shapeId: shape.id,
-            distance
-          });
-        }
-      } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-        const { center } = getCylinderSnapPoints(shape);
-        const distance = mousePoint.distanceTo(center);
-        if (distance <= tolerance) {
-          snapPoints.push({
-            point: center.clone(),
-            type: SnapType.CENTER,
-            shapeId: shape.id,
-            distance
-          });
-        }
-      } else {
-        // Fallback for other shape types
-        const shapeCenter = new THREE.Vector3(...shape.position);
-        shapeCenter.y = 0;
-        const distance = mousePoint.distanceTo(shapeCenter);
-        if (distance <= tolerance) {
-          snapPoints.push({
-            point: shapeCenter,
-            type: SnapType.CENTER,
-            shapeId: shape.id,
-            distance
-          });
-        }
-      }
-    });
   }
 
-  // Quadrant snapping
+  // 🎯 QUADRANT SNAPPING - Only for circular shapes
   if (snapSettings[SnapType.QUADRANT]) {
-    // 2D completed shapes
+    shapes.forEach(shape => {
+      if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+        const { quadrants } = getCylinderSnapPoints(shape);
+        quadrants.forEach((quadPoint, pointIndex) => {
+          const distance = mousePoint.distanceTo(quadPoint);
+          console.log(`🔵 Cylinder quadrant ${pointIndex}: [${quadPoint.x.toFixed(1)}, ${quadPoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+          
+          if (distance <= tolerance) {
+            console.log(`✅ QUADRANT SNAP: Cylinder quadrant ${pointIndex} selected!`);
+            snapPoints.push({
+              point: quadPoint,
+              type: SnapType.QUADRANT,
+              shapeId: shape.id,
+              distance
+            });
+          }
+        });
+      }
+    });
+
+    // 2D completed shapes quadrants
     completedShapes.forEach(shape => {
       if (shape.type === 'circle' && shape.points.length >= 2) {
         const center = shape.points[0];
@@ -413,28 +487,62 @@ export const findSnapPoints = (
         });
       }
     });
+  }
 
-    // 3D shapes quadrants (for cylinders and circular shapes)
-    shapes.forEach(shape => {
-      if (shape.type === 'cylinder' || shape.type === 'circle2d') {
-        const { quadrants } = getCylinderSnapPoints(shape);
-        quadrants.forEach(quadPoint => {
-          const distance = mousePoint.distanceTo(quadPoint);
-          if (distance <= tolerance) {
-            snapPoints.push({
-              point: quadPoint,
-              type: SnapType.QUADRANT,
-              shapeId: shape.id,
-              distance
-            });
-          }
-        });
+  // 🎯 NEAREST POINT SNAPPING - On edges/lines
+  if (snapSettings[SnapType.NEAREST]) {
+    console.log(`🔍 Checking NEAREST snap for ${shapes.length} 3D shapes...`);
+    
+    // 3D shape edges
+    shapes.forEach((shape, shapeIndex) => {
+      const edges = getShapeEdges(shape);
+      console.log(`🔧 Shape ${shapeIndex} edges: ${edges.length} edges`);
+      
+      edges.forEach((edge, edgeIndex) => {
+        const closestPoint = new THREE.Vector3();
+        edge.closestPointToPoint(mousePoint, true, closestPoint);
+        
+        const distance = mousePoint.distanceTo(closestPoint);
+        console.log(`   Edge ${edgeIndex}: closest point [${closestPoint.x.toFixed(1)}, ${closestPoint.z.toFixed(1)}] - distance: ${distance.toFixed(1)}`);
+        
+        if (distance <= tolerance) {
+          console.log(`✅ NEAREST SNAP: Edge ${edgeIndex} closest point selected!`);
+          snapPoints.push({
+            point: closestPoint,
+            type: SnapType.NEAREST,
+            shapeId: shape.id,
+            distance
+          });
+        }
+      });
+    });
+
+    // 2D completed shapes
+    completedShapes.forEach(shape => {
+      for (let i = 0; i < shape.points.length - 1; i++) {
+        const lineStart = shape.points[i];
+        const lineEnd = shape.points[i + 1];
+        const line = new THREE.Line3(lineStart, lineEnd);
+        const closestPoint = new THREE.Vector3();
+        line.closestPointToPoint(mousePoint, true, closestPoint);
+        
+        const distance = mousePoint.distanceTo(closestPoint);
+        if (distance <= tolerance) {
+          snapPoints.push({
+            point: closestPoint,
+            type: SnapType.NEAREST,
+            shapeId: shape.id,
+            distance
+          });
+        }
       }
     });
   }
 
-  // Intersection snapping
+  // 🎯 INTERSECTION SNAPPING
   if (snapSettings[SnapType.INTERSECTION]) {
+    console.log(`🔍 Checking INTERSECTION snap...`);
+    
     // 2D shape intersections
     for (let i = 0; i < completedShapes.length; i++) {
       for (let j = i + 1; j < completedShapes.length; j++) {
@@ -488,6 +596,7 @@ export const findSnapPoints = (
         if (intersection) {
           const distance = mousePoint.distanceTo(intersection);
           if (distance <= tolerance) {
+            console.log(`✅ INTERSECTION SNAP: 3D edge intersection selected!`);
             snapPoints.push({
               point: intersection,
               type: SnapType.INTERSECTION,
@@ -526,7 +635,7 @@ export const findSnapPoints = (
     });
   }
 
-  // Perpendicular snapping
+  // 🎯 PERPENDICULAR SNAPPING
   if (snapSettings[SnapType.PERPENDICULAR] && currentPoint && currentDirection) {
     // 2D completed shapes
     completedShapes.forEach(shape => {
@@ -579,48 +688,13 @@ export const findSnapPoints = (
     });
   }
 
-  // Nearest point snapping
-  if (snapSettings[SnapType.NEAREST]) {
-    // 2D completed shapes
-    completedShapes.forEach(shape => {
-      for (let i = 0; i < shape.points.length - 1; i++) {
-        const lineStart = shape.points[i];
-        const lineEnd = shape.points[i + 1];
-        const line = new THREE.Line3(lineStart, lineEnd);
-        const closestPoint = new THREE.Vector3();
-        line.closestPointToPoint(mousePoint, true, closestPoint);
-        
-        const distance = mousePoint.distanceTo(closestPoint);
-        if (distance <= tolerance) {
-          snapPoints.push({
-            point: closestPoint,
-            type: SnapType.NEAREST,
-            shapeId: shape.id,
-            distance
-          });
-        }
-      }
-    });
-
-    // 3D shape edges
-    shapes.forEach(shape => {
-      const edges = getShapeEdges(shape);
-      edges.forEach(edge => {
-        const closestPoint = new THREE.Vector3();
-        edge.closestPointToPoint(mousePoint, true, closestPoint);
-        
-        const distance = mousePoint.distanceTo(closestPoint);
-        if (distance <= tolerance) {
-          snapPoints.push({
-            point: closestPoint,
-            type: SnapType.NEAREST,
-            shapeId: shape.id,
-            distance
-          });
-        }
-      });
-    });
+  const finalSnapPoints = snapPoints.sort((a, b) => a.distance - b.distance);
+  
+  if (finalSnapPoints.length > 0) {
+    console.log(`🎯 SNAP RESULT: Found ${finalSnapPoints.length} snap points, closest: ${finalSnapPoints[0].type} at distance ${finalSnapPoints[0].distance.toFixed(1)}`);
+  } else {
+    console.log(`🎯 SNAP RESULT: No snap points found within tolerance ${tolerance}`);
   }
 
-  return snapPoints.sort((a, b) => a.distance - b.distance);
+  return finalSnapPoints;
 };

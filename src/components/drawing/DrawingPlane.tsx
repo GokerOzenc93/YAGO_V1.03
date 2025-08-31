@@ -110,43 +110,51 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera({ x, y }, camera);
-    const intersects = raycaster.intersectObject(planeRef.current);
-
-    if (intersects.length > 0) {
-      let point = intersects[0].point;
-      
-      // 🎯 PERSPECTIVE CAMERA FIX: Mouse pozisyonunu world space'e dönüştür
-      const mouseWorldPoint = new THREE.Vector3();
-      raycaster.ray.at(intersects[0].distance, mouseWorldPoint);
-      
-      const snapPoints = findSnapPoints(
-        mouseWorldPoint, // Mouse'un world space pozisyonunu kullan
-        completedShapes, 
-        shapes, 
-        snapSettings, 
-        snapTolerance * 2, // Perspektif için tolerance'ı artır
-        drawingState.currentPoint,
-        drawingState.currentDirection
-      );
-      
-      if (snapPoints.length > 0) {
-        const closestSnap = snapPoints[0];
-        updateDrawingState({ snapPoint: closestSnap });
-        point = closestSnap.point;
-        console.log(`Snapped to ${closestSnap.type} at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}]`);
-      } else {
-        updateDrawingState({ snapPoint: null });
-        point = new THREE.Vector3(
-          snapToGrid(point.x, gridSize),
-          0,
-          snapToGrid(point.z, gridSize)
-        );
-      }
-      
-      return point;
+    
+    // 🎯 ROBUST WORLD COORDINATE CALCULATION
+    // Ray'i Y=0 düzlemiyle kesiştirir (2D çizim için)
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const worldPoint = new THREE.Vector3();
+    const intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    
+    if (!intersectionSuccess) {
+      console.warn('🎯 Ray plane intersection failed');
+      return null;
     }
-
-    return null;
+    
+    console.log(`🎯 WORLD POINT: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
+    
+    // 🎯 SNAP DETECTION with increased tolerance for perspective
+    const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 3 : 1);
+    
+    const snapPoints = findSnapPoints(
+      worldPoint,
+      completedShapes, 
+      shapes, 
+      snapSettings, 
+      perspectiveTolerance,
+      drawingState.currentPoint,
+      drawingState.currentDirection
+    );
+    
+    let finalPoint: THREE.Vector3;
+    
+    if (snapPoints.length > 0) {
+      const closestSnap = snapPoints[0];
+      updateDrawingState({ snapPoint: closestSnap });
+      finalPoint = closestSnap.point;
+      console.log(`✅ SNAPPED to ${closestSnap.type} at [${finalPoint.x.toFixed(1)}, ${finalPoint.z.toFixed(1)}] (distance: ${closestSnap.distance.toFixed(1)})`);
+    } else {
+      updateDrawingState({ snapPoint: null });
+      finalPoint = new THREE.Vector3(
+        snapToGrid(worldPoint.x, gridSize),
+        0,
+        snapToGrid(worldPoint.z, gridSize)
+      );
+      console.log(`🎯 GRID SNAP: [${finalPoint.x.toFixed(1)}, ${finalPoint.z.toFixed(1)}]`);
+    }
+    
+    return finalPoint;
   };
 
   const updatePolylinePoint = (shapeId: string, pointIndex: number, newPosition: THREE.Vector3) => {
