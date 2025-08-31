@@ -32,6 +32,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   const handlePointToPointMove = () => {
     // Point to Point Move modunu başlat
     setActiveTool(Tool.POINT_TO_POINT_MOVE);
+    
+    // Auto snap'i etkinleştir
+    const { enableAutoSnap } = useAppStore.getState();
+    enableAutoSnap(Tool.POINT_TO_POINT_MOVE);
+    
     setPointToPointMoveState({
       isActive: true,
       selectedShapeId: shapeId,

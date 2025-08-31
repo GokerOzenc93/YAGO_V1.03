@@ -51,7 +51,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     pointToPointMoveState,
     setPointToPointMoveState,
     resetPointToPointMove,
-    updateShape
+    updateShape,
+    enableAutoSnap,
+    disableAutoSnap
   } = useAppStore();
   
   // Drawing state
@@ -88,6 +90,15 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
 
   // Reset drawing state when tool changes
   useEffect(() => {
+    // Auto snap kontrolü
+    if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
+      enableAutoSnap(activeTool);
+    } else if (activeTool === Tool.POINT_TO_POINT_MOVE) {
+      enableAutoSnap(activeTool);
+    } else {
+      disableAutoSnap();
+    }
+    
     if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
       

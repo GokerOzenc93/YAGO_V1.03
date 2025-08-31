@@ -129,6 +129,11 @@ interface AppState {
   setSnapTolerance: (tolerance: number) => void;
   editingPolylineId: string | null;
   setEditingPolylineId: (id: string | null) => void;
+  // Auto snap management
+  autoSnapEnabled: boolean;
+  setAutoSnapEnabled: (enabled: boolean) => void;
+  enableAutoSnap: (tool: Tool) => void;
+  disableAutoSnap: () => void;
   // Point to Point Move state
   pointToPointMoveState: {
     isActive: boolean;
@@ -282,6 +287,64 @@ export const useAppStore = create<AppState>((set, get) => ({
   snapTolerance: 25, // Default snap tolerance in pixels
   
   // Point to Point Move state
+  // Auto snap management
+  autoSnapEnabled: false,
+  setAutoSnapEnabled: (enabled) => set({ autoSnapEnabled: enabled }),
+  
+  enableAutoSnap: (tool) => {
+    const state = get();
+    
+    // Önce tüm snap'leri kapat
+    const allDisabled = Object.keys(state.snapSettings).reduce((acc, key) => {
+      acc[key as SnapType] = false;
+      return acc;
+    }, {} as SnapSettings);
+    
+    let newSnapSettings = { ...allDisabled };
+    
+    // Tool'a göre gerekli snap'leri aç
+    if (tool === Tool.POLYLINE || tool === Tool.POLYGON) {
+      newSnapSettings = {
+        ...allDisabled,
+        [SnapType.ENDPOINT]: true,
+        [SnapType.MIDPOINT]: true,
+        [SnapType.CENTER]: true,
+        [SnapType.INTERSECTION]: true,
+        [SnapType.NEAREST]: true,
+      };
+      console.log('🎯 Auto snap enabled for polyline/polygon drawing');
+    } else if (tool === Tool.POINT_TO_POINT_MOVE) {
+      newSnapSettings = {
+        ...allDisabled,
+        [SnapType.ENDPOINT]: true,
+        [SnapType.MIDPOINT]: true,
+      };
+      console.log('🎯 Auto snap enabled for point to point move (endpoint + midpoint)');
+    }
+    
+    set({ 
+      snapSettings: newSnapSettings,
+      autoSnapEnabled: true 
+    });
+  },
+  
+  disableAutoSnap: () => {
+    const state = get();
+    
+    // Tüm snap'leri kapat
+    const allDisabled = Object.keys(state.snapSettings).reduce((acc, key) => {
+      acc[key as SnapType] = false;
+      return acc;
+    }, {} as SnapSettings);
+    
+    set({ 
+      snapSettings: allDisabled,
+      autoSnapEnabled: false 
+    });
+    
+    console.log('🎯 Auto snap disabled - all snaps turned off');
+  },
+  
   pointToPointMoveState: {
     isActive: false,
     sourcePoint: null,
