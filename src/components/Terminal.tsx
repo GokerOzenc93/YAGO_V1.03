@@ -83,21 +83,24 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
-    // Check if it's a measurement input (number)
-    const numericValue = parseFloat(trimmedCommand);
-    if (!isNaN(numericValue)) {
+    // Check if it's a measurement input (number or "number,number" format)
+    if (/^[\d.,\s]+$/.test(trimmedCommand)) {
       // Handle measurement input
       if ((window as any).handlePolylineMeasurement) {
-        (window as any).handlePolylineMeasurement(numericValue);
+        (window as any).handlePolylineMeasurement(trimmedCommand);
         setCommandInput('');
         return;
       }
       
+      // Fallback: sadece sayı ise extrude height olarak işle
+      const numericValue = parseFloat(trimmedCommand);
+      if (!isNaN(numericValue)) {
       // Handle extrude height input
-      if ((window as any).handleExtrudeHeight) {
-        (window as any).handleExtrudeHeight(numericValue);
-        setCommandInput('');
-        return;
+        if ((window as any).handleExtrudeHeight) {
+          (window as any).handleExtrudeHeight(numericValue);
+          setCommandInput('');
+          return;
+        }
       }
     }
 

@@ -178,13 +178,57 @@ const focusTerminalForMeasurement = () => {
 };
 
   // Handle measurement input from terminal
-  const handleMeasurementInput = (distance: number) => {
+  const handleMeasurementInput = (input: string | number) => {
     if (!drawingState.currentPoint || !drawingState.currentDirection || !drawingState.isDrawing || ![Tool.POLYLINE, Tool.POLYGON].includes(activeTool)) {
       console.log('🎯 Cannot apply measurement: missing context');
       return;
     }
 
-    const newPoint = drawingState.currentPoint.clone().add(drawingState.currentDirection.clone().multiplyScalar(distance));
+    let distance: number;
+    let angle: number | null = null;
+    
+    if (typeof input === 'string' && input.includes(',')) {
+      // Format: "uzunluk,açı" (örn: "100,45")
+      const parts = input.split(',').map(s => s.trim());
+      distance = parseFloat(parts[0]);
+      if (parts[1] && parts[1] !== '') {
+        angle = parseFloat(parts[1]);
+      }
+    } else {
+      // Sadece uzunluk
+      distance = typeof input === 'string' ? parseFloat(input) : input;
+    }
+    
+    if (isNaN(distance) || distance <= 0) {
+      console.log('🎯 Invalid distance value');
+      return;
+    }
+    
+    let direction = drawingState.currentDirection.clone();
+    
+    // Eğer açı belirtildiyse, yönü açıya göre ayarla
+    if (angle !== null && !isNaN(angle)) {
+      // Açıyı radyana çevir
+      const angleRad = THREE.MathUtils.degToRad(angle);
+      
+      // İlk çizgi için X ekseninden açı hesapla
+      if (drawingState.points.length === 1) {
+        direction = new THREE.Vector3(Math.cos(angleRad), 0, Math.sin(angleRad));
+      } else {
+        // Sonraki çizgiler için önceki segmente göre açı hesapla
+        const lastPoint = drawingState.points[drawingState.points.length - 1];
+        const secondLastPoint = drawingState.points[drawingState.points.length - 2];
+        const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
+        
+        // Önceki yönden belirtilen açı kadar döndür
+        const rotationMatrix = new THREE.Matrix4().makeRotationY(angleRad);
+        direction = previousDirection.clone().applyMatrix4(rotationMatrix);
+      }
+      
+      console.log(`🎯 Direction set by angle: ${angle}°`);
+    }
+    
+    const newPoint = drawingState.currentPoint.clone().add(direction.multiplyScalar(distance));
     
     newPoint.x = snapToGrid(newPoint.x, gridSize);
     newPoint.z = snapToGrid(newPoint.z, gridSize);
@@ -196,7 +240,8 @@ const focusTerminalForMeasurement = () => {
       measurementApplied: true
     });
     
-    console.log(`🎯 ${activeTool} segment added via TERMINAL: ${distance.toFixed(1)}mm`);
+    const angleText = angle !== null ? ` at ${angle}°` : '';
+    console.log(`🎯 ${activeTool} segment added via TERMINAL: ${distance.toFixed(1)}mm${angleText}`);
   };
 
   // Handle extrude height input from terminal
@@ -722,18 +767,27 @@ const focusTerminalForMeasurement = () => {
       {/* Ölçü bilgilerini terminal üstündeki durum çubuğuna gönder */}
       {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && 
        drawingState.isDrawing && 
-       drawingState.currentPoint && 
        drawingState.previewPoint && 
-       drawingState.currentDirection && drawingState.points.length > 0 && 
+       drawingState.points.length > 0 && 
        (() => {
-         const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+         // İlk nokta için başlangıç noktasından, sonrakiler için son noktadan mesafe hesapla
+         const startPoint = drawingState.currentPoint || drawingState.points[drawingState.points.length - 1];
+         const distance = startPoint.distanceTo(drawingState.previewPoint);
          
-         // Açı hesaplama - önceki segment ile mevcut segment arasındaki açı
+         // Açı hesaplama
          let angle: number | undefined;
-         if (drawingState.points.length >= 2) {
+         
+         if (drawingState.points.length === 1) {
+           // İlk çizgi için X ekseninden açı
+           const direction = drawingState.previewPoint.clone().sub(startPoint).normalize();
+           angle = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
+           // 0-360 derece arasında göster
+           if (angle < 0) angle += 360;
+         } else if (drawingState.points.length >= 2) {
+           // Sonraki çizgiler için önceki segment ile mevcut segment arasındaki açı
            const lastPoint = drawingState.points[drawingState.points.length - 1];
            const secondLastPoint = drawingState.points[drawingState.points.length - 2];
-           const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
+           const currentDirection = drawingState.previewPoint.clone().sub(startPoint).normalize();
            const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
            
            // İki vektör arasındaki açıyı hesapla
