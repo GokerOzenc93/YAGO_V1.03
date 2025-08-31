@@ -18,12 +18,6 @@ const Terminal: React.FC = () => {
         return;
       }
       
-      // Çizim araçları ve kamera kısayollarını hariç tut
-      const drawingToolKeys = ['t', 'f', 'r', 'l', 'b', 'u', 'i', 'c', 'h', 'v', 'z', '1', '2', '3'];
-      if (drawingToolKeys.includes(e.key.toLowerCase())) {
-        return; // Bu tuşları terminale yönlendirme
-      }
-      
       // Özel tuşları ve mouse event'lerini hariç tut (Ctrl, Alt, F1-F12, Arrow keys, etc.)
       if (e.ctrlKey || e.altKey || e.metaKey || 
           e.key.startsWith('F') || 
