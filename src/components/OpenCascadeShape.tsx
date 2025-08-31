@@ -248,13 +248,13 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 2D şekiller için hafif görünürlük (gizmo etkileşimi için)
-    if (shape.is2DShape) {
-      return isSelected ? 0.1 : 0.05; // Seçiliyken biraz daha görünür
+    // 🎯 TÜM ŞEKILLER ŞEFFAF - Seçiliyken daha görünür
+    if (isSelected || isBeingEdited) {
+      return 0.4; // Seçili şekiller daha görünür
     }
     
-    // 3D şekiller için normal görünürlük
-    return 1.0;
+    // Tüm şekiller şeffaf
+    return 0.2;
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
