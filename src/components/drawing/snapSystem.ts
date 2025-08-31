@@ -5,7 +5,6 @@ import { Shape } from '../../types/shapes';
 import { findLineIntersection } from './utils';
 import { Billboard } from '@react-three/drei';
 import * as React from 'react';
-import * as THREE from 'three';
 
 // Helper function to get all vertices from 3D shape geometry with proper transforms
 const getShapeVertices = (shape: Shape): THREE.Vector3[] => {
