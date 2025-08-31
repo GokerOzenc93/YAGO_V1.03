@@ -739,7 +739,7 @@ const focusTerminalForMeasurement = () => {
           <Text
             position={[
               drawingState.currentPoint.x + 200, 
-              150, 
+             50, 
               drawingState.currentPoint.z + 1
             ]}
             fontSize={60}
@@ -795,7 +795,7 @@ const focusTerminalForMeasurement = () => {
             />
           </mesh>
           <Text
-            position={[drawingState.snapPoint.point.x, 100, drawingState.snapPoint.point.z + 1]}
+           position={[drawingState.snapPoint.point.x, 30, drawingState.snapPoint.point.z + 1]}
             fontSize={40}
             color="#ffffff"
             anchorX="center"
