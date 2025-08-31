@@ -847,20 +847,55 @@ const focusTerminalForMeasurement = () => {
       {/* Snap Point Indicator */}
       {drawingState.snapPoint && (
         <group>
-          <mesh position={drawingState.snapPoint.point}>
-            <sphereGeometry args={[gridSize / 8]} />
-            <meshBasicMaterial 
-              color={
-                drawingState.snapPoint.type === SnapType.ENDPOINT ? "#ff6b6b" :
-                drawingState.snapPoint.type === SnapType.MIDPOINT ? "#4ecdc4" :
-                drawingState.snapPoint.type === SnapType.CENTER ? "#45b7d1" :
-                drawingState.snapPoint.type === SnapType.QUADRANT ? "#f9ca24" :
-                drawingState.snapPoint.type === SnapType.PERPENDICULAR ? "#6c5ce7" :
-                drawingState.snapPoint.type === SnapType.INTERSECTION ? "#fd79a8" :
-                "#00b894"
-              }
-            />
-          </mesh>
+          {/* Endpoint - İçi boş mavi kutucuk */}
+          {drawingState.snapPoint.type === SnapType.ENDPOINT && (
+            <mesh position={drawingState.snapPoint.point}>
+              <boxGeometry args={[30, 30, 30]} />
+              <meshBasicMaterial 
+                color="#2563eb"
+                transparent
+                opacity={0.3}
+                wireframe={false}
+              />
+              {/* İçi boş efekti için wireframe overlay */}
+              <lineSegments>
+                <edgesGeometry args={[new THREE.BoxGeometry(30, 30, 30)]} />
+                <lineBasicMaterial color="#2563eb" linewidth={3} />
+              </lineSegments>
+            </mesh>
+          )}
+          
+          {/* Midpoint - Üçgen şekil */}
+          {drawingState.snapPoint.type === SnapType.MIDPOINT && (
+            <mesh position={drawingState.snapPoint.point} rotation={[0, 0, 0]}>
+              <coneGeometry args={[20, 35, 3]} />
+              <meshBasicMaterial color="#10b981" />
+            </mesh>
+          )}
+          
+          {/* Center - Yuvarlak şekil */}
+          {drawingState.snapPoint.type === SnapType.CENTER && (
+            <mesh position={drawingState.snapPoint.point}>
+              <sphereGeometry args={[18]} />
+              <meshBasicMaterial color="#f59e0b" />
+            </mesh>
+          )}
+          
+          {/* Diğer snap türleri için varsayılan şekiller */}
+          {![SnapType.ENDPOINT, SnapType.MIDPOINT, SnapType.CENTER].includes(drawingState.snapPoint.type) && (
+            <mesh position={drawingState.snapPoint.point}>
+              <sphereGeometry args={[15]} />
+              <meshBasicMaterial 
+                color={
+                  drawingState.snapPoint.type === SnapType.QUADRANT ? "#f9ca24" :
+                  drawingState.snapPoint.type === SnapType.PERPENDICULAR ? "#6c5ce7" :
+                  drawingState.snapPoint.type === SnapType.INTERSECTION ? "#fd79a8" :
+                  "#00b894"
+                }
+              />
+            </mesh>
+          )}
+          
           <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
             <mesh position={[drawingState.snapPoint.point.x, drawingState.snapPoint.point.y + gridSize, drawingState.snapPoint.point.z]}>
               <planeGeometry args={[gridSize * 2, gridSize * 0.6]} />
