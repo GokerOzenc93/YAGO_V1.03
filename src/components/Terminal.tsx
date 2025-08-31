@@ -18,15 +18,20 @@ const Terminal: React.FC = () => {
         return;
       }
       
-      // Özel tuşları hariç tut (Ctrl, Alt, F1-F12, Arrow keys, etc.)
+      // Özel tuşları ve mouse event'lerini hariç tut (Ctrl, Alt, F1-F12, Arrow keys, etc.)
       if (e.ctrlKey || e.altKey || e.metaKey || 
           e.key.startsWith('F') || 
-          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape'].includes(e.key)) {
+          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape', 'Shift', 'CapsLock', 'Insert', 'Delete', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
         return;
       }
       
-      // Sayılar, harfler, nokta, virgül, +, -, *, /, parantez ve boşluk karakterlerini yakala
-      if (/^[a-zA-Z0-9\.\,\+\-\*\/\(\)\s]$/.test(e.key) || e.key === 'Backspace') {
+      // Mouse button'larını ve diğer özel karakterleri hariç tut
+      if (e.key.length > 1 && !['Backspace', 'Enter', 'Space'].includes(e.key)) {
+        return;
+      }
+      
+      // Sadece gerçek klavye karakterlerini yakala (sayılar, harfler, nokta, virgül, +, -, *, /, parantez, boşluk)
+      if (/^[a-zA-Z0-9\.\,\+\-\*\/\(\)]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Space') {
         e.preventDefault();
         
         // Terminal input'a odaklan
@@ -36,6 +41,9 @@ const Terminal: React.FC = () => {
           // Backspace ise son karakteri sil
           if (e.key === 'Backspace') {
             setCommandInput(prev => prev.slice(0, -1));
+          } else if (e.key === 'Space') {
+            // Space tuşu için boşluk ekle
+            setCommandInput(prev => prev + ' ');
           } else {
             // Karakteri ekle
             setCommandInput(prev => prev + e.key);
