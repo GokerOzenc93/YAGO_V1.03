@@ -115,12 +115,16 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     if (intersects.length > 0) {
       let point = intersects[0].point;
       
+      // 🎯 PERSPECTIVE CAMERA FIX: Mouse pozisyonunu world space'e dönüştür
+      const mouseWorldPoint = new THREE.Vector3();
+      raycaster.ray.at(intersects[0].distance, mouseWorldPoint);
+      
       const snapPoints = findSnapPoints(
-        point, 
+        mouseWorldPoint, // Mouse'un world space pozisyonunu kullan
         completedShapes, 
         shapes, 
         snapSettings, 
-        snapTolerance,
+        snapTolerance * 2, // Perspektif için tolerance'ı artır
         drawingState.currentPoint,
         drawingState.currentDirection
       );

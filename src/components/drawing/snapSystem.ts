@@ -160,6 +160,9 @@ export const findSnapPoints = (
   currentDirection?: THREE.Vector3 | null
 ): SnapPoint[] => {
   const snapPoints: SnapPoint[] = [];
+  
+  // 🎯 PERSPECTIVE DEBUG: Mouse point bilgilerini logla
+  console.log(`🎯 SNAP DEBUG: Mouse at [${mousePoint.x.toFixed(1)}, ${mousePoint.y.toFixed(1)}, ${mousePoint.z.toFixed(1)}], tolerance: ${tolerance}`);
 
   // Endpoint snapping
   if (snapSettings[SnapType.ENDPOINT]) {
@@ -172,6 +175,7 @@ export const findSnapPoints = (
         
         const distance = mousePoint.distanceTo(point);
         if (distance <= tolerance) {
+          console.log(`🎯 ENDPOINT SNAP: 2D shape point at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           snapPoints.push({
             point: point.clone(),
             type: SnapType.ENDPOINT,
@@ -186,9 +190,12 @@ export const findSnapPoints = (
     shapes.forEach(shape => {
       if (shape.type === 'box' || shape.type === 'rectangle2d') {
         const { endpoints } = getBoxSnapPoints(shape);
+        console.log(`🎯 BOX ENDPOINTS: Found ${endpoints.length} endpoints for shape ${shape.id}`);
         endpoints.forEach(endpoint => {
           const distance = mousePoint.distanceTo(endpoint);
+          console.log(`🎯 BOX ENDPOINT ${index}: [${endpoint.x.toFixed(1)}, ${endpoint.y.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
+            console.log(`✅ BOX ENDPOINT SNAP: Point ${index} selected`);
             snapPoints.push({
               point: endpoint.clone(),
               type: SnapType.ENDPOINT,
@@ -199,9 +206,12 @@ export const findSnapPoints = (
         });
       } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
         const { endpoints } = getCylinderSnapPoints(shape);
+        console.log(`🎯 CYLINDER ENDPOINTS: Found ${endpoints.length} endpoints for shape ${shape.id}`);
         endpoints.forEach(endpoint => {
           const distance = mousePoint.distanceTo(endpoint);
+          console.log(`🎯 CYLINDER ENDPOINT ${index}: [${endpoint.x.toFixed(1)}, ${endpoint.y.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
+            console.log(`✅ CYLINDER ENDPOINT SNAP: Point ${index} selected`);
             snapPoints.push({
               point: endpoint.clone(),
               type: SnapType.ENDPOINT,
@@ -213,9 +223,12 @@ export const findSnapPoints = (
       } else {
         // Fallback for other shape types
         const vertices = getShapeVertices(shape);
+        console.log(`🎯 GENERIC VERTICES: Found ${vertices.length} vertices for shape ${shape.id} (${shape.type})`);
         vertices.forEach(vertex => {
           const distance = mousePoint.distanceTo(vertex);
+          console.log(`🎯 GENERIC VERTEX ${index}: [${vertex.x.toFixed(1)}, ${vertex.y.toFixed(1)}, ${vertex.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
+            console.log(`✅ GENERIC VERTEX SNAP: Point ${index} selected`);
             snapPoints.push({
               point: vertex.clone(),
               type: SnapType.ENDPOINT,
