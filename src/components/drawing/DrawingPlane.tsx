@@ -738,17 +738,16 @@ const focusTerminalForMeasurement = () => {
         <group>
           <Text
             position={[
-              drawingState.currentPoint.x + 200, 
-             5,
-              drawingState.currentPoint.z + 1
+              drawingState.currentPoint.x + 400, 
+              50,
+              drawingState.currentPoint.z + 400
             ]}
-           rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={60}
-            color="#ffffff"
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={80}
+            color="#000000"
             anchorX="center"
             anchorY="middle"
-            outlineWidth={3}
-            outlineColor="#000000"
+            font="Inter"
             material-side={THREE.DoubleSide}
           >
             {(() => {
@@ -796,14 +795,13 @@ const focusTerminalForMeasurement = () => {
             />
           </mesh>
           <Text
-           position={[drawingState.snapPoint.point.x, 30, drawingState.snapPoint.point.z + 1]}
-           rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={40}
-            color="#ffffff"
+            position={[drawingState.snapPoint.point.x, 80, drawingState.snapPoint.point.z + 200]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={50}
+            color="#000000"
             anchorX="center"
             anchorY="middle"
-            outlineWidth={2}
-            outlineColor="#000000"
+            font="Inter"
             material-side={THREE.DoubleSide}
           >
             {drawingState.snapPoint.type.toUpperCase()}
