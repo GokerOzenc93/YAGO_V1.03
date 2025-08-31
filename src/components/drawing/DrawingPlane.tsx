@@ -734,9 +734,8 @@ const focusTerminalForMeasurement = () => {
         <group>
           {/* Profesyonel ölçü bilgi kutusu - farenin ucunda */}
           <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-            <group position={[drawingState.previewPoint.x + 100, 50, drawingState.previewPoint.z + 100]}>
+            <mesh position={[drawingState.previewPoint.x + 100, 50, drawingState.previewPoint.z + 100]}>
               {/* Arka plan kutusu */}
-              <mesh>
                 <planeGeometry args={[180, 80]} />
                 <meshBasicMaterial 
                   color="#1f2937" 
@@ -744,7 +743,6 @@ const focusTerminalForMeasurement = () => {
                   opacity={0.95}
                   side={THREE.DoubleSide}
                 />
-              </mesh>
               
               {/* Başlık - POLYLINE */}
               <Text
@@ -753,7 +751,6 @@ const focusTerminalForMeasurement = () => {
                 color="#60a5fa"
                 anchorX="center"
                 anchorY="middle"
-                font="/fonts/inter-medium.woff"
               >
                 POLYLINE
               </Text>
@@ -765,7 +762,6 @@ const focusTerminalForMeasurement = () => {
                 color="#10b981"
                 anchorX="center"
                 anchorY="middle"
-                font="/fonts/inter-regular.woff"
               >
                 {(() => {
                   const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
@@ -780,7 +776,6 @@ const focusTerminalForMeasurement = () => {
                 color="#f59e0b"
                 anchorX="center"
                 anchorY="middle"
-                font="/fonts/inter-regular.woff"
               >
                 {(() => {
                   if (drawingState.points.length >= 2) {
@@ -818,7 +813,7 @@ const focusTerminalForMeasurement = () => {
                 </bufferGeometry>
                 <lineBasicMaterial color="#374151" linewidth={1} />
               </lineSegments>
-            </group>
+            </mesh>
           </Billboard>
         </group>
       )}
