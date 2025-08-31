@@ -208,21 +208,6 @@ const Scene: React.FC = () => {
         return;
       }
       
-      // View mode shortcuts - 1, 2, 3
-      if (e.key === '1') {
-        const { setViewMode } = useAppStore.getState();
-        setViewMode(ViewMode.SOLID);
-        console.log('View mode: Solid (1)');
-      } else if (e.key === '2') {
-        const { setViewMode } = useAppStore.getState();
-        setViewMode(ViewMode.WIREFRAME);
-        console.log('View mode: Wireframe (2)');
-      } else if (e.key === 'v' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        // V key cycles through view modes
-        const { cycleViewMode } = useAppStore.getState();
-        cycleViewMode();
-        console.log('🎯 View mode toggled with V key');
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
