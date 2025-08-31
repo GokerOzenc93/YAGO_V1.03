@@ -107,6 +107,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         resetPointToPointMove();
       }
     }
+  }, [activeTool, setEditingPolylineId, resetPointToPointMove]);
 
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
     if (!planeRef.current) return null;
@@ -633,7 +634,7 @@ const focusTerminalForMeasurement = () => {
     if (activeTool === Tool.POLYLINE_EDIT) {
       if (event.nativeEvent.button !== 0) return;
       
-      const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
+      const point = getIntersectionPoint(event.nativeEvent);
       if (!point) return;
 
       let foundNode = false;
@@ -665,7 +666,7 @@ const focusTerminalForMeasurement = () => {
     
     event.stopPropagation();
 
-    const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
+    const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
 
     console.log(`Drawing ${activeTool.toLowerCase()}: Point clicked at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}]`);
@@ -679,7 +680,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
-    const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
+    const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
 
     // Handle Point to Point Move preview
@@ -775,7 +776,6 @@ const focusTerminalForMeasurement = () => {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
         setIsDragging(false);
-        resetPointToPointMove();
         console.log('Drawing cancelled');
       }
       
