@@ -386,7 +386,7 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pendingExtrudeShape, extrudeHeight]);
+  }, [pendingExtrudeShape, extrudeHeight, handleExtrudeSubmit, handleExtrudeCancel]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
