@@ -1063,23 +1063,6 @@ const focusTerminalForMeasurement = () => {
           )}
           
           {/* Current Snap Point Indicator for Point to Point Move */}
-          {drawingState.snapPoint && (
-            <Billboard position={drawingState.snapPoint.point}>
-              <mesh>
-                <sphereGeometry args={[20]} />
-                <meshBasicMaterial color="#ef4444" transparent opacity={0.9} />
-              </mesh>
-              <Text
-                position={[0, 45, 0]}
-                fontSize={18}
-                color="#ef4444"
-                anchorX="center"
-                anchorY="middle"
-              >
-                TARGET
-              </Text>
-            </Billboard>
-          )}
         </>
       )}
       {/* Preview Shape */}
