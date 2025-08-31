@@ -75,25 +75,8 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   useEffect(() => {
     const drawingTools = [Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE];
     
-    if (drawingTools.includes(activeTool) && !drawingState.isDrawing) {
-      if (previousCameraType === null) {
-        setPreviousCameraType(cameraType);
-      }
-      
-      if (cameraType !== CameraType.ORTHOGRAPHIC) {
-        setCameraType(CameraType.ORTHOGRAPHIC);
-        console.log(`Switched to Orthographic camera for ${activeTool} drawing`);
-      }
-      
-      // Don't auto-switch to top view - let user choose their preferred view
-      console.log(`🎯 Drawing tool ${activeTool} activated - camera switched to orthographic`);
-    }
-    
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT].includes(activeTool) && previousCameraType !== null) {
-      setCameraType(previousCameraType);
-      setPreviousCameraType(null);
-      console.log(`Restored camera type to: ${previousCameraType}`);
-    }
+    // Kamera otomatik değişimini devre dışı bırak - kullanıcı istediği kamerayı kullanabilir
+    console.log(`🎯 Drawing tool ${activeTool} activated - keeping current camera settings`);
   }, [activeTool, drawingState.isDrawing, cameraType, setCameraType, previousCameraType]);
 
   // Reset drawing state when tool changes
