@@ -134,18 +134,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     } else if (activeTool === Tool.POINT_TO_POINT_MOVE) {
       enableAutoSnap(activeTool);
     } else if (activeTool === Tool.DIMENSION) {
-      // Dimension tool için sadece endpoint snap'i aç
-      const { snapSettings, setSnapSetting } = useAppStore.getState();
-      
-      // Önce tüm snap'leri kapat
-      Object.keys(snapSettings).forEach(snapType => {
-        setSnapSetting(snapType as any, false);
-      });
-      
-      // Sadece endpoint'i aç
-      setSnapSetting('endpoint' as any, true);
-      
-      console.log('🎯 Dimension tool: Only endpoint snap enabled');
+      enableAutoSnap(activeTool);
     } else {
       disableAutoSnap();
     }

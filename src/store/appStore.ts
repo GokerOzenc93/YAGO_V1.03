@@ -320,6 +320,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         [SnapType.MIDPOINT]: true,
       };
       console.log('🎯 Auto snap enabled for point to point move (endpoint + midpoint)');
+    } else if (tool === Tool.DIMENSION) {
+      newSnapSettings = {
+        ...allDisabled,
+        [SnapType.ENDPOINT]: true,
+      };
+      console.log('🎯 Auto snap enabled for dimension tool (endpoint only)');
     }
     
     set({ 
