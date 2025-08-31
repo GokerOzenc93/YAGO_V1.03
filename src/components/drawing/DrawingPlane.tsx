@@ -108,6 +108,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     const rect = gl.domElement.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Store mouse screen position for snap calculations
+    const mouseScreenPos = new THREE.Vector2(event.clientX - rect.left, event.clientY - rect.top);
 
     raycaster.setFromCamera({ x, y }, camera);
     
@@ -134,7 +137,10 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       snapSettings, 
       perspectiveTolerance,
       drawingState.currentPoint,
-      drawingState.currentDirection
+      drawingState.currentDirection,
+      camera,
+      gl.domElement,
+      mouseScreenPos
     );
     
     let finalPoint: THREE.Vector3;
