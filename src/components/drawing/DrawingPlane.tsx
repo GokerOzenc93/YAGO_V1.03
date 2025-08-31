@@ -355,6 +355,7 @@ const focusTerminalForMeasurement = () => {
       delete (window as any).handlePolylineMeasurement;
       delete (window as any).handleExtrudeHeight;
     };
+  }, [handleMeasurementInput, handleExtrudeInput]);
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
@@ -369,6 +370,7 @@ const focusTerminalForMeasurement = () => {
         }
       }, 100);
     }
+  }, [pendingExtrudeShape]);
 
   // Handle keyboard input for extrude height
   useEffect(() => {
@@ -384,22 +386,15 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingExtrudeShape, extrudeHeight]);
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
-    // Kullanıcıya seçenek sun: 2D nesne olarak ekle veya extrude et
-    console.log(`${shape.type} tamamlandı. Extrude için terminal'e yükseklik girin veya Enter'a basın.`);
-    
-    // Pending shape olarak kaydet - kullanıcı extrude edebilir
-    setPendingExtrudeShape(shape);
-    
-    // Terminal'e odaklan ve kullanıcıyı bilgilendir
-    setTimeout(() => {
-      if ((window as any).terminalInputRef?.current) {
-        (window as any).terminalInputRef.current.focus();
-        console.log('Terminal\'e extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne olarak ekleyin');
-      }
-    }, 100);
+    // Immediately convert to 2D selectable shape and add to store
+    const newShape = convertTo3DShape(shape, addShape, selectShape, gridSize);
+    if (newShape) {
+      console.log(`${shape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
+    }
   };
 
   // UNIFIED: Finish drawing function
