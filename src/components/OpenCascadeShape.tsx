@@ -128,11 +128,11 @@ const OpenCascadeShape: React.FC<Props> = ({
     controls.addEventListener('objectChange', handleObjectChange);
     controls.addEventListener('mouseUp', handleObjectChangeEnd);
     
-    return () =>
+    return () => {
       controls.removeEventListener('objectChange', handleObjectChange);
       controls.removeEventListener('mouseUp', handleObjectChangeEnd);
     };
-  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition]);
+  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape]);
 
   useEffect(() => {
     if (isSelected && meshRef.current) {
@@ -148,7 +148,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         }
       );
     }
-  }, [isSelected, setSelectedObjectPosition, shape.id]);
+  }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
     // Face Edit mode - handle face selection
