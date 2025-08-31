@@ -735,7 +735,7 @@ const focusTerminalForMeasurement = () => {
           {/* Profesyonel ölçü bilgi kutusu - farenin ucunda */}
           <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
             {/* 🎯 GÜNCELLEME: Şeffaf arka plan, siyah yazı ve kontur */}
-            <mesh position={[drawingState.previewPoint.x + 100, 50, drawingState.previewPoint.z + 100]}>
+            <mesh position={[drawingState.previewPoint.x + 100, 200, drawingState.previewPoint.z + 100]}>
               <planeGeometry args={[200, 100]} />
               <meshBasicMaterial 
                 color="#F5F5F5" 
