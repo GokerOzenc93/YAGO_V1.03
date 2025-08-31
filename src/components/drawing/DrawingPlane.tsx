@@ -3,8 +3,6 @@ import { useThree } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
 import { useAppStore, Tool, CameraType, SnapType } from '../../store/appStore';
 import * as THREE from 'three';
-
-// Import modular components
 import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { snapToGrid } from './utils';
 import { findSnapPoints } from './snapSystem';
@@ -576,7 +574,7 @@ const focusTerminalForMeasurement = () => {
     if (activeTool === Tool.POLYLINE_EDIT) {
       if (event.nativeEvent.button !== 0) return;
       
-      const point = getIntersectionPoint(event.nativeEvent);
+      const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
       if (!point) return;
 
       let foundNode = false;
@@ -608,7 +606,7 @@ const focusTerminalForMeasurement = () => {
     
     event.stopPropagation();
 
-    const point = getIntersectionPoint(event.nativeEvent);
+    const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
     if (!point) return;
 
     console.log(`Drawing ${activeTool.toLowerCase()}: Point clicked at [${point.x.toFixed(1)}, ${point.z.toFixed(1)}]`);
@@ -622,7 +620,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
-    const point = getIntersectionPoint(event.nativeEvent);
+    const point = getIntersectionPoint(event.nativeEvent, camera, gl, planeRef, gridSize, snapTolerance, snapSettings, completedShapes, shapes, drawingState);
     if (!point) return;
 
     // Handle polyline editing mode
@@ -865,57 +863,77 @@ const focusTerminalForMeasurement = () => {
       {/* Snap Point Indicator */}
       {drawingState.snapPoint && (
         <group>
-          {/* Endpoint - İçi boş mavi kutucuk */}
+          {/* Endpoint - Boş kutu */}
           {drawingState.snapPoint.type === SnapType.ENDPOINT && (
-            <mesh position={drawingState.snapPoint.point}>
-              <boxGeometry args={[30, 30, 30]} />
-              <meshBasicMaterial 
-                color="#2563eb"
-                transparent
-                opacity={0.3}
-                wireframe={false}
-              />
-              {/* İçi boş efekti için wireframe overlay */}
+            <group position={drawingState.snapPoint.point} rotation={[0, 0, 0]}>
+              <mesh>
+                <boxGeometry args={[30, 30, 30]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={0.2} wireframe={false} />
+              </mesh>
               <lineSegments>
                 <edgesGeometry args={[new THREE.BoxGeometry(30, 30, 30)]} />
                 <lineBasicMaterial color="#2563eb" linewidth={3} />
               </lineSegments>
-            </mesh>
+            </group>
           )}
-          
-          {/* Midpoint - Üçgen şekil */}
+
+          {/* Midpoint - Üçgen */}
           {drawingState.snapPoint.type === SnapType.MIDPOINT && (
-            <mesh position={drawingState.snapPoint.point} rotation={[0, 0, 0]}>
-              <coneGeometry args={[20, 35, 3]} />
-              <meshBasicMaterial color="#10b981" />
+            <mesh position={drawingState.snapPoint.point} rotation={[-Math.PI / 2, 0, 0]}>
+              <coneGeometry args={[20, 20, 3]} />
+              <meshBasicMaterial color="#2563eb" />
             </mesh>
           )}
-          
-          {/* Center - Yuvarlak şekil */}
+
+          {/* Center - Daire */}
           {drawingState.snapPoint.type === SnapType.CENTER && (
             <mesh position={drawingState.snapPoint.point}>
-              <sphereGeometry args={[18]} />
-              <meshBasicMaterial color="#f59e0b" />
+              <ringGeometry args={[15, 20, 32]} />
+              <meshBasicMaterial color="#2563eb" side={THREE.DoubleSide} />
             </mesh>
           )}
-          
-          {/* Diğer snap türleri için varsayılan şekiller */}
-          {![SnapType.ENDPOINT, SnapType.MIDPOINT, SnapType.CENTER].includes(drawingState.snapPoint.type) && (
-            <mesh position={drawingState.snapPoint.point}>
-              <sphereGeometry args={[15]} />
-              <meshBasicMaterial 
-                color={
-                  drawingState.snapPoint.type === SnapType.QUADRANT ? "#f9ca24" :
-                  drawingState.snapPoint.type === SnapType.PERPENDICULAR ? "#6c5ce7" :
-                  drawingState.snapPoint.type === SnapType.INTERSECTION ? "#fd79a8" :
-                  "#00b894"
-                }
-              />
-            </mesh>
+
+          {/* Perpendicular - Dik çizgi */}
+          {drawingState.snapPoint.type === SnapType.PERPENDICULAR && (
+            <group position={drawingState.snapPoint.point}>
+              <lineSegments>
+                <edgesGeometry args={[new THREE.BoxGeometry(30, 30, 30)]} />
+                <lineBasicMaterial color="#f59e0b" linewidth={3} />
+              </lineSegments>
+            </group>
           )}
-          
+
+          {/* Intersection - Çarpı işareti */}
+          {drawingState.snapPoint.type === SnapType.INTERSECTION && (
+            <group position={drawingState.snapPoint.point} rotation={[Math.PI / 4, 0, 0]}>
+              <mesh>
+                <boxGeometry args={[30, 5, 5]} />
+                <meshBasicMaterial color="#ef4444" />
+              </mesh>
+              <mesh rotation={[0, Math.PI / 2, 0]}>
+                <boxGeometry args={[30, 5, 5]} />
+                <meshBasicMaterial color="#ef4444" />
+              </mesh>
+            </group>
+          )}
+
+          {/* Nearest - Yıldız/Artı işareti */}
+          {drawingState.snapPoint.type === SnapType.NEAREST && (
+            <group position={drawingState.snapPoint.point}>
+              <mesh>
+                <boxGeometry args={[20, 5, 5]} />
+                <meshBasicMaterial color="#34d399" />
+              </mesh>
+              <mesh rotation={[0, Math.PI / 2, 0]}>
+                <boxGeometry args={[20, 5, 5]} />
+                <meshBasicMaterial color="#34d399" />
+              </mesh>
+            </group>
+          )}
+
+          {/* Snap tipi metni */}
           <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-            <mesh position={[drawingState.snapPoint.point.x, drawingState.snapPoint.point.y + gridSize, drawingState.snapPoint.point.z]}>
+            <mesh position={[drawingState.snapPoint.point.x, drawingState.snapPoint.point.y + 20, drawingState.snapPoint.point.z]}>
               <planeGeometry args={[gridSize * 2, gridSize * 0.6]} />
               <meshBasicMaterial color="#000000" opacity={0.8} transparent />
               <Text
@@ -932,116 +950,28 @@ const focusTerminalForMeasurement = () => {
         </group>
       )}
 
-      {/* Angle Display for Polyline Drawing */}
-      {/* Ölçü bilgilerini terminal üstündeki durum çubuğuna gönder */}
-      {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON || activeTool === Tool.RECTANGLE || activeTool === Tool.CIRCLE) && 
-       drawingState.isDrawing && 
-       drawingState.previewPoint && 
-       drawingState.points.length > 0 && 
-       (() => {
-          // Polyline ve Polygon için
-          if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
-            // İlk nokta için başlangıç noktasından, sonrakiler için son noktadan mesafe hesapla
-            const startPoint = drawingState.currentPoint || drawingState.points[drawingState.points.length - 1];
-            const distance = startPoint.distanceTo(drawingState.previewPoint);
-            
-            // Açı hesaplama
-            let angle: number | undefined;
-            
-            if (drawingState.points.length === 1) {
-              // İlk çizgi için X ekseninden açı
-              const direction = drawingState.previewPoint.clone().sub(startPoint).normalize();
-              angle = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
-              // 0-360 derece arasında göster
-              if (angle < 0) angle += 360;
-            } else if (drawingState.points.length >= 2) {
-              // Sonraki çizgiler için önceki segment ile mevcut segment arasındaki açı
-              const lastPoint = drawingState.points[drawingState.points.length - 1];
-              const secondLastPoint = drawingState.points[drawingState.points.length - 2];
-              const currentDirection = drawingState.previewPoint.clone().sub(startPoint).normalize();
-              const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
-              
-              // İki vektör arasındaki açıyı hesapla
-              let calculatedAngle = previousDirection.angleTo(currentDirection);
-              calculatedAngle = THREE.MathUtils.radToDeg(calculatedAngle);
-              
-              // 0-180 derece arasında göster
-              if (calculatedAngle > 180) calculatedAngle = 360 - calculatedAngle;
-              
-              angle = calculatedAngle;
-            }
-            
-            // Terminal'e durum bilgisini gönder
-            if ((window as any).setPolylineStatus) {
-              (window as any).setPolylineStatus({
-                distance: convertToDisplayUnit(distance),
-                angle,
-                unit: measurementUnit
-              });
-            }
-          }
-          
-          // Rectangle için boyut bilgileri
-          if (activeTool === Tool.RECTANGLE) {
-            const width = Math.abs(drawingState.previewPoint.x - drawingState.points[0].x);
-            const height = Math.abs(drawingState.previewPoint.z - drawingState.points[0].z);
-            
-            if ((window as any).setPolylineStatus) {
-              (window as any).setPolylineStatus({
-                distance: convertToDisplayUnit(width),
-                angle: convertToDisplayUnit(height), // Height'ı angle alanında göster
-                unit: measurementUnit
-              });
-            }
-          }
-          
-          // Circle için radius bilgisi
-          if (activeTool === Tool.CIRCLE) {
-            const radius = drawingState.points[0].distanceTo(drawingState.previewPoint);
-            
-            if ((window as any).setPolylineStatus) {
-              (window as any).setPolylineStatus({
-                distance: convertToDisplayUnit(radius),
-                unit: measurementUnit
-              });
-            }
-          }
-         
-         return null; // Hiçbir görsel element render etme
-       })()}
-
-      {/* Snap Point Indicator */}
-      {drawingState.snapPoint && (
-        <group>
-          <mesh position={drawingState.snapPoint.point}>
-            <sphereGeometry args={[gridSize / 8]} />
-            <meshBasicMaterial 
-              color={
-                drawingState.snapPoint.type === SnapType.ENDPOINT ? "#ff6b6b" :
-                drawingState.snapPoint.type === SnapType.MIDPOINT ? "#4ecdc4" :
-                drawingState.snapPoint.type === SnapType.CENTER ? "#45b7d1" :
-                drawingState.snapPoint.type === SnapType.QUADRANT ? "#f9ca24" :
-                drawingState.snapPoint.type === SnapType.PERPENDICULAR ? "#6c5ce7" :
-                drawingState.snapPoint.type === SnapType.INTERSECTION ? "#fd79a8" :
-                "#00b894"
-              }
-            />
-          </mesh>
-          <Text
-            position={[drawingState.snapPoint.point.x, 80, drawingState.snapPoint.point.z + 200]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={50}
-            color="#000000"
-            anchorX="center"
-            anchorY="middle"
-            material-side={THREE.DoubleSide}
-          >
-            {drawingState.snapPoint.type.toUpperCase()}
-          </Text>
-        </group>
+      {/* Preview Shape */}
+      {previewGeometry && (
+        <line geometry={previewGeometry}>
+          <lineBasicMaterial color="#000000" opacity={0.8} transparent linewidth={2} />
+        </line>
       )}
 
-      {/* Extrude Height Input Dialog */}
+      {/* Points */}
+      {drawingState.points.map((point, index) => (
+        <mesh key={index} position={point}>
+          <sphereGeometry args={[gridSize / 15]} />
+          <meshBasicMaterial color="#2563eb" />
+        </mesh>
+      ))}
+
+      {drawingState.previewPoint && (
+        <mesh position={drawingState.previewPoint}>
+          <sphereGeometry args={[gridSize / 15]} />
+          <meshBasicMaterial color="#2563eb" opacity={0.5} transparent />
+        </mesh>
+      )}
+
     </>
   );
 };
