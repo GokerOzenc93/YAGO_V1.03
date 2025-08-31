@@ -390,9 +390,11 @@ const focusTerminalForMeasurement = () => {
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
-    // Show extrude input dialog instead of immediate conversion
-    setPendingShape(shape);
-    console.log(`${shape.type} completed, waiting for extrude height in terminal`);
+    // Immediately convert to 2D selectable shape and add to store
+    const newShape = convertTo3DShape(shape, addShape, selectShape, gridSize);
+    if (newShape) {
+      console.log(`${shape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
+    }
   };
 
   // UNIFIED: Finish drawing function
@@ -721,7 +723,7 @@ const focusTerminalForMeasurement = () => {
           )}
           
           {/* Convert to 3D Button for Closed Shapes */}
-          {shape.isClosed && hoveredShapeId === shape.id && activeTool !== Tool.POLYLINE_EDIT && (
+          {false && shape.isClosed && hoveredShapeId === shape.id && activeTool !== Tool.POLYLINE_EDIT && (
             <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
               <mesh
                 position={[shape.points[0].x, 1, shape.points[0].z]}

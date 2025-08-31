@@ -10,9 +10,10 @@ export const convertTo3DShape = (
   selectShape: (id: string) => void,
   gridSize: number = 50
 ): Shape | null => {
-  if (!shape.isClosed && shape.type !== 'polyline' && shape.type !== 'polygon') return null;
+  // Allow all shape types to be converted to selectable objects
+  console.log(`Converting ${shape.type} to selectable 2D shape with ID: ${shape.id}`);
 
-  const height = 10;
+  const height = 10; // Minimal height for 2D shapes
   let geometry: THREE.BufferGeometry;
   let position: [number, number, number];
   let shapeType: string;
@@ -42,11 +43,8 @@ export const convertTo3DShape = (
     case 'polyline':
     case 'polygon': {
       geometry = createPolylineGeometry(shape.points, height, gridSize);
-      // Keep the shape exactly where it was drawn - don't move to center
-      // Position at ground level (Y=0) so the extruded shape sits on the drawing plane
-      // Calculate the actual center of the drawn polyline to position the solid there
       const center = calculatePolylineCenter(shape.points);
-      position = [center.x, 0, center.z];
+      position = [center.x, height / 2, center.z]; // Position at proper height
       shapeType = shape.type === 'polygon' ? 'polygon2d' : 'polyline2d';
       break;
     }
