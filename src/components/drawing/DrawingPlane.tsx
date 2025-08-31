@@ -729,25 +729,6 @@ const focusTerminalForMeasurement = () => {
         </group>
       )}
 
-      {/* Measurement waiting indicator */}
-      {drawingState.waitingForMeasurement && drawingState.currentPoint && (
-        <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-          <mesh position={[drawingState.currentPoint.x, gridSize * 2, drawingState.currentPoint.z]}>
-            <planeGeometry args={[gridSize * 4, gridSize * 0.8]} />
-            <meshBasicMaterial color="#f59e0b" opacity={0.9} transparent />
-            <Text
-              position={[0, 0, 0.1]}
-              fontSize={gridSize / 3}
-              color="white"
-              anchorX="center"
-              anchorY="middle"
-            >
-              Type distance in terminal
-            </Text>
-          </mesh>
-        </Billboard>
-      )}
-
       {/* Angle Display for Polyline Drawing */}
       {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && 
        drawingState.isDrawing && 
@@ -760,14 +741,16 @@ const focusTerminalForMeasurement = () => {
             gridSize * 1.5, 
             drawingState.currentPoint.z
           ]}>
-            <planeGeometry args={[gridSize * 3, gridSize * 0.6]} />
-            <meshBasicMaterial color="#2563eb" opacity={0.9} transparent />
+            <planeGeometry args={[gridSize * 4, gridSize * 0.8]} />
+            <meshBasicMaterial color="#6b7280" opacity={0.95} transparent />
             <Text
               position={[0, 0, 0.1]}
-              fontSize={gridSize / 4}
+              fontSize={gridSize / 3}
               color="white"
               anchorX="center"
               anchorY="middle"
+              outlineWidth={gridSize / 20}
+              outlineColor="#000000"
             >
               {(() => {
                 const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
