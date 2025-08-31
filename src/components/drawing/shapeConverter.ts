@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
+import { useAppStore } from '../../store/appStore';
 import { createPolylineGeometry } from './geometryCreator';
 import { calculatePolylineCenter } from './utils';
 
