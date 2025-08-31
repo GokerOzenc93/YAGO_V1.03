@@ -736,26 +736,19 @@ const focusTerminalForMeasurement = () => {
        drawingState.previewPoint && 
        drawingState.currentDirection && (
         <group>
-          <mesh position={[
-            drawingState.currentPoint.x + 200, 
-            150, 
-            drawingState.currentPoint.z
-          ]}>
-            <planeGeometry args={[400, 80]} />
-            <meshBasicMaterial color="#6b7280" opacity={0.7} transparent />
-          </mesh>
           <Text
             position={[
               drawingState.currentPoint.x + 200, 
               150, 
               drawingState.currentPoint.z + 1
             ]}
-            fontSize={24}
-            color="#000000"
+            fontSize={60}
+            color="#ffffff"
             anchorX="center"
             anchorY="middle"
-            outlineWidth={1}
-            outlineColor="#ffffff"
+            outlineWidth={3}
+            outlineColor="#000000"
+            material-side={THREE.DoubleSide}
           >
             {(() => {
               const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
@@ -801,18 +794,15 @@ const focusTerminalForMeasurement = () => {
               }
             />
           </mesh>
-          <mesh position={[drawingState.snapPoint.point.x, 100, drawingState.snapPoint.point.z]}>
-            <planeGeometry args={[200, 60]} />
-            <meshBasicMaterial color="#6b7280" opacity={0.7} transparent />
-          </mesh>
           <Text
             position={[drawingState.snapPoint.point.x, 100, drawingState.snapPoint.point.z + 1]}
-            fontSize={20}
-            color="#000000"
+            fontSize={40}
+            color="#ffffff"
             anchorX="center"
             anchorY="middle"
-            outlineWidth={1}
-            outlineColor="#ffffff"
+            outlineWidth={2}
+            outlineColor="#000000"
+            material-side={THREE.DoubleSide}
           >
             {drawingState.snapPoint.type.toUpperCase()}
           </Text>
