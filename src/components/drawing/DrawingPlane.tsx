@@ -735,23 +735,96 @@ const focusTerminalForMeasurement = () => {
        drawingState.currentPoint && 
        drawingState.previewPoint && 
        drawingState.currentDirection && (
-        <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+        <group>
           <mesh position={[
-            drawingState.currentPoint.x + gridSize * 2, 
-            gridSize * 1.5, 
+            drawingState.currentPoint.x + 200, 
+            150, 
             drawingState.currentPoint.z
           ]}>
-            <planeGeometry args={[gridSize * 4, gridSize * 0.8]} />
-            <meshBasicMaterial color="#6b7280" opacity={0.95} transparent />
-            <Text
-              position={[0, 0, 0.1]}
-              fontSize={gridSize / 3}
-              color="white"
-              anchorX="center"
-              anchorY="middle"
-              outlineWidth={gridSize / 20}
-              outlineColor="#000000"
-            >
+            <planeGeometry args={[400, 80]} />
+            <meshBasicMaterial color="#6b7280" opacity={0.7} transparent />
+          </mesh>
+          <Text
+            position={[
+              drawingState.currentPoint.x + 200, 
+              150, 
+              drawingState.currentPoint.z + 1
+            ]}
+            fontSize={24}
+            color="#000000"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={1}
+            outlineColor="#ffffff"
+          >
+            {(() => {
+              const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+              
+              // Açı hesaplama - önceki segment ile mevcut segment arasındaki açı
+              let angleText = '';
+              if (drawingState.points.length >= 2) {
+                const lastPoint = drawingState.points[drawingState.points.length - 1];
+                const secondLastPoint = drawingState.points[drawingState.points.length - 2];
+                const currentDirection = drawingState.previewPoint.clone().sub(lastPoint).normalize();
+                const previousDirection = lastPoint.clone().sub(secondLastPoint).normalize();
+                
+                // İki vektör arasındaki açıyı hesapla
+                let angle = previousDirection.angleTo(currentDirection);
+                angle = THREE.MathUtils.radToDeg(angle);
+                
+                // 0-180 derece arasında göster
+                if (angle > 180) angle = 360 - angle;
+                
+                angleText = ` ∠${angle.toFixed(1)}°`;
+              }
+              
+              return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}${angleText}`;
+            })()}
+          </Text>
+        </group>
+      )}
+
+      {/* Snap Point Indicator */}
+      {drawingState.snapPoint && (
+        <group>
+          <mesh position={drawingState.snapPoint.point}>
+            <sphereGeometry args={[gridSize / 8]} />
+            <meshBasicMaterial 
+              color={
+                drawingState.snapPoint.type === SnapType.ENDPOINT ? "#ff6b6b" :
+                drawingState.snapPoint.type === SnapType.MIDPOINT ? "#4ecdc4" :
+                drawingState.snapPoint.type === SnapType.CENTER ? "#45b7d1" :
+                drawingState.snapPoint.type === SnapType.QUADRANT ? "#f9ca24" :
+                drawingState.snapPoint.type === SnapType.PERPENDICULAR ? "#6c5ce7" :
+                drawingState.snapPoint.type === SnapType.INTERSECTION ? "#fd79a8" :
+                "#00b894"
+              }
+            />
+          </mesh>
+          <mesh position={[drawingState.snapPoint.point.x, 100, drawingState.snapPoint.point.z]}>
+            <planeGeometry args={[200, 60]} />
+            <meshBasicMaterial color="#6b7280" opacity={0.7} transparent />
+          </mesh>
+          <Text
+            position={[drawingState.snapPoint.point.x, 100, drawingState.snapPoint.point.z + 1]}
+            fontSize={20}
+            color="#000000"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={1}
+            outlineColor="#ffffff"
+          >
+            {drawingState.snapPoint.type.toUpperCase()}
+          </Text>
+        </group>
+      )}
+
+      {/* Extrude Height Input Dialog */}
+    </>
+  );
+};
+
+export default DrawingPlane;
               {(() => {
                 const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
                 const angle = getPreviousSegmentAngle(drawingState.points, drawingState.currentDirection);
