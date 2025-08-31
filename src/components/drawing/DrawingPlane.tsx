@@ -75,6 +75,34 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     setDrawingState(prev => ({ ...prev, ...updates }));
   };
 
+  // Update polyline status when drawing state changes
+  useEffect(() => {
+    if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && 
+        drawingState.isDrawing && 
+        drawingState.currentPoint && 
+        drawingState.previewPoint) {
+      
+      const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+      const direction = new THREE.Vector3().subVectors(drawingState.previewPoint, drawingState.currentPoint);
+      
+      // Calculate angle from X-axis
+      let angle = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
+      if (angle < 0) angle += 360;
+      
+      // Update terminal status
+      if ((window as any).setPolylineStatus) {
+        (window as any).setPolylineStatus({
+          distance: convertToDisplayUnit(distance),
+          angle: angle,
+          unit: measurementUnit
+        });
+      }
+    } else if (!drawingState.isDrawing && (window as any).setPolylineStatus) {
+      // Clear status when not drawing
+      (window as any).setPolylineStatus(null);
+    }
+  }, [activeTool, drawingState.isDrawing, drawingState.currentPoint, drawingState.previewPoint, convertToDisplayUnit, measurementUnit]);
+
   // Auto-switch to top view and orthographic camera when starting drawing tools
   useEffect(() => {
     const drawingTools = [Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE];
@@ -514,13 +542,12 @@ const focusTerminalForMeasurement = () => {
         convertAndCleanup(newShape);
         finishDrawing();
       } else {
-        setDrawingState(prev => ({
-        ...prev,
+        updateDrawingState({
         points: [...prev.points, point],
         currentPoint: point,
         waitingForMeasurement: true,
         measurementApplied: false
-      }));
+        });
       focusTerminalForMeasurement();
       console.log(`${activeTool} point added: ${drawingState.points.length + 1} points total`);
       }
@@ -733,15 +760,15 @@ const focusTerminalForMeasurement = () => {
 
     if (!drawingState.isDrawing || ![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE].includes(activeTool)) return;
 
-    setDrawingState(prev => ({ ...prev, previewPoint: point }));
+    updateDrawingState({ previewPoint: point });
     
     // Handle direction and measurement for POLYLINE and POLYGON
     if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && drawingState.currentPoint) {
       const direction = point.clone().sub(drawingState.currentPoint).normalize();
-      setDrawingState(prev => ({ ...prev, currentDirection: direction }));
+      updateDrawingState({ currentDirection: direction });
       
       if (!drawingState.waitingForMeasurement && !drawingState.measurementApplied && direction.length() > 0) {
-        setDrawingState(prev => ({ ...prev, waitingForMeasurement: true }));
+        updateDrawingState({ waitingForMeasurement: true });
         console.log('Ready for measurement input - move mouse to set direction, then type distance in terminal');
       }
     }
