@@ -334,15 +334,17 @@ const focusTerminalForMeasurement = () => {
       return;
     }
     
-    // Convert to 2D selectable shape
-    const newShape = convertTo3DShape(pendingExtrudeShape, addShape, selectShape, gridSize);
-    if (newShape) {
-      console.log(`${pendingExtrudeShape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
-    }
+    // Simply remove the pending shape without creating any object
+    console.log(`${pendingExtrudeShape.type} drawing cancelled - no object created`);
     
     // Cleanup
     setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
     setPendingExtrudeShape(null);
+    
+    // Clear terminal status
+    if ((window as any).setPolylineStatus) {
+      (window as any).setPolylineStatus(null);
+    }
   };
   // Expose measurement input handler globally
   // Handle extrude submit
@@ -429,7 +431,7 @@ const focusTerminalForMeasurement = () => {
         if ((window as any).setPolylineStatus) {
           (window as any).setPolylineStatus({
             distance: 0,
-            unit: 'Extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne'
+            unit: 'Extrude yüksekliği girin (örn: 500) veya Enter ile iptal'
           });
         }
       }
