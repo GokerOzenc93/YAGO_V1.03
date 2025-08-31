@@ -865,88 +865,86 @@ const focusTerminalForMeasurement = () => {
         <group>
           {/* Endpoint - Boş kutu */}
           {drawingState.snapPoint.type === SnapType.ENDPOINT && (
-            <group position={drawingState.snapPoint.point} rotation={[0, 0, 0]}>
+            <Billboard position={drawingState.snapPoint.point}>
               <mesh>
-                <boxGeometry args={[30, 30, 30]} />
-                <meshBasicMaterial color="#ffffff" transparent opacity={0.2} wireframe={false} />
+                <planeGeometry args={[30, 30]} />
+                <meshBasicMaterial color="#2563eb" transparent opacity={0.1} wireframe={false} side={THREE.DoubleSide} />
+                <lineSegments>
+                  <edgesGeometry args={[new THREE.PlaneGeometry(30, 30)]} />
+                  <lineBasicMaterial color="#2563eb" linewidth={3} />
+                </lineSegments>
               </mesh>
-              <lineSegments>
-                <edgesGeometry args={[new THREE.BoxGeometry(30, 30, 30)]} />
-                <lineBasicMaterial color="#2563eb" linewidth={3} />
-              </lineSegments>
-            </group>
+            </Billboard>
           )}
 
           {/* Midpoint - Üçgen */}
           {drawingState.snapPoint.type === SnapType.MIDPOINT && (
-            <mesh position={drawingState.snapPoint.point} rotation={[-Math.PI / 2, 0, 0]}>
-              <coneGeometry args={[20, 20, 3]} />
-              <meshBasicMaterial color="#2563eb" />
-            </mesh>
+            <Billboard position={drawingState.snapPoint.point}>
+              <mesh rotation={[0, 0, 0]}>
+                <shapeGeometry args={[new THREE.Shape().moveTo(0, 15).lineTo(-15, -15).lineTo(15, -15).lineTo(0, 15)]} />
+                <meshBasicMaterial color="#2563eb" side={THREE.DoubleSide} />
+              </mesh>
+            </Billboard>
           )}
 
           {/* Center - Daire */}
           {drawingState.snapPoint.type === SnapType.CENTER && (
-            <mesh position={drawingState.snapPoint.point}>
-              <ringGeometry args={[15, 20, 32]} />
-              <meshBasicMaterial color="#2563eb" side={THREE.DoubleSide} />
-            </mesh>
+            <Billboard position={drawingState.snapPoint.point}>
+              <mesh>
+                <ringGeometry args={[15, 20, 32]} />
+                <meshBasicMaterial color="#f59e0b" side={THREE.DoubleSide} />
+              </mesh>
+            </Billboard>
           )}
 
           {/* Perpendicular - Dik çizgi */}
           {drawingState.snapPoint.type === SnapType.PERPENDICULAR && (
-            <group position={drawingState.snapPoint.point}>
-              <lineSegments>
-                <edgesGeometry args={[new THREE.BoxGeometry(30, 30, 30)]} />
-                <lineBasicMaterial color="#f59e0b" linewidth={3} />
-              </lineSegments>
-            </group>
+            <Billboard position={drawingState.snapPoint.point}>
+              <group rotation={[Math.PI / 4, 0, 0]}>
+                <mesh>
+                  <boxGeometry args={[30, 5, 5]} />
+                  <meshBasicMaterial color="#f59e0b" />
+                </mesh>
+                <mesh rotation={[0, Math.PI / 2, 0]}>
+                  <boxGeometry args={[30, 5, 5]} />
+                  <meshBasicMaterial color="#f59e0b" />
+                </mesh>
+              </group>
+            </Billboard>
           )}
 
           {/* Intersection - Çarpı işareti */}
           {drawingState.snapPoint.type === SnapType.INTERSECTION && (
-            <group position={drawingState.snapPoint.point} rotation={[Math.PI / 4, 0, 0]}>
-              <mesh>
-                <boxGeometry args={[30, 5, 5]} />
-                <meshBasicMaterial color="#ef4444" />
-              </mesh>
-              <mesh rotation={[0, Math.PI / 2, 0]}>
-                <boxGeometry args={[30, 5, 5]} />
-                <meshBasicMaterial color="#ef4444" />
-              </mesh>
-            </group>
+            <Billboard position={drawingState.snapPoint.point}>
+              <group rotation={[Math.PI / 4, 0, 0]}>
+                <mesh>
+                  <boxGeometry args={[30, 5, 5]} />
+                  <meshBasicMaterial color="#ef4444" />
+                </mesh>
+                <mesh rotation={[0, Math.PI / 2, 0]}>
+                  <boxGeometry args={[30, 5, 5]} />
+                  <meshBasicMaterial color="#ef4444" />
+                </mesh>
+              </group>
+            </Billboard>
           )}
 
           {/* Nearest - Yıldız/Artı işareti */}
           {drawingState.snapPoint.type === SnapType.NEAREST && (
-            <group position={drawingState.snapPoint.point}>
-              <mesh>
-                <boxGeometry args={[20, 5, 5]} />
-                <meshBasicMaterial color="#34d399" />
-              </mesh>
-              <mesh rotation={[0, Math.PI / 2, 0]}>
-                <boxGeometry args={[20, 5, 5]} />
-                <meshBasicMaterial color="#34d399" />
-              </mesh>
-            </group>
+            <Billboard position={drawingState.snapPoint.point}>
+              <group rotation={[0, 0, 0]}>
+                <mesh>
+                  <boxGeometry args={[20, 5, 5]} />
+                  <meshBasicMaterial color="#34d399" />
+                </mesh>
+                <mesh rotation={[0, Math.PI / 2, 0]}>
+                  <boxGeometry args={[20, 5, 5]} />
+                  <meshBasicMaterial color="#34d399" />
+                </mesh>
+              </group>
+            </Billboard>
           )}
 
-          {/* Snap tipi metni */}
-          <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-            <mesh position={[drawingState.snapPoint.point.x, drawingState.snapPoint.point.y + 20, drawingState.snapPoint.point.z]}>
-              <planeGeometry args={[gridSize * 2, gridSize * 0.6]} />
-              <meshBasicMaterial color="#000000" opacity={0.8} transparent />
-              <Text
-                position={[0, 0, 0.1]}
-                fontSize={gridSize / 4}
-                color="white"
-                anchorX="center"
-                anchorY="middle"
-              >
-                {drawingState.snapPoint.type.toUpperCase()}
-              </Text>
-            </mesh>
-          </Billboard>
         </group>
       )}
 
