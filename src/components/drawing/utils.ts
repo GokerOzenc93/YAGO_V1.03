@@ -15,12 +15,14 @@ export const isShapeClosed = (points: THREE.Vector3[], gridSize: number): boolea
 };
 
 export const createRectanglePoints = (start: THREE.Vector3, end: THREE.Vector3): THREE.Vector3[] => {
+  // Fare yönüne göre dikdörtgen köşelerini oluştur
+  // start ve end noktalarını olduğu gibi kullan (işaret korunur)
   return [
     start,
     new THREE.Vector3(end.x, 0, start.z),
     end,
     new THREE.Vector3(start.x, 0, end.z),
-    start
+    start // Kapalı şekil için başlangıç noktasını tekrarla
   ];
 };
 

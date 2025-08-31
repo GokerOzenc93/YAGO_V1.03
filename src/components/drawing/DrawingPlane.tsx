@@ -408,15 +408,10 @@ const focusTerminalForMeasurement = () => {
         const shapeId = Math.random().toString(36).substr(2, 9);
         const allPoints = [...drawingState.points, firstPoint];
         
-        // Fare yönüne göre dikdörtgen oluştur
-        const actualWidth = newPoint.x - drawingState.currentPoint.x;
-        const actualHeight = newPoint.z - drawingState.currentPoint.z;
-        
         const newShape: CompletedShape = {
           id: shapeId,
-          type: 'rectangle',
-          points: rectPoints,
-          dimensions: { width: Math.abs(actualWidth), height: Math.abs(actualHeight) },
+          type: activeTool === Tool.POLYGON ? 'polygon' : 'polyline',
+          points: allPoints,
           isClosed: true
         };
         
@@ -457,17 +452,23 @@ const focusTerminalForMeasurement = () => {
 
       switch (activeTool) {
         case Tool.RECTANGLE: {
-          const rectPoints = createRectanglePoints(drawingState.points[0], point);
-          const width = Math.abs(point.x - drawingState.points[0].x);
-          const height = Math.abs(point.z - drawingState.points[0].z);
+          // Fare yönüne göre dikdörtgen oluştur
+          const startPoint = drawingState.points[0];
+          const endPoint = point;
+          const rectPoints = createRectanglePoints(startPoint, endPoint);
+          
+          // Gerçek boyutları hesapla (işaret dahil)
+          const actualWidth = endPoint.x - startPoint.x;
+          const actualHeight = endPoint.z - startPoint.z;
+          
           newShape = {
             id: shapeId,
             type: 'rectangle',
             points: rectPoints,
-            dimensions: { width, height },
+            dimensions: { width: Math.abs(actualWidth), height: Math.abs(actualHeight) },
             isClosed: true
           };
-          console.log(`Rectangle completed: ${width.toFixed(1)}x${height.toFixed(1)}mm`);
+          console.log(`Rectangle completed: ${Math.abs(actualWidth).toFixed(1)}x${Math.abs(actualHeight).toFixed(1)}mm`);
           break;
         }
         case Tool.CIRCLE: {
