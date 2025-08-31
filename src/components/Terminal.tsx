@@ -83,6 +83,31 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
+    // Handle pending extrude shape - öncelik ver
+    if ((window as any).pendingExtrudeShape) {
+      // Enter tuşu ile 2D nesne olarak ekle
+      if (trimmedCommand === '' || trimmedCommand.toLowerCase() === 'enter') {
+        if ((window as any).handleConvertTo2D) {
+          (window as any).handleConvertTo2D();
+          setCommandInput('');
+          return;
+        }
+      }
+      
+      // Sayı girildiyse extrude et
+      const extrudeValue = parseFloat(trimmedCommand);
+      if (!isNaN(extrudeValue) && extrudeValue > 0) {
+        if ((window as any).handleExtrudeHeight) {
+          (window as any).handleExtrudeHeight(extrudeValue);
+          setCommandInput('');
+          return;
+        }
+      }
+      
+      console.log('Geçersiz extrude değeri. Pozitif bir sayı girin veya Enter ile 2D nesne olarak ekleyin.');
+      return;
+    }
+
     // Check if it's a measurement input (number, "number,number", or "number," format)
     if (/^[\d.,\s]+$/.test(trimmedCommand)) {
       // Handle measurement input
@@ -90,17 +115,6 @@ const Terminal: React.FC = () => {
         (window as any).handlePolylineMeasurement(trimmedCommand);
         setCommandInput('');
         return;
-      }
-      
-      // Fallback: sadece sayı ise extrude height olarak işle
-      const numericValue = parseFloat(trimmedCommand);
-      if (!isNaN(numericValue)) {
-        // Handle extrude height input
-        if ((window as any).handleExtrudeHeight) {
-          (window as any).handleExtrudeHeight(numericValue);
-          setCommandInput('');
-          return;
-        }
       }
     }
 

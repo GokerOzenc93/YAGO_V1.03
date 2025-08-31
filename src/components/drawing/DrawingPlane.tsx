@@ -326,6 +326,24 @@ const focusTerminalForMeasurement = () => {
     
     console.log(`${pendingExtrudeShape.type} extruded with height: ${heightInMm}mm`);
   };
+
+  // Handle converting to 2D selectable object
+  const handleConvertTo2D = () => {
+    if (!pendingExtrudeShape) {
+      console.log('No pending shape to convert');
+      return;
+    }
+    
+    // Convert to 2D selectable shape
+    const newShape = convertTo3DShape(pendingExtrudeShape, addShape, selectShape, gridSize);
+    if (newShape) {
+      console.log(`${pendingExtrudeShape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
+    }
+    
+    // Cleanup
+    setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
+    setPendingExtrudeShape(null);
+  };
   // Expose measurement input handler globally
   // Handle extrude submit
   const handleExtrudeSubmit = () => {
@@ -351,11 +369,19 @@ const focusTerminalForMeasurement = () => {
     // Expose extrude height handler globally  
     (window as any).handleExtrudeHeight = handleExtrudeInput;
     
+    // Expose convert to 2D handler globally
+    (window as any).handleConvertTo2D = handleConvertTo2D;
+    
+    // Expose pending extrude shape globally for terminal access
+    (window as any).pendingExtrudeShape = pendingExtrudeShape;
+    
     return () => {
       delete (window as any).handlePolylineMeasurement;
       delete (window as any).handleExtrudeHeight;
+      delete (window as any).handleConvertTo2D;
+      delete (window as any).pendingExtrudeShape;
     };
-  }, [handleMeasurementInput, handleExtrudeInput]);
+  }, [handleMeasurementInput, handleExtrudeInput, handleConvertTo2D, pendingExtrudeShape]);
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
@@ -390,17 +416,14 @@ const focusTerminalForMeasurement = () => {
 
   // UNIFIED: Convert to 3D and cleanup function
   const convertAndCleanup = (shape: CompletedShape) => {
-    // Kullanıcıya seçenek sun: 2D nesne olarak ekle veya extrude et
-    console.log(`${shape.type} tamamlandı. Extrude için terminal'e yükseklik girin veya Enter'a basın.`);
-    
-    // Pending shape olarak kaydet - kullanıcı extrude edebilir
+    // Extrude için bekleyen şekil olarak kaydet
     setPendingExtrudeShape(shape);
     
-    // Terminal'e odaklan ve kullanıcıyı bilgilendir
+    // Terminal'e odaklan ve extrude yüksekliği iste
     setTimeout(() => {
       if ((window as any).terminalInputRef?.current) {
         (window as any).terminalInputRef.current.focus();
-        console.log('Terminal\'e extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne olarak ekleyin');
+        console.log(`${shape.type} tamamlandı. Terminal'e extrude yüksekliği girin (örn: 500) veya Enter ile 2D nesne olarak ekleyin`);
       }
     }, 100);
   };
@@ -645,17 +668,7 @@ const focusTerminalForMeasurement = () => {
       
       // Handle Enter key for pending extrude shape - convert to 2D selectable object
       if (event.key === 'Enter' && pendingExtrudeShape && !drawingState.isDrawing) {
-        console.log(`Converting ${pendingExtrudeShape.type} to 2D selectable object`);
-        
-        // Convert to 2D selectable shape
-        const newShape = convertTo3DShape(pendingExtrudeShape, addShape, selectShape, gridSize);
-        if (newShape) {
-          console.log(`${pendingExtrudeShape.type} converted to selectable 2D shape with ID: ${newShape.id}`);
-        }
-        
-        // Cleanup
-        setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
-        setPendingExtrudeShape(null);
+        handleConvertTo2D();
       }
       
       if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
