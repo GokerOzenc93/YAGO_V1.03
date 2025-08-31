@@ -11,6 +11,23 @@ import { findSnapPoints } from './snapSystem';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 
+// Helper function to calculate angle between two vectors
+const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
+  const angle = v1.angleTo(v2);
+  return THREE.MathUtils.radToDeg(angle);
+};
+
+// Helper function to get angle from previous segment
+const getPreviousSegmentAngle = (points: THREE.Vector3[], currentDirection: THREE.Vector3): number | null => {
+  if (points.length < 2) return null;
+  
+  const lastPoint = points[points.length - 1];
+  const secondLastPoint = points[points.length - 2];
+  const previousDirection = new THREE.Vector3().subVectors(lastPoint, secondLastPoint).normalize();
+  
+  return calculateAngle(previousDirection, currentDirection);
+};
+
 interface DrawingPlaneProps {
   onShowMeasurement?: (data: any) => void;
   onHideMeasurement?: () => void;
@@ -731,6 +748,41 @@ const focusTerminalForMeasurement = () => {
         </Billboard>
       )}
 
+      {/* Angle Display for Polyline Drawing */}
+      {(activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && 
+       drawingState.isDrawing && 
+       drawingState.currentPoint && 
+       drawingState.previewPoint && 
+       drawingState.currentDirection && (
+        <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+          <mesh position={[
+            drawingState.currentPoint.x + gridSize * 2, 
+            gridSize * 1.5, 
+            drawingState.currentPoint.z
+          ]}>
+            <planeGeometry args={[gridSize * 3, gridSize * 0.6]} />
+            <meshBasicMaterial color="#2563eb" opacity={0.9} transparent />
+            <Text
+              position={[0, 0, 0.1]}
+              fontSize={gridSize / 4}
+              color="white"
+              anchorX="center"
+              anchorY="middle"
+            >
+              {(() => {
+                const distance = drawingState.currentPoint.distanceTo(drawingState.previewPoint);
+                const angle = getPreviousSegmentAngle(drawingState.points, drawingState.currentDirection);
+                
+                if (angle !== null) {
+                  return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit} ∠${angle.toFixed(1)}°`;
+                } else {
+                  return `L: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`;
+                }
+              })()}
+            </Text>
+          </mesh>
+        </Billboard>
+      )}
       {/* Extrude Height Input Dialog */}
     </>
   );
