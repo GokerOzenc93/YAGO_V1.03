@@ -543,7 +543,7 @@ const focusTerminalForMeasurement = () => {
         finishDrawing();
       } else {
         updateDrawingState({
-        points: [...prev.points, point],
+        points: [...drawingState.points, point],
         currentPoint: point,
         waitingForMeasurement: true,
         measurementApplied: false
