@@ -160,6 +160,9 @@ export const findSnapPoints = (
   currentDirection?: THREE.Vector3 | null
 ): SnapPoint[] => {
   const snapPoints: SnapPoint[] = [];
+  
+  console.log(`🎯 SNAP DEBUG: Looking for snap points near [${mousePoint.x.toFixed(1)}, ${mousePoint.z.toFixed(1)}] with tolerance ${tolerance}`);
+  console.log(`🎯 SNAP DEBUG: Available 3D shapes: ${shapes.length}`);
 
   // Endpoint snapping
   if (snapSettings[SnapType.ENDPOINT]) {
@@ -184,11 +187,16 @@ export const findSnapPoints = (
 
     // 3D shapes - specific handling for each shape type
     shapes.forEach(shape => {
+      console.log(`🎯 SNAP DEBUG: Checking endpoints for shape ${shape.id} (${shape.type})`);
+      
       if (shape.type === 'box' || shape.type === 'rectangle2d') {
         const { endpoints } = getBoxSnapPoints(shape);
+        console.log(`🎯 SNAP DEBUG: Box has ${endpoints.length} endpoints`);
         endpoints.forEach(endpoint => {
           const distance = mousePoint.distanceTo(endpoint);
+          console.log(`🎯 SNAP DEBUG: Endpoint at [${endpoint.x.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
+            console.log(`🎯 SNAP DEBUG: ✅ ENDPOINT SNAP FOUND!`);
             snapPoints.push({
               point: endpoint.clone(),
               type: SnapType.ENDPOINT,
@@ -199,9 +207,12 @@ export const findSnapPoints = (
         });
       } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
         const { endpoints } = getCylinderSnapPoints(shape);
+        console.log(`🎯 SNAP DEBUG: Cylinder has ${endpoints.length} endpoints`);
         endpoints.forEach(endpoint => {
           const distance = mousePoint.distanceTo(endpoint);
+          console.log(`🎯 SNAP DEBUG: Cylinder endpoint at [${endpoint.x.toFixed(1)}, ${endpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
+            console.log(`🎯 SNAP DEBUG: ✅ CYLINDER ENDPOINT SNAP FOUND!`);
             snapPoints.push({
               point: endpoint.clone(),
               type: SnapType.ENDPOINT,
@@ -253,11 +264,16 @@ export const findSnapPoints = (
 
     // 3D shapes - specific handling for each shape type
     shapes.forEach(shape => {
+      console.log(`🎯 SNAP DEBUG: Checking midpoints for shape ${shape.id} (${shape.type})`);
+      
       if (shape.type === 'box' || shape.type === 'rectangle2d') {
         const { midpoints } = getBoxSnapPoints(shape);
+        console.log(`🎯 SNAP DEBUG: Box has ${midpoints.length} midpoints`);
         midpoints.forEach(midpoint => {
           const distance = mousePoint.distanceTo(midpoint);
+          console.log(`🎯 SNAP DEBUG: Midpoint at [${midpoint.x.toFixed(1)}, ${midpoint.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
           if (distance <= tolerance) {
+            console.log(`🎯 SNAP DEBUG: ✅ MIDPOINT SNAP FOUND!`);
             snapPoints.push({
               point: midpoint.clone(),
               type: SnapType.MIDPOINT,
@@ -333,10 +349,14 @@ export const findSnapPoints = (
 
     // 3D shapes - specific handling for each shape type
     shapes.forEach(shape => {
+      console.log(`🎯 SNAP DEBUG: Checking center for shape ${shape.id} (${shape.type})`);
+      
       if (shape.type === 'box' || shape.type === 'rectangle2d') {
         const { center } = getBoxSnapPoints(shape);
         const distance = mousePoint.distanceTo(center);
+        console.log(`🎯 SNAP DEBUG: Box center at [${center.x.toFixed(1)}, ${center.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
         if (distance <= tolerance) {
+          console.log(`🎯 SNAP DEBUG: ✅ CENTER SNAP FOUND!`);
           snapPoints.push({
             point: center.clone(),
             type: SnapType.CENTER,
@@ -347,7 +367,9 @@ export const findSnapPoints = (
       } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
         const { center } = getCylinderSnapPoints(shape);
         const distance = mousePoint.distanceTo(center);
+        console.log(`🎯 SNAP DEBUG: Cylinder center at [${center.x.toFixed(1)}, ${center.z.toFixed(1)}], distance: ${distance.toFixed(1)}`);
         if (distance <= tolerance) {
+          console.log(`🎯 SNAP DEBUG: ✅ CYLINDER CENTER SNAP FOUND!`);
           snapPoints.push({
             point: center.clone(),
             type: SnapType.CENTER,
@@ -607,6 +629,11 @@ export const findSnapPoints = (
         }
       });
     });
+  }
+
+  console.log(`🎯 SNAP DEBUG: Total snap points found: ${snapPoints.length}`);
+  if (snapPoints.length > 0) {
+    console.log(`🎯 SNAP DEBUG: Closest snap: ${snapPoints[0].type} at distance ${snapPoints[0].distance.toFixed(1)}`);
   }
 
   return snapPoints.sort((a, b) => a.distance - b.distance);
