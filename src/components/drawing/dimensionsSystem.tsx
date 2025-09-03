@@ -542,6 +542,21 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     }
   }, [activeTool]);
 
+  // Keyboard handler for ESC key
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && activeTool === Tool.DIMENSION) {
+        // Reset dimension state and switch to Select tool
+        setDimensionsState(INITIAL_SIMPLE_DIMENSIONS_STATE);
+        useAppStore.getState().setActiveTool('Select' as any);
+        console.log('🎯 Dimension tool cancelled with ESC, switched to Select tool');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTool]);
+
   return (
     <>
       {/* Invisible plane for interaction - SADECE DIMENSION TOOL AKTIFKEN */}
