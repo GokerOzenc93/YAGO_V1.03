@@ -171,7 +171,6 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
       const endPoint = dimensionsState.endPoint!;
       const originalDirection = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
       
-      // Determine the perpendicular direction on the XZ plane
       const up = new THREE.Vector3(0, 1, 0);
       const perp = new THREE.Vector3().crossVectors(originalDirection, up).normalize();
       
