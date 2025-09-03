@@ -63,6 +63,12 @@ export enum ViewMode {
   SOLID = 'solid'             // Katı görünüş
 }
 
+// 🎯 NEW: Ortho Mode Enum - Tam dik hareket modu
+export enum OrthoMode {
+  OFF = 'off',
+  ON = 'on'
+}
+
 export interface SnapSettings {
   [SnapType.ENDPOINT]: boolean;
   [SnapType.MIDPOINT]: boolean;
@@ -160,6 +166,10 @@ interface AppState {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   cycleViewMode: () => void;
+  // 🎯 NEW: Ortho Mode State - Tam dik hareket modu
+  orthoMode: OrthoMode;
+  setOrthoMode: (mode: OrthoMode) => void;
+  toggleOrthoMode: () => void;
   // Panel mode states
   isAddPanelMode: boolean;
   setIsAddPanelMode: (enabled: boolean) => void;
@@ -249,6 +259,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     set({ viewMode: nextMode });
     console.log(`🎯 View mode cycled from ${viewMode} to ${nextMode}`);
+  },
+  
+  // 🎯 NEW: Ortho Mode State - Varsayılan olarak KAPALI
+  orthoMode: OrthoMode.OFF,
+  setOrthoMode: (mode) => {
+    set({ orthoMode: mode });
+    console.log(`🎯 Ortho mode changed to: ${mode}`);
+  },
+  
+  // 🎯 NEW: Toggle ortho mode
+  toggleOrthoMode: () => {
+    const { orthoMode } = get();
+    const nextMode = orthoMode === OrthoMode.OFF ? OrthoMode.ON : OrthoMode.OFF;
+    
+    set({ orthoMode: nextMode });
+    console.log(`🎯 Ortho mode toggled from ${orthoMode} to ${nextMode}`);
   },
   
   // Panel mode states

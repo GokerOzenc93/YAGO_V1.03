@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useAppStore, Tool, SnapType, SnapSettings } from '../../store/appStore';
+import { useAppStore, Tool, SnapType, SnapSettings, OrthoMode } from '../../store/appStore';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
@@ -239,6 +239,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     setSnapSettingsBatch,
     snapTolerance,
     snapSettings
+    orthoMode, // 🎯 NEW: Get ortho mode
+    setOrthoMode // 🎯 NEW: Set ortho mode
   } = useAppStore();
   
   const { camera, raycaster, gl } = useThree();
@@ -255,6 +257,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       // Mevcut snap ayarlarını kaydet
       setOriginalSnapSettings({ ...currentSnapSettings });
       
+      // 🎯 NEW: Ortho mode'u otomatik aç
+      setOrthoMode(OrthoMode.ON);
+      
       // Sadece ENDPOINT ve MIDPOINT'i aktif et - batch update
       setSnapSettingsBatch({
         [SnapType.ENDPOINT]: true,
@@ -266,15 +271,18 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         [SnapType.NEAREST]: false,
       });
       
-      console.log('🎯 Dimension tool activated: Only ENDPOINT and MIDPOINT snaps enabled');
+      console.log('🎯 Dimension tool activated: ENDPOINT/MIDPOINT snaps + Ortho mode enabled');
     } else if (originalSnapSettings && activeTool !== Tool.DIMENSION) {
       // Orijinal snap ayarlarını geri yükle
       setSnapSettingsBatch(originalSnapSettings);
       setOriginalSnapSettings(null);
       
-      console.log('🎯 Dimension tool deactivated: Original snap settings restored');
+      // 🎯 NEW: Ortho mode'u kapat
+      setOrthoMode(OrthoMode.OFF);
+      
+      console.log('🎯 Dimension tool deactivated: Original settings + Ortho mode restored');
     }
-  }, [activeTool, setSnapSettingsBatch, originalSnapSettings]);
+  }, [activeTool, setSnapSettingsBatch, originalSnapSettings, setOrthoMode]);
 
   // Intersection point hesaplama - SADECE DIMENSIONS İÇİN
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {

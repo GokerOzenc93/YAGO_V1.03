@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode } from '../store/appStore';
+import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store/appStore';
 import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler } from 'lucide-react';
 import * as THREE from 'three';
 
@@ -16,7 +16,9 @@ const Toolbar: React.FC = () => {
     toggleSnapSetting,
     viewMode, // 🎯 NEW: Get current view mode
     setViewMode, // 🎯 NEW: Set view mode
-    cycleViewMode // 🎯 NEW: Cycle through view modes
+    cycleViewMode, // 🎯 NEW: Cycle through view modes
+    orthoMode, // 🎯 NEW: Get current ortho mode
+    toggleOrthoMode // 🎯 NEW: Toggle ortho mode
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -49,6 +51,11 @@ const Toolbar: React.FC = () => {
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
+  };
+
+  // 🎯 NEW: Handle ortho mode toggle
+  const handleOrthoModeToggle = () => {
+    toggleOrthoMode();
   };
 
   const handleModify = (type: ModificationType) => {
@@ -414,6 +421,22 @@ const Toolbar: React.FC = () => {
             {getViewModeIcon()}
             <span className="text-xs font-medium text-gray-200">
               {getViewModeLabel()}
+            </span>
+          </button>
+
+          {/* 🎯 NEW: Ortho Mode Toggle */}
+          <button
+            onClick={handleOrthoModeToggle}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+              orthoMode === OrthoMode.ON
+                ? 'bg-orange-600/90 text-white shadow-sm'
+                : 'bg-gray-700/50 hover:bg-gray-600 text-gray-200'
+            }`}
+            title={`Ortho Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
+          >
+            <Grid size={10} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-gray-400'} />
+            <span className="text-xs font-medium">
+              Ortho
             </span>
           </button>
 

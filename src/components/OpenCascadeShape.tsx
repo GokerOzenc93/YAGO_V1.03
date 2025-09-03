@@ -5,7 +5,7 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
-import { ViewMode } from '../store/appStore';
+import { ViewMode, OrthoMode } from '../store/appStore';
 import {
   detectFaceAtMouse,
   highlightFace,
@@ -41,6 +41,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     setSelectedObjectPosition,
     viewMode,
     updateShape,
+    orthoMode, // 🎯 NEW: Get ortho mode
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -93,10 +94,45 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (!transformRef.current || !isSelected) return;
 
     const controls = transformRef.current;
+    
+    // 🎯 NEW: Ortho mode constraint function
+    const applyOrthoConstraint = (position: THREE.Vector3, originalPosition: THREE.Vector3) => {
+      if (orthoMode === OrthoMode.OFF) return position;
+      
+      // Calculate movement delta
+      const delta = new THREE.Vector3().subVectors(position, originalPosition);
+      
+      // Find the axis with maximum movement
+      const absX = Math.abs(delta.x);
+      const absY = Math.abs(delta.y);
+      const absZ = Math.abs(delta.z);
+      
+      // Constrain to the dominant axis
+      if (absX >= absY && absX >= absZ) {
+        // X axis dominant
+        return new THREE.Vector3(position.x, originalPosition.y, originalPosition.z);
+      } else if (absY >= absX && absY >= absZ) {
+        // Y axis dominant
+        return new THREE.Vector3(originalPosition.x, position.y, originalPosition.z);
+      } else {
+        // Z axis dominant
+        return new THREE.Vector3(originalPosition.x, originalPosition.y, position.z);
+      }
+    };
+    
+    let originalPosition = new THREE.Vector3(...shape.position);
+    
     const handleObjectChange = () => {
       if (!meshRef.current) return;
 
-      const position = meshRef.current.position;
+      let position = meshRef.current.position.clone();
+      
+      // 🎯 NEW: Apply ortho mode constraint
+      if (orthoMode === OrthoMode.ON) {
+        position = applyOrthoConstraint(position, originalPosition);
+        meshRef.current.position.copy(position);
+      }
+      
       const snappedPosition = [
         Math.round(position.x / gridSize) * gridSize,
         Math.round(position.y / gridSize) * gridSize,
@@ -113,6 +149,11 @@ const OpenCascadeShape: React.FC<Props> = ({
       
       console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
     };
+    
+    const handleMouseDown = () => {
+      // Store original position when starting to drag
+      originalPosition = new THREE.Vector3(...shape.position);
+    };
 
     const handleObjectChangeEnd = () => {
       if (!meshRef.current) return;
@@ -125,14 +166,17 @@ const OpenCascadeShape: React.FC<Props> = ({
       
       console.log(`🎯 Shape ${shape.id} final position:`, finalPosition);
     };
+    
+    controls.addEventListener('mouseDown', handleMouseDown);
     controls.addEventListener('objectChange', handleObjectChange);
     controls.addEventListener('mouseUp', handleObjectChangeEnd);
     
     return () => {
+      controls.removeEventListener('mouseDown', handleMouseDown);
       controls.removeEventListener('objectChange', handleObjectChange);
       controls.removeEventListener('mouseUp', handleObjectChangeEnd);
     };
-  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape]);
+  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape, orthoMode, shape.position]);
 
   useEffect(() => {
     if (isSelected && meshRef.current) {
