@@ -227,13 +227,31 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
 
     event.stopPropagation();
 
-      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
+    if (!dimensionsState.startPoint) {
+      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
       // Step 1: Select first point
       setDimensionsState((prev) => ({
         ...prev,
         startPoint: point.clone(),
         endPoint: null,
-      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+        previewPosition: point.clone(), // Start with end point position
+      }));
+    } else if (!dimensionsState.endPoint) {
+      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
+      // Step 2: Select second point and enter positioning mode
+      const { startPoint, previewPosition } = dimensionsState;
+      const distance = startPoint.distanceTo(previewPosition!);
+
+      setDimensionsState((prev) => ({
+        ...prev,
+        endPoint: previewPosition!.clone(),
+        isPositioning: true,
+      }));
+    } else if (dimensionsState.isPositioning) {
+      // Step 3: Finalize dimension position
+      const { startPoint, endPoint, previewPosition } = dimensionsState;
+      const distance = startPoint!.distanceTo(endPoint!);
+      
       // Calculate the perpendicular offset from the original line
       const originalDirection = new THREE.Vector3().subVectors(endPoint!, startPoint!);
       const toMouseVector = new THREE.Vector3().subVectors(previewPosition!, startPoint!);
@@ -249,7 +267,7 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
         startPoint: startPoint!.clone().add(perpendicularOffset),
-        previewPosition: point.clone(), // Start with end point position
+        endPoint: endPoint!.clone().add(perpendicularOffset),
         distance: convertToDisplayUnit(distance),
         unit: measurementUnit,
         textPosition: startPoint!.clone().add(endPoint!).multiplyScalar(0.5).add(perpendicularOffset),
