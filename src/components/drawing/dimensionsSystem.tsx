@@ -31,10 +31,10 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   const { startPoint, endPoint, originalStart, originalEnd } = dimension;
 
   const points = useMemo(() => {
-    // Main dimension line
+    // Ana ölçü çizgisi
     const mainLinePoints = [startPoint, endPoint];
 
-    // Extension lines
+    // Uzatma çizgileri
     const extensionLinesPoints = [];
     if (originalStart && originalStart.distanceTo(startPoint) > 1) {
       extensionLinesPoints.push(originalStart, startPoint);
@@ -43,7 +43,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       extensionLinesPoints.push(originalEnd, endPoint);
     }
 
-    // Ticks (cross marks)
+    // Kesme işaretleri (oklar yerine)
     const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
     const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(15);
 
@@ -60,7 +60,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
 
   return (
     <group>
-      {/* Main dimension line */}
+      {/* Ana ölçü çizgisi */}
       <Line
         points={points.mainLinePoints}
         color={isPreview ? '#ff6b35' : '#2563eb'}
@@ -68,7 +68,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         dashed={false}
       />
 
-      {/* Extension lines */}
+      {/* Uzatma çizgileri */}
       {points.extensionLinesPoints.length > 0 && (
         <Line
           points={points.extensionLinesPoints}
@@ -80,7 +80,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         />
       )}
 
-      {/* Ticks */}
+      {/* Kesme işaretleri */}
       <Line
         points={points.tick1Points}
         color={isPreview ? '#ff6b35' : '#2563eb'}
@@ -94,7 +94,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         dashed={false}
       />
 
-      {/* Dimension text */}
+      {/* Ölçü metni */}
       <Billboard position={dimension.textPosition}>
         <Text
           position={[0, 0, 0]}
