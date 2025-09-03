@@ -9,12 +9,12 @@ import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { 
-  DimensionsSystem, 
-  DimensionsState, 
-  INITIAL_DIMENSIONS_STATE,
-  handleDimensionsClick,
-  handleDimensionsMove
-} from './dimensionsSystem';
+  MakerDimensionsSystem, 
+  MakerDimensionsState, 
+  INITIAL_MAKER_DIMENSIONS_STATE,
+  handleMakerDimensionsClick,
+  handleMakerDimensionsMove
+} from './MakerJSDimensions';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
@@ -73,7 +73,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [showExtrudeInput, setShowExtrudeInput] = useState(false);
   const [extrudeHeight, setExtrudeHeight] = useState('');
   const [pendingExtrudeShape, setPendingExtrudeShape] = useState<CompletedShape | null>(null);
-  const [dimensionsState, setDimensionsState] = useState<DimensionsState>(INITIAL_DIMENSIONS_STATE);
+  const [dimensionsState, setDimensionsState] = useState<MakerDimensionsState>(INITIAL_MAKER_DIMENSIONS_STATE);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
   
   const planeRef = useRef<THREE.Mesh>(null);
@@ -151,9 +151,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     
     // Dimensions state yönetimi
     if (activeTool === Tool.DIMENSION) {
-      setDimensionsState(INITIAL_DIMENSIONS_STATE);
+      setDimensionsState(INITIAL_MAKER_DIMENSIONS_STATE);
     } else {
-      setDimensionsState(INITIAL_DIMENSIONS_STATE);
+      setDimensionsState(INITIAL_MAKER_DIMENSIONS_STATE);
     }
   }, [activeTool, setEditingPolylineId, resetPointToPointMove]);
 
@@ -682,7 +682,7 @@ const focusTerminalForMeasurement = () => {
       
       event.stopPropagation();
       
-      handleDimensionsClick(
+      handleMakerDimensionsClick(
         point,
         dimensionsState,
         (updates) => setDimensionsState(prev => ({ ...prev, ...updates })),
@@ -798,7 +798,7 @@ const focusTerminalForMeasurement = () => {
 
     // Handle Dimensions tool preview
     if (activeTool === Tool.DIMENSION) {
-      handleDimensionsMove(
+      handleMakerDimensionsMove(
         point,
         dimensionsState,
         (updates) => setDimensionsState(prev => ({ ...prev, ...updates }))
@@ -1077,8 +1077,8 @@ const focusTerminalForMeasurement = () => {
       {/* Snap Point Indicator */}
       <SnapPointIndicators snapPoint={drawingState.snapPoint} />
 
-      {/* Dimensions System */}
-      <DimensionsSystem 
+      {/* Maker.js Dimensions System */}
+      <MakerDimensionsSystem 
         dimensionsState={dimensionsState}
         mousePosition={mouseWorldPosition}
       />
