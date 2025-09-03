@@ -21,7 +21,7 @@ import OpenCascadeShape from './OpenCascadeShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
-import { DimensionsManager } from './drawing/MakerJSDimensions';
+import { DimensionsManager } from './drawing/dimensionsSystem';
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';

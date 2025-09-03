@@ -8,9 +8,7 @@ import { snapToGrid } from './utils';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
-import { 
-  DimensionsManager
-} from './MakerJSDimensions';
+import { DimensionsManager } from './dimensionsSystem';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
