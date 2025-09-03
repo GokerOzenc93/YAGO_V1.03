@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useAppStore, Tool, SnapType } from '../../store/appStore';
+import { useAppStore, Tool, SnapType, SnapSettings } from '../../store/appStore';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
@@ -236,13 +236,42 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     gridSize, 
     measurementUnit, 
     convertToDisplayUnit, 
-    snapSettings,
+    snapSettings, 
+    setSnapSetting,
     snapTolerance
   } = useAppStore();
   
   const { camera, raycaster, gl } = useThree();
   const [dimensionsState, setDimensionsState] = useState<SimpleDimensionsState>(INITIAL_SIMPLE_DIMENSIONS_STATE);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
+  const [originalSnapSettings, setOriginalSnapSettings] = useState<SnapSettings | null>(null);
+
+  // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
+  useEffect(() => {
+    if (activeTool === Tool.DIMENSION) {
+      // Mevcut snap ayarlarını kaydet
+      setOriginalSnapSettings({ ...snapSettings });
+      
+      // Sadece ENDPOINT ve MIDPOINT'i aktif et
+      setSnapSetting(SnapType.ENDPOINT, true);
+      setSnapSetting(SnapType.MIDPOINT, true);
+      setSnapSetting(SnapType.CENTER, false);
+      setSnapSetting(SnapType.QUADRANT, false);
+      setSnapSetting(SnapType.PERPENDICULAR, false);
+      setSnapSetting(SnapType.INTERSECTION, false);
+      setSnapSetting(SnapType.NEAREST, false);
+      
+      console.log('🎯 Dimension tool activated: Only ENDPOINT and MIDPOINT snaps enabled');
+    } else if (originalSnapSettings && activeTool !== Tool.DIMENSION) {
+      // Orijinal snap ayarlarını geri yükle
+      Object.entries(originalSnapSettings).forEach(([snapType, enabled]) => {
+        setSnapSetting(snapType as SnapType, enabled);
+      });
+      setOriginalSnapSettings(null);
+      
+      console.log('🎯 Dimension tool deactivated: Original snap settings restored');
+    }
+  }, [activeTool, setSnapSetting]);
 
   // Intersection point hesaplama - SADECE DIMENSIONS İÇİN
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
@@ -277,27 +306,18 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning) {
-      // Snap detection - SADECE ENDPOINT
+      // 🎯 STANDART SNAP SYSTEM KULLAN
       const snapPoints = findSnapPoints(
         worldPoint,
         completedShapes, 
         shapes, 
-        { 
-          [SnapType.ENDPOINT]: true, 
-          [SnapType.MIDPOINT]: true, 
-          [SnapType.CENTER]: false, 
-          [SnapType.QUADRANT]: false, 
-          [SnapType.PERPENDICULAR]: false, 
-          [SnapType.INTERSECTION]: false, 
-          [SnapType.NEAREST]: false 
-        }, 
+        snapSettings, // 🎯 Mevcut snap ayarlarını kullan
         snapTolerance * 2,
         null,
         null,
         camera,
         gl.domElement,
-        mouseScreenPos,
-        'Dimension'
+        mouseScreenPos
       );
       
       if (snapPoints.length > 0) {
