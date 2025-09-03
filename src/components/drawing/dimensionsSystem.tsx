@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useAppStore, Tool, SnapType } from '../../store/appStore';
-import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
-import { CompletedShape } from './types.ts';
-import { Shape } from '../../types/shapes.ts';
-import { snapToGrid } from './utils.ts';
+import { useAppStore, Tool, SnapType } from '../store/appStore';
+import { findSnapPoints, SnapPointIndicators } from './snapSystem';
+import { CompletedShape } from './types';
+import { Shape } from '../../types/shapes';
+import { snapToGrid } from './utils';
 
 export interface SimpleDimension {
   id: string;
@@ -308,14 +308,17 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
       // Offset vektörünü hesapla
       const offsetVector = new THREE.Vector3().subVectors(previewPosition, firstPoint);
+      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint).normalize();
+      const parallelComponent = originalDirection.clone().multiplyScalar(offsetVector.dot(originalDirection));
+      const perpendicularOffset = offsetVector.clone().sub(parallelComponent);
 
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
-        startPoint: firstPoint.clone().add(offsetVector),
-        endPoint: secondPoint.clone().add(offsetVector),
+        startPoint: firstPoint.clone().add(perpendicularOffset),
+        endPoint: secondPoint.clone().add(perpendicularOffset),
         distance: convertToDisplayUnit(distance),
         unit: measurementUnit,
-        textPosition: firstPoint.clone().add(secondPoint).multiplyScalar(0.5).add(offsetVector),
+        textPosition: firstPoint.clone().add(secondPoint).multiplyScalar(0.5).add(perpendicularOffset),
         originalStart: firstPoint,
         originalEnd: secondPoint,
       };
