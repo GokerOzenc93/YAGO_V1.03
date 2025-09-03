@@ -106,7 +106,8 @@ export const findSnapPoints = (
   currentDirection?: THREE.Vector3 | null,
   camera?: THREE.Camera,
   canvas?: HTMLCanvasElement,
-  mouseScreenPos?: THREE.Vector2
+  mouseScreenPos?: THREE.Vector2,
+  activeTool?: string
 ): SnapPoint[] => {
   const snapPoints: SnapPoint[] = [];
   
@@ -115,10 +116,21 @@ export const findSnapPoints = (
     return [];
   }
   
+  // Dimension tool için sadece endpoint snap
+  const effectiveSnapSettings = activeTool === 'Dimension' ? {
+    ...snapSettings,
+    [SnapType.ENDPOINT]: true,
+    [SnapType.MIDPOINT]: false,
+    [SnapType.CENTER]: false,
+    [SnapType.QUADRANT]: false,
+    [SnapType.PERPENDICULAR]: false,
+    [SnapType.INTERSECTION]: false,
+    [SnapType.NEAREST]: false,
+  } : snapSettings;
+  
   console.log(`🎯 SNAP SEARCH: Mouse at [${mousePoint.x.toFixed(1)}, ${mousePoint.y.toFixed(1)}, ${mousePoint.z.toFixed(1)}], tolerance: ${tolerance}`);
 
   // 🎯 ENDPOINT SNAPPING - 3D ve 2D
-  if (snapSettings[SnapType.ENDPOINT]) {
     // 3D shape vertices
     shapes.forEach((shape) => {
       const vertices = getShapeVertices(shape);

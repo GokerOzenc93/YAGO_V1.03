@@ -127,21 +127,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
 
   // Reset drawing state when tool changes
   useEffect(() => {
-    // Auto snap kontrolü
-    if (activeTool === Tool.DIMENSION) {
-      enableAutoSnap(activeTool);
-      setDimensionsState(INITIAL_DIMENSIONS_STATE);
-    } else if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
-      enableAutoSnap(activeTool);
-    } else if (activeTool === Tool.POINT_TO_POINT_MOVE) {
-      enableAutoSnap(activeTool);
-    } else {
-      disableAutoSnap();
-      if (activeTool !== Tool.DIMENSION) {
-        setDimensionsState(INITIAL_DIMENSIONS_STATE);
-      }
-    }
-    
     if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
       
@@ -162,11 +147,14 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       }
       
       // Dimensions'u temizle
-      if (activeTool !== Tool.DIMENSION) {
-        setDimensionsState(INITIAL_DIMENSIONS_STATE);
-      }
     }
-  }, [activeTool, setEditingPolylineId, resetPointToPointMove, enableAutoSnap, disableAutoSnap]);
+    
+    // Dimensions state yönetimi
+    if (activeTool === Tool.DIMENSION) {
+      setDimensionsState(INITIAL_DIMENSIONS_STATE);
+    } else {
+      setDimensionsState(INITIAL_DIMENSIONS_STATE);
+    }
 
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
     if (!planeRef.current) return null;
@@ -209,7 +197,8 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       drawingState.currentDirection,
       camera,
       gl.domElement,
-      mouseScreenPos
+      mouseScreenPos,
+      activeTool
     );
     
     let finalPoint: THREE.Vector3;
