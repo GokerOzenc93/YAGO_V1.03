@@ -174,7 +174,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       return null;
     }
     
-    // Snap detection - SADECE ENDPOINT
+    // Snap detection
     const snapPoints = findSnapPoints(
       worldPoint,
       completedShapes, 
@@ -226,21 +226,18 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       const firstPoint = dimensionsState.firstPoint!;
       const secondPoint = point.clone();
 
-      // Ölçü çizgisinin yatay mı dikey mi olduğunu belirle
-      const isVertical = Math.abs(firstPoint.x - secondPoint.x) < Math.abs(firstPoint.z - secondPoint.z);
-      
-      // Ölçü çizgisi için offset hesapla (otomatik 200mm dışarıya)
+      // Ölçü çizgisi için offset hesapla
       const offsetDistance = 200;
       let perpendicularOffset: THREE.Vector3;
 
-      if (isVertical) {
-        // Dikey ölçü - X ekseni boyunca ötele
-        const direction = new THREE.Vector3(1, 0, 0);
-        perpendicularOffset = direction.clone().multiplyScalar(offsetDistance);
+      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
+
+      if (Math.abs(originalDirection.x) > Math.abs(originalDirection.z)) {
+        // Yatay ölçü, Z ekseni boyunca ötele
+        perpendicularOffset = new THREE.Vector3(0, 0, originalDirection.z > 0 ? offsetDistance : -offsetDistance);
       } else {
-        // Yatay ölçü - Z ekseni boyunca ötele
-        const direction = new THREE.Vector3(0, 0, 1);
-        perpendicularOffset = direction.clone().multiplyScalar(offsetDistance);
+        // Dikey ölçü, X ekseni boyunca ötele
+        perpendicularOffset = new THREE.Vector3(originalDirection.x > 0 ? offsetDistance : -offsetDistance, 0, 0);
       }
 
       const newDimension: SimpleDimension = {
@@ -312,16 +309,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     // Ölçü çizgisini otomatik olarak ötele
     const offsetDistance = 200;
     
-    // Ölçü çizgisinin yatay mı dikey mi olduğunu belirle
-    const isVertical = Math.abs(firstPoint.x - secondPoint.x) < Math.abs(firstPoint.z - secondPoint.z);
-    
+    const originalDirection = new THREE.Vector3().subVectors(dimensionEnd, dimensionStart);
+
     let perpendicularOffset: THREE.Vector3;
-    if (isVertical) {
-      const direction = new THREE.Vector3(1, 0, 0);
-      perpendicularOffset = direction.clone().multiplyScalar(offsetDistance);
+    if (Math.abs(originalDirection.x) > Math.abs(originalDirection.z)) {
+        // Yatay ölçü, Z ekseni boyunca ötele
+        perpendicularOffset = new THREE.Vector3(0, 0, originalDirection.z > 0 ? offsetDistance : -offsetDistance);
     } else {
-      const direction = new THREE.Vector3(0, 0, 1);
-      perpendicularOffset = direction.clone().multiplyScalar(offsetDistance);
+        // Dikey ölçü, X ekseni boyunca ötele
+        perpendicularOffset = new THREE.Vector3(originalDirection.x > 0 ? offsetDistance : -offsetDistance, 0, 0);
     }
 
     const offsetStart = dimensionStart.clone().add(perpendicularOffset);
