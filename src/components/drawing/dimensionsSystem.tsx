@@ -87,8 +87,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         <lineBasicMaterial
           color={isPreview ? "#ff6b35" : "#2563eb"}
           linewidth={2}
-          depthTest={false}
-          depthWrite={false}
           opacity={0.7}
           transparent={true}
         />
