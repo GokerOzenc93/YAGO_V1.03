@@ -131,6 +131,7 @@ export const findSnapPoints = (
   console.log(`🎯 SNAP SEARCH: Mouse at [${mousePoint.x.toFixed(1)}, ${mousePoint.y.toFixed(1)}, ${mousePoint.z.toFixed(1)}], tolerance: ${tolerance}`);
 
   // 🎯 ENDPOINT SNAPPING - 3D ve 2D
+  if (effectiveSnapSettings[SnapType.ENDPOINT]) {
     // 3D shape vertices
     shapes.forEach((shape) => {
       const vertices = getShapeVertices(shape);
