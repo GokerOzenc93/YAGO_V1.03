@@ -227,39 +227,29 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
 
     event.stopPropagation();
 
-    if (!dimensionsState.startPoint) {
+      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
       // Step 1: Select first point
       setDimensionsState((prev) => ({
         ...prev,
         startPoint: point.clone(),
         endPoint: null,
-        isPositioning: false,
-      }));
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
-    } else if (!dimensionsState.endPoint) {
-      // Step 2: Select second point
-      setDimensionsState((prev) => ({
-        ...prev,
-        endPoint: point.clone(),
-        isPositioning: true,
-        previewPosition: point.clone(), // Initial preview position for offset
-      }));
-      console.log(`🎯 Dimension: Second point selected. Now positioning the dimension line.`);
-    } else if (dimensionsState.isPositioning) {
-      // Step 3: Finalize dimension with third click
-      const { startPoint, endPoint, previewPosition } = dimensionsState;
-
-      const distance = startPoint!.distanceTo(endPoint!);
-      const originalDirection = new THREE.Vector3().subVectors(endPoint!, startPoint!).normalize();
-      const offsetVector = new THREE.Vector3().subVectors(previewPosition!, startPoint!);
+      // Calculate the perpendicular offset from the original line
+      const originalDirection = new THREE.Vector3().subVectors(endPoint!, startPoint!);
+      const toMouseVector = new THREE.Vector3().subVectors(previewPosition!, startPoint!);
       
-      const parallelComponent = originalDirection.clone().multiplyScalar(offsetVector.dot(originalDirection));
-      const perpendicularOffset = offsetVector.clone().sub(parallelComponent);
+      // Project mouse vector onto original direction to get parallel component
+      const originalLength = originalDirection.length();
+      const originalDirectionNorm = originalDirection.clone().normalize();
+      const parallelComponent = originalDirectionNorm.clone().multiplyScalar(toMouseVector.dot(originalDirectionNorm));
+      
+      // Get perpendicular offset (the part that's not parallel)
+      const perpendicularOffset = toMouseVector.clone().sub(parallelComponent);
 
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
         startPoint: startPoint!.clone().add(perpendicularOffset),
-        endPoint: endPoint!.clone().add(perpendicularOffset),
+        previewPosition: point.clone(), // Start with end point position
         distance: convertToDisplayUnit(distance),
         unit: measurementUnit,
         textPosition: startPoint!.clone().add(endPoint!).multiplyScalar(0.5).add(perpendicularOffset),
@@ -289,23 +279,13 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     if (!point) return;
 
     if (dimensionsState.isPositioning && dimensionsState.startPoint && dimensionsState.endPoint) {
-      const { startPoint, endPoint } = dimensionsState;
-      const originalDir = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
-      const up = new THREE.Vector3(0, 1, 0);
-      const perp = new THREE.Vector3().crossVectors(originalDir, up).normalize();
-      
-      const toMouse = new THREE.Vector3().subVectors(point, startPoint);
-      const offsetMag = toMouse.dot(perp);
-      const snappedMag = Math.round(offsetMag / offsetGridSize) * offsetGridSize;
-      const snappedOffset = perp.clone().multiplyScalar(snappedMag);
-      
-      const newPreviewPosition = startPoint.clone().add(snappedOffset);
-
+      // Free positioning mode - mouse can move anywhere
       setDimensionsState((prev) => ({
         ...prev,
-        previewPosition: newPreviewPosition,
+        previewPosition: point.clone(),
       }));
     } else if (dimensionsState.startPoint && !dimensionsState.endPoint) {
+      // Constraint mode for second point selection (horizontal/vertical)
       const firstPoint = dimensionsState.startPoint;
       const direction = new THREE.Vector3().subVectors(point, firstPoint);
 
@@ -353,19 +333,23 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
       };
     }
 
-    // Positioning mode
+    // Positioning mode - maintain original line alignment
     const { startPoint, endPoint, previewPosition } = dimensionsState;
     const distance = startPoint.distanceTo(endPoint);
 
-    // Offset vector
+    // Calculate perpendicular offset while maintaining original line direction
     const originalDirection = new THREE.Vector3().subVectors(endPoint, startPoint);
     const toMouseVector = new THREE.Vector3().subVectors(previewPosition!, startPoint);
+    
+    // Project mouse vector onto original direction
     const originalDirectionNorm = originalDirection.clone().normalize();
     const parallelComponent = originalDirectionNorm.clone().multiplyScalar(toMouseVector.dot(originalDirectionNorm));
-    const offsetVector = toMouseVector.clone().sub(parallelComponent);
+    
+    // Get perpendicular offset (maintains original line alignment)
+    const perpendicularOffset = toMouseVector.clone().sub(parallelComponent);
 
-    const dimensionStart = startPoint.clone().add(offsetVector);
-    const dimensionEnd = endPoint.clone().add(offsetVector);
+    const dimensionStart = startPoint.clone().add(perpendicularOffset);
+    const dimensionEnd = endPoint.clone().add(perpendicularOffset);
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
 
     return {
