@@ -124,23 +124,15 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
 interface SimpleDimensionsState {
   firstPoint: THREE.Vector3 | null;
   secondPoint: THREE.Vector3 | null;
-  isPositioning: boolean;
-  previewPosition: THREE.Vector3 | null;
   completedDimensions: SimpleDimension[];
   currentSnapPoint: any;
-  lockedAxis: 'x' | 'z' | null;
-  isVertical: boolean | null;
 }
 
 const INITIAL_SIMPLE_DIMENSIONS_STATE: SimpleDimensionsState = {
   firstPoint: null,
   secondPoint: null,
-  isPositioning: false,
-  previewPosition: null,
   completedDimensions: [],
   currentSnapPoint: null,
-  lockedAxis: null,
-  isVertical: null,
 };
 
 interface SimpleDimensionsManagerProps {
@@ -163,7 +155,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
   const { camera, raycaster, gl } = useThree();
   const [dimensionsState, setDimensionsState] = useState<SimpleDimensionsState>(INITIAL_SIMPLE_DIMENSIONS_STATE);
-  const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
 
   // Intersection point hesaplama - SADECE DIMENSIONS İÇİN
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
@@ -176,59 +167,40 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     raycaster.setFromCamera({ x, y }, camera);
 
     let worldPoint = new THREE.Vector3();
-    let intersectionSuccess = false;
-
-    // Positioning modunda iken, dinamik olarak belirlenen eksene sabitle
-    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      // Fare pozisyonunu al
-      const mousePlane = new THREE.Plane();
-      mousePlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), raycaster.ray.origin);
-      intersectionSuccess = raycaster.ray.intersectPlane(mousePlane, worldPoint);
-    } else {
-      // Normal mod: Y=0 düzlemi
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
-    }
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     
     if (!intersectionSuccess) {
       return null;
     }
-
-    setMouseWorldPosition(worldPoint);
     
-    // Positioning modunda snap detection yapma
-    if (!dimensionsState.isPositioning) {
-      // Snap detection - SADECE ENDPOINT
-      const snapPoints = findSnapPoints(
-        worldPoint,
-        completedShapes, 
-        shapes, 
-        { ...snapSettings, [SnapType.ENDPOINT]: true, [SnapType.MIDPOINT]: false, [SnapType.CENTER]: false, [SnapType.QUADRANT]: false, [SnapType.PERPENDICULAR]: false, [SnapType.INTERSECTION]: false, [SnapType.NEAREST]: false }, 
-        snapTolerance * 2,
-        null,
-        null,
-        camera,
-        gl.domElement,
-        mouseScreenPos,
-        'Dimension'
+    // Snap detection - SADECE ENDPOINT
+    const snapPoints = findSnapPoints(
+      worldPoint,
+      completedShapes, 
+      shapes, 
+      { ...snapSettings, [SnapType.ENDPOINT]: true, [SnapType.MIDPOINT]: false, [SnapType.CENTER]: false, [SnapType.QUADRANT]: false, [SnapType.PERPENDICULAR]: false, [SnapType.INTERSECTION]: false, [SnapType.NEAREST]: false }, 
+      snapTolerance * 2,
+      null,
+      null,
+      camera,
+      gl.domElement,
+      mouseScreenPos,
+      'Dimension'
+    );
+    
+    if (snapPoints.length > 0) {
+      const closestSnap = snapPoints[0];
+      setDimensionsState(prev => ({ ...prev, currentSnapPoint: closestSnap }));
+      return closestSnap.point;
+    } else {
+      setDimensionsState(prev => ({ ...prev, currentSnapPoint: null }));
+      return new THREE.Vector3(
+        snapToGrid(worldPoint.x, gridSize),
+        0,
+        snapToGrid(worldPoint.z, gridSize)
       );
-      
-      if (snapPoints.length > 0) {
-        const closestSnap = snapPoints[0];
-        setDimensionsState(prev => ({ ...prev, currentSnapPoint: closestSnap }));
-        return closestSnap.point;
-      } else {
-        setDimensionsState(prev => ({ ...prev, currentSnapPoint: null }));
-        return new THREE.Vector3(
-          snapToGrid(worldPoint.x, gridSize),
-          0,
-          snapToGrid(worldPoint.z, gridSize)
-        );
-      }
     }
-    
-    // Positioning modunda raw world point döndür
-    return worldPoint;
   };
   
   // Click handler
@@ -247,36 +219,23 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         ...prev,
         firstPoint: point.clone(),
         secondPoint: null,
-        isPositioning: false,
-        previewPosition: null,
       }));
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
-    } else if (!dimensionsState.secondPoint) {
-      // İkinci nokta seçimi
-      setDimensionsState(prev => ({
-        ...prev,
-        secondPoint: point.clone(),
-        isPositioning: true, // Konumlandırma modunu başlat
-        previewPosition: point.clone(),
-      }));
-      console.log(`🎯 Dimension: Second point selected. Now positioning the dimension line.`);
-    } else if (dimensionsState.isPositioning) {
-      // Ölçü tamamlama
+    } else {
+      // İkinci nokta seçimi ve ölçüyü otomatik oluştur
       const firstPoint = dimensionsState.firstPoint!;
-      const secondPoint = dimensionsState.secondPoint!;
-      const previewPosition = dimensionsState.previewPosition!;
-      
-      const distance = firstPoint.distanceTo(secondPoint);
-      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint).normalize();
-      const offsetVector = new THREE.Vector3().subVectors(previewPosition, firstPoint);
-      const parallelComponent = originalDirection.clone().multiplyScalar(offsetVector.dot(originalDirection));
-      const perpendicularOffset = offsetVector.clone().sub(parallelComponent);
+      const secondPoint = point.clone();
+
+      // Ölçü çizgisi için offset hesapla (otomatik 200mm dışarıya)
+      const offsetDistance = 200;
+      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
+      const perpendicularOffset = new THREE.Vector3(-originalDirection.z, 0, originalDirection.x).normalize().multiplyScalar(offsetDistance);
 
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
         startPoint: firstPoint.clone().add(perpendicularOffset),
         endPoint: secondPoint.clone().add(perpendicularOffset),
-        distance: convertToDisplayUnit(distance),
+        distance: convertToDisplayUnit(firstPoint.distanceTo(secondPoint)),
         unit: measurementUnit,
         textPosition: firstPoint.clone().add(secondPoint).multiplyScalar(0.5).add(perpendicularOffset),
         originalStart: firstPoint,
@@ -288,49 +247,20 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         completedDimensions: [...prev.completedDimensions, newDimension],
         firstPoint: null,
         secondPoint: null,
-        isPositioning: false,
-        currentSnapPoint: null,
-        previewPosition: null,
       }));
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
     }
   };
   
-  // Move handler
+  // Move handler - Artık konumlandırma olmadığı için bu handler boş kalıyor
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
     if (activeTool !== Tool.DIMENSION) return;
     
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
 
-    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      const firstPoint = dimensionsState.firstPoint;
-      const secondPoint = dimensionsState.secondPoint;
-      
-      // Fare noktasından orijinal çizgiye dik olan düzleme olan mesafeyi hesapla
-      const line = new THREE.Line3(firstPoint, secondPoint);
-      const closestPointOnLine = new THREE.Vector3();
-      line.closestPointToPoint(point, true, closestPointOnLine);
-      const offsetVector = new THREE.Vector3().subVectors(point, closestPointOnLine);
-
-      // Sadece X veya Z ekseni boyunca öteleme
-      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
-      if (Math.abs(originalDirection.x) > Math.abs(originalDirection.z)) {
-        // Yatay çizgi, Z ekseni boyunca ötele
-        offsetVector.setX(0);
-      } else {
-        // Dikey çizgi, X ekseni boyunca ötele
-        offsetVector.setZ(0);
-      }
-
-      const newPreviewPosition = firstPoint.clone().add(offsetVector);
-
-      setDimensionsState(prev => ({
-        ...prev,
-        previewPosition: newPreviewPosition,
-      }));
-    } else if (dimensionsState.firstPoint && !dimensionsState.secondPoint) {
+    if (dimensionsState.firstPoint && !dimensionsState.secondPoint) {
       const firstPoint = dimensionsState.firstPoint.clone();
       const direction = new THREE.Vector3().subVectors(point, firstPoint);
       
@@ -346,64 +276,45 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       setDimensionsState(prev => ({
         ...prev,
-        previewPosition: previewPoint,
+        secondPoint: previewPoint,
       }));
+    } else {
+      setDimensionsState(prev => ({ ...prev, currentSnapPoint: null }));
     }
   };
 
-  // Preview ölçüsü oluştur
+  // Preview ölçüsü oluştur - Artık sadece iki nokta arasındaki çizgiyi gösteriyor
   const previewDimension = useMemo(() => {
     if (!dimensionsState.firstPoint || !dimensionsState.secondPoint) {
-      if (!dimensionsState.firstPoint || !dimensionsState.previewPosition) {
-        return null;
-      }
-      
-      const firstPoint = dimensionsState.firstPoint;
-      const previewPoint = dimensionsState.previewPosition;
-      
-      const distance = firstPoint.distanceTo(previewPoint);
-      const dimensionStart = firstPoint.clone();
-      const dimensionEnd = previewPoint.clone();
-      const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
-
-      return {
-          id: 'preview',
-          startPoint: dimensionStart,
-          endPoint: dimensionEnd,
-          distance: convertToDisplayUnit(distance),
-          unit: measurementUnit,
-          textPosition,
-          originalStart: firstPoint,
-          originalEnd: previewPoint,
-      };
+      return null;
     }
     
-    // Konumlandırma modunda ölçü çizgisini hesapla
     const firstPoint = dimensionsState.firstPoint;
     const secondPoint = dimensionsState.secondPoint;
-    const previewPosition = dimensionsState.previewPosition || secondPoint;
     
     const distance = firstPoint.distanceTo(secondPoint);
-    
-    // Offset vektörünü hesapla
-    const offsetVector = new THREE.Vector3().subVectors(previewPosition, firstPoint);
-    const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint).normalize();
-    const parallelComponent = originalDirection.clone().multiplyScalar(offsetVector.dot(originalDirection));
-    const perpendicularOffset = offsetVector.clone().sub(parallelComponent);
-    
-    const dimensionStart = firstPoint.clone().add(perpendicularOffset);
-    const dimensionEnd = secondPoint.clone().add(perpendicularOffset);
+    const dimensionStart = firstPoint.clone();
+    const dimensionEnd = secondPoint.clone();
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
 
+    // Ölçü çizgisini otomatik olarak ötele
+    const offsetDistance = 200;
+    const originalDirection = new THREE.Vector3().subVectors(dimensionEnd, dimensionStart);
+    const perpendicularOffset = new THREE.Vector3(-originalDirection.z, 0, originalDirection.x).normalize().multiplyScalar(offsetDistance);
+
+    const offsetStart = dimensionStart.clone().add(perpendicularOffset);
+    const offsetEnd = dimensionEnd.clone().add(perpendicularOffset);
+    const offsetTextPosition = textPosition.clone().add(perpendicularOffset);
+    
     return {
       id: 'preview',
-      startPoint: dimensionStart,
-      endPoint: dimensionEnd,
+      startPoint: offsetStart,
+      endPoint: offsetEnd,
       distance: convertToDisplayUnit(distance),
       unit: measurementUnit,
-      textPosition,
-      originalStart: firstPoint,
-      originalEnd: secondPoint
+      textPosition: offsetTextPosition,
+      originalStart: dimensionStart,
+      originalEnd: dimensionEnd
     };
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
 
