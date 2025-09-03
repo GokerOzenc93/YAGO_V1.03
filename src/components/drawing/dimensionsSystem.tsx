@@ -285,6 +285,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
   // Intersection point hesaplama - SADECE DIMENSIONS İÇİN
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
+    try {
     const rect = gl.domElement.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -347,10 +348,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda raw world point döndür
     return worldPoint;
+    } catch (error) {
+      console.warn('Dimension intersection calculation error:', error);
+      return null;
+    }
   };
 
   // Click handler
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    try {
     if (activeTool !== Tool.DIMENSION) return;
     if (event.nativeEvent.button !== 0) return;
     
@@ -452,10 +458,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
     }
+    } catch (error) {
+      console.error('Dimension pointer down error:', error);
+    }
   };
 
   // Move handler
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
+    try {
     if (activeTool !== Tool.DIMENSION) return;
     
     const point = getIntersectionPoint(event.nativeEvent);
@@ -469,10 +479,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         previewPosition: point.clone()
       }));
     }
+    } catch (error) {
+      console.warn('Dimension pointer move error:', error);
+    }
   };
 
   // Preview ölçüsü oluştur
   const previewDimension = useMemo(() => {
+    try {
     // İkinci nokta seçildikten sonra ve fare hareket ettikçe preview göster
     if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.previewPosition) {
       return null;
@@ -532,6 +546,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       originalStart: dimensionsState.firstPoint,
       originalEnd: dimensionsState.secondPoint
     };
+    } catch (error) {
+      console.warn('Dimension preview calculation error:', error);
+      return null;
+    }
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
 
   // Reset dimensions state when tool changes
