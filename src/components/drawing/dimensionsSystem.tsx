@@ -28,6 +28,25 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   dimension, 
   isPreview = false 
 }) => {
+  const { camera } = useThree();
+  
+  // Calculate dynamic text size based on camera distance
+  const textSize = useMemo(() => {
+    const distance = camera.position.distanceTo(dimension.textPosition);
+    // Scale text size based on distance to maintain readability
+    const baseSize = 14;
+    const scaleFactor = Math.max(0.5, Math.min(2.0, distance / 2000));
+    return baseSize * scaleFactor;
+  }, [camera.position, dimension.textPosition]);
+  
+  // Calculate text background size based on text content
+  const textBackgroundSize = useMemo(() => {
+    const text = `${dimension.distance.toFixed(1)} ${dimension.unit}`;
+    const width = Math.max(120, text.length * textSize * 0.6);
+    const height = textSize * 1.8;
+    return { width, height };
+  }, [dimension.distance, dimension.unit, textSize]);
+
   const points = useMemo(() => {
     const start = dimension.startPoint;
     const end = dimension.endPoint;
@@ -110,7 +129,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         </bufferGeometry>
         <lineBasicMaterial 
           color={isPreview ? "#ff6b35" : "#2563eb"} 
-          linewidth={2}
+          linewidth={3}
         />
       </line>
 
@@ -130,10 +149,12 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={1}
-            lineDashSize={5}
-            gapSize={3}
+            linewidth={1.5}
+            lineDashSize={8}
+            gapSize={4}
             dashed={true}
+            opacity={0.7}
+            transparent
           />
         </line>
       ))}
@@ -154,7 +175,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={2}
+            linewidth={2.5}
           />
         </line>
       ))}
@@ -175,27 +196,44 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={2}
+            linewidth={2.5}
           />
         </line>
       ))}
 
-      {/* Ölçü metni */}
-      <Billboard position={dimension.textPosition}>
+      {/* Ölçü metni - Çizgiden uzaklaştırılmış pozisyon */}
+      <Billboard 
+        position={[
+          dimension.textPosition.x,
+          dimension.textPosition.y + 40, // Çizginin üstüne yerleştir
+          dimension.textPosition.z
+        ]}
+        follow={true}
+        lockX={false}
+        lockY={false}
+        lockZ={false}
+      >
         <mesh>
-          <planeGeometry args={[120, 30]} />
+          <planeGeometry args={[textBackgroundSize.width, textBackgroundSize.height]} />
           <meshBasicMaterial 
             color="white" 
             transparent 
-            opacity={0.9}
+            opacity={0.95}
+            depthWrite={false}
           />
         </mesh>
         <Text
           position={[0, 0, 0.1]}
-          fontSize={12}
+          fontSize={textSize}
           color={isPreview ? "#ff6b35" : "#2563eb"}
           anchorX="center"
           anchorY="middle"
+          font="/fonts/inter-medium.woff"
+          fontWeight="500"
+          letterSpacing={0.02}
+          lineHeight={1.2}
+          maxWidth={textBackgroundSize.width * 0.9}
+          textAlign="center"
         >
           {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
         </Text>
