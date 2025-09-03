@@ -282,7 +282,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         worldPoint,
         completedShapes, 
         shapes, 
-        { ...snapSettings, [SnapType.ENDPOINT]: true, [SnapType.MIDPOINT]: false, [SnapType.CENTER]: false, [SnapType.QUADRANT]: false, [SnapType.PERPENDICULAR]: false, [SnapType.INTERSECTION]: false, [SnapType.NEAREST]: false }, 
+        { 
+          [SnapType.ENDPOINT]: true, 
+          [SnapType.MIDPOINT]: true, 
+          [SnapType.CENTER]: false, 
+          [SnapType.QUADRANT]: false, 
+          [SnapType.PERPENDICULAR]: false, 
+          [SnapType.INTERSECTION]: false, 
+          [SnapType.NEAREST]: false 
+        }, 
         snapTolerance * 2,
         null,
         null,
@@ -439,6 +447,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       }));
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
+      
+      // Dimension tool'u kapat ve Select tool'a geç
+      useAppStore.getState().setActiveTool('Select' as any);
+      console.log('🎯 Dimension completed, switched to Select tool');
     }
   };
 
@@ -526,6 +538,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   useEffect(() => {
     if (activeTool !== Tool.DIMENSION) {
       setDimensionsState(INITIAL_SIMPLE_DIMENSIONS_STATE);
+      console.log('🎯 Dimension tool deactivated, state reset');
     }
   }, [activeTool]);
 
