@@ -28,25 +28,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   dimension, 
   isPreview = false 
 }) => {
-  const { camera } = useThree();
-  
-  // Calculate dynamic text size based on camera distance
-  const textSize = useMemo(() => {
-    const distance = camera.position.distanceTo(dimension.textPosition);
-    // Scale text size based on distance to maintain readability
-    const baseSize = 14;
-    const scaleFactor = Math.max(0.5, Math.min(2.0, distance / 2000));
-    return baseSize * scaleFactor;
-  }, [camera.position, dimension.textPosition]);
-  
-  // Calculate text background size based on text content
-  const textBackgroundSize = useMemo(() => {
-    const text = `${dimension.distance.toFixed(1)} ${dimension.unit}`;
-    const width = Math.max(120, text.length * textSize * 0.6);
-    const height = textSize * 1.8;
-    return { width, height };
-  }, [dimension.distance, dimension.unit, textSize]);
-
   const points = useMemo(() => {
     const start = dimension.startPoint;
     const end = dimension.endPoint;
@@ -129,7 +110,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         </bufferGeometry>
         <lineBasicMaterial 
           color={isPreview ? "#ff6b35" : "#2563eb"} 
-          linewidth={3}
+          linewidth={2}
         />
       </line>
 
@@ -149,12 +130,10 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={1.5}
-            lineDashSize={8}
-            gapSize={4}
+            linewidth={1}
+            lineDashSize={5}
+            gapSize={3}
             dashed={true}
-            opacity={0.7}
-            transparent
           />
         </line>
       ))}
@@ -175,7 +154,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={2.5}
+            linewidth={2}
           />
         </line>
       ))}
@@ -196,44 +175,27 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={2.5}
+            linewidth={2}
           />
         </line>
       ))}
 
-      {/* Ölçü metni - Çizgiden uzaklaştırılmış pozisyon */}
-      <Billboard 
-        position={[
-          dimension.textPosition.x,
-          dimension.textPosition.y + 40, // Çizginin üstüne yerleştir
-          dimension.textPosition.z
-        ]}
-        follow={true}
-        lockX={false}
-        lockY={false}
-        lockZ={false}
-      >
+      {/* Ölçü metni */}
+      <Billboard position={dimension.textPosition}>
         <mesh>
-          <planeGeometry args={[textBackgroundSize.width, textBackgroundSize.height]} />
+          <planeGeometry args={[120, 30]} />
           <meshBasicMaterial 
             color="white" 
             transparent 
-            opacity={0.95}
-            depthWrite={false}
+            opacity={0.9}
           />
         </mesh>
         <Text
           position={[0, 0, 0.1]}
-          fontSize={textSize}
+          fontSize={12}
           color={isPreview ? "#ff6b35" : "#2563eb"}
           anchorX="center"
           anchorY="middle"
-          font="/fonts/inter-medium.woff"
-          fontWeight="500"
-          letterSpacing={0.02}
-          lineHeight={1.2}
-          maxWidth={textBackgroundSize.width * 0.9}
-          textAlign="center"
         >
           {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
         </Text>
@@ -275,8 +237,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     measurementUnit, 
     convertToDisplayUnit, 
     snapSettings,
-    snapTolerance,
-    selectShape
+    snapTolerance
   } = useAppStore();
   
   const { camera, raycaster, gl } = useThree();
@@ -285,7 +246,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
   // Intersection point hesaplama - SADECE DIMENSIONS İÇİN
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
-    try {
     const rect = gl.domElement.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -348,22 +308,17 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda raw world point döndür
     return worldPoint;
-    } catch (error) {
-      console.warn('Dimension intersection calculation error:', error);
-      return null;
-    }
   };
 
   // Click handler
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
-    try {
     if (activeTool !== Tool.DIMENSION) return;
     if (event.nativeEvent.button !== 0) return;
     
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
     
-    // event.stopPropagation(); // Bu satırı kaldırdık - shape seçimini engelliyor
+    event.stopPropagation();
     
     if (!dimensionsState.firstPoint) {
       // İlk nokta seçimi
@@ -388,8 +343,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       console.log(`🎯 Dimension: Move mouse to position dimension line, then click to confirm`);
     } else if (dimensionsState.isPositioning) {
       // Ölçü tamamlama
-      event.stopPropagation(); // Sadece ölçü tamamlarken propagation'ı durdur
-      
       const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
       
       // Seçilen noktaların yükseklik hizasında ölçü çizgisi oluştur
@@ -458,14 +411,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
     }
-    } catch (error) {
-      console.error('Dimension pointer down error:', error);
-    }
   };
 
   // Move handler
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
-    try {
     if (activeTool !== Tool.DIMENSION) return;
     
     const point = getIntersectionPoint(event.nativeEvent);
@@ -479,14 +428,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         previewPosition: point.clone()
       }));
     }
-    } catch (error) {
-      console.warn('Dimension pointer move error:', error);
-    }
   };
 
   // Preview ölçüsü oluştur
   const previewDimension = useMemo(() => {
-    try {
     // İkinci nokta seçildikten sonra ve fare hareket ettikçe preview göster
     if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.previewPosition) {
       return null;
@@ -546,10 +491,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       originalStart: dimensionsState.firstPoint,
       originalEnd: dimensionsState.secondPoint
     };
-    } catch (error) {
-      console.warn('Dimension preview calculation error:', error);
-      return null;
-    }
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
 
   // Reset dimensions state when tool changes
@@ -569,10 +510,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           visible={false}
-          renderOrder={-1000}
         >
           <planeGeometry args={[100000, 100000]} />
-          <meshBasicMaterial visible={false} transparent opacity={0} />
+          <meshBasicMaterial visible={false} />
         </mesh>
       )}
 
