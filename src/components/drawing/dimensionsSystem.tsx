@@ -373,14 +373,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         perpendicularOffset = toPreview.clone().sub(parallelComponent);
         
       } else if (absZ >= absX && absZ >= absY) {
-        // Z ekseni dominant - sadece X ekseninde offset (Y=0)
+        // Z ekseni dominant - sadece X ekseninde offset (Y ve Z sabit)
         const midPoint = new THREE.Vector3(
           (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
           (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
           (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
         );
         
-        // Sadece X ekseninde offset hesapla (Y ve Z = 0)
+        // Sadece X ekseninde offset hesapla (Y ve Z değişmez)
         const xOffset = dimensionsState.previewPosition.x - midPoint.x;
         perpendicularOffset = new THREE.Vector3(xOffset, 0, 0);
         
