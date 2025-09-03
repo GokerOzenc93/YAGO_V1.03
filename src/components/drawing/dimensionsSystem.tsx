@@ -166,14 +166,19 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     let intersectionSuccess = false;
 
     if (dimensionsState.isPositioning) {
+      // Positioning mode: Use a plane perpendicular to the dimension line
       const startPoint = dimensionsState.startPoint!;
       const endPoint = dimensionsState.endPoint!;
-      const originalDirection = new THREE.Vector3().subVectors(endPoint, startPoint);
-      const isVertical = Math.abs(originalDirection.x) < Math.abs(originalDirection.z);
-      const normal = isVertical ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
-      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, startPoint);
+      const originalDirection = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+      
+      // Determine the perpendicular direction on the XZ plane
+      const up = new THREE.Vector3(0, 1, 0);
+      const perp = new THREE.Vector3().crossVectors(originalDirection, up).normalize();
+      
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(perp, startPoint);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     } else {
+      // Normal mode: Use the working plane (Y=0)
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     }
@@ -237,7 +242,7 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
         ...prev,
         endPoint: point.clone(),
         isPositioning: true,
-        previewPosition: point.clone(),
+        previewPosition: point.clone(), // Initial preview position for offset
       }));
       console.log(`🎯 Dimension: Second point selected. Now positioning the dimension line.`);
     } else if (dimensionsState.isPositioning) {
@@ -247,6 +252,7 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
       const distance = startPoint!.distanceTo(endPoint!);
       const originalDirection = new THREE.Vector3().subVectors(endPoint!, startPoint!).normalize();
       const offsetVector = new THREE.Vector3().subVectors(previewPosition!, startPoint!);
+      
       const parallelComponent = originalDirection.clone().multiplyScalar(offsetVector.dot(originalDirection));
       const perpendicularOffset = offsetVector.clone().sub(parallelComponent);
 
@@ -283,22 +289,17 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     if (!point) return;
 
     if (dimensionsState.isPositioning && dimensionsState.startPoint && dimensionsState.endPoint) {
-      const firstPoint = dimensionsState.startPoint;
-      const secondPoint = dimensionsState.endPoint;
-      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
-      const isVertical = Math.abs(originalDirection.x) < Math.abs(originalDirection.z);
+      const { startPoint, endPoint } = dimensionsState;
+      const originalDir = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      const perp = new THREE.Vector3().crossVectors(originalDir, up).normalize();
       
-      let toMouseVector = new THREE.Vector3().subVectors(point, firstPoint);
-
-      // Sadece dik eksen üzerinde ötele
-      const perpendicularDirection = isVertical ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
-      const offsetMagnitude = toMouseVector.dot(perpendicularDirection);
+      const toMouse = new THREE.Vector3().subVectors(point, startPoint);
+      const offsetMag = toMouse.dot(perp);
+      const snappedMag = Math.round(offsetMag / offsetGridSize) * offsetGridSize;
+      const snappedOffset = perp.clone().multiplyScalar(snappedMag);
       
-      const snappedOffsetMagnitude = Math.round(offsetMagnitude / offsetGridSize) * offsetGridSize;
-      
-      const snappedOffsetVector = perpendicularDirection.clone().multiplyScalar(snappedOffsetMagnitude);
-      
-      const newPreviewPosition = firstPoint.clone().add(snappedOffsetVector);
+      const newPreviewPosition = startPoint.clone().add(snappedOffset);
 
       setDimensionsState((prev) => ({
         ...prev,
