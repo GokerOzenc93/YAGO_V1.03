@@ -237,7 +237,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     measurementUnit, 
     convertToDisplayUnit, 
     setSnapSettingsBatch,
-    snapTolerance
+    snapTolerance,
+    snapSettings
   } = useAppStore();
   
   const { camera, raycaster, gl } = useThree();
@@ -248,24 +249,27 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
   useEffect(() => {
     if (activeTool === Tool.DIMENSION) {
-      // Mevcut snap ayarlarını kaydet
-      setOriginalSnapSettings({ ...snapSettings });
+      // Mevcut snap ayarlarını store'dan al
+      const currentSnapSettings = useAppStore.getState().snapSettings;
       
-      // Sadece ENDPOINT ve MIDPOINT'i aktif et
-      setSnapSetting(SnapType.ENDPOINT, true);
-      setSnapSetting(SnapType.MIDPOINT, true);
-      setSnapSetting(SnapType.CENTER, false);
-      setSnapSetting(SnapType.QUADRANT, false);
-      setSnapSetting(SnapType.PERPENDICULAR, false);
-      setSnapSetting(SnapType.INTERSECTION, false);
-      setSnapSetting(SnapType.NEAREST, false);
+      // Mevcut snap ayarlarını kaydet
+      setOriginalSnapSettings({ ...currentSnapSettings });
+      
+      // Sadece ENDPOINT ve MIDPOINT'i aktif et - batch update
+      setSnapSettingsBatch({
+        [SnapType.ENDPOINT]: true,
+        [SnapType.MIDPOINT]: true,
+        [SnapType.CENTER]: false,
+        [SnapType.QUADRANT]: false,
+        [SnapType.PERPENDICULAR]: false,
+        [SnapType.INTERSECTION]: false,
+        [SnapType.NEAREST]: false,
+      });
       
       console.log('🎯 Dimension tool activated: Only ENDPOINT and MIDPOINT snaps enabled');
     } else if (originalSnapSettings && activeTool !== Tool.DIMENSION) {
       // Orijinal snap ayarlarını geri yükle
-      Object.entries(originalSnapSettings).forEach(([snapType, enabled]) => {
-        setSnapSetting(snapType as SnapType, enabled);
-      });
+      setSnapSettingsBatch(originalSnapSettings);
       setOriginalSnapSettings(null);
       
       console.log('🎯 Dimension tool deactivated: Original snap settings restored');
@@ -305,15 +309,12 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning) {
-      // Mevcut snap ayarlarını store'dan al
-      const currentSnapSettings = useAppStore.getState().snapSettings;
-      
       // 🎯 STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
       const snapPoints = findSnapPoints(
         worldPoint,
         completedShapes, 
         shapes, 
-        currentSnapSettings,
+        snapSettings,
         snapTolerance * 2,
         null,
         null,
