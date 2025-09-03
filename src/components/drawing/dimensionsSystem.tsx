@@ -345,8 +345,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       setDimensionsState(prev => ({
         ...prev,
         secondPoint: point.clone(),
-        isPositioning: true,
-        previewPosition: point.clone().add(new THREE.Vector3(0, 100, 0)) // Varsayılan pozisyon
+        isPositioning: false, // Henüz positioning başlamadı
+        previewPosition: null
       }));
       console.log(`🎯 Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
       console.log(`🎯 Dimension: Move mouse to position dimension line, then click to confirm`);
@@ -403,10 +403,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
     
-    // Positioning modundayken fareyle ölçü pozisyonunu güncelle
-    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
+    // İkinci nokta seçildikten sonra fareyle ölçü pozisyonunu güncelle
+    if (dimensionsState.firstPoint && dimensionsState.secondPoint) {
       setDimensionsState(prev => ({
         ...prev,
+        isPositioning: true,
         previewPosition: point.clone()
       }));
     }
@@ -414,7 +415,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
   // Preview ölçüsü oluştur
   const previewDimension = useMemo(() => {
-    if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.isPositioning || !dimensionsState.previewPosition) {
+    // İkinci nokta seçildikten sonra ve fare hareket ettikçe preview göster
+    if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.previewPosition) {
       return null;
     }
 
@@ -497,7 +499,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       )}
       
       {/* İkinci nokta göstergesi */}
-      {dimensionsState.secondPoint && dimensionsState.isPositioning && (
+      {dimensionsState.secondPoint && (
         <mesh position={dimensionsState.secondPoint}>
           <sphereGeometry args={[15]} />
           <meshBasicMaterial color="#f59e0b" transparent opacity={0.8} />
