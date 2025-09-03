@@ -87,9 +87,10 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         <lineBasicMaterial
           color={isPreview ? "#ff6b35" : "#2563eb"}
           linewidth={2}
-        />
-      </line>
-
+          depthTest={false}
+          depthWrite={false}
+          opacity={0.7}
+          transparent={true}
       {/* Uzatma çizgileri */}
       {points.extensionLines.map((ext, index) => (
         <line key={index}>
@@ -131,18 +132,34 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           <lineBasicMaterial
             color={isPreview ? "#ff6b35" : "#2563eb"}
             linewidth={2}
+            opacity={1.0}
+            transparent={false}
+            depthTest={false}
+            depthWrite={false}
           />
         </line>
       ))}
       
       {/* Ölçü metni */}
       <Billboard position={dimension.textPosition}>
+        {/* Metin arka planı - tüm açılardan görünür */}
+        <mesh position={[0, 0, -1]}>
+          <planeGeometry args={[80, 25]} />
+          <meshBasicMaterial 
+            color="white" 
+            transparent={true} 
+            opacity={0.9}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
         <Text
           position={[0, 0, 0]}
           fontSize={20}
           color="black"
           anchorX="center"
           anchorY="middle"
+          outlineWidth={1}
+          outlineColor="white"
         >
           {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
         </Text>
@@ -291,14 +308,32 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.secondPoint) {
       // İkinci nokta seçimi
+      const distance = dimensionsState.firstPoint!.distanceTo(point);
+      const direction = new THREE.Vector3().subVectors(point, dimensionsState.firstPoint!).normalize();
+      
+      // Geometrinin dışına otomatik offset hesapla (200mm dışarıya)
+      const autoOffset = 200;
+      let offsetDirection: THREE.Vector3;
+      
+      if (Math.abs(direction.x) > Math.abs(direction.z)) {
+        // X ekseni dominant - Z yönünde offset
+        offsetDirection = new THREE.Vector3(0, 0, direction.z >= 0 ? autoOffset : -autoOffset);
+      } else {
+        // Z ekseni dominant - X yönünde offset  
+        offsetDirection = new THREE.Vector3(direction.x >= 0 ? autoOffset : -autoOffset, 0, 0);
+      }
+      
+      // Otomatik offset pozisyonunu hesapla
+      const autoOffsetPosition = dimensionsState.firstPoint!.clone().add(offsetDirection);
+      
       setDimensionsState(prev => ({
         ...prev,
         secondPoint: point.clone(),
         isPositioning: true, // Konumlandırma modunu başlat
-        previewPosition: point.clone(),
+        previewPosition: autoOffsetPosition,
         lockedAxis: Math.abs(point.x - prev.firstPoint!.x) > Math.abs(point.z - prev.firstPoint!.z) ? 'z' : 'x',
       }));
-      console.log(`🎯 Dimension: Second point selected. Now positioning the dimension line.`);
+      console.log(`🎯 Dimension: Second point selected. Auto-offset ${autoOffset}mm outside geometry.`);
     } else if (dimensionsState.isPositioning) {
       // Ölçü tamamlama
       const distance = dimensionsState.firstPoint!.distanceTo(dimensionsState.secondPoint!);
