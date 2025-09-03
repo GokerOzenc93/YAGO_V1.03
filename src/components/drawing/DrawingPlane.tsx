@@ -195,10 +195,16 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       snapSettings, 
       perspectiveTolerance,
       drawingState.currentPoint,
+      null,
+      camera,
+      gl.domElement,
+      mouseScreenPos
+    );
+    
     if (dimensionsState.isPositioning) {
       setDimensionsState(prev => ({
         ...prev,
-        previewPosition: point.clone()
+        previewPosition: worldPoint.clone()
       }));
     }
     
