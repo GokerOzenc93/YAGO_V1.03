@@ -195,11 +195,12 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       snapSettings, 
       perspectiveTolerance,
       drawingState.currentPoint,
-      drawingState.currentDirection,
-      camera,
-      gl.domElement,
-      mouseScreenPos
-    );
+    if (dimensionsState.isPositioning) {
+      setDimensionsState(prev => ({
+        ...prev,
+        previewPosition: point.clone()
+      }));
+    }
     
     let finalPoint: THREE.Vector3;
     

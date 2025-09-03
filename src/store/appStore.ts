@@ -292,17 +292,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAutoSnapEnabled: (enabled) => set({ autoSnapEnabled: enabled }),
   
   enableAutoSnap: (tool) => {
-    const state = get();
-    
-    // Sadece auto snap flag'ini aç, snap ayarlarını değiştirme
-    set({ autoSnapEnabled: true });
-    console.log(`🎯 Auto snap enabled for ${tool}`);
+    // Hiçbir şey yapma - snap ayarlarını değiştirme
+    console.log(`🎯 Auto snap for ${tool} - no changes made`);
   },
   
   disableAutoSnap: () => {
-    // Sadece auto snap flag'ini kapat, snap ayarlarını değiştirme
-    set({ autoSnapEnabled: false });
-    console.log('🎯 Auto snap disabled');
+    // Hiçbir şey yapma - snap ayarlarını değiştirme
+    console.log('🎯 Auto snap disabled - no changes made');
   },
   
   pointToPointMoveState: {

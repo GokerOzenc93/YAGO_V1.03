@@ -80,31 +80,6 @@ const StatusBar: React.FC = () => {
   return (
     <div className="flex items-center justify-between h-5 px-2 text-xs bg-gray-800/80 backdrop-blur-sm border-t border-gray-700/50">
       <div className="flex items-center gap-4">
-        <div>
-          <span className="text-gray-400 mr-1">Tool:</span>
-          <span className={activeTool === 'Dimension' ? 'text-green-400 font-medium' : ''}>
-            {activeTool}
-            {activeTool === 'Dimension' && ' - Click two points to measure distance'}
-          </span>
-        </div>
-        <div>
-          <span className="text-gray-400 mr-1">Camera:</span>
-          <span>
-            X: {formatValue(cameraPosition[0])} {measurementUnit}, 
-            Y: {formatValue(cameraPosition[1])} {measurementUnit}, 
-            Z: {formatValue(cameraPosition[2])} {measurementUnit}
-          </span>
-        </div>
-        {selectedShapeId && (
-          <div>
-            <span className="text-gray-400 mr-1">Object:</span>
-            <span>
-              X: {formatValue(selectedObjectPosition[0])} {measurementUnit}, 
-              Y: {formatValue(selectedObjectPosition[1])} {measurementUnit}, 
-              Z: {formatValue(selectedObjectPosition[2])} {measurementUnit}
-            </span>
-          </div>
-        )}
         <div id="fps-container" className="flex items-center">
           <span className="text-gray-400 mr-1">FPS:</span>
           <span id="fps-value"></span>
