@@ -150,6 +150,7 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
 
   const { camera, raycaster, gl } = useThree();
   const [dimensionsState, setDimensionsState] = useState<DimensionsState>(INITIAL_DIMENSIONS_STATE);
+  const offsetGridSize = 2; // Offset için 2mm'lik sanal ızgara
 
   // Intersection point calculation
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
@@ -162,20 +163,9 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     raycaster.setFromCamera({ x, y }, camera);
 
     let worldPoint = new THREE.Vector3();
-    
-    // Positioning mode is active
-    if (dimensionsState.isPositioning) {
-        const mousePlane = new THREE.Plane();
-        mousePlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), raycaster.ray.origin);
-        raycaster.ray.intersectPlane(mousePlane, worldPoint);
-    } else {
-        // Default mode, use the Y=0 plane
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        raycaster.ray.intersectPlane(plane, worldPoint);
-    }
+    const intersectionSuccess = raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), worldPoint);
 
-    // No intersection, return null
-    if (!worldPoint) {
+    if (!intersectionSuccess) {
       return null;
     }
 
@@ -285,20 +275,22 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
 
       const isVertical = Math.abs(originalDirection.x) < Math.abs(originalDirection.z);
       const isHorizontal = !isVertical;
-
-      let projectedPoint = point.clone();
-
-      if (isHorizontal) {
-        projectedPoint.x = firstPoint.x;
-        projectedPoint.y = firstPoint.y;
-      } else { // isVertical
-        projectedPoint.z = firstPoint.z;
-        projectedPoint.y = firstPoint.y;
-      }
       
+      const toMouseVector = new THREE.Vector3().subVectors(point, firstPoint);
+      const originalDirectionNorm = originalDirection.clone().normalize();
+      const parallelComponent = originalDirectionNorm.clone().multiplyScalar(toMouseVector.dot(originalDirectionNorm));
+      const perpendicularOffset = toMouseVector.clone().sub(parallelComponent);
+      
+      const offsetMagnitude = perpendicularOffset.length();
+      const snappedOffsetMagnitude = Math.round(offsetMagnitude / offsetGridSize) * offsetGridSize;
+      
+      const snappedOffsetVector = perpendicularOffset.clone().normalize().multiplyScalar(snappedOffsetMagnitude);
+      
+      const newPreviewPosition = firstPoint.clone().add(snappedOffsetVector);
+
       setDimensionsState((prev) => ({
         ...prev,
-        previewPosition: projectedPoint,
+        previewPosition: newPreviewPosition,
       }));
     } else if (dimensionsState.startPoint && !dimensionsState.endPoint) {
       const firstPoint = dimensionsState.startPoint;
