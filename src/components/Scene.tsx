@@ -21,6 +21,7 @@ import OpenCascadeShape from './OpenCascadeShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
+import { DimensionsManager } from './drawing/MakerJSDimensions';
 import { createPortal } from 'react-dom';
 import { Shape } from '../types/shapes';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
@@ -734,6 +735,12 @@ const Scene: React.FC = () => {
             />
           );
         })}
+
+        {/* Dimensions Manager - Ölçülendirme sistemi */}
+        <DimensionsManager 
+          completedShapes={[]}
+          shapes={visibleShapes}
+        />
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 120]}>

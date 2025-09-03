@@ -1,7 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import * as makerjs from 'makerjs';
+import { useThree } from '@react-three/fiber';
+import { useAppStore, Tool, SnapType } from '../../store/appStore';
+import { findSnapPoints, SnapPointIndicators } from './snapSystem';
+import { CompletedShape } from './types';
+import { Shape } from '../../types/shapes';
+import { snapToGrid } from './utils';
 
 export interface MakerDimension {
   id: string;
@@ -266,65 +272,207 @@ export const MakerDimensionsSystem: React.FC<MakerDimensionsSystemProps> = ({
   );
 };
 
-// Ölçü click handler
-export const handleMakerDimensionsClick = (
-  point: THREE.Vector3,
-  dimensionsState: MakerDimensionsState,
-  setDimensionsState: (updates: Partial<MakerDimensionsState>) => void,
-  convertToDisplayUnit: (value: number) => number,
-  measurementUnit: string
-) => {
-  if (!dimensionsState.firstPoint) {
-    // İlk nokta seçimi
-    setDimensionsState({
-      firstPoint: point.clone(),
-      secondPoint: null,
-      isPositioning: false,
-      previewPosition: null
-    });
-    console.log(`🎯 Maker.js Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
-  } else if (!dimensionsState.secondPoint) {
-    // İkinci nokta seçimi
-    const distance = dimensionsState.firstPoint.distanceTo(point);
-    setDimensionsState({
-      secondPoint: point.clone(),
-      isPositioning: true
-    });
-    console.log(`🎯 Maker.js Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
-  } else if (dimensionsState.isPositioning) {
-    // Final positioning - kalıcı ölçü oluştur
-    const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
-    const newDimension: MakerDimension = {
-      id: Math.random().toString(36).substr(2, 9),
-      startPoint: dimensionsState.firstPoint,
-      endPoint: dimensionsState.secondPoint,
-      distance: convertToDisplayUnit(distance),
-      position: point.clone(),
-      unit: measurementUnit,
-      offset: dimensionsState.offset
-    };
-    
-    setDimensionsState({
-      completedDimensions: [...dimensionsState.completedDimensions, newDimension],
-      firstPoint: null,
-      secondPoint: null,
-      isPositioning: false,
-      previewPosition: null
-    });
-    
-    console.log(`🎯 Maker.js Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit} at position [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
-  }
-};
+// Tam ölçülendirme sistemi bileşeni
+interface DimensionsManagerProps {
+  completedShapes: CompletedShape[];
+  shapes: Shape[];
+}
 
-// Ölçü move handler
-export const handleMakerDimensionsMove = (
-  point: THREE.Vector3,
-  dimensionsState: MakerDimensionsState,
-  setDimensionsState: (updates: Partial<MakerDimensionsState>) => void
-) => {
-  if (dimensionsState.isPositioning) {
-    setDimensionsState({
-      previewPosition: point.clone()
-    });
-  }
+export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
+  completedShapes,
+  shapes
+}) => {
+  const { 
+    activeTool, 
+    gridSize, 
+    measurementUnit, 
+    convertToDisplayUnit, 
+    snapSettings,
+    snapTolerance
+  } = useAppStore();
+  
+  const { camera, raycaster, gl } = useThree();
+  const [dimensionsState, setDimensionsState] = useState<MakerDimensionsState>(INITIAL_MAKER_DIMENSIONS_STATE);
+  const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
+  const [drawingState, setDrawingState] = useState({ snapPoint: null });
+
+  // Intersection point hesaplama
+  const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    const mouseScreenPos = new THREE.Vector2(event.clientX - rect.left, event.clientY - rect.top);
+
+    raycaster.setFromCamera({ x, y }, camera);
+    
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const worldPoint = new THREE.Vector3();
+    const intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    
+    if (!intersectionSuccess) {
+      return null;
+    }
+    
+    setMouseWorldPosition(worldPoint);
+    
+    const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 3 : 1);
+    
+    const snapPoints = findSnapPoints(
+      worldPoint,
+      completedShapes, 
+      shapes, 
+      snapSettings, 
+      perspectiveTolerance,
+      null,
+      null,
+      camera,
+      gl.domElement,
+      mouseScreenPos,
+      activeTool
+    );
+    
+    let finalPoint: THREE.Vector3;
+    
+    if (snapPoints.length > 0) {
+      const closestSnap = snapPoints[0];
+      setDrawingState({ snapPoint: closestSnap });
+      finalPoint = closestSnap.point;
+    } else {
+      setDrawingState({ snapPoint: null });
+      finalPoint = new THREE.Vector3(
+        snapToGrid(worldPoint.x, gridSize),
+        0,
+        snapToGrid(worldPoint.z, gridSize)
+      );
+    }
+    
+    return finalPoint;
+  };
+
+  // Ölçü click handler
+  const handleDimensionsClick = (
+    point: THREE.Vector3,
+    dimensionsState: MakerDimensionsState,
+    setDimensionsState: (updates: Partial<MakerDimensionsState>) => void,
+    convertToDisplayUnit: (value: number) => number,
+    measurementUnit: string
+  ) => {
+    if (!dimensionsState.firstPoint) {
+      setDimensionsState({
+        firstPoint: point.clone(),
+        secondPoint: null,
+        isPositioning: false,
+        previewPosition: null
+      });
+      console.log(`🎯 Maker.js Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+    } else if (!dimensionsState.secondPoint) {
+      const distance = dimensionsState.firstPoint.distanceTo(point);
+      setDimensionsState({
+        secondPoint: point.clone(),
+        isPositioning: true
+      });
+      console.log(`🎯 Maker.js Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
+    } else if (dimensionsState.isPositioning) {
+      const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
+      const newDimension: MakerDimension = {
+        id: Math.random().toString(36).substr(2, 9),
+        startPoint: dimensionsState.firstPoint,
+        endPoint: dimensionsState.secondPoint,
+        distance: convertToDisplayUnit(distance),
+        position: point.clone(),
+        unit: measurementUnit,
+        offset: dimensionsState.offset
+      };
+      
+      setDimensionsState({
+        completedDimensions: [...dimensionsState.completedDimensions, newDimension],
+        firstPoint: null,
+        secondPoint: null,
+        isPositioning: false,
+        previewPosition: null
+      });
+      
+      console.log(`🎯 Maker.js Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit} at position [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+    }
+  };
+
+  // Ölçü move handler
+  const handleDimensionsMove = (
+    point: THREE.Vector3,
+    dimensionsState: MakerDimensionsState,
+    setDimensionsState: (updates: Partial<MakerDimensionsState>) => void
+  ) => {
+    if (dimensionsState.isPositioning) {
+      setDimensionsState({
+        previewPosition: point.clone()
+      });
+    }
+  };
+
+  // Event handlers
+  const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    if (activeTool !== Tool.DIMENSION) return;
+    if (event.nativeEvent.button !== 0) return;
+    
+    const point = getIntersectionPoint(event.nativeEvent);
+    if (!point) return;
+    
+    event.stopPropagation();
+    
+    handleDimensionsClick(
+      point,
+      dimensionsState,
+      (updates) => setDimensionsState(prev => ({ ...prev, ...updates })),
+      convertToDisplayUnit,
+      measurementUnit
+    );
+  };
+
+  const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
+    if (activeTool !== Tool.DIMENSION) return;
+    
+    const point = getIntersectionPoint(event.nativeEvent);
+    if (!point) return;
+
+    handleDimensionsMove(
+      point,
+      dimensionsState,
+      (updates) => setDimensionsState(prev => ({ ...prev, ...updates }))
+    );
+  };
+
+  // Reset dimensions state when tool changes
+  useEffect(() => {
+    if (activeTool === Tool.DIMENSION) {
+      setDimensionsState(INITIAL_MAKER_DIMENSIONS_STATE);
+    } else {
+      setDimensionsState(INITIAL_MAKER_DIMENSIONS_STATE);
+    }
+  }, [activeTool]);
+
+  return (
+    <>
+      {/* Invisible plane for interaction */}
+      <mesh
+        position={[0, 0, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        visible={activeTool === Tool.DIMENSION}
+      >
+        <planeGeometry args={[100000, 100000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+
+      {/* Dimensions System */}
+      <MakerDimensionsSystem 
+        dimensionsState={dimensionsState}
+        mousePosition={mouseWorldPosition}
+      />
+
+      {/* Snap Point Indicator */}
+      <SnapPointIndicators snapPoint={drawingState.snapPoint} />
+    </>
+  );
 };
