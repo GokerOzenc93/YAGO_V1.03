@@ -233,24 +233,18 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
         ...prev,
         startPoint: point.clone(),
         endPoint: null,
+        previewPosition: point.clone(), // Start with end point position
       }));
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.endPoint) {
       // Step 2: Select second point
-      const startPoint = dimensionsState.startPoint;
-      const endPoint = dimensionsState.previewPosition || point;
-      const distance = startPoint.distanceTo(endPoint);
-
-      if (distance < 1) {
-        console.log('⚠️ Dimension: Points too close, ignoring');
-        return;
-      }
+      const { startPoint, previewPosition } = dimensionsState;
+      const distance = startPoint.distanceTo(previewPosition!);
 
       setDimensionsState((prev) => ({
         ...prev,
-        endPoint: endPoint.clone(),
+        endPoint: previewPosition!.clone(),
         isPositioning: true,
-        previewPosition: endPoint.clone(),
       }));
       console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
     } else if (dimensionsState.isPositioning) {
@@ -303,13 +297,23 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     if (!point) return;
 
     if (dimensionsState.isPositioning && dimensionsState.startPoint && dimensionsState.endPoint) {
-      // Free positioning mode - mouse can move anywhere
+      const { startPoint, endPoint } = dimensionsState;
+      const originalDir = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      const perp = new THREE.Vector3().crossVectors(originalDir, up).normalize();
+      
+      const toMouse = new THREE.Vector3().subVectors(point, startPoint);
+      const offsetMag = toMouse.dot(perp);
+      const snappedMag = Math.round(offsetMag / offsetGridSize) * offsetGridSize;
+      const snappedOffset = perp.clone().multiplyScalar(snappedMag);
+      
+      const newPreviewPosition = startPoint.clone().add(snappedOffset);
+
       setDimensionsState((prev) => ({
         ...prev,
-        previewPosition: point.clone(),
+        previewPosition: newPreviewPosition,
       }));
     } else if (dimensionsState.startPoint && !dimensionsState.endPoint) {
-      // Constraint mode for second point selection (horizontal/vertical)
       const firstPoint = dimensionsState.startPoint;
       const direction = new THREE.Vector3().subVectors(point, firstPoint);
 
