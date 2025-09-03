@@ -141,24 +141,12 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       
       {/* Ölçü metni */}
       <Billboard position={dimension.textPosition}>
-        {/* Metin arka planı - tüm açılardan görünür */}
-        <mesh position={[0, 0, -1]}>
-          <planeGeometry args={[80, 25]} />
-          <meshBasicMaterial 
-            color="white" 
-            transparent={true} 
-            opacity={0.9}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
         <Text
           position={[0, 0, 0]}
           fontSize={20}
           color="black"
           anchorX="center"
           anchorY="middle"
-          outlineWidth={1}
-          outlineColor="white"
         >
           {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
         </Text>
@@ -225,16 +213,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     let intersectionSuccess = false;
 
     // Positioning modunda iken, dinamik olarak belirlenen eksene sabitle
-    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint && dimensionsState.lockedAxis !== null) {
-      if (dimensionsState.lockedAxis === 'x') {
-        // X eksenine paralel ölçüm
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -dimensionsState.firstPoint.z);
-        intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
-      } else if (dimensionsState.lockedAxis === 'z') {
-        // Z eksenine paralel ölçüm
-        const plane = new THREE.Plane(new THREE.Vector3(1, 0, 0), -dimensionsState.firstPoint.x);
-        intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
-      }
+    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
+      // Fare pozisyonunu al
+      const mousePlane = new THREE.Plane();
+      mousePlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), raycaster.ray.origin);
+      intersectionSuccess = raycaster.ray.intersectPlane(mousePlane, worldPoint);
     } else {
       // Normal mod: Y=0 düzlemi
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -314,15 +297,17 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       const lockedAxis = isVertical ? 'z' : 'x';
 
-      const offsetDirection = new THREE.Vector3();
+      // Dinamik olarak offset yönünü belirle
+      const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+      const offsetVector = new THREE.Vector3();
       if (isVertical) {
-        offsetDirection.set(1, 0, 0);
+        offsetVector.set(cameraDirection.x, 0, 0);
       } else {
-        offsetDirection.set(0, 0, 1);
+        offsetVector.set(0, 0, cameraDirection.z);
       }
       
       const offsetDistance = 200; // Otomatik offset 200mm
-      const autoOffsetPosition = secondPoint.clone().add(offsetDirection.multiplyScalar(offsetDistance));
+      const autoOffsetPosition = secondPoint.clone().add(offsetVector.normalize().multiplyScalar(offsetDistance));
 
       setDimensionsState(prev => ({
         ...prev,
@@ -399,21 +384,22 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         ...prev,
         previewPosition: previewPoint,
       }));
-    } else if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint && dimensionsState.isVertical !== null) {
+    } else if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
       const firstPoint = dimensionsState.firstPoint;
       const secondPoint = dimensionsState.secondPoint;
+      const mousePoint = point;
+
+      // Ölçü çizgisinin orijinal yönünü bul
+      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint).normalize();
       
-      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
-      const toMouseVector = new THREE.Vector3().subVectors(point, firstPoint);
+      // Fare noktasından orijinal çizgiye dik olan düzleme olan mesafeyi hesapla
+      const line = new THREE.Line3(firstPoint, secondPoint);
+      const closestPointOnLine = new THREE.Vector3();
+      line.closestPointToPoint(mousePoint, true, closestPointOnLine);
+      const offsetVector = new THREE.Vector3().subVectors(mousePoint, closestPointOnLine);
 
-      let perpendicularOffset;
-      if (dimensionsState.isVertical) { // dikey ölçüm (Z ekseni boyunca)
-        perpendicularOffset = new THREE.Vector3(toMouseVector.x, 0, 0); // X ekseni boyunca öteleme
-      } else { // yatay ölçüm (X ekseni boyunca)
-        perpendicularOffset = new THREE.Vector3(0, 0, toMouseVector.z); // Z ekseni boyunca öteleme
-      }
-
-      const newPreviewPosition = firstPoint.clone().add(perpendicularOffset);
+      // Öteleme pozisyonunu hesapla
+      const newPreviewPosition = firstPoint.clone().add(offsetVector);
 
       setDimensionsState(prev => ({
         ...prev,
