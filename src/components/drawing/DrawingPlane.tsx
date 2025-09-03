@@ -155,6 +155,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     } else {
       setDimensionsState(INITIAL_DIMENSIONS_STATE);
     }
+  }, [activeTool, setEditingPolylineId, resetPointToPointMove]);
 
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
     if (!planeRef.current) return null;
@@ -197,8 +198,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       drawingState.currentDirection,
       camera,
       gl.domElement,
-      mouseScreenPos,
-      activeTool
+      mouseScreenPos
     );
     
     let finalPoint: THREE.Vector3;
@@ -1064,28 +1064,6 @@ const focusTerminalForMeasurement = () => {
           {/* Current Snap Point Indicator for Point to Point Move */}
         </>
       )}
-      {/* Preview Shape */}
-      {previewGeometry && (
-        <line geometry={previewGeometry}>
-          <lineBasicMaterial color="#000000" opacity={0.8} transparent linewidth={2} />
-        </line>
-      )}
-
-      {/* Points */}
-      {drawingState.points.map((point, index) => (
-        <mesh key={index} position={point}>
-          <sphereGeometry args={[gridSize / 15]} />
-          <meshBasicMaterial color="#2563eb" />
-        </mesh>
-      ))}
-
-      {drawingState.previewPoint && (
-        <mesh position={drawingState.previewPoint}>
-          <sphereGeometry args={[gridSize / 15]} />
-          <meshBasicMaterial color="#2563eb" opacity={0.5} transparent />
-        </mesh>
-      )}
-
     </>
   );
 };
