@@ -1002,12 +1002,6 @@ const focusTerminalForMeasurement = () => {
       {/* Snap Point Indicator */}
       <SnapPointIndicators snapPoint={drawingState.snapPoint} />
 
-      {/* Dimensions Manager */}
-      <DimensionsManager 
-        completedShapes={completedShapes}
-        shapes={shapes}
-      />
-
       {/* Point to Point Move Indicators */}
       {activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive && (
         <>
