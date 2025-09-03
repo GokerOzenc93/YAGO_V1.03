@@ -8,6 +8,13 @@ import { snapToGrid } from './utils';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
+import { 
+  DimensionsSystem, 
+  DimensionsState, 
+  INITIAL_DIMENSIONS_STATE,
+  handleDimensionsClick,
+  handleDimensionsMove
+} from './dimensionsSystem';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
@@ -66,6 +73,8 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [showExtrudeInput, setShowExtrudeInput] = useState(false);
   const [extrudeHeight, setExtrudeHeight] = useState('');
   const [pendingExtrudeShape, setPendingExtrudeShape] = useState<CompletedShape | null>(null);
+  const [dimensionsState, setDimensionsState] = useState<DimensionsState>(INITIAL_DIMENSIONS_STATE);
+  const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
   
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
@@ -119,15 +128,21 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   // Reset drawing state when tool changes
   useEffect(() => {
     // Auto snap kontrolü
-    if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
+    if (activeTool === Tool.DIMENSION) {
+      enableAutoSnap(activeTool);
+      setDimensionsState(prev => ({ ...prev, isActive: true }));
+    } else if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
       enableAutoSnap(activeTool);
     } else if (activeTool === Tool.POINT_TO_POINT_MOVE) {
       enableAutoSnap(activeTool);
     } else {
       disableAutoSnap();
+      if (activeTool !== Tool.DIMENSION) {
+        setDimensionsState(INITIAL_DIMENSIONS_STATE);
+      }
     }
     
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
+    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE, Tool.DIMENSION].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
       
       // Polyline status'u temizle
@@ -146,7 +161,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
         resetPointToPointMove();
       }
     }
-  }, [activeTool, setEditingPolylineId, resetPointToPointMove]);
+  }, [activeTool, setEditingPolylineId, resetPointToPointMove, enableAutoSnap, disableAutoSnap]);
 
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
     if (!planeRef.current) return null;
@@ -172,6 +187,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     }
     
     console.log(`🎯 WORLD POINT: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
+    
+    // Store mouse world position for dimensions preview
+    setMouseWorldPosition(worldPoint);
     
     // 🎯 SNAP DETECTION with increased tolerance for perspective
     const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 3 : 1);
@@ -617,6 +635,25 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    // Handle Dimensions tool
+    if (activeTool === Tool.DIMENSION) {
+      if (event.nativeEvent.button !== 0) return;
+      
+      const point = getIntersectionPoint(event.nativeEvent);
+      if (!point) return;
+      
+      event.stopPropagation();
+      
+      handleDimensionsClick(
+        point,
+        dimensionsState,
+        (updates) => setDimensionsState(prev => ({ ...prev, ...updates })),
+        convertToDisplayUnit,
+        measurementUnit
+      );
+      return;
+    }
+    
     // Handle Point to Point Move
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       if (event.nativeEvent.button !== 0) return;
@@ -720,6 +757,15 @@ const focusTerminalForMeasurement = () => {
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
+
+    // Handle Dimensions tool preview
+    if (activeTool === Tool.DIMENSION) {
+      handleDimensionsMove(
+        point,
+        dimensionsState,
+        (updates) => setDimensionsState(prev => ({ ...prev, ...updates }))
+      );
+    }
 
     // Handle Point to Point Move preview
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
@@ -992,6 +1038,12 @@ const focusTerminalForMeasurement = () => {
 
       {/* Snap Point Indicator */}
       <SnapPointIndicators snapPoint={drawingState.snapPoint} />
+
+      {/* Dimensions System */}
+      <DimensionsSystem 
+        dimensionsState={dimensionsState}
+        mousePosition={mouseWorldPosition}
+      />
 
       {/* Point to Point Move Indicators */}
       {activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive && (

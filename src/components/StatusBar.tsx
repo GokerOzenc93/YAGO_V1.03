@@ -82,7 +82,10 @@ const StatusBar: React.FC = () => {
       <div className="flex items-center gap-4">
         <div>
           <span className="text-gray-400 mr-1">Tool:</span>
-          <span>{activeTool}</span>
+          <span className={activeTool === 'Dimension' ? 'text-green-400 font-medium' : ''}>
+            {activeTool}
+            {activeTool === 'Dimension' && ' - Click two points to measure distance'}
+          </span>
         </div>
         <div>
           <span className="text-gray-400 mr-1">Camera:</span>

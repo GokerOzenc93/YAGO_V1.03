@@ -303,7 +303,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     let newSnapSettings = { ...allDisabled };
     
     // Tool'a göre gerekli snap'leri aç
-    if (tool === Tool.POLYLINE || tool === Tool.POLYGON) {
+    if (tool === Tool.DIMENSION) {
+      newSnapSettings = {
+        ...allDisabled,
+        [SnapType.ENDPOINT]: true,
+      };
+      console.log('🎯 Auto snap enabled for dimensions (endpoint only)');
+    } else if (tool === Tool.POLYLINE || tool === Tool.POLYGON) {
       newSnapSettings = {
         ...allDisabled,
         [SnapType.ENDPOINT]: true,
