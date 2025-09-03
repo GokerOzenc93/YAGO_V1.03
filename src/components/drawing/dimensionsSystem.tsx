@@ -150,7 +150,7 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
 
   const { camera, raycaster, gl } = useThree();
   const [dimensionsState, setDimensionsState] = useState<DimensionsState>(INITIAL_DIMENSIONS_STATE);
-  const offsetGridSize = 2; // Offset için 2mm'lik sanal ızgara
+  const offsetGridSize = 3; // Offset için 3mm'lik sanal ızgara
 
   // Intersection point calculation
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
