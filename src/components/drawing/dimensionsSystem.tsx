@@ -259,8 +259,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda iken, ölçü çizgisini perpendicular düzlemde konumlandır
     if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      // Y=0 düzleminde intersection al
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      // Seçilen iki noktanın ortalama yüksekliğinde düzlem oluştur
+      const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -averageY);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     } else {
       // Normal mod: Y=0 düzlemi
@@ -344,21 +345,47 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       // Ölçü tamamlama
       const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
       
-      // İki nokta arasındaki ana vektörü hesapla
-      const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
+      // Seçilen noktaların yükseklik hizasında ölçü çizgisi oluştur
+      const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
       
-      // Ana vektöre perpendicular (dik) offset vektörünü hesapla
-      const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
-      const toClick = new THREE.Vector3().subVectors(dimensionsState.previewPosition || point, midPoint);
+      // Ana vektör (XZ düzleminde)
+      const mainVector = new THREE.Vector3(
+        dimensionsState.secondPoint.x - dimensionsState.firstPoint.x,
+        0, // Y bileşenini sıfırla
+        dimensionsState.secondPoint.z - dimensionsState.firstPoint.z
+      );
       
-      // Ana vektöre dik olan bileşeni bul (perpendicular projection)
+      // Orta nokta (seçilen noktaların yükseklik hizasında)
+      const midPoint = new THREE.Vector3(
+        (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
+        averageY,
+        (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
+      );
+      
+      // Tıklanan noktadan orta noktaya vektör (sadece XZ düzleminde)
+      const clickPoint = dimensionsState.previewPosition || point;
+      const toClick = new THREE.Vector3(
+        clickPoint.x - midPoint.x,
+        0, // Y bileşenini sıfırla
+        clickPoint.z - midPoint.z
+      );
+      
+      // Perpendicular offset hesapla (XZ düzleminde)
       const mainVectorNormalized = mainVector.clone().normalize();
       const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toClick.dot(mainVectorNormalized));
       const perpendicularOffset = toClick.clone().sub(parallelComponent);
       
-      // Ölçü çizgisinin başlangıç ve bitiş noktalarını perpendicular offset ile ayarla
-      const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
-      const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
+      // Ölçü çizgisinin başlangıç ve bitiş noktalarını seçilen noktaların yükseklik hizasında ayarla
+      const dimensionStart = new THREE.Vector3(
+        dimensionsState.firstPoint.x + perpendicularOffset.x,
+        averageY, // Seçilen noktaların ortalama yüksekliği
+        dimensionsState.firstPoint.z + perpendicularOffset.z
+      );
+      const dimensionEnd = new THREE.Vector3(
+        dimensionsState.secondPoint.x + perpendicularOffset.x,
+        averageY, // Seçilen noktaların ortalama yüksekliği
+        dimensionsState.secondPoint.z + perpendicularOffset.z
+      );
       const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
       
       const newDimension: SimpleDimension = {
@@ -412,22 +439,46 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
     const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
     
-    // İki nokta arasındaki ana vektörü hesapla
-    const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
+    // Seçilen noktaların yükseklik hizasında preview oluştur
+    const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
     
-    // Ana vektöre perpendicular (dik) offset vektörünü hesapla
-    // Ana çizginin orta noktasından preview pozisyonuna vektör
-    const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
-    const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
+    // Ana vektör (XZ düzleminde)
+    const mainVector = new THREE.Vector3(
+      dimensionsState.secondPoint.x - dimensionsState.firstPoint.x,
+      0, // Y bileşenini sıfırla
+      dimensionsState.secondPoint.z - dimensionsState.firstPoint.z
+    );
     
-    // Ana vektöre dik olan bileşeni bul (perpendicular projection)
+    // Orta nokta (seçilen noktaların yükseklik hizasında)
+    const midPoint = new THREE.Vector3(
+      (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
+      averageY,
+      (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
+    );
+    
+    // Preview pozisyonundan orta noktaya vektör (sadece XZ düzleminde)
+    const toPreview = new THREE.Vector3(
+      dimensionsState.previewPosition.x - midPoint.x,
+      0, // Y bileşenini sıfırla
+      dimensionsState.previewPosition.z - midPoint.z
+    );
+    
+    // Perpendicular offset hesapla (XZ düzleminde)
     const mainVectorNormalized = mainVector.clone().normalize();
     const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
     const perpendicularOffset = toPreview.clone().sub(parallelComponent);
     
-    // Ölçü çizgisinin başlangıç ve bitiş noktalarını perpendicular offset ile ayarla
-    const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
-    const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
+    // Ölçü çizgisinin başlangıç ve bitiş noktalarını seçilen noktaların yükseklik hizasında ayarla
+    const dimensionStart = new THREE.Vector3(
+      dimensionsState.firstPoint.x + perpendicularOffset.x,
+      averageY, // Seçilen noktaların ortalama yüksekliği
+      dimensionsState.firstPoint.z + perpendicularOffset.z
+    );
+    const dimensionEnd = new THREE.Vector3(
+      dimensionsState.secondPoint.x + perpendicularOffset.x,
+      averageY, // Seçilen noktaların ortalama yüksekliği
+      dimensionsState.secondPoint.z + perpendicularOffset.z
+    );
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
     
     return {
