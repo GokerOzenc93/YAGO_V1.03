@@ -236,8 +236,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     gridSize, 
     measurementUnit, 
     convertToDisplayUnit, 
-    snapSettings, 
-    setSnapSetting,
+    setSnapSettingsBatch,
     snapTolerance
   } = useAppStore();
   
@@ -271,7 +270,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       console.log('🎯 Dimension tool deactivated: Original snap settings restored');
     }
-  }, [activeTool, setSnapSetting, snapSettings, originalSnapSettings]);
+  }, [activeTool, setSnapSettingsBatch, originalSnapSettings]);
 
   // Intersection point hesaplama - SADECE DIMENSIONS İÇİN
   const getIntersectionPoint = (event: PointerEvent): THREE.Vector3 | null => {
@@ -306,12 +305,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning) {
+      // Mevcut snap ayarlarını store'dan al
+      const currentSnapSettings = useAppStore.getState().snapSettings;
+      
       // 🎯 STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
       const snapPoints = findSnapPoints(
         worldPoint,
         completedShapes, 
         shapes, 
-        snapSettings,
+        currentSnapSettings,
         snapTolerance * 2,
         null,
         null,

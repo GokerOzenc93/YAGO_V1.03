@@ -125,6 +125,7 @@ interface AppState {
   snapSettings: SnapSettings;
   setSnapSetting: (snapType: SnapType, enabled: boolean) => void;
   toggleSnapSetting: (snapType: SnapType) => void;
+  setSnapSettingsBatch: (settings: Partial<SnapSettings>) => void;
   snapTolerance: number;
   setSnapTolerance: (tolerance: number) => void;
   editingPolylineId: string | null;
@@ -281,6 +282,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       snapSettings: {
         ...state.snapSettings,
         [snapType]: !state.snapSettings[snapType],
+      },
+    })),
+    
+  setSnapSettingsBatch: (settings) =>
+    set((state) => ({
+      snapSettings: {
+        ...state.snapSettings,
+        ...settings,
       },
     })),
     
