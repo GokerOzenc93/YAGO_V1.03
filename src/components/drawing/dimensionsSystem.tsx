@@ -228,28 +228,28 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     event.stopPropagation();
 
     if (!dimensionsState.startPoint) {
-      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
       // Step 1: Select first point
       setDimensionsState((prev) => ({
         ...prev,
         startPoint: point.clone(),
         endPoint: null,
-        previewPosition: point.clone(), // Start with end point position
       }));
+      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.endPoint) {
-      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
-      // Step 2: Select second point and enter positioning mode
-      const { startPoint } = dimensionsState;
-      const distance = startPoint.distanceTo(point);
+      // Step 2: Select second point
+      const { startPoint, previewPosition } = dimensionsState;
+      const endPoint = previewPosition || point;
+      const distance = startPoint.distanceTo(endPoint);
 
       setDimensionsState((prev) => ({
         ...prev,
-        endPoint: point.clone(),
+        endPoint: endPoint.clone(),
         isPositioning: true,
-        previewPosition: point.clone(),
+        previewPosition: endPoint.clone(),
       }));
+      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
     } else if (dimensionsState.isPositioning) {
-      // Step 3: Finalize dimension position
+      // Step 3: Position the dimension line
       const { startPoint, endPoint, previewPosition } = dimensionsState;
       const distance = startPoint!.distanceTo(endPoint!);
       
@@ -298,23 +298,13 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     if (!point) return;
 
     if (dimensionsState.isPositioning && dimensionsState.startPoint && dimensionsState.endPoint) {
-      const { startPoint, endPoint } = dimensionsState;
-      const originalDir = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
-      const up = new THREE.Vector3(0, 1, 0);
-      const perp = new THREE.Vector3().crossVectors(originalDir, up).normalize();
-      
-      const toMouse = new THREE.Vector3().subVectors(point, startPoint);
-      const offsetMag = toMouse.dot(perp);
-      const snappedMag = Math.round(offsetMag / offsetGridSize) * offsetGridSize;
-      const snappedOffset = perp.clone().multiplyScalar(snappedMag);
-      
-      const newPreviewPosition = startPoint.clone().add(snappedOffset);
-
+      // Free positioning mode - mouse can move anywhere
       setDimensionsState((prev) => ({
         ...prev,
-        previewPosition: newPreviewPosition,
+        previewPosition: point.clone(),
       }));
     } else if (dimensionsState.startPoint && !dimensionsState.endPoint) {
+      // Constraint mode for second point selection (horizontal/vertical)
       const firstPoint = dimensionsState.startPoint;
       const direction = new THREE.Vector3().subVectors(point, firstPoint);
 
