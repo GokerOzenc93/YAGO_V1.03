@@ -163,7 +163,21 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     raycaster.setFromCamera({ x, y }, camera);
 
     let worldPoint = new THREE.Vector3();
-    const intersectionSuccess = raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), worldPoint);
+    let intersectionSuccess = false;
+
+    if (dimensionsState.isPositioning) {
+      const startPoint = dimensionsState.startPoint!;
+      const endPoint = dimensionsState.endPoint!;
+      const originalDirection = new THREE.Vector3().subVectors(endPoint, startPoint);
+      const isVertical = Math.abs(originalDirection.x) < Math.abs(originalDirection.z);
+      const normal = isVertical ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, startPoint);
+      intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    } else {
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    }
+    
 
     if (!intersectionSuccess) {
       return null;
@@ -272,19 +286,17 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
       const firstPoint = dimensionsState.startPoint;
       const secondPoint = dimensionsState.endPoint;
       const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
-
       const isVertical = Math.abs(originalDirection.x) < Math.abs(originalDirection.z);
-      const isHorizontal = !isVertical;
       
-      const toMouseVector = new THREE.Vector3().subVectors(point, firstPoint);
-      const originalDirectionNorm = originalDirection.clone().normalize();
-      const parallelComponent = originalDirectionNorm.clone().multiplyScalar(toMouseVector.dot(originalDirectionNorm));
-      const perpendicularOffset = toMouseVector.clone().sub(parallelComponent);
+      let toMouseVector = new THREE.Vector3().subVectors(point, firstPoint);
+
+      // Sadece dik eksen üzerinde ötele
+      const perpendicularDirection = isVertical ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+      const offsetMagnitude = toMouseVector.dot(perpendicularDirection);
       
-      const offsetMagnitude = perpendicularOffset.length();
       const snappedOffsetMagnitude = Math.round(offsetMagnitude / offsetGridSize) * offsetGridSize;
       
-      const snappedOffsetVector = perpendicularOffset.clone().normalize().multiplyScalar(snappedOffsetMagnitude);
+      const snappedOffsetVector = perpendicularDirection.clone().multiplyScalar(snappedOffsetMagnitude);
       
       const newPreviewPosition = firstPoint.clone().add(snappedOffsetVector);
 
