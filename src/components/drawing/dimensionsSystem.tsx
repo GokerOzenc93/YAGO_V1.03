@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { Text, Billboard } from '@react-three/drei';
+import { Text, Billboard, Line } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useAppStore, Tool, SnapType } from '../../store/appStore';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem';
@@ -33,111 +33,75 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     const end = dimension.endPoint;
     const originalStart = dimension.originalStart || start;
     const originalEnd = dimension.originalEnd || end;
-    
+
     // Ana ölçü çizgisi
     const mainLine = [start, end];
-    
+
     // Uzatma çizgileri (orijinal noktalardan ölçü çizgisine)
     const extensionLines = [];
-    
-    // İlk nokta için uzatma çizgisi
     if (originalStart.distanceTo(start) > 1) {
-      extensionLines.push([originalStart, start]);
+      extensionLines.push(originalStart, start);
     }
-    
-    // İkinci nokta için uzatma çizgisi
     if (originalEnd.distanceTo(end) > 1) {
-      extensionLines.push([originalEnd, end]);
+      extensionLines.push(originalEnd, end);
     }
-    
+
     // Ölçü çizgisinin uçlarında kesme işaretleri
     const direction = new THREE.Vector3().subVectors(end, start).normalize();
     const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(15);
     
-    const tick1Start = start.clone().add(perpendicular);
-    const tick1End = start.clone().sub(perpendicular);
-    const tick2Start = end.clone().add(perpendicular);
-    const tick2End = end.clone().sub(perpendicular);
-    
+    const tick1 = [
+      start.clone().add(perpendicular),
+      start.clone().sub(perpendicular),
+    ];
+    const tick2 = [
+      end.clone().add(perpendicular),
+      end.clone().sub(perpendicular),
+    ];
+
     return {
       mainLine,
       extensionLines,
-      ticks: [
-        [tick1Start, tick1End],
-        [tick2Start, tick2End]
-      ]
+      tick1,
+      tick2
     };
   }, [dimension]);
 
   return (
     <group>
       {/* Ana ölçü çizgisi */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={2}
-            array={new Float32Array([
-              ...points.mainLine[0].toArray(),
-              ...points.mainLine[1].toArray()
-            ])}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial
-          color={isPreview ? "#ff6b35" : "#2563eb"}
-          linewidth={2}
-          opacity={0.7}
-          transparent={true}
-        />
-      </line>
+      <Line
+        points={points.mainLine}
+        color={isPreview ? "#ff6b35" : "#2563eb"}
+        lineWidth={2}
+        dashed={false}
+      />
       
       {/* Uzatma çizgileri */}
-      {points.extensionLines.map((ext, index) => (
-        <line key={index}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={2}
-              array={new Float32Array([
-                ...ext[0].toArray(),
-                ...ext[1].toArray()
-              ])}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial
-            color="#888888"
-            linewidth={0.5}
-            lineDashSize={5}
-            gapSize={3}
-            dashed={true}
-          />
-        </line>
-      ))}
+      {points.extensionLines.length > 0 && (
+        <Line
+          points={points.extensionLines}
+          color="#888888"
+          lineWidth={0.8}
+          dashed={true}
+          dashSize={5}
+          gapSize={3}
+        />
+      )}
 
       {/* Kesme işaretleri */}
-      {points.ticks.map((tick, index) => (
-        <line key={`tick-${index}`}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={2}
-              array={new Float32Array([
-                ...tick[0].toArray(),
-                ...tick[1].toArray()
-              ])}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial
-            color={isPreview ? "#ff6b35" : "#2563eb"}
-            linewidth={2}
-            opacity={1.0}
-            transparent={false}
-          />
-        </line>
-      ))}
+      <Line
+        points={points.tick1}
+        color={isPreview ? "#ff6b35" : "#2563eb"}
+        lineWidth={2}
+        dashed={false}
+      />
+      <Line
+        points={points.tick2}
+        color={isPreview ? "#ff6b35" : "#2563eb"}
+        lineWidth={2}
+        dashed={false}
+      />
       
       {/* Ölçü metni */}
       <Billboard position={dimension.textPosition}>
@@ -147,6 +111,8 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           color="black"
           anchorX="center"
           anchorY="middle"
+          outlineWidth={1}
+          outlineColor="white"
         >
           {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
         </Text>
@@ -283,39 +249,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         secondPoint: null,
         isPositioning: false,
         previewPosition: null,
-        lockedAxis: null,
-        isVertical: null,
       }));
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.secondPoint) {
       // İkinci nokta seçimi
-      const firstPoint = dimensionsState.firstPoint;
-      const secondPoint = point.clone();
-      const direction = new THREE.Vector3().subVectors(secondPoint, firstPoint);
-
-      let isVertical = Math.abs(direction.z) > Math.abs(direction.x);
-      
-      const lockedAxis = isVertical ? 'z' : 'x';
-
-      // Dinamik olarak offset yönünü belirle
-      const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
-      const offsetVector = new THREE.Vector3();
-      if (isVertical) {
-        offsetVector.set(cameraDirection.x, 0, 0);
-      } else {
-        offsetVector.set(0, 0, cameraDirection.z);
-      }
-      
-      const offsetDistance = 200; // Otomatik offset 200mm
-      const autoOffsetPosition = secondPoint.clone().add(offsetVector.normalize().multiplyScalar(offsetDistance));
-
       setDimensionsState(prev => ({
         ...prev,
-        secondPoint: secondPoint,
+        secondPoint: point.clone(),
         isPositioning: true, // Konumlandırma modunu başlat
-        previewPosition: autoOffsetPosition,
-        lockedAxis: lockedAxis,
-        isVertical: isVertical,
+        previewPosition: point.clone(),
       }));
       console.log(`🎯 Dimension: Second point selected. Now positioning the dimension line.`);
     } else if (dimensionsState.isPositioning) {
@@ -325,10 +267,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       const previewPosition = dimensionsState.previewPosition!;
       
       const distance = firstPoint.distanceTo(secondPoint);
-
-      // Offset vektörünü hesapla
-      const offsetVector = new THREE.Vector3().subVectors(previewPosition, firstPoint);
       const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint).normalize();
+      const offsetVector = new THREE.Vector3().subVectors(previewPosition, firstPoint);
       const parallelComponent = originalDirection.clone().multiplyScalar(offsetVector.dot(originalDirection));
       const perpendicularOffset = offsetVector.clone().sub(parallelComponent);
 
@@ -351,8 +291,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         isPositioning: false,
         currentSnapPoint: null,
         previewPosition: null,
-        lockedAxis: null,
-        isVertical: null,
       }));
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
@@ -366,7 +304,33 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
 
-    if (dimensionsState.firstPoint && !dimensionsState.secondPoint) {
+    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
+      const firstPoint = dimensionsState.firstPoint;
+      const secondPoint = dimensionsState.secondPoint;
+      
+      // Fare noktasından orijinal çizgiye dik olan düzleme olan mesafeyi hesapla
+      const line = new THREE.Line3(firstPoint, secondPoint);
+      const closestPointOnLine = new THREE.Vector3();
+      line.closestPointToPoint(point, true, closestPointOnLine);
+      const offsetVector = new THREE.Vector3().subVectors(point, closestPointOnLine);
+
+      // Sadece X veya Z ekseni boyunca öteleme
+      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint);
+      if (Math.abs(originalDirection.x) > Math.abs(originalDirection.z)) {
+        // Yatay çizgi, Z ekseni boyunca ötele
+        offsetVector.setX(0);
+      } else {
+        // Dikey çizgi, X ekseni boyunca ötele
+        offsetVector.setZ(0);
+      }
+
+      const newPreviewPosition = firstPoint.clone().add(offsetVector);
+
+      setDimensionsState(prev => ({
+        ...prev,
+        previewPosition: newPreviewPosition,
+      }));
+    } else if (dimensionsState.firstPoint && !dimensionsState.secondPoint) {
       const firstPoint = dimensionsState.firstPoint.clone();
       const direction = new THREE.Vector3().subVectors(point, firstPoint);
       
@@ -383,27 +347,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       setDimensionsState(prev => ({
         ...prev,
         previewPosition: previewPoint,
-      }));
-    } else if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      const firstPoint = dimensionsState.firstPoint;
-      const secondPoint = dimensionsState.secondPoint;
-      const mousePoint = point;
-
-      // Ölçü çizgisinin orijinal yönünü bul
-      const originalDirection = new THREE.Vector3().subVectors(secondPoint, firstPoint).normalize();
-      
-      // Fare noktasından orijinal çizgiye dik olan düzleme olan mesafeyi hesapla
-      const line = new THREE.Line3(firstPoint, secondPoint);
-      const closestPointOnLine = new THREE.Vector3();
-      line.closestPointToPoint(mousePoint, true, closestPointOnLine);
-      const offsetVector = new THREE.Vector3().subVectors(mousePoint, closestPointOnLine);
-
-      // Öteleme pozisyonunu hesapla
-      const newPreviewPosition = firstPoint.clone().add(offsetVector);
-
-      setDimensionsState(prev => ({
-        ...prev,
-        previewPosition: newPreviewPosition,
       }));
     }
   };
