@@ -59,12 +59,36 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     const tick2Start = end.clone().add(perpendicular);
     const tick2End = end.clone().sub(perpendicular);
     
+    // Ok uçları için hesaplamalar
+    const arrowSize = 25;
+    const arrowAngle = Math.PI / 6; // 30 derece
+    
+    // Başlangıç oku (start noktasında)
+    const arrowDir1 = direction.clone().multiplyScalar(-arrowSize);
+    const arrowPerp1 = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(arrowSize * Math.tan(arrowAngle));
+    
+    const arrow1Point1 = start.clone().add(arrowDir1).add(arrowPerp1);
+    const arrow1Point2 = start.clone().add(arrowDir1).sub(arrowPerp1);
+    
+    // Bitiş oku (end noktasında)
+    const arrowDir2 = direction.clone().multiplyScalar(arrowSize);
+    const arrowPerp2 = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(arrowSize * Math.tan(arrowAngle));
+    
+    const arrow2Point1 = end.clone().add(arrowDir2).add(arrowPerp2);
+    const arrow2Point2 = end.clone().add(arrowDir2).sub(arrowPerp2);
+    
     return {
       mainLine,
       extensionLines,
       ticks: [
         [tick1Start, tick1End],
         [tick2Start, tick2End]
+      ],
+      arrows: [
+        [start, arrow1Point1],
+        [start, arrow1Point2],
+        [end, arrow2Point1],
+        [end, arrow2Point2]
       ]
     };
   }, [dimension]);
@@ -124,6 +148,27 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
               array={new Float32Array([
                 ...tick[0].toArray(),
                 ...tick[1].toArray()
+              ])}
+              itemSize={3}
+            />
+          </bufferGeometry>
+          <lineBasicMaterial 
+            color={isPreview ? "#ff6b35" : "#2563eb"} 
+            linewidth={2}
+          />
+        </line>
+      ))}
+      
+      {/* Ok uçları */}
+      {points.arrows.map((arrow, index) => (
+        <line key={`arrow-${index}`}>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              count={2}
+              array={new Float32Array([
+                ...arrow[0].toArray(),
+                ...arrow[1].toArray()
               ])}
               itemSize={3}
             />
