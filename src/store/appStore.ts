@@ -294,24 +294,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   enableAutoSnap: (tool) => {
     const state = get();
     
-    // Önce tüm snap'leri kapat
-    const allDisabled = Object.keys(state.snapSettings).reduce((acc, key) => {
-      acc[key as SnapType] = false;
-      return acc;
-    }, {} as SnapSettings);
+    // Mevcut snap ayarlarını koru, sadece gerekli olanları aç
+    let newSnapSettings = { ...state.snapSettings };
     
-    let newSnapSettings = { ...allDisabled };
-    
-    // Tool'a göre gerekli snap'leri aç
     if (tool === Tool.DIMENSION) {
+      // Sadece endpoint'i aç, diğerlerini kapat
       newSnapSettings = {
-        ...allDisabled,
+        ...state.snapSettings,
         [SnapType.ENDPOINT]: true,
+        [SnapType.MIDPOINT]: false,
+        [SnapType.CENTER]: false,
+        [SnapType.QUADRANT]: false,
+        [SnapType.PERPENDICULAR]: false,
+        [SnapType.INTERSECTION]: false,
+        [SnapType.NEAREST]: false,
       };
       console.log('🎯 Auto snap enabled for dimensions (endpoint only)');
     } else if (tool === Tool.POLYLINE || tool === Tool.POLYGON) {
       newSnapSettings = {
-        ...allDisabled,
+        ...state.snapSettings,
         [SnapType.ENDPOINT]: true,
         [SnapType.MIDPOINT]: true,
         [SnapType.CENTER]: true,
@@ -321,7 +322,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.log('🎯 Auto snap enabled for polyline/polygon drawing');
     } else if (tool === Tool.POINT_TO_POINT_MOVE) {
       newSnapSettings = {
-        ...allDisabled,
+        ...state.snapSettings,
         [SnapType.ENDPOINT]: true,
         [SnapType.MIDPOINT]: true,
       };
@@ -335,20 +336,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   disableAutoSnap: () => {
-    const state = get();
-    
-    // Tüm snap'leri kapat
-    const allDisabled = Object.keys(state.snapSettings).reduce((acc, key) => {
-      acc[key as SnapType] = false;
-      return acc;
-    }, {} as SnapSettings);
-    
-    set({ 
-      snapSettings: allDisabled,
-      autoSnapEnabled: false 
-    });
-    
-    console.log('🎯 Auto snap disabled - all snaps turned off');
+    // Auto snap'i devre dışı bırak ama snap ayarlarını koru
+    set({ autoSnapEnabled: false });
+    console.log('🎯 Auto snap disabled');
   },
   
   pointToPointMoveState: {

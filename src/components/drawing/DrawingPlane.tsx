@@ -114,11 +114,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
 
   // Auto-switch to top view and orthographic camera when starting drawing tools
   useEffect(() => {
-    const drawingTools = [Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE];
+    const drawingTools = [Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.DIMENSION];
     
     // Kamera otomatik değişimi tamamen kaldırıldı - kullanıcı hangi açıdaysa o açıda çizim yapar
     
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT].includes(activeTool) && previousCameraType !== null) {
+    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.DIMENSION].includes(activeTool) && previousCameraType !== null) {
       setCameraType(previousCameraType);
       setPreviousCameraType(null);
       console.log(`Restored camera type to: ${previousCameraType}`);
@@ -130,7 +130,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     // Auto snap kontrolü
     if (activeTool === Tool.DIMENSION) {
       enableAutoSnap(activeTool);
-      setDimensionsState(prev => ({ ...prev, isActive: true }));
+      setDimensionsState(INITIAL_DIMENSIONS_STATE);
     } else if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
       enableAutoSnap(activeTool);
     } else if (activeTool === Tool.POINT_TO_POINT_MOVE) {
@@ -142,7 +142,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       }
     }
     
-    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE, Tool.DIMENSION].includes(activeTool)) {
+    if (![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE, Tool.POLYLINE_EDIT, Tool.POINT_TO_POINT_MOVE].includes(activeTool)) {
       setDrawingState(INITIAL_DRAWING_STATE);
       
       // Polyline status'u temizle
@@ -159,6 +159,11 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       // Point to Point Move'u temizle
       if (activeTool !== Tool.POINT_TO_POINT_MOVE) {
         resetPointToPointMove();
+      }
+      
+      // Dimensions'u temizle
+      if (activeTool !== Tool.DIMENSION) {
+        setDimensionsState(INITIAL_DIMENSIONS_STATE);
       }
     }
   }, [activeTool, setEditingPolylineId, resetPointToPointMove, enableAutoSnap, disableAutoSnap]);

@@ -22,7 +22,6 @@ export interface DimensionsState {
 }
 
 export const INITIAL_DIMENSIONS_STATE: DimensionsState = {
-  isActive: false,
   firstPoint: null,
   secondPoint: null,
   previewPosition: null,
