@@ -118,9 +118,8 @@ export const findSnapPoints = (
   
   // Dimension tool için sadece endpoint snap
   const effectiveSnapSettings = activeTool === 'Dimension' ? {
-    ...snapSettings,
     [SnapType.ENDPOINT]: true,
-    [SnapType.MIDPOINT]: false,
+    [SnapType.MIDPOINT]: true,
     [SnapType.CENTER]: false,
     [SnapType.QUADRANT]: false,
     [SnapType.PERPENDICULAR]: false,

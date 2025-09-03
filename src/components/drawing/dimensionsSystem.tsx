@@ -282,7 +282,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         worldPoint,
         completedShapes, 
         shapes, 
-        { ...snapSettings, [SnapType.ENDPOINT]: true, [SnapType.MIDPOINT]: false, [SnapType.CENTER]: false, [SnapType.QUADRANT]: false, [SnapType.PERPENDICULAR]: false, [SnapType.INTERSECTION]: false, [SnapType.NEAREST]: false }, 
+        { 
+          [SnapType.ENDPOINT]: true, 
+          [SnapType.MIDPOINT]: true, 
+          [SnapType.CENTER]: false, 
+          [SnapType.QUADRANT]: false, 
+          [SnapType.PERPENDICULAR]: false, 
+          [SnapType.INTERSECTION]: false, 
+          [SnapType.NEAREST]: false 
+        }, 
         snapTolerance * 2,
         null,
         null,
