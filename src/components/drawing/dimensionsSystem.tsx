@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useAppStore, Tool, SnapType } from '../store/appStore';
+import { useAppStore, Tool, SnapType } from '../../store/appStore';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
