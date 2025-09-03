@@ -228,27 +228,33 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
     event.stopPropagation();
 
     if (!dimensionsState.startPoint) {
-      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
       // Step 1: Select first point
       setDimensionsState((prev) => ({
         ...prev,
         startPoint: point.clone(),
         endPoint: null,
-        previewPosition: point.clone(), // Start with end point position
       }));
+      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.endPoint) {
-      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
-      // Step 2: Select second point and enter positioning mode
-      const { startPoint, previewPosition } = dimensionsState;
-      const distance = startPoint.distanceTo(previewPosition!);
+      // Step 2: Select second point
+      const startPoint = dimensionsState.startPoint;
+      const endPoint = dimensionsState.previewPosition || point;
+      const distance = startPoint.distanceTo(endPoint);
+
+      if (distance < 1) {
+        console.log('⚠️ Dimension: Points too close, ignoring');
+        return;
+      }
 
       setDimensionsState((prev) => ({
         ...prev,
-        endPoint: previewPosition!.clone(),
+        endPoint: endPoint.clone(),
         isPositioning: true,
+        previewPosition: endPoint.clone(),
       }));
+      console.log(`🎯 Dimension: Second point selected. Move mouse to position dimension line.`);
     } else if (dimensionsState.isPositioning) {
-      // Step 3: Finalize dimension position
+      // Step 3: Position the dimension line
       const { startPoint, endPoint, previewPosition } = dimensionsState;
       const distance = startPoint!.distanceTo(endPoint!);
       
@@ -351,23 +357,19 @@ export const DimensionsManager: React.FC<DimensionsManagerProps> = ({
       };
     }
 
-    // Positioning mode - maintain original line alignment
+    // Positioning mode
     const { startPoint, endPoint, previewPosition } = dimensionsState;
     const distance = startPoint.distanceTo(endPoint);
 
-    // Calculate perpendicular offset while maintaining original line direction
+    // Offset vector
     const originalDirection = new THREE.Vector3().subVectors(endPoint, startPoint);
     const toMouseVector = new THREE.Vector3().subVectors(previewPosition!, startPoint);
-    
-    // Project mouse vector onto original direction
     const originalDirectionNorm = originalDirection.clone().normalize();
     const parallelComponent = originalDirectionNorm.clone().multiplyScalar(toMouseVector.dot(originalDirectionNorm));
-    
-    // Get perpendicular offset (maintains original line alignment)
-    const perpendicularOffset = toMouseVector.clone().sub(parallelComponent);
+    const offsetVector = toMouseVector.clone().sub(parallelComponent);
 
-    const dimensionStart = startPoint.clone().add(perpendicularOffset);
-    const dimensionEnd = endPoint.clone().add(perpendicularOffset);
+    const dimensionStart = startPoint.clone().add(offsetVector);
+    const dimensionEnd = endPoint.clone().add(offsetVector);
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
 
     return {
