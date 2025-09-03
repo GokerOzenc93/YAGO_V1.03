@@ -275,7 +275,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     measurementUnit, 
     convertToDisplayUnit, 
     snapSettings,
-    snapTolerance
+    snapTolerance,
+    selectShape
   } = useAppStore();
   
   const { camera, raycaster, gl } = useThree();
@@ -356,7 +357,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
     
-    event.stopPropagation();
+    // event.stopPropagation(); // Bu satırı kaldırdık - shape seçimini engelliyor
     
     if (!dimensionsState.firstPoint) {
       // İlk nokta seçimi
@@ -381,6 +382,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       console.log(`🎯 Dimension: Move mouse to position dimension line, then click to confirm`);
     } else if (dimensionsState.isPositioning) {
       // Ölçü tamamlama
+      event.stopPropagation(); // Sadece ölçü tamamlarken propagation'ı durdur
+      
       const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
       
       // Seçilen noktaların yükseklik hizasında ölçü çizgisi oluştur
@@ -548,9 +551,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           visible={false}
+          renderOrder={-1000}
         >
           <planeGeometry args={[100000, 100000]} />
-          <meshBasicMaterial visible={false} />
+          <meshBasicMaterial visible={false} transparent opacity={0} />
         </mesh>
       )}
 
