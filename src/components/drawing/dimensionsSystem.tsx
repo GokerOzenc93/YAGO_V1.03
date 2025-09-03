@@ -91,6 +91,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           depthWrite={false}
           opacity={0.7}
           transparent={true}
+        />
+      </line>
+      
       {/* Uzatma çizgileri */}
       {points.extensionLines.map((ext, index) => (
         <line key={index}>
@@ -134,8 +137,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             linewidth={2}
             opacity={1.0}
             transparent={false}
-            depthTest={false}
-            depthWrite={false}
           />
         </line>
       ))}
