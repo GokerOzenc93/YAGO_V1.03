@@ -28,25 +28,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   dimension, 
   isPreview = false 
 }) => {
-  const { camera } = useThree();
-  
-  // Calculate dynamic text size based on camera distance
-  const textSize = useMemo(() => {
-    const distance = camera.position.distanceTo(dimension.textPosition);
-    // Scale text size based on distance to maintain readability
-    const baseSize = 14;
-    const scaleFactor = Math.max(0.5, Math.min(2.0, distance / 2000));
-    return baseSize * scaleFactor;
-  }, [camera.position, dimension.textPosition]);
-  
-  // Calculate text background size based on text content
-  const textBackgroundSize = useMemo(() => {
-    const text = `${dimension.distance.toFixed(1)} ${dimension.unit}`;
-    const width = Math.max(120, text.length * textSize * 0.6);
-    const height = textSize * 1.8;
-    return { width, height };
-  }, [dimension.distance, dimension.unit, textSize]);
-
   const points = useMemo(() => {
     const start = dimension.startPoint;
     const end = dimension.endPoint;
@@ -129,7 +110,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         </bufferGeometry>
         <lineBasicMaterial 
           color={isPreview ? "#ff6b35" : "#2563eb"} 
-          linewidth={3}
+          linewidth={2}
         />
       </line>
 
@@ -149,12 +130,10 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={1.5}
-            lineDashSize={8}
-            gapSize={4}
+            linewidth={1}
+            lineDashSize={5}
+            gapSize={3}
             dashed={true}
-            opacity={0.7}
-            transparent
           />
         </line>
       ))}
@@ -175,7 +154,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={2.5}
+            linewidth={2}
           />
         </line>
       ))}
@@ -196,44 +175,27 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           </bufferGeometry>
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#2563eb"} 
-            linewidth={2.5}
+            linewidth={2}
           />
         </line>
       ))}
 
-      {/* Ölçü metni - Çizgiden uzaklaştırılmış pozisyon */}
-      <Billboard 
-        position={[
-          dimension.textPosition.x,
-          dimension.textPosition.y + 40, // Çizginin üstüne yerleştir
-          dimension.textPosition.z
-        ]}
-        follow={true}
-        lockX={false}
-        lockY={false}
-        lockZ={false}
-      >
+      {/* Ölçü metni */}
+      <Billboard position={dimension.textPosition}>
         <mesh>
-          <planeGeometry args={[textBackgroundSize.width, textBackgroundSize.height]} />
+          <planeGeometry args={[120, 30]} />
           <meshBasicMaterial 
             color="white" 
             transparent 
-            opacity={0.95}
-            depthWrite={false}
+            opacity={0.9}
           />
         </mesh>
         <Text
           position={[0, 0, 0.1]}
-          fontSize={textSize}
+          fontSize={12}
           color={isPreview ? "#ff6b35" : "#2563eb"}
           anchorX="center"
           anchorY="middle"
-          font="/fonts/inter-medium.woff"
-          fontWeight="500"
-          letterSpacing={0.02}
-          lineHeight={1.2}
-          maxWidth={textBackgroundSize.width * 0.9}
-          textAlign="center"
         >
           {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
         </Text>
@@ -320,7 +282,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         worldPoint,
         completedShapes, 
         shapes, 
-        { ...snapSettings, [SnapType.ENDPOINT]: true, [SnapType.MIDPOINT]: false, [SnapType.CENTER]: false, [SnapType.QUADRANT]: false, [SnapType.PERPENDICULAR]: false, [SnapType.INTERSECTION]: false, [SnapType.NEAREST]: false }, 
+        { 
+          [SnapType.ENDPOINT]: true, 
+          [SnapType.MIDPOINT]: true, 
+          [SnapType.CENTER]: false, 
+          [SnapType.QUADRANT]: false, 
+          [SnapType.PERPENDICULAR]: false, 
+          [SnapType.INTERSECTION]: false, 
+          [SnapType.NEAREST]: false 
+        }, 
         snapTolerance * 2,
         null,
         null,
@@ -386,42 +356,71 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       // Seçilen noktaların yükseklik hizasında ölçü çizgisi oluştur
       const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
       
-      // Ana vektör (XZ düzleminde)
-      const mainVector = new THREE.Vector3(
-        dimensionsState.secondPoint.x - dimensionsState.firstPoint.x,
-        0, // Y bileşenini sıfırla
-        dimensionsState.secondPoint.z - dimensionsState.firstPoint.z
-      );
+      // 🎯 Z EKSENİ DÜZELTMESİ - Ana vektörü 3D olarak hesapla
+      const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
       
-      // Orta nokta (seçilen noktaların yükseklik hizasında)
-      const midPoint = new THREE.Vector3(
-        (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
-        averageY,
-        (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
-      );
+      // Ana vektörün dominant eksenini belirle
+      const absX = Math.abs(mainVector.x);
+      const absY = Math.abs(mainVector.y);
+      const absZ = Math.abs(mainVector.z);
       
-      // Tıklanan noktadan orta noktaya vektör (sadece XZ düzleminde)
-      const clickPoint = dimensionsState.previewPosition || point;
-      const toClick = new THREE.Vector3(
-        clickPoint.x - midPoint.x,
-        0, // Y bileşenini sıfırla
-        clickPoint.z - midPoint.z
-      );
+      let perpendicularOffset = new THREE.Vector3();
       
-      // Perpendicular offset hesapla (XZ düzleminde)
-      const mainVectorNormalized = mainVector.clone().normalize();
-      const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toClick.dot(mainVectorNormalized));
-      const perpendicularOffset = toClick.clone().sub(parallelComponent);
+      // Dominant eksene göre perpendicular düzlem belirle
+      if (absX >= absY && absX >= absZ) {
+        // X ekseni dominant - YZ düzleminde offset hesapla
+        const midPoint = new THREE.Vector3(
+          (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
+          (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
+          (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
+        );
+        
+        const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
+        const mainVectorNormalized = mainVector.clone().normalize();
+        const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
+        perpendicularOffset = toPreview.clone().sub(parallelComponent);
+        
+      } else if (absZ >= absX && absZ >= absY) {
+        // Z ekseni dominant - sadece X ekseninde offset (Y ve Z sabit)
+        const midPoint = new THREE.Vector3(
+          (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
+          (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
+          (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
+        );
+        
+        // Sadece X ekseninde offset hesapla (Y ve Z değişmez)
+        const xOffset = dimensionsState.previewPosition.x - midPoint.x;
+        perpendicularOffset = new THREE.Vector3(xOffset, 0, 0);
+        
+      } else {
+        // Y ekseni dominant - XZ düzleminde offset hesapla (eski davranış)
+        const mainVectorXZ = new THREE.Vector3(mainVector.x, 0, mainVector.z);
+        const midPoint = new THREE.Vector3(
+          (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
+          averageY,
+          (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
+        );
+        
+        const toPreview = new THREE.Vector3(
+          dimensionsState.previewPosition.x - midPoint.x,
+          0,
+          dimensionsState.previewPosition.z - midPoint.z
+        );
+        
+        const mainVectorNormalized = mainVectorXZ.clone().normalize();
+        const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
+        perpendicularOffset = toPreview.clone().sub(parallelComponent);
+      }
       
-      // Ölçü çizgisinin başlangıç ve bitiş noktalarını seçilen noktaların yükseklik hizasında ayarla
+      // Ölçü çizgisinin başlangıç ve bitiş noktalarını hesapla
       const dimensionStart = new THREE.Vector3(
         dimensionsState.firstPoint.x + perpendicularOffset.x,
-        averageY, // Seçilen noktaların ortalama yüksekliği
+        dimensionsState.firstPoint.y + perpendicularOffset.y,
         dimensionsState.firstPoint.z + perpendicularOffset.z
       );
       const dimensionEnd = new THREE.Vector3(
         dimensionsState.secondPoint.x + perpendicularOffset.x,
-        averageY, // Seçilen noktaların ortalama yüksekliği
+        dimensionsState.secondPoint.y + perpendicularOffset.y,
         dimensionsState.secondPoint.z + perpendicularOffset.z
       );
       const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
@@ -448,6 +447,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       }));
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
+      
+      // Dimension tool'u kapat ve Select tool'a geç
+      useAppStore.getState().setActiveTool('Select' as any);
+      console.log('🎯 Dimension completed, switched to Select tool');
     }
   };
 
@@ -535,7 +538,23 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   useEffect(() => {
     if (activeTool !== Tool.DIMENSION) {
       setDimensionsState(INITIAL_SIMPLE_DIMENSIONS_STATE);
+      console.log('🎯 Dimension tool deactivated, state reset');
     }
+  }, [activeTool]);
+
+  // Keyboard handler for ESC key
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && activeTool === Tool.DIMENSION) {
+        // Reset dimension state and switch to Select tool
+        setDimensionsState(INITIAL_SIMPLE_DIMENSIONS_STATE);
+        useAppStore.getState().setActiveTool('Select' as any);
+        console.log('🎯 Dimension tool cancelled with ESC, switched to Select tool');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTool]);
 
   return (
@@ -573,22 +592,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       {/* İlk nokta göstergesi */}
       {dimensionsState.firstPoint && !dimensionsState.secondPoint && (
         <mesh position={dimensionsState.firstPoint}>
-          <sphereGeometry args={[15]} />
-          <meshBasicMaterial color="#10b981" transparent opacity={0.8} />
+          <sphereGeometry args={[5]} />
+          <meshBasicMaterial color="#ff6b35" />
         </mesh>
       )}
       
-      {/* İkinci nokta göstergesi */}
-      {dimensionsState.secondPoint && (
-        <mesh position={dimensionsState.secondPoint}>
-          <sphereGeometry args={[15]} />
-          <meshBasicMaterial color="#f59e0b" transparent opacity={0.8} />
-        </mesh>
-      )}
-
-      {/* Snap Point Indicator - SADECE DIMENSION TOOL AKTIFKEN */}
-      {activeTool === Tool.DIMENSION && (
-        <SnapPointIndicators snapPoint={dimensionsState.currentSnapPoint} />
+      {/* Snap point indicators */}
+      {activeTool === Tool.DIMENSION && dimensionsState.currentSnapPoint && (
+        <SnapPointIndicators snapPoints={[dimensionsState.currentSnapPoint]} />
       )}
     </>
   );
