@@ -238,7 +238,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     convertToDisplayUnit, 
     setSnapSettingsBatch,
     snapTolerance,
-    snapSettings
+    snapSettings,
     orthoMode, // 🎯 NEW: Get ortho mode
     setOrthoMode // 🎯 NEW: Set ortho mode
   } = useAppStore();
