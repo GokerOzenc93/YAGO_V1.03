@@ -194,18 +194,55 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       shapes, 
       snapSettings, 
       perspectiveTolerance,
-      drawingState.currentPoint,
+      null,
       null,
       camera,
       gl.domElement,
       mouseScreenPos
     );
     
-    if (dimensionsState.isPositioning) {
+    // Dimensions click handling without any tool changes
+    if (!dimensionsState.firstPoint) {
+      // First point selection
       setDimensionsState(prev => ({
         ...prev,
-        previewPosition: worldPoint.clone()
+        firstPoint: point.clone(),
+        secondPoint: null,
+        isPositioning: false,
+        previewPosition: null
       }));
+      console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+    } else if (!dimensionsState.secondPoint) {
+      // Second point selection
+      const distance = dimensionsState.firstPoint.distanceTo(point);
+      setDimensionsState(prev => ({
+        ...prev,
+        secondPoint: point.clone(),
+        isPositioning: true
+      }));
+      console.log(`🎯 Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
+    } else if (dimensionsState.isPositioning) {
+      // Final positioning - create permanent dimension
+      const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
+      const newDimension = {
+        id: Math.random().toString(36).substr(2, 9),
+        startPoint: dimensionsState.firstPoint,
+        endPoint: dimensionsState.secondPoint,
+        distance: convertToDisplayUnit(distance),
+        position: point.clone(),
+        unit: measurementUnit
+      };
+      
+      setDimensionsState(prev => ({
+        ...prev,
+        completedDimensions: [...prev.completedDimensions, newDimension],
+        firstPoint: null,
+        secondPoint: null,
+        isPositioning: false,
+        previewPosition: null
+      }));
+      
+      console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit} at position [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     }
     
     let finalPoint: THREE.Vector3;
