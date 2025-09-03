@@ -259,19 +259,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda iken, ölçü çizgisini perpendicular düzlemde konumlandır
     if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      // İki nokta arasındaki vektörü hesapla
-      const lineVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
-      const lineCenter = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
-      
-      // Çizgiye perpendicular düzlem oluştur
-      const perpPlane = new THREE.Plane(lineVector.normalize(), -lineVector.dot(lineCenter));
-      intersectionSuccess = raycaster.ray.intersectPlane(perpPlane, worldPoint);
-      
-      if (!intersectionSuccess) {
-        // Fallback: Y=0 düzlemi kullan
-        const fallbackPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        intersectionSuccess = raycaster.ray.intersectPlane(fallbackPlane, worldPoint);
-      }
+      // Y=0 düzleminde intersection al
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     } else {
       // Normal mod: Y=0 düzlemi
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -354,21 +344,21 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       // Ölçü tamamlama
       const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
       
-      // Ölçü çizgisinin pozisyonunu hesapla
-      const lineVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
-      const lineCenter = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+      // İki nokta arasındaki ana vektörü hesapla
+      const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
       
-      // Preview pozisyonundan çizgiye en yakın noktayı bul
-      const line = new THREE.Line3(dimensionsState.firstPoint, dimensionsState.secondPoint);
-      const closestPointOnLine = new THREE.Vector3();
-      line.closestPointToPoint(dimensionsState.previewPosition || point, true, closestPointOnLine);
+      // Ana vektöre perpendicular (dik) offset vektörünü hesapla
+      const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+      const toClick = new THREE.Vector3().subVectors(dimensionsState.previewPosition || point, midPoint);
       
-      // Offset vektörünü hesapla
-      const offsetVector = new THREE.Vector3().subVectors(dimensionsState.previewPosition || point, closestPointOnLine);
+      // Ana vektöre dik olan bileşeni bul (perpendicular projection)
+      const mainVectorNormalized = mainVector.clone().normalize();
+      const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toClick.dot(mainVectorNormalized));
+      const perpendicularOffset = toClick.clone().sub(parallelComponent);
       
-      // Ölçü çizgisinin başlangıç ve bitiş noktalarını offset ile ayarla
-      const dimensionStart = dimensionsState.firstPoint.clone().add(offsetVector);
-      const dimensionEnd = dimensionsState.secondPoint.clone().add(offsetVector);
+      // Ölçü çizgisinin başlangıç ve bitiş noktalarını perpendicular offset ile ayarla
+      const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
+      const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
       const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
       
       const newDimension: SimpleDimension = {
@@ -422,21 +412,22 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
     const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
     
-    // Ölçü çizgisinin pozisyonunu hesapla
-    const lineVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
-    const lineCenter = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+    // İki nokta arasındaki ana vektörü hesapla
+    const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
     
-    // Preview pozisyonundan çizgiye en yakın noktayı bul
-    const line = new THREE.Line3(dimensionsState.firstPoint, dimensionsState.secondPoint);
-    const closestPointOnLine = new THREE.Vector3();
-    line.closestPointToPoint(dimensionsState.previewPosition, true, closestPointOnLine);
+    // Ana vektöre perpendicular (dik) offset vektörünü hesapla
+    // Ana çizginin orta noktasından preview pozisyonuna vektör
+    const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+    const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
     
-    // Offset vektörünü hesapla (çizgiden preview pozisyonuna)
-    const offsetVector = new THREE.Vector3().subVectors(dimensionsState.previewPosition, closestPointOnLine);
+    // Ana vektöre dik olan bileşeni bul (perpendicular projection)
+    const mainVectorNormalized = mainVector.clone().normalize();
+    const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
+    const perpendicularOffset = toPreview.clone().sub(parallelComponent);
     
-    // Ölçü çizgisinin başlangıç ve bitiş noktalarını offset ile ayarla
-    const dimensionStart = dimensionsState.firstPoint.clone().add(offsetVector);
-    const dimensionEnd = dimensionsState.secondPoint.clone().add(offsetVector);
+    // Ölçü çizgisinin başlangıç ve bitiş noktalarını perpendicular offset ile ayarla
+    const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
+    const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
     
     return {
