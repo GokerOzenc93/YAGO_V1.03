@@ -121,6 +121,7 @@ interface SimpleDimensionsState {
   firstPoint: THREE.Vector3 | null;
   secondPoint: THREE.Vector3 | null;
   isPositioning: boolean;
+  previewPosition: THREE.Vector3 | null;
   completedDimensions: SimpleDimension[];
   currentSnapPoint: any;
 }
@@ -129,6 +130,7 @@ const INITIAL_SIMPLE_DIMENSIONS_STATE: SimpleDimensionsState = {
   firstPoint: null,
   secondPoint: null,
   isPositioning: false,
+  previewPosition: null,
   completedDimensions: [],
   currentSnapPoint: null
 };
@@ -224,7 +226,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         ...prev,
         firstPoint: point.clone(),
         secondPoint: null,
-        isPositioning: false
+        isPositioning: false,
+        previewPosition: null
       }));
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.secondPoint) {
@@ -233,16 +236,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       setDimensionsState(prev => ({
         ...prev,
         secondPoint: point.clone(),
-        isPositioning: true
+        isPositioning: true,
+        previewPosition: point.clone().add(new THREE.Vector3(0, 100, 0)) // Varsayılan pozisyon
       }));
       console.log(`🎯 Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
+      console.log(`🎯 Dimension: Move mouse to position dimension line, then click to confirm`);
     } else if (dimensionsState.isPositioning) {
       // Ölçü tamamlama
       const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
-      const textPosition = new THREE.Vector3()
-        .addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint)
-        .multiplyScalar(0.5)
-        .add(new THREE.Vector3(0, 50, 0));
+      const textPosition = dimensionsState.previewPosition || point;
       
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
@@ -259,7 +261,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         firstPoint: null,
         secondPoint: null,
         isPositioning: false,
-        currentSnapPoint: null
+        currentSnapPoint: null,
+        previewPosition: null
       }));
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
@@ -272,20 +275,24 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
-    // Sadece snap point'i güncelle, başka bir şey yapma
+    
+    // Positioning modundayken fareyle ölçü pozisyonunu güncelle
+    if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
+      setDimensionsState(prev => ({
+        ...prev,
+        previewPosition: point.clone()
+      }));
+    }
   };
 
   // Preview ölçüsü oluştur
   const previewDimension = useMemo(() => {
-    if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.isPositioning || !mouseWorldPosition) {
+    if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.isPositioning || !dimensionsState.previewPosition) {
       return null;
     }
 
     const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
-    const textPosition = new THREE.Vector3()
-      .addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint)
-      .multiplyScalar(0.5)
-      .add(new THREE.Vector3(0, 50, 0));
+    const textPosition = dimensionsState.previewPosition;
     
     return {
       id: 'preview',
@@ -295,7 +302,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       unit: measurementUnit,
       textPosition
     };
-  }, [dimensionsState, mouseWorldPosition, convertToDisplayUnit, measurementUnit]);
+  }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
 
   // Reset dimensions state when tool changes
   useEffect(() => {
