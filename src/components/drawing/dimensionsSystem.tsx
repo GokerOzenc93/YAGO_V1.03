@@ -205,3 +205,6 @@ export const DimensionsSystem: React.FC<DimensionsSystemProps> = ({
   );
 };
 
+
+
+export { DimensionsSystem, INITIAL_DIMENSIONS_STATE }
