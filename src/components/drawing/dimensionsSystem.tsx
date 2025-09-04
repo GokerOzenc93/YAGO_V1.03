@@ -93,9 +93,14 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     const updateTextSize = () => {
       if (textRef.current && groupRef.current) {
         const distance = camera.position.distanceTo(groupRef.current.position);
-        const desiredSize = 12; // Okunabilir olması için ideal boyut
-        const scaleFactor = distance / desiredSize;
-        textRef.current.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        
+        // Kamera uzaklığına göre ölçeklendirme
+        const scaleFactor = distance / 200;
+        
+        // Minimum ve maksimum ölçek sınırları
+        const clampedScale = Math.min(Math.max(scaleFactor, 0.5), 5); // 0.5x ile 5x arasında sınırla
+        
+        textRef.current.scale.setScalar(clampedScale);
       }
     };
 
