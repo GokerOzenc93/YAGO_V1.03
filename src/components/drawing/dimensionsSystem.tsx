@@ -30,7 +30,14 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   isPreview = false 
 }) => {
   const { camera } = useThree();
+  const groupRef = useRef<THREE.Group>(null);
   const textRef = useRef<THREE.Mesh>(null);
+
+  // Measure the distance of the dimension line to dynamically adjust text size
+  const distanceToCamera = useMemo(() => {
+    if (!groupRef.current) return 1;
+    return camera.position.distanceTo(groupRef.current.position);
+  }, [camera.position, dimension, groupRef]);
   
   const points = useMemo(() => {
     const start = dimension.startPoint;
@@ -38,76 +45,52 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     const originalStart = dimension.originalStart || start;
     const originalEnd = dimension.originalEnd || end;
     
+    const distance = start.distanceTo(end);
+    
     // Ana ölçü çizgisi
     const mainLine = [start, end];
     
-    // Extension çizgileri (orijinal noktalardan ölçü çizgisine)
+    // Uzatma çizgileri
     const extensionLines = [];
-    
-    // İlk nokta için extension çizgisi
-    if (originalStart.distanceTo(start) > 1) {
+    if (originalStart.distanceTo(start) > 0.1) {
       extensionLines.push([originalStart, start]);
     }
-    
-    // İkinci nokta için extension çizgisi
-    if (originalEnd.distanceTo(end) > 1) {
+    if (originalEnd.distanceTo(end) > 0.1) {
       extensionLines.push([originalEnd, end]);
     }
     
-    // Ölçü çizgisinin uçlarında kısa perpendicular çizgiler
-    const direction = new THREE.Vector3().subVectors(end, start).normalize();
-    const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(15);
+    // Ok uçları için hesaplamalar - daha küçük ve profesyonel
+    const arrowSize = 10;
     
-    const tick1Start = start.clone().add(perpendicular);
-    const tick1End = start.clone().sub(perpendicular);
-    const tick2Start = end.clone().add(perpendicular);
-    const tick2End = end.clone().sub(perpendicular);
+    const dir = new THREE.Vector3().subVectors(end, start).normalize();
+    const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize / 2);
     
-    // Ok uçları için hesaplamalar
-    const arrowSize = 25;
-    const arrowAngle = Math.PI / 6; // 30 derece
-    
-    // Başlangıç oku (start noktasında)
-    const arrowDir1 = direction.clone().multiplyScalar(-arrowSize);
-    const arrowPerp1 = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(arrowSize * Math.tan(arrowAngle));
-    
-    const arrow1Point1 = start.clone().add(arrowDir1).add(arrowPerp1);
-    const arrow1Point2 = start.clone().add(arrowDir1).sub(arrowPerp1);
-    
-    // Bitiş oku (end noktasında)
-    const arrowDir2 = direction.clone().multiplyScalar(arrowSize);
-    const arrowPerp2 = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(arrowSize * Math.tan(arrowAngle));
-    
-    const arrow2Point1 = end.clone().add(arrowDir2).add(arrowPerp2);
-    const arrow2Point2 = end.clone().add(arrowDir2).sub(arrowPerp2);
-    
-    return {
-      mainLine,
-      extensionLines,
-      ticks: [
-        [tick1Start, tick1End],
-        [tick2Start, tick2End]
-      ],
-      arrows: [
-        [start, arrow1Point1],
-        [start, arrow1Point2],
-        [end, arrow2Point1],
-        [end, arrow2Point2]
-      ]
-    };
+    const arrows = [];
+    if (distance > arrowSize * 2) {
+      // Çizgi yeterince uzunsa okları göster
+      const arrow1a = start.clone().add(dir.clone().multiplyScalar(arrowSize).add(perp));
+      const arrow1b = start.clone().add(dir.clone().multiplyScalar(arrowSize).sub(perp));
+      arrows.push([start, arrow1a], [start, arrow1b]);
+      
+      const arrow2a = end.clone().sub(dir.clone().multiplyScalar(arrowSize).add(perp));
+      const arrow2b = end.clone().sub(dir.clone().multiplyScalar(arrowSize).sub(perp));
+      arrows.push([end, arrow2a], [end, arrow2b]);
+    } else {
+      // Aksi halde, çizginin dışına taşan okları göster (metin için yer açmak adına)
+      const arrow1a = start.clone().add(dir.clone().multiplyScalar(-arrowSize).add(perp));
+      const arrow1b = start.clone().add(dir.clone().multiplyScalar(-arrowSize).sub(perp));
+      arrows.push([start, arrow1a], [start, arrow1b]);
+      
+      const arrow2a = end.clone().add(dir.clone().multiplyScalar(arrowSize).add(perp));
+      const arrow2b = end.clone().add(dir.clone().multiplyScalar(arrowSize).sub(perp));
+      arrows.push([end, arrow2a], [end, arrow2b]);
+    }
+
+    return { mainLine, extensionLines, arrows };
   }, [dimension]);
 
-  // Adjust text scale based on camera distance
-  useEffect(() => {
-    if (textRef.current) {
-      const distance = camera.position.distanceTo(textRef.current.position);
-      // Scale inversely with distance to keep size constant
-      textRef.current.scale.setScalar(distance / 200); 
-    }
-  }, [camera, dimension]);
-
   return (
-    <group>
+    <group ref={groupRef}>
       {/* Ana ölçü çizgisi */}
       <line>
         <bufferGeometry>
@@ -127,7 +110,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         />
       </line>
 
-      {/* Extension çizgileri */}
+      {/* Uzatma çizgileri */}
       {points.extensionLines.map((ext, index) => (
         <line key={index}>
           <bufferGeometry>
@@ -144,30 +127,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#a9a9a9"} 
             linewidth={1}
-            lineDashSize={5}
-            gapSize={3}
-            dashed={true}
-          />
-        </line>
-      ))}
-      
-      {/* Tick marks (uç çizgileri) */}
-      {points.ticks.map((tick, index) => (
-        <line key={`tick-${index}`}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={2}
-              array={new Float32Array([
-                ...tick[0].toArray(),
-                ...tick[1].toArray()
-              ])}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#00ff00"} 
-            linewidth={2}
+            lineCap="round"
           />
         </line>
       ))}
@@ -189,20 +149,22 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           <lineBasicMaterial 
             color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={2}
+            lineCap="round"
           />
         </line>
       ))}
 
       {/* Ölçü metni */}
-      <Billboard position={dimension.textPosition} ref={textRef}>
+      <Billboard position={dimension.textPosition} follow={true} lockX={false} lockY={false} lockZ={false}>
         <Text
+          ref={textRef}
           position={[0, 0, 0.1]}
-          fontSize={12}
+          fontSize={distanceToCamera / 50} // Dinamik font boyutu
           color={isPreview ? "#ff6b35" : "#000000"}
           anchorX="center"
           anchorY="middle"
         >
-          {`${dimension.distance.toFixed(1)} ${dimension.unit}`}
+          {`${dimension.distance.toFixed(1)}`}
         </Text>
       </Billboard>
     </group>
@@ -262,7 +224,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       // Mevcut snap ayarlarını kaydet
       setOriginalSnapSettings({ ...currentSnapSettings });
       
-      // 🎯 NEW: Ortho mode'u otomatik aç
+      // Ortho mode'u otomatik aç
       setOrthoMode(OrthoMode.ON);
       
       // Sadece ENDPOINT ve MIDPOINT'i aktif et - batch update
@@ -282,7 +244,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       setSnapSettingsBatch(originalSnapSettings);
       setOriginalSnapSettings(null);
       
-      // 🎯 NEW: Ortho mode'u kapat
+      // Ortho mode'u kapat
       setOrthoMode(OrthoMode.OFF);
       
       console.log('🎯 Dimension tool deactivated: Original settings + Ortho mode restored');
@@ -320,14 +282,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     setMouseWorldPosition(worldPoint);
     
-    // 🎯 ORTHO MODE: Apply constraint for dimension positioning
+    // ORTHO MODE: Apply constraint for dimension positioning
     if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && !dimensionsState.isPositioning) {
       worldPoint = applyDimensionOrthoConstraint(worldPoint, dimensionsState.firstPoint, orthoMode);
     }
     
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning) {
-      // 🎯 STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
+      // STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
       const snapPoints = findSnapPoints(
         worldPoint,
         completedShapes, 
@@ -394,22 +356,15 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       // Ölçü tamamlama
       const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
       
-      // Seçilen noktaların yükseklik hizasında ölçü çizgisi oluştur
-      const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
-      
-      // 🎯 Z EKSENİ DÜZELTMESİ - Ana vektörü 3D olarak hesapla
       const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
       
-      // Ana vektörün dominant eksenini belirle
       const absX = Math.abs(mainVector.x);
       const absY = Math.abs(mainVector.y);
       const absZ = Math.abs(mainVector.z);
       
       let perpendicularOffset = new THREE.Vector3();
       
-      // Dominant eksene göre perpendicular düzlem belirle
       if (absX >= absY && absX >= absZ) {
-        // X ekseni dominant - YZ düzleminde offset hesapla
         const midPoint = new THREE.Vector3(
           (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
           (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
@@ -422,7 +377,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         perpendicularOffset = toPreview.clone().sub(parallelComponent);
         
       } else if (absZ >= absX && absZ >= absY) {
-        // Z ekseni dominant - XY düzleminde offset hesapla
         const midPoint = new THREE.Vector3(
           (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
           (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
@@ -435,7 +389,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         perpendicularOffset = toPreview.clone().sub(parallelComponent);
         
       } else {
-        // Y ekseni dominant - XZ düzleminde offset hesapla (eski davranış)
+        const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
         const mainVectorXZ = new THREE.Vector3(mainVector.x, 0, mainVector.z);
         const midPoint = new THREE.Vector3(
           (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
@@ -454,7 +408,6 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         perpendicularOffset = toPreview.clone().sub(parallelComponent);
       }
       
-      // Ölçü çizgisinin başlangıç ve bitiş noktalarını hesapla
       const dimensionStart = new THREE.Vector3(
         dimensionsState.firstPoint.x + perpendicularOffset.x,
         dimensionsState.firstPoint.y + perpendicularOffset.y,
@@ -499,9 +452,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
     
-    // 🎯 ORTHO MODE: Apply constraint for dimension preview
+    // ORTHO MODE: Apply constraint for dimension preview
     if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      // İkinci nokta seçildikten sonra fareyle ölçü pozisyonunu ortho modda kısıtla
       const constrainedPoint = applyDimensionOrthoConstraint(point, dimensionsState.firstPoint, orthoMode);
       setDimensionsState(prev => ({
         ...prev,
@@ -523,43 +475,36 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
   // Preview ölçüsü oluştur
   const previewDimension = useMemo(() => {
-    // İkinci nokta seçildikten sonra ve fare hareket ettikçe preview göster
     if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.previewPosition) {
       return null;
     }
 
     const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
     
-    // Seçilen noktaların yükseklik hizasında preview oluştur
     const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
     
-    // Ana vektör (XZ düzleminde)
     const mainVector = new THREE.Vector3(
       dimensionsState.secondPoint.x - dimensionsState.firstPoint.x,
       0, // Y bileşenini sıfırla
       dimensionsState.secondPoint.z - dimensionsState.firstPoint.z
     );
     
-    // Orta nokta (seçilen noktaların yükseklik hizasında)
     const midPoint = new THREE.Vector3(
       (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
       averageY,
       (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
     );
     
-    // Preview pozisyonundan orta noktaya vektör (sadece XZ düzleminde)
     const toPreview = new THREE.Vector3(
       dimensionsState.previewPosition.x - midPoint.x,
       0, // Y bileşenini sıfırla
       dimensionsState.previewPosition.z - midPoint.z
     );
     
-    // Perpendicular offset hesapla (XZ düzleminde)
     const mainVectorNormalized = mainVector.clone().normalize();
     const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
     const perpendicularOffset = toPreview.clone().sub(parallelComponent);
     
-    // Ölçü çizgisinin başlangıç ve bitiş noktalarını seçilen noktaların yükseklik hizasında ayarla
     const dimensionStart = new THREE.Vector3(
       dimensionsState.firstPoint.x + perpendicularOffset.x,
       averageY, // Seçilen noktaların ortalama yüksekliği
@@ -587,10 +532,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   // Reset dimensions state when tool changes
   useEffect(() => {
     if (activeTool !== Tool.DIMENSION) {
-      // Sadece drawing state'i temizle, completed dimensions'ları koru
       setDimensionsState(prev => ({
         ...INITIAL_SIMPLE_DIMENSIONS_STATE,
-        completedDimensions: prev.completedDimensions // Tamamlanmış ölçüleri koru
+        completedDimensions: prev.completedDimensions
       }));
     }
   }, [activeTool]);
@@ -599,13 +543,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeTool === Tool.DIMENSION && e.key === 'Escape') {
-        // Sadece drawing state'i temizle, completed dimensions'ları koru
         setDimensionsState(prev => ({
           ...INITIAL_SIMPLE_DIMENSIONS_STATE,
-          completedDimensions: prev.completedDimensions // Tamamlanmış ölçüleri koru
+          completedDimensions: prev.completedDimensions
         }));
         
-        // Switch back to Select tool
         const { setActiveTool } = useAppStore.getState();
         setActiveTool(Tool.SELECT);
         
