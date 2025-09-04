@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
-import { useAppStore, Tool } from '../system/appStore';
+import { useAppStore, Tool } from '../store/appStore';
 
 const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');
@@ -12,41 +12,54 @@ const Terminal: React.FC = () => {
     unit: string;
   } | null>(null);
 
+  // Expose terminal input ref globally for external focus control
   useEffect(() => {
     (window as any).terminalInputRef = inputRef;
+    
+    // Expose polyline status setter globally
     (window as any).setPolylineStatus = setPolylineStatus;
     
+    // 🎯 GLOBAL KEYBOARD CAPTURE - Tüm klavye girişlerini terminale yönlendir
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Eğer zaten bir input alanında yazıyorsa, yakalama
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
       
+      // Çizim araçları ve kamera kısayollarını hariç tut
       const drawingToolKeys = ['t', 'f', 'r', 'l', 'b', 'u', 'i', 'c', 'h', 'v', 'z', '1', '2', '3'];
       if (drawingToolKeys.includes(e.key.toLowerCase())) {
-        return;
+        return; // Bu tuşları terminale yönlendirme
       }
       
+      // Özel tuşları ve mouse event'lerini hariç tut (Ctrl, Alt, F1-F12, Arrow keys, etc.)
       if (e.ctrlKey || e.altKey || e.metaKey || 
           e.key.startsWith('F') || 
           ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape', 'Shift', 'CapsLock', 'Insert', 'Delete', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
         return;
       }
       
+      // Mouse button'larını ve diğer özel karakterleri hariç tut
       if (e.key.length > 1 && !['Backspace', 'Enter', 'Space'].includes(e.key)) {
         return;
       }
       
+      // Sadece gerçek klavye karakterlerini yakala (sayılar, harfler, nokta, virgül, +, -, *, /, parantez, boşluk)
       if (/^[a-zA-Z0-9\.\,\+\-\*\/\(\)]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Space') {
         e.preventDefault();
         
+        // Terminal input'a odaklan
         if (inputRef.current) {
           inputRef.current.focus();
           
+          // Backspace ise son karakteri sil
           if (e.key === 'Backspace') {
             setCommandInput(prev => prev.slice(0, -1));
           } else if (e.key === 'Space') {
+            // Space tuşu için boşluk ekle
             setCommandInput(prev => prev + ' ');
           } else {
+            // Karakteri ekle
             setCommandInput(prev => prev + e.key);
           }
           
@@ -55,7 +68,8 @@ const Terminal: React.FC = () => {
       }
     };
     
-    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    // Global event listener ekle
+    window.addEventListener('keydown', handleGlobalKeyDown, true); // capture phase
     
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown, true);
@@ -64,11 +78,14 @@ const Terminal: React.FC = () => {
     };
   }, []);
 
+  // Handle command execution - simplified for input handling
   const executeCommand = (command: string) => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
+    // Handle pending extrude shape - öncelik ver
     if ((window as any).pendingExtrudeShape) {
+      // Enter tuşu ile 2D nesne olarak ekle
       if (trimmedCommand === '' || trimmedCommand.toLowerCase() === 'enter') {
         if ((window as any).handleConvertTo2D) {
           (window as any).handleConvertTo2D();
@@ -77,6 +94,7 @@ const Terminal: React.FC = () => {
         }
       }
       
+      // Sayı girildiyse extrude et
       const extrudeValue = parseFloat(trimmedCommand);
       if (!isNaN(extrudeValue) && extrudeValue > 0) {
         if ((window as any).handleExtrudeHeight) {
@@ -90,7 +108,9 @@ const Terminal: React.FC = () => {
       return;
     }
 
+    // Check if it's a measurement input (number, "number,number", or "number," format)
     if (/^[\d.,\s]+$/.test(trimmedCommand)) {
+      // Handle measurement input
       if ((window as any).handlePolylineMeasurement) {
         (window as any).handlePolylineMeasurement(trimmedCommand);
         setCommandInput('');
@@ -110,15 +130,18 @@ const Terminal: React.FC = () => {
 
   return (
     <>
+      {/* Status Display */}
       {polylineStatus && (
         <div className="fixed bottom-5 left-0 right-0 bg-gray-700/95 backdrop-blur-sm border-t border-gray-600 z-20" style={{ height: '4mm' }}>
           <div className="flex items-center justify-between h-full px-3">
+            {/* Sol taraf - Tool bilgisi */}
             <div className="flex items-center gap-4 text-xs text-gray-300">
               <span className="font-medium">
                 Tool: <span className="text-white">{activeTool}</span>
               </span>
             </div>
 
+            {/* Orta - Polyline ölçü bilgileri */}
             <div className="flex items-center gap-4 text-xs">
               <span className="text-gray-300">
                 Length: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
@@ -130,6 +153,7 @@ const Terminal: React.FC = () => {
               )}
             </div>
 
+            {/* Sağ taraf - Durum bilgileri */}
             <div className="flex items-center gap-4 text-xs text-gray-300">
               <span>Ready</span>
             </div>
@@ -137,6 +161,7 @@ const Terminal: React.FC = () => {
         </div>
       )}
 
+      {/* Terminal */}
       <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-30" style={{ height: '5mm' }}>
       <div className="flex items-center h-full px-2">
         <span className="text-green-400 font-mono text-xs mr-2">$</span>

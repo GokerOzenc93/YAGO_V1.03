@@ -2,12 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useAppStore, Tool, SnapType, SnapSettings, OrthoMode } from '../system/appStore';
+import { useAppStore, Tool, SnapType, SnapSettings, OrthoMode } from '../../store/appStore.ts';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
-import { snapToGrid } from '../system/utils';
-import { applyDimensionOrthoConstraint } from '../system/orthoUtils';
+import { snapToGrid } from './utils.ts';
+import { applyDimensionOrthoConstraint } from '../../utils/orthoUtils.ts';
 
 export interface SimpleDimension {
   id: string;

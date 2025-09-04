@@ -1,8 +1,8 @@
 import React from 'react';
-import { useAppStore, CameraType, MeasurementUnit, ViewMode } from '../system/appStore';
+import { useAppStore, CameraType, MeasurementUnit, ViewMode } from '../store/appStore';
 import { Camera, CameraOff, Eye, Monitor, Square, Circle, Box, ZoomIn, Frame as Wireframe, EyeOff, Cuboid as Cube } from 'lucide-react';
 
-const StatusDisplay: React.FC = () => {
+const StatusBar: React.FC = () => {
   const { 
     activeTool, 
     gridSize, 
@@ -16,8 +16,8 @@ const StatusDisplay: React.FC = () => {
     setMeasurementUnit,
     convertToDisplayUnit,
     shapes,
-    viewMode,
-    setViewMode
+    viewMode, // 🎯 NEW: Get current view mode
+    setViewMode // 🎯 NEW: Set view mode
   } = useAppStore();
   
   const formatValue = (value: number) => convertToDisplayUnit(value).toFixed(2);
@@ -37,12 +37,14 @@ const StatusDisplay: React.FC = () => {
     );
   };
 
+  // 🎯 NEW: Handle view mode toggle
   const handleViewModeToggle = () => {
     const nextMode = viewMode === ViewMode.SOLID ? ViewMode.WIREFRAME : ViewMode.SOLID;
     setViewMode(nextMode);
     console.log(`🎯 Status bar view mode toggle: ${viewMode} -> ${nextMode}`);
   };
 
+  // 🎯 NEW: Get view mode icon
   const getViewModeIcon = () => {
     switch (viewMode) {
       case ViewMode.WIREFRAME:
@@ -54,6 +56,7 @@ const StatusDisplay: React.FC = () => {
     }
   };
 
+  // 🎯 NEW: Get view mode label
   const getViewModeLabel = () => {
     switch (viewMode) {
       case ViewMode.WIREFRAME:
@@ -66,6 +69,7 @@ const StatusDisplay: React.FC = () => {
   };
 
   const handleZoomFit = () => {
+    // Trigger zoom fit event
     const event = new CustomEvent('zoomFit', { 
       detail: { shapes: shapes.filter(shape => !useAppStore.getState().hiddenShapeIds.includes(shape.id)) }
     });
@@ -82,6 +86,7 @@ const StatusDisplay: React.FC = () => {
         </div>
       </div>
       <div className="flex items-center gap-4">
+        {/* Camera Type Toggle */}
         <button
           onClick={handleCameraToggle}
           className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors"
@@ -95,6 +100,7 @@ const StatusDisplay: React.FC = () => {
           <span className="text-xs">{cameraType === CameraType.PERSPECTIVE ? 'Persp' : 'Ortho'}</span>
         </button>
 
+        {/* 🎯 NEW: View Mode Toggle */}
         <button
           onClick={handleViewModeToggle}
           className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors"
@@ -104,6 +110,7 @@ const StatusDisplay: React.FC = () => {
           <span className="text-xs">{getViewModeLabel()}</span>
         </button>
 
+        {/* Zoom Fit Button */}
         <button
           onClick={handleZoomFit}
           className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-600/90 hover:bg-green-500 transition-colors"
@@ -113,6 +120,7 @@ const StatusDisplay: React.FC = () => {
           <span className="text-xs text-white font-medium">Fit</span>
         </button>
 
+        {/* View Shortcuts */}
         <div className="flex items-center gap-1">
           <span className="text-gray-400 text-xs">Views:</span>
           <div className="flex items-center gap-0.5">
@@ -120,6 +128,7 @@ const StatusDisplay: React.FC = () => {
               className="px-1 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
               title="Top View (T)"
               onClick={() => {
+                // This will be handled by the Scene component's keyboard listener
                 const event = new KeyboardEvent('keydown', { key: 't' });
                 window.dispatchEvent(event);
               }}
@@ -189,4 +198,4 @@ const StatusDisplay: React.FC = () => {
   );
 };
 
-export default StatusDisplay;
+export default StatusBar;

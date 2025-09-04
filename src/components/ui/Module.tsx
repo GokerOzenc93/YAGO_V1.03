@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { X, Puzzle, Check } from 'lucide-react';
-import { useAppStore } from '../system/appStore';
+import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
 

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { CompletedShape, SnapPoint } from './types';
-import { SnapType, SnapSettings } from '../system/appStore';
+import { SnapType, SnapSettings } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
-import { findLineIntersection } from '../system/utils';
+import { findLineIntersection } from './utils';
 import { Billboard } from '@react-three/drei';
 import * as React from 'react';
 
