@@ -33,3 +33,5 @@
  import { fitCameraToShapes, fitCameraToShape } from './utils/cameraUtils';
  import { clearFaceHighlight } from './utils/faceSelection';
  import * as THREE from 'three';
+
+export default as

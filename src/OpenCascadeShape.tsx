@@ -13,3 +13,5 @@
    highlightFace,
    clearFaceHighlight
  } from './utils/faceSelection';
+
+export default as

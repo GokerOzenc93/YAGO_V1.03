@@ -11,3 +11,5 @@
  } from 'lucide-react';
  import { Shape } from './types/shapes';
 -import Module from './Module';
+
+export default Module

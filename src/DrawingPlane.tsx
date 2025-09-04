@@ -17,3 +17,5 @@
 +import { createRectanglePoints, createCirclePoints } from './utils/drawing';
 +import { DimensionsManager } from './DimensionsSystem';
  import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from './utils/orthoUtils';
+
+export default as
