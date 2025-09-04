@@ -741,7 +741,7 @@ const focusTerminalForMeasurement = () => {
   const handlePointerMove = (event: THREE.Event<PointerEvent>) => {
     // Handle Point to Point Move preview
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
-      const point = getIntersectionPoint(event.nativeEvent);
+      let point = getIntersectionPoint(event.nativeEvent);
       if (!point) return;
       
       // Snap detection for target point
@@ -774,7 +774,7 @@ const focusTerminalForMeasurement = () => {
       return;
     }
     // Handle polyline editing mode
-    const point = getIntersectionPoint(event.nativeEvent);
+    let point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
 
     if (activeTool === Tool.POLYLINE_EDIT && isDragging && draggedNodeIndex !== null && editingPolylineId) {
