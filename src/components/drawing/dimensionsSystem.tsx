@@ -583,7 +583,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   // Reset dimensions state when tool changes
   useEffect(() => {
     if (activeTool !== Tool.DIMENSION) {
-      setDimensionsState(INITIAL_SIMPLE_DIMENSIONS_STATE);
+      // Sadece drawing state'i temizle, completed dimensions'ları koru
+      setDimensionsState(prev => ({
+        ...INITIAL_SIMPLE_DIMENSIONS_STATE,
+        completedDimensions: prev.completedDimensions // Tamamlanmış ölçüleri koru
+      }));
     }
   }, [activeTool]);
 
@@ -591,14 +595,17 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeTool === Tool.DIMENSION && e.key === 'Escape') {
-        // Reset dimension state
-        setDimensionsState(INITIAL_SIMPLE_DIMENSIONS_STATE);
+        // Sadece drawing state'i temizle, completed dimensions'ları koru
+        setDimensionsState(prev => ({
+          ...INITIAL_SIMPLE_DIMENSIONS_STATE,
+          completedDimensions: prev.completedDimensions // Tamamlanmış ölçüleri koru
+        }));
         
         // Switch back to Select tool
         const { setActiveTool } = useAppStore.getState();
         setActiveTool(Tool.SELECT);
         
-        console.log('🎯 Dimension tool exited with Escape key');
+        console.log('🎯 Dimension tool exited with Escape key - dimensions preserved');
       }
     };
 
