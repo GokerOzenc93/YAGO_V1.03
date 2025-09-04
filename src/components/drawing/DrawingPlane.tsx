@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
-import { useAppStore, Tool, CameraType, SnapType } from '../../store/appStore';
+import { useAppStore, Tool, CameraType, SnapType, OrthoMode } from '../../store/appStore';
 import * as THREE from 'three';
 import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { snapToGrid } from './utils';
@@ -9,6 +9,7 @@ import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { DimensionsManager } from './dimensionsSystem';
+import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from '../../utils/orthoUtils';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
@@ -54,7 +55,8 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     resetPointToPointMove,
     updateShape,
     enableAutoSnap,
-    disableAutoSnap
+    disableAutoSnap,
+    orthoMode
   } = useAppStore();
   
   // Drawing state
@@ -172,6 +174,15 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     
     // Store mouse world position for dimensions preview
     setMouseWorldPosition(worldPoint);
+    
+    // 🎯 ORTHO MODE: Apply constraint for drawing tools
+    if (orthoMode === OrthoMode.ON && drawingState.isDrawing && drawingState.currentPoint) {
+      if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
+        worldPoint = applyPolylineOrthoConstraint(worldPoint, drawingState.currentPoint, orthoMode);
+      } else if (activeTool === Tool.RECTANGLE) {
+        worldPoint = applyRectangleOrthoConstraint(worldPoint, drawingState.currentPoint, orthoMode);
+      }
+    }
     
     // Only handle snap detection for non-dimension tools
     if (activeTool !== Tool.DIMENSION) {
@@ -770,6 +781,17 @@ const focusTerminalForMeasurement = () => {
     if (!drawingState.isDrawing || ![Tool.POLYLINE, Tool.POLYGON, Tool.RECTANGLE, Tool.CIRCLE].includes(activeTool)) return;
 
     updateDrawingState({ previewPoint: point });
+    
+    // 🎯 ORTHO MODE: Apply constraint to preview point
+    if (orthoMode === OrthoMode.ON && drawingState.currentPoint) {
+      if (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) {
+        point = applyPolylineOrthoConstraint(point, drawingState.currentPoint, orthoMode);
+        updateDrawingState({ previewPoint: point });
+      } else if (activeTool === Tool.RECTANGLE) {
+        point = applyRectangleOrthoConstraint(point, drawingState.currentPoint, orthoMode);
+        updateDrawingState({ previewPoint: point });
+      }
+    }
     
     // Handle direction and measurement for POLYLINE and POLYGON
     if ((activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && drawingState.currentPoint) {

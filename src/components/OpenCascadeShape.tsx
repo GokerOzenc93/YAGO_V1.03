@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode, OrthoMode } from '../store/appStore';
+import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
   highlightFace,
@@ -128,10 +129,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       let position = meshRef.current.position.clone();
       
       // 🎯 NEW: Apply ortho mode constraint
-      if (orthoMode === OrthoMode.ON) {
-        position = applyOrthoConstraint(position, originalPosition);
-        meshRef.current.position.copy(position);
-      }
+      position = applyOrthoConstraint(position, originalPosition, orthoMode);
+      meshRef.current.position.copy(position);
       
       const snappedPosition = [
         Math.round(position.x / gridSize) * gridSize,

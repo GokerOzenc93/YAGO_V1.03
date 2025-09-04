@@ -7,6 +7,7 @@ import { findSnapPoints, SnapPointIndicators } from './snapSystem';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
 import { snapToGrid } from './utils';
+import { applyDimensionOrthoConstraint } from '../../utils/orthoUtils';
 
 export interface SimpleDimension {
   id: string;
@@ -315,6 +316,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     setMouseWorldPosition(worldPoint);
     
+    // 🎯 ORTHO MODE: Apply constraint for dimension positioning
+    if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && !dimensionsState.isPositioning) {
+      worldPoint = applyDimensionOrthoConstraint(worldPoint, dimensionsState.firstPoint, orthoMode);
+    }
+    
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning) {
       // 🎯 STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
@@ -488,6 +494,18 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
+    
+    // 🎯 ORTHO MODE: Apply constraint for dimension preview
+    if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && dimensionsState.secondPoint) {
+      // İkinci nokta seçildikten sonra fareyle ölçü pozisyonunu ortho modda kısıtla
+      const constrainedPoint = applyDimensionOrthoConstraint(point, dimensionsState.firstPoint, orthoMode);
+      setDimensionsState(prev => ({
+        ...prev,
+        isPositioning: true,
+        previewPosition: constrainedPoint
+      }));
+      return;
+    }
     
     // İkinci nokta seçildikten sonra fareyle ölçü pozisyonunu güncelle
     if (dimensionsState.firstPoint && dimensionsState.secondPoint) {
