@@ -214,7 +214,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           color={isPreview ? "#ff6b35" : "#00ff00"}
           anchorX="center"
           anchorY="middle"
-          outlineWidth={1}
+          outlineWidth={0} // Yazı dış hatlarını kaldırdım
           outlineColor="#000000"
         >
           {formattedDistance}
@@ -416,66 +416,17 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
       
-      const absX = Math.abs(mainVector.x);
-      const absY = Math.abs(mainVector.y);
-      const absZ = Math.abs(mainVector.z);
+      const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+
+      const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
+      const mainVectorNormalized = mainVector.clone().normalize();
       
-      let perpendicularOffset = new THREE.Vector3();
+      const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
+      const perpendicularOffset = toPreview.clone().sub(parallelComponent);
       
-      if (absX >= absY && absX >= absZ) {
-        const midPoint = new THREE.Vector3(
-          (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
-          (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
-          (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
-        );
-        
-        const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
-        const mainVectorNormalized = mainVector.clone().normalize();
-        const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
-        perpendicularOffset = toPreview.clone().sub(parallelComponent);
-        
-      } else if (absZ >= absX && absZ >= absY) {
-        const midPoint = new THREE.Vector3(
-          (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
-          (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2,
-          (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
-        );
-        
-        const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
-        const mainVectorNormalized = mainVector.clone().normalize();
-        const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
-        perpendicularOffset = toPreview.clone().sub(parallelComponent);
-        
-      } else {
-        const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
-        const mainVectorXZ = new THREE.Vector3(mainVector.x, 0, mainVector.z);
-        const midPoint = new THREE.Vector3(
-          (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
-          averageY,
-          (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
-        );
-        
-        const toPreview = new THREE.Vector3(
-          dimensionsState.previewPosition.x - midPoint.x,
-          0,
-          dimensionsState.previewPosition.z - midPoint.z
-        );
-        
-        const mainVectorNormalized = mainVectorXZ.clone().normalize();
-        const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
-        perpendicularOffset = toPreview.clone().sub(parallelComponent);
-      }
+      const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
+      const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
       
-      const dimensionStart = new THREE.Vector3(
-        dimensionsState.firstPoint.x + perpendicularOffset.x,
-        dimensionsState.firstPoint.y + perpendicularOffset.y,
-        dimensionsState.firstPoint.z + perpendicularOffset.z
-      );
-      const dimensionEnd = new THREE.Vector3(
-        dimensionsState.secondPoint.x + perpendicularOffset.x,
-        dimensionsState.secondPoint.y + perpendicularOffset.y,
-        dimensionsState.secondPoint.z + perpendicularOffset.z
-      );
       const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
       
       const newDimension: SimpleDimension = {
@@ -539,29 +490,18 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
     const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
     
-    const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
-    
-    const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
-    
-    const midPoint = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint).add(midPoint)
+    const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
 
+    const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
+    const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
     const mainVectorNormalized = mainVector.clone().normalize();
     
-    const perpendicularOffset = new THREE.Vector3().subVectors(
-      dimensionsState.previewPosition,
-      dimensionsState.firstPoint.clone().add(mainVectorNormalized.clone().multiplyScalar(dimensionsState.previewPosition.clone().sub(dimensionsState.firstPoint).dot(mainVectorNormalized)))
-    );
-
-    const dimensionStart = new THREE.Vector3(
-      dimensionsState.firstPoint.x + perpendicularOffset.x,
-      dimensionsState.firstPoint.y + perpendicularOffset.y,
-      dimensionsState.firstPoint.z + perpendicularOffset.z
-    );
-    const dimensionEnd = new THREE.Vector3(
-      dimensionsState.secondPoint.x + perpendicularOffset.x,
-      dimensionsState.secondPoint.y + perpendicularOffset.y,
-      dimensionsState.secondPoint.z + perpendicularOffset.z
-    );
+    const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
+    const perpendicularOffset = toPreview.clone().sub(parallelComponent);
+    
+    const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
+    const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
+    
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
     
     return {
@@ -573,7 +513,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       textPosition,
       originalStart: dimensionsState.firstPoint,
       originalEnd: dimensionsState.secondPoint,
-      previewPosition: dimensionsState.previewPosition // Fare konumunu prop olarak geç
+      previewPosition: dimensionsState.previewPosition
     };
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
 
