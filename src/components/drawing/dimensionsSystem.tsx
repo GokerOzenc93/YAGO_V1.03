@@ -33,12 +33,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   const groupRef = useRef<THREE.Group>(null);
   const textRef = useRef<THREE.Mesh>(null);
 
-  // Measure the distance of the dimension line to dynamically adjust text size
-  const distanceToCamera = useMemo(() => {
-    if (!groupRef.current) return 1;
-    return camera.position.distanceTo(groupRef.current.position);
-  }, [camera.position, dimension, groupRef]);
-  
   const points = useMemo(() => {
     const start = dimension.startPoint;
     const end = dimension.endPoint;
@@ -88,6 +82,23 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
 
     return { mainLine, extensionLines, arrows };
   }, [dimension]);
+
+  // Adjust text scale based on camera distance
+  useEffect(() => {
+    const updateTextSize = () => {
+      if (textRef.current && groupRef.current) {
+        const distance = camera.position.distanceTo(groupRef.current.position);
+        const desiredSize = 25; // Okunabilir olması için ideal boyut
+        const scaleFactor = distance / desiredSize;
+        textRef.current.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      }
+    };
+
+    updateTextSize();
+    camera.addEventListener('change', updateTextSize);
+
+    return () => camera.removeEventListener('change', updateTextSize);
+  }, [camera, dimension, groupRef]);
 
   return (
     <group ref={groupRef}>
@@ -159,8 +170,8 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         <Text
           ref={textRef}
           position={[0, 0, 0.1]}
-          fontSize={distanceToCamera / 50} // Dinamik font boyutu
-          color={isPreview ? "#ff6b35" : "#000000"}
+          fontSize={12}
+          color={isPreview ? "#ff6b35" : "#00ff00"}
           anchorX="center"
           anchorY="middle"
         >
@@ -497,7 +508,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     const toPreview = new THREE.Vector3(
       dimensionsState.previewPosition.x - midPoint.x,
-      0, // Y bileşenini sıfırla
+      0,
       dimensionsState.previewPosition.z - midPoint.z
     );
     
