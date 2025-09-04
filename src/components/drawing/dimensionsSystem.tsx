@@ -155,7 +155,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           />
         </bufferGeometry>
         <lineBasicMaterial 
-          color={isPreview ? "#ff6b35" : "#00ff00"}
+          color={isPreview ? "#ff6b35" : "#00ff00"} 
           linewidth={3}
           depthTest={false}
         />
@@ -176,7 +176,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#00ff00"}
+            color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={2}
             depthTest={false}
           />
@@ -198,7 +198,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#00ff00"}
+            color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={3}
             depthTest={false}
           />
@@ -541,36 +541,25 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
     
-    const mainVector = new THREE.Vector3(
-      dimensionsState.secondPoint.x - dimensionsState.firstPoint.x,
-      0, // Y bileşenini sıfırla
-      dimensionsState.secondPoint.z - dimensionsState.firstPoint.z
-    );
+    const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
     
-    const midPoint = new THREE.Vector3(
-      (dimensionsState.firstPoint.x + dimensionsState.secondPoint.x) / 2,
-      averageY,
-      (dimensionsState.firstPoint.z + dimensionsState.secondPoint.z) / 2
-    );
-    
-    const toPreview = new THREE.Vector3(
-      dimensionsState.previewPosition.x - midPoint.x,
-      0,
-      dimensionsState.previewPosition.z - midPoint.z
-    );
-    
+    const midPoint = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint).add(midPoint)
+
     const mainVectorNormalized = mainVector.clone().normalize();
-    const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
-    const perpendicularOffset = toPreview.clone().sub(parallelComponent);
     
+    const perpendicularOffset = new THREE.Vector3().subVectors(
+      dimensionsState.previewPosition,
+      dimensionsState.firstPoint.clone().add(mainVectorNormalized.clone().multiplyScalar(dimensionsState.previewPosition.clone().sub(dimensionsState.firstPoint).dot(mainVectorNormalized)))
+    );
+
     const dimensionStart = new THREE.Vector3(
       dimensionsState.firstPoint.x + perpendicularOffset.x,
-      averageY, // Seçilen noktaların ortalama yüksekliği
+      dimensionsState.firstPoint.y + perpendicularOffset.y,
       dimensionsState.firstPoint.z + perpendicularOffset.z
     );
     const dimensionEnd = new THREE.Vector3(
       dimensionsState.secondPoint.x + perpendicularOffset.x,
-      averageY, // Seçilen noktaların ortalama yüksekliği
+      dimensionsState.secondPoint.y + perpendicularOffset.y,
       dimensionsState.secondPoint.z + perpendicularOffset.z
     );
     const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
