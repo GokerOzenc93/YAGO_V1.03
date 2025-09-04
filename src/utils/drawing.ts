@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { CompletedShape, SnapPoint } from './types';
-import { SnapType, SnapSettings } from '../../store/appStore';
-import { Shape } from '../../types/shapes';
+import { CompletedShape, SnapPoint } from '../types/drawing';
+import { SnapType, SnapSettings } from '../store/appStore';
+import { Shape } from '../types/shapes';
 
 export const snapToGrid = (value: number, gridSize: number): number => {
   return Math.round(value / gridSize) * gridSize;

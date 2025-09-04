@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SnapType } from '../../store/appStore';
+import { SnapType } from '../store/appStore';
 
 export interface CompletedShape {
   id: string;
