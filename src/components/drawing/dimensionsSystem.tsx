@@ -60,7 +60,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     }
     
     // Ok uçları için hesaplamalar - daha küçük ve profesyonel
-    const arrowSize = 10;
+    const arrowSize = 1;
     const dir = new THREE.Vector3().subVectors(end, start).normalize();
     const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize / 2);
     
