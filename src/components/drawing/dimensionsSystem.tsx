@@ -356,26 +356,29 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -averageY);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+      
+      // Positioning modunda snap detection YAPMA - tam olarak tıklanan yerde bitir
+      if (intersectionSuccess) {
+        setMouseWorldPosition(worldPoint);
+        return worldPoint; // Raw world point döndür, snap yok
+      }
     } else {
       // Normal mod: Y=0 düzlemi
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
-    }
-    
-    if (!intersectionSuccess) {
-      return null;
-    }
-    
-    setMouseWorldPosition(worldPoint);
-    
-    // ORTHO MODE: Apply constraint for dimension positioning
-    if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && !dimensionsState.isPositioning) {
-      worldPoint = applyDimensionOrthoConstraint(worldPoint, dimensionsState.firstPoint, orthoMode);
-    }
-    
-    // Positioning modunda snap detection yapma
-    if (!dimensionsState.isPositioning) {
-      // STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
+      
+      if (!intersectionSuccess) {
+        return null;
+      }
+      
+      setMouseWorldPosition(worldPoint);
+      
+      // ORTHO MODE: Apply constraint for dimension positioning
+      if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && !dimensionsState.isPositioning) {
+        worldPoint = applyDimensionOrthoConstraint(worldPoint, dimensionsState.firstPoint, orthoMode);
+      }
+      
+      // SADECE ilk iki nokta seçiminde snap detection yap
       const snapPoints = findSnapPoints(
         worldPoint,
         completedShapes, 
@@ -403,8 +406,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       }
     }
     
-    // Positioning modunda raw world point döndür
-    return worldPoint;
+    return null;
   };
 
   // Click handler
@@ -552,23 +554,12 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
     
-    // ORTHO MODE: Apply constraint for dimension preview
-    if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      const constrainedPoint = applyDimensionOrthoConstraint(point, dimensionsState.firstPoint, orthoMode);
-      setDimensionsState(prev => ({
-        ...prev,
-        isPositioning: true,
-        previewPosition: constrainedPoint
-      }));
-      return;
-    }
-    
     // İkinci nokta seçildikten sonra fareyle ölçü pozisyonunu güncelle
     if (dimensionsState.firstPoint && dimensionsState.secondPoint) {
       setDimensionsState(prev => ({
         ...prev,
         isPositioning: true,
-        previewPosition: point.clone()
+        previewPosition: point.clone() // Tam olarak fare pozisyonu
       }));
     }
   };
