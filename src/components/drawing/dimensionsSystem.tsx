@@ -19,6 +19,16 @@ export interface SimpleDimension {
   originalStart?: THREE.Vector3;
   originalEnd?: THREE.Vector3;
   previewPosition?: THREE.Vector3;
+  // Dynamic tracking properties
+  attachedToShapeId?: string;
+  startAttachment?: {
+    shapeId: string;
+    localOffset: THREE.Vector3;
+  };
+  endAttachment?: {
+    shapeId: string;
+    localOffset: THREE.Vector3;
+  };
 }
 
 interface SimpleDimensionLineProps {
@@ -33,20 +43,57 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   previewPosition
 }) => {
   const { camera } = useThree();
+  const { shapes } = useAppStore();
   const groupRef = useRef<THREE.Group>(null);
   const textRef = useRef<THREE.Mesh>(null);
   
+  // Calculate dynamic dimension based on shape movements
+  const dynamicDimension = useMemo(() => {
+    let updatedDimension = { ...dimension };
+    
+    // Update start point if attached to a shape
+    if (dimension.startAttachment) {
+      const attachedShape = shapes.find(s => s.id === dimension.startAttachment!.shapeId);
+      if (attachedShape) {
+        const shapePosition = new THREE.Vector3(...attachedShape.position);
+        updatedDimension.startPoint = shapePosition.clone().add(dimension.startAttachment.localOffset);
+        updatedDimension.originalStart = updatedDimension.startPoint.clone();
+      }
+    }
+    
+    // Update end point if attached to a shape
+    if (dimension.endAttachment) {
+      const attachedShape = shapes.find(s => s.id === dimension.endAttachment!.shapeId);
+      if (attachedShape) {
+        const shapePosition = new THREE.Vector3(...attachedShape.position);
+        updatedDimension.endPoint = shapePosition.clone().add(dimension.endAttachment.localOffset);
+        updatedDimension.originalEnd = updatedDimension.endPoint.clone();
+      }
+    }
+    
+    // Recalculate distance and text position
+    if (updatedDimension.startPoint && updatedDimension.endPoint) {
+      const newDistance = updatedDimension.startPoint.distanceTo(updatedDimension.endPoint);
+      updatedDimension.distance = useAppStore.getState().convertToDisplayUnit(newDistance);
+      updatedDimension.textPosition = updatedDimension.startPoint.clone()
+        .add(updatedDimension.endPoint)
+        .multiplyScalar(0.5);
+    }
+    
+    return updatedDimension;
+  }, [dimension, shapes]);
+  
   // Ölçü yazısı için formatlama
   const formattedDistance = useMemo(() => {
-    const value = dimension.distance;
+    const value = dynamicDimension.distance;
     return value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
-  }, [dimension.distance]);
+  }, [dynamicDimension.distance]);
 
   const points = useMemo(() => {
-    const start = dimension.startPoint;
-    const end = dimension.endPoint;
-    const originalStart = dimension.originalStart || start;
-    const originalEnd = dimension.originalEnd || end;
+    const start = dynamicDimension.startPoint;
+    const end = dynamicDimension.endPoint;
+    const originalStart = dynamicDimension.originalStart || start;
+    const originalEnd = dynamicDimension.originalEnd || end;
     
     const distance = start.distanceTo(end);
     
@@ -94,7 +141,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     }
 
     return { mainLine, extensionLines, arrows };
-  }, [dimension, isPreview, previewPosition]);
+  }, [dynamicDimension, isPreview, previewPosition]);
 
   // Adjust text scale based on camera distance
   useEffect(() => {
@@ -102,7 +149,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       if (textRef.current && groupRef.current) {
         const distance = camera.position.distanceTo(groupRef.current.position);
         
-        // Kamera uzaklığına göre ölçeklendirme
+        // Dynamic scaling based on camera distance
         const scaleFactor = distance / 200;
         
         // Minimum ve maksimum ölçek sınırları
@@ -116,7 +163,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     camera.addEventListener('change', updateTextSize);
 
     return () => camera.removeEventListener('change', updateTextSize);
-  }, [camera, dimension, groupRef]);
+  }, [camera, dynamicDimension, groupRef]);
 
   return (
     <group ref={groupRef}>
@@ -184,7 +231,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       ))}
 
       {/* Ölçü metni */}
-      <Billboard position={dimension.textPosition} follow={true} lockX={false} lockY={false} lockZ={false}>
+      <Billboard position={dynamicDimension.textPosition} follow={true} lockX={false} lockY={false} lockZ={false}>
         <Text
           ref={textRef}
           position={[0, 0, 0.1]}
@@ -207,6 +254,14 @@ interface SimpleDimensionsState {
   previewPosition: THREE.Vector3 | null;
   completedDimensions: SimpleDimension[];
   currentSnapPoint: any;
+  firstPointAttachment?: {
+    shapeId: string;
+    localOffset: THREE.Vector3;
+  };
+  secondPointAttachment?: {
+    shapeId: string;
+    localOffset: THREE.Vector3;
+  };
 }
 
 const INITIAL_SIMPLE_DIMENSIONS_STATE: SimpleDimensionsState = {
@@ -215,7 +270,9 @@ const INITIAL_SIMPLE_DIMENSIONS_STATE: SimpleDimensionsState = {
   isPositioning: false,
   previewPosition: null,
   completedDimensions: [],
-  currentSnapPoint: null
+  currentSnapPoint: null,
+  firstPointAttachment: undefined,
+  secondPointAttachment: undefined
 };
 
 interface SimpleDimensionsManagerProps {
@@ -362,22 +419,32 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     if (!dimensionsState.firstPoint) {
       // İlk nokta seçimi
+      const snapPoint = dimensionsState.currentSnapPoint;
       setDimensionsState(prev => ({
         ...prev,
         firstPoint: point.clone(),
         secondPoint: null,
         isPositioning: false,
-        previewPosition: null
+        previewPosition: null,
+        firstPointAttachment: snapPoint ? {
+          shapeId: snapPoint.shapeId || '',
+          localOffset: new THREE.Vector3().subVectors(point, new THREE.Vector3(...(shapes.find(s => s.id === snapPoint.shapeId)?.position || [0, 0, 0])))
+        } : undefined
       }));
       console.log(`🎯 Dimension: First point selected at [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
     } else if (!dimensionsState.secondPoint) {
       // İkinci nokta seçimi
       const distance = dimensionsState.firstPoint.distanceTo(point);
+      const snapPoint = dimensionsState.currentSnapPoint;
       setDimensionsState(prev => ({
         ...prev,
         secondPoint: point.clone(),
         isPositioning: false, // Henüz positioning başlamadı
-        previewPosition: null
+        previewPosition: null,
+        secondPointAttachment: snapPoint ? {
+          shapeId: snapPoint.shapeId || '',
+          localOffset: new THREE.Vector3().subVectors(point, new THREE.Vector3(...(shapes.find(s => s.id === snapPoint.shapeId)?.position || [0, 0, 0])))
+        } : undefined
       }));
       console.log(`🎯 Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
       console.log(`🎯 Dimension: Move mouse to position dimension line, then click to confirm`);
@@ -457,7 +524,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         unit: measurementUnit,
         textPosition,
         originalStart: dimensionsState.firstPoint,
-        originalEnd: dimensionsState.secondPoint
+        originalEnd: dimensionsState.secondPoint,
+        startAttachment: dimensionsState.firstPointAttachment,
+        endAttachment: dimensionsState.secondPointAttachment
       };
       
       setDimensionsState(prev => ({
@@ -467,7 +536,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         secondPoint: null,
         isPositioning: false,
         currentSnapPoint: null,
-        previewPosition: null
+        previewPosition: null,
+        firstPointAttachment: undefined,
+        secondPointAttachment: undefined
       }));
       
       console.log(`🎯 Dimension created: ${newDimension.distance.toFixed(1)}${measurementUnit}`);
