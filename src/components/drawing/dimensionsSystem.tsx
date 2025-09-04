@@ -18,7 +18,6 @@ export interface SimpleDimension {
   textPosition: THREE.Vector3;
   originalStart?: THREE.Vector3;
   originalEnd?: THREE.Vector3;
-  previewPosition?: THREE.Vector3;
 }
 
 interface SimpleDimensionLineProps {
@@ -34,6 +33,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   const groupRef = useRef<THREE.Group>(null);
   const textRef = useRef<THREE.Mesh>(null);
   
+  // Ölçü yazısı için formatlama
   const formattedDistance = useMemo(() => {
     const value = dimension.distance;
     return value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
@@ -47,37 +47,42 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     
     const distance = start.distanceTo(end);
     
-    const textGap = 50; 
-    const mainVector = new THREE.Vector3().subVectors(end, start).normalize();
+    // Ana ölçü çizgisi
+    const mainLine = [start, end];
     
-    const mainLinePoints = [];
-    if (distance > textGap) {
-      const startOfTextGap = start.clone().add(mainVector.clone().multiplyScalar(distance / 2 - textGap / 2));
-      const endOfTextGap = start.clone().add(mainVector.clone().multiplyScalar(distance / 2 + textGap / 2));
-      mainLinePoints.push(start, startOfTextGap, endOfTextGap, end);
-    } else {
-      mainLinePoints.push(start, end);
-    }
-    
+    // Uzatma çizgileri
     const extensionLines = [];
+    
+    // Uzatma çizgileri daima orijinal noktadan, ölçü çizgisinin nihai noktasına kadar uzanır.
     if (originalStart.distanceTo(start) > 0.1) {
       extensionLines.push([originalStart, start]);
     }
+    
     if (originalEnd.distanceTo(end) > 0.1) {
       extensionLines.push([originalEnd, end]);
     }
     
-    const tickSize = 10;
-    const perp = new THREE.Vector3(-mainVector.z, 0, mainVector.x).multiplyScalar(tickSize / 2);
+    // Ok uçları için hesaplamalar - daha küçük ve profesyonel
+    const arrowSize = 15;
+    const dir = new THREE.Vector3().subVectors(end, start).normalize();
+    const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize / 2);
     
-    const ticks = [
-      [start.clone().sub(perp), start.clone().add(perp)],
-      [end.clone().sub(perp), end.clone().add(perp)]
-    ];
+    const arrows = [];
+    // Okları doğru konumlarda oluştur
+    const arrow1a = start.clone().sub(perp);
+    const arrow1b = start.clone().add(perp);
+    const arrow1c = start.clone().sub(dir.clone().multiplyScalar(arrowSize));
+    arrows.push([arrow1a, arrow1c], [arrow1b, arrow1c]);
+    
+    const arrow2a = end.clone().sub(perp);
+    const arrow2b = end.clone().add(perp);
+    const arrow2c = end.clone().add(dir.clone().multiplyScalar(arrowSize));
+    arrows.push([arrow2a, arrow2c], [arrow2b, arrow2c]);
 
-    return { mainLinePoints, extensionLines, ticks };
+    return { mainLine, extensionLines, arrows };
   }, [dimension]);
 
+  // Adjust text scale based on camera distance
   useEffect(() => {
     const updateTextSize = () => {
       if (textRef.current && groupRef.current) {
@@ -99,22 +104,27 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
 
   return (
     <group ref={groupRef}>
+      {/* Ana ölçü çizgisi */}
       <line>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={points.mainLinePoints.length}
-            array={new Float32Array(points.mainLinePoints.flatMap(p => p.toArray()))}
+            count={2}
+            array={new Float32Array([
+              ...points.mainLine[0].toArray(),
+              ...points.mainLine[1].toArray()
+            ])}
             itemSize={3}
           />
         </bufferGeometry>
         <lineBasicMaterial 
-          color={"#00ff00"} 
+          color={isPreview ? "#ff6b35" : "#00ff00"} 
           linewidth={3}
           depthTest={false}
         />
       </line>
 
+      {/* Uzatma çizgileri */}
       {points.extensionLines.map((ext, index) => (
         <line key={index}>
           <bufferGeometry>
@@ -129,40 +139,42 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={"#a9a9a9"} 
+            color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={2}
             depthTest={false}
           />
         </line>
       ))}
       
-      {points.ticks.map((tick, index) => (
-        <line key={`tick-${index}`}>
+      {/* Ok uçları */}
+      {points.arrows.map((arrow, index) => (
+        <line key={`arrow-${index}`}>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
               count={2}
               array={new Float32Array([
-                ...tick[0].toArray(),
-                ...tick[1].toArray()
+                ...arrow[0].toArray(),
+                ...arrow[1].toArray()
               ])}
               itemSize={3}
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={"#00ff00"} 
+            color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={3}
             depthTest={false}
           />
         </line>
       ))}
 
+      {/* Ölçü metni */}
       <Billboard position={dimension.textPosition} follow={true} lockX={false} lockY={false} lockZ={false}>
         <Text
           ref={textRef}
           position={[0, 0, 0.1]}
           fontSize={14}
-          color={"#00ff00"}
+          color={isPreview ? "#ff6b35" : "#00ff00"}
           anchorX="center"
           anchorY="middle"
           outlineWidth={0}
@@ -219,14 +231,19 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
   const [originalSnapSettings, setOriginalSnapSettings] = useState<SnapSettings | null>(null);
 
+  // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
   useEffect(() => {
     if (activeTool === Tool.DIMENSION) {
+      // Mevcut snap ayarlarını store'dan al
       const currentSnapSettings = useAppStore.getState().snapSettings;
       
+      // Mevcut snap ayarlarını kaydet
       setOriginalSnapSettings({ ...currentSnapSettings });
       
+      // Ortho mode'u otomatik aç
       setOrthoMode(OrthoMode.ON);
       
+      // Sadece ENDPOINT ve MIDPOINT'i aktif et - batch update
       setSnapSettingsBatch({
         [SnapType.ENDPOINT]: true,
         [SnapType.MIDPOINT]: true,
@@ -239,9 +256,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       console.log('🎯 Dimension tool activated: ENDPOINT/MIDPOINT snaps + Ortho mode enabled');
     } else if (originalSnapSettings && activeTool !== Tool.DIMENSION) {
+      // Orijinal snap ayarlarını geri yükle
       setSnapSettingsBatch(originalSnapSettings);
       setOriginalSnapSettings(null);
       
+      // Ortho mode'u kapat
       setOrthoMode(OrthoMode.OFF);
       
       console.log('🎯 Dimension tool deactivated: Original settings + Ortho mode restored');
@@ -418,11 +437,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
     const distance = dimensionsState.firstPoint.distanceTo(dimensionsState.secondPoint);
     
-    const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
-
-    const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, midPoint);
     const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
     const mainVectorNormalized = mainVector.clone().normalize();
+    
+    const toPreview = new THREE.Vector3().subVectors(dimensionsState.previewPosition, dimensionsState.firstPoint);
     
     const parallelComponent = mainVectorNormalized.clone().multiplyScalar(toPreview.dot(mainVectorNormalized));
     const perpendicularOffset = toPreview.clone().sub(parallelComponent);
