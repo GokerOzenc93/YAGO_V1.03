@@ -1,9 +1,9 @@
 import React from 'react';
-import Layout from './components/Layout';
-import Scene from './components/Scene';
-import Toolbar from './components/Toolbar';
-import StatusBar from './components/StatusBar';
-import Terminal from './components/Terminal';
+import Layout from './ui/Layout';
+import Scene from './ui/Scene';
+import Toolbar from './ui/Toolbar';
+import Terminal from './ui/Terminal';
+import StatusDisplay from './ui/StatusDisplay';
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
       <Layout
         toolbar={<Toolbar />}
         content={<Scene />}
-        statusBar={<StatusBar />}
+        statusBar={<StatusDisplay />}
       />
       <Terminal />
     </div>

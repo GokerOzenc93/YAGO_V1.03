@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store/appStore';
+import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../system/appStore';
 import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler } from 'lucide-react';
 import * as THREE from 'three';
 
@@ -14,11 +14,11 @@ const Toolbar: React.FC = () => {
     setCameraType, 
     snapSettings, 
     toggleSnapSetting,
-    viewMode, // 🎯 NEW: Get current view mode
-    setViewMode, // 🎯 NEW: Set view mode
-    cycleViewMode, // 🎯 NEW: Cycle through view modes
-    orthoMode, // 🎯 NEW: Get current ortho mode
-    toggleOrthoMode // 🎯 NEW: Toggle ortho mode
+    viewMode,
+    setViewMode,
+    cycleViewMode,
+    orthoMode,
+    toggleOrthoMode
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -26,7 +26,6 @@ const Toolbar: React.FC = () => {
   const [showSnapMenu, setShowSnapMenu] = useState(false);
   const [polylineMenuPosition, setPolylineMenuPosition] = useState({ x: 0, y: 0 });
 
-  // Helper functions for view mode
   const getViewModeLabel = () => {
     switch (viewMode) {
       case ViewMode.SOLID:
@@ -53,7 +52,6 @@ const Toolbar: React.FC = () => {
     setViewMode(mode);
   };
 
-  // 🎯 NEW: Handle ortho mode toggle
   const handleOrthoModeToggle = () => {
     toggleOrthoMode();
   };
@@ -121,7 +119,6 @@ const Toolbar: React.FC = () => {
     console.log(`Snap ${snapType} ${snapSettings[snapType] ? 'disabled' : 'enabled'}`);
   };
 
-  // Close context menus when clicking outside
   React.useEffect(() => {
     const handleClickOutside = () => {
       setShowPolylineMenu(false);
@@ -206,8 +203,8 @@ const Toolbar: React.FC = () => {
         { icon: <Layers size={11} />, label: 'Show Layers', shortcut: 'L' },
         { icon: <Eye size={11} />, label: 'Visibility', shortcut: 'V' },
         { type: 'separator' },
-        { icon: <Cube size={11} />, label: 'Solid View', shortcut: '1' }, // 🎯 NEW
-        { icon: <Wireframe size={11} />, label: 'Wireframe View', shortcut: '2' }, // 🎯 NEW
+        { icon: <Cube size={11} />, label: 'Solid View', shortcut: '1' },
+        { icon: <Wireframe size={11} />, label: 'Wireframe View', shortcut: '2' },
         { type: 'separator' },
         { label: 'Zoom In', shortcut: 'Ctrl++' },
         { label: 'Zoom Out', shortcut: 'Ctrl+-' },
@@ -337,29 +334,20 @@ const Toolbar: React.FC = () => {
 
   return (
     <div className="flex flex-col font-inter">
-      {/* Top app bar - Consistent with terminal styling */}
       <div className="flex items-center h-7 px-2 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700/50 shadow-sm">
         <div className="flex items-center gap-3">
-          {/* Logo and app name */}
           <div className="flex items-center gap-1.5">
             <div className="flex items-center justify-center w-6 h-6 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-lg shadow-lg border border-blue-400/30">
-              {/* Professional Furniture CAD Icon */}
               <svg width="16" height="16" viewBox="0 0 24 24" className="text-white">
-                {/* Cabinet/Furniture outline */}
                 <rect x="3" y="4" width="18" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
-                {/* Vertical divider */}
                 <line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" strokeWidth="1"/>
-                {/* Horizontal shelves */}
                 <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth="1"/>
                 <line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" strokeWidth="1"/>
-                {/* Door handles */}
                 <circle cx="9" cy="12" r="0.8" fill="currentColor"/>
                 <circle cx="15" cy="12" r="0.8" fill="currentColor"/>
-                {/* CAD dimension lines */}
                 <line x1="1" y1="4" x2="1" y2="20" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
                 <line x1="0.5" y1="4" x2="1.5" y2="4" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
                 <line x1="0.5" y1="20" x2="1.5" y2="20" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-                {/* Top dimension line */}
                 <line x1="3" y1="2" x2="21" y2="2" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
                 <line x1="3" y1="1.5" x2="3" y2="2.5" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
                 <line x1="21" y1="1.5" x2="21" y2="2.5" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
@@ -371,28 +359,22 @@ const Toolbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Separator */}
           <div className="w-px h-3 bg-gray-600"></div>
 
-          {/* Company info */}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-gray-400 font-medium">Company:</span>
             <span className="text-gray-100 font-medium">Göker İnşaat</span>
           </div>
 
-          {/* Separator */}
           <div className="w-px h-3 bg-gray-600"></div>
 
-          {/* Project info */}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-gray-400 font-medium">Project:</span>
             <span className="text-gray-100 font-medium">Drawing1</span>
           </div>
         </div>
 
-        {/* Right side controls */}
         <div className="ml-auto flex items-center gap-2">
-          {/* Camera Toggle Button */}
           <button
             onClick={handleCameraToggle}
             className="flex items-center gap-1 px-2 py-0.5 rounded bg-gray-700/50 hover:bg-gray-600 transition-colors"
@@ -408,7 +390,6 @@ const Toolbar: React.FC = () => {
             </span>
           </button>
 
-          {/* 🎯 NEW: View Mode Indicator - Moved from Scene */}
           <button
             onClick={() => {
               const { cycleViewMode } = useAppStore.getState();
@@ -424,7 +405,6 @@ const Toolbar: React.FC = () => {
             </span>
           </button>
 
-          {/* 🎯 NEW: Ortho Mode Toggle */}
           <button
             onClick={handleOrthoModeToggle}
             className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
@@ -440,7 +420,6 @@ const Toolbar: React.FC = () => {
             </span>
           </button>
 
-          {/* Separator */}
           <div className="w-px h-3 bg-gray-600"></div>
 
           <div className="relative">
@@ -460,7 +439,6 @@ const Toolbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Menu bar - Slightly increased height */}
       <div className="flex items-center h-6 px-1 bg-gray-800/90 border-b border-gray-600/50">
         <div className="flex items-center h-full">
           {menus.map((menu) => (
@@ -487,7 +465,6 @@ const Toolbar: React.FC = () => {
                         key={i}
                         className="flex items-center justify-between w-full h-6 px-2 text-xs hover:bg-gray-700/50 transition-colors"
                         onClick={() => {
-                          // 🎯 NEW: Handle view mode menu items
                           if (item.label === 'Solid View') handleViewModeChange(ViewMode.SOLID);
                           else if (item.label === 'Wireframe View') handleViewModeChange(ViewMode.WIREFRAME);
                           setActiveMenu(null);
@@ -510,9 +487,7 @@ const Toolbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Main toolbar - Consistent styling */}
       <div className="flex items-center h-8 gap-1 px-1 bg-gray-700/90 backdrop-blur-sm border-b border-gray-600/50">
-        {/* Quick access buttons */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {quickAccessButtons.map((button, index) => (
             <button
@@ -525,11 +500,8 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-
-        {/* Edit buttons */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {editButtons.map((button, index) => (
             <button
@@ -542,10 +514,8 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Transform tools (with Select moved to front) */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {transformTools.map((tool) => (
             <button
@@ -563,10 +533,8 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Drawing tools */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {drawingTools.map((tool) => (
             <button
@@ -585,10 +553,8 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Measurement Tools */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {measurementTools.map((tool) => (
             <button
@@ -600,11 +566,9 @@ const Toolbar: React.FC = () => {
               }`}
               onClick={() => {
                 if (activeTool === tool.id) {
-                  // If already active, deactivate and switch to Select
                   setActiveTool(Tool.SELECT);
                   console.log(`${tool.label} tool deactivated`);
                 } else {
-                  // Activate the tool
                   setActiveTool(tool.id);
                   console.log(`${tool.label} tool activated`);
                 }
@@ -616,10 +580,8 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Snap Tools - Individual Buttons */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {snapTools.map((snap) => (
             <button
@@ -637,10 +599,8 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Snap Settings Menu */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           <button
             className={`p-1 rounded transition-all ${
@@ -654,7 +614,6 @@ const Toolbar: React.FC = () => {
         </div>
 
         <div className="relative">
-          {/* Snap Menu Dropdown */}
           {showSnapMenu && (
             <div className="absolute top-full left-0 mt-1 bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg min-w-[180px]">
               {snapTools.map((snap) => (
@@ -683,10 +642,8 @@ const Toolbar: React.FC = () => {
           )}
         </div>
 
-        {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Modify tools */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {modifyTools.map((tool) => (
             <button
@@ -704,7 +661,6 @@ const Toolbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Polyline Context Menu */}
       {showPolylineMenu && (
         <div
           className="fixed bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg"

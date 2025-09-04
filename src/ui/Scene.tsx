@@ -16,16 +16,16 @@ import {
   Tool,
   MeasurementUnit,
   ViewMode,
-} from '../store/appStore';
+} from '../system/appStore';
 import OpenCascadeShape from './OpenCascadeShape';
-import DrawingPlane from './drawing/DrawingPlane';
+import DrawingPlane from './DrawingPlane';
 import ContextMenu from './ContextMenu';
-import EditMode from './ui/EditMode';
-import { DimensionsManager } from './drawing/dimensionsSystem';
+import EditMode from './EditMode';
+import { DimensionsManager } from './dimensionsSystem';
 import { createPortal } from 'react-dom';
-import { Shape } from '../types/shapes';
-import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
-import { clearFaceHighlight } from '../utils/faceSelection';
+import { Shape } from '../system/shapes';
+import { fitCameraToShapes, fitCameraToShape } from '../system/cameraUtils';
+import { clearFaceHighlight } from '../system/faceSelection';
 import * as THREE from 'three';
 
 const CameraPositionUpdater = () => {
@@ -41,10 +41,8 @@ const CameraPositionUpdater = () => {
       ]);
     };
 
-    // Update position initially
     updatePosition();
 
-    // Listen for camera changes
     const controls = (window as any).cameraControls;
     if (controls) {
       controls.addEventListener('change', updatePosition);
@@ -62,7 +60,6 @@ interface MeasurementOverlayProps {
   onSubmit: (value: number) => void;
 }
 
-// NEW: Interface for face selection popup
 interface FaceSelectionPopupProps {
   options: FaceSelectionOption[];
   position: { x: number; y: number };
@@ -82,7 +79,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
   const { shapes, cameraType, isEditMode, editingShapeId, hiddenShapeIds } =
     useAppStore();
 
-  // Handle zoom fit events
   useEffect(() => {
     const handleZoomFit = (event: CustomEvent) => {
       if (!controlsRef.current) return;
@@ -100,7 +96,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
         !e.altKey &&
         !e.shiftKey
       ) {
-        // Zoom fit shortcut
         const visibleShapes = shapes.filter(
           (shape) => !hiddenShapeIds.includes(shape.id)
         );
@@ -117,19 +112,16 @@ const CameraController: React.FC<CameraControllerProps> = ({
     };
   }, [camera, shapes, hiddenShapeIds]);
 
-  // Auto zoom fit when entering edit mode - IMMEDIATE fit to screen
   useEffect(() => {
     if (isEditMode && editingShapeId && controlsRef.current) {
       const editedShape = shapes.find((s) => s.id === editingShapeId);
       if (editedShape) {
-        // Immediate zoom fit without delay for better UX
         fitCameraToShape(camera, controlsRef.current, editedShape, 1.5);
         console.log('Edit mode: Auto zoom fit applied immediately');
       }
     }
   }, [isEditMode, editingShapeId, camera, shapes]);
 
-  // Store controls ref globally for external access
   useEffect(() => {
     (window as any).cameraControls = controlsRef.current;
   }, []);
@@ -146,16 +138,16 @@ const CameraController: React.FC<CameraControllerProps> = ({
       minPolarAngle={0}
       target={[0, 0, 0]}
       enablePan={true}
-      enableRotate={true} // ✅ ALWAYS ENABLED - even in edit mode and panel mode
+      enableRotate={true}
       enableZoom={true}
       panSpeed={1}
       rotateSpeed={0.8}
       zoomSpeed={1}
       screenSpacePanning={true}
       mouseButtons={{
-        LEFT: -1, // Sol tık = DEVRE DIŞI (sadece seçim için)
-        MIDDLE: THREE.MOUSE.ROTATE, // Orta tık BASILI TUTMA = Döndürme 🎯 (EDIT MODUNDA DA ÇALIŞIR!)
-        RIGHT: THREE.MOUSE.PAN, // Sağ tık = Pan (kaydırma) 🎯
+        LEFT: -1,
+        MIDDLE: THREE.MOUSE.ROTATE,
+        RIGHT: THREE.MOUSE.PAN,
       }}
       touches={{
         ONE: THREE.TOUCH.ROTATE,
@@ -198,17 +190,14 @@ const Scene: React.FC = () => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
-    viewMode, // 🎯 NEW: Get current view mode
+    viewMode,
   } = useAppStore();
 
-  // 🎯 NEW: Handle view mode keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent if user is typing in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -224,28 +213,21 @@ const Scene: React.FC = () => {
     shape: Shape | null;
   }>({ visible: false, position: { x: 0, y: 0 }, shape: null });
 
-  // Panel-related state variables (now unused but kept for compatibility)
   const [shapePanels, setShapePanels] = useState<{[shapeId: string]: any[]}>({});
   const [selectedFaces, setSelectedFaces] = useState<any[]>([]);
 
-  // 🎯 PERSISTENT PANEL MANAGER STATE - Panels Mode kapansa bile paneller kalır
-  // 🔴 NEW: Panel Edit Mode State
   const [isFaceEditMode, setIsFaceEditMode] = useState(false);
 
-  // Face selection state
   const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
 
-  // Disable rotation when drawing polylines OR when panel mode is active
   const isDrawingPolyline = activeTool === 'Polyline';
-  const isAddPanelMode = false; // Panel mode removed, always false
+  const isAddPanelMode = false;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         selectShape(null);
-        // Reset Point to Point Move when pressing Escape
         useAppStore.getState().resetPointToPointMove();
-        // Exit edit mode when pressing Escape
         if (isEditMode) {
           exitEditMode();
         }
@@ -295,10 +277,8 @@ const Scene: React.FC = () => {
     animate();
   }, []);
 
-  // Enhanced camera view controls with more options
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Camera shortcuts work in ALL modes - no restrictions
       const controls = (window as any).cameraControls;
       if (!controls) return;
 
@@ -306,60 +286,52 @@ const Scene: React.FC = () => {
 
       switch (e.key.toLowerCase()) {
         case 't':
-          // Top view
           controls.object.position.set(0, distance, 0);
           controls.target.set(0, 0, 0);
           controls.update();
           console.log('Camera: Top view');
           break;
         case 'f':
-          // Front view
           controls.object.position.set(0, 0, distance);
           controls.target.set(0, 0, 0);
           controls.update();
           console.log('Camera: Front view');
           break;
         case 'r':
-          // Right view
           controls.object.position.set(distance, 0, 0);
           controls.target.set(0, 0, 0);
           controls.update();
           console.log('Camera: Right view');
           break;
         case 'l':
-          // Left view
           controls.object.position.set(-distance, 0, 0);
           controls.target.set(0, 0, 0);
           controls.update();
           console.log('Camera: Left view');
           break;
         case 'b':
-          // Back view
           controls.object.position.set(0, 0, -distance);
           controls.target.set(0, 0, 0);
           controls.update();
           console.log('Camera: Back view');
           break;
         case 'u':
-          // Bottom view
           controls.object.position.set(0, -distance, 0);
           controls.target.set(0, 0, 0);
           controls.update();
           console.log('Camera: Bottom view');
           break;
         case 'i':
-          // Isometric view - more front-facing with slight upward pan
           controls.object.position.set(
             distance * 0.5,
             distance * 0.8,
             distance * 0.9
           );
-          controls.target.set(0, 100, 0); // Slightly elevated target for upward pan
+          controls.target.set(0, 100, 0);
           controls.update();
           console.log('Camera: Isometric view');
           break;
         case 'c':
-          // Toggle camera type
           const newCameraType =
             cameraType === CameraType.PERSPECTIVE
               ? CameraType.ORTHOGRAPHIC
@@ -368,13 +340,12 @@ const Scene: React.FC = () => {
           console.log(`Camera: Switched to ${newCameraType}`);
           break;
         case 'h':
-          // Home/Reset view - more front-facing with slight upward pan
           controls.object.position.set(
             distance * 0.5,
             distance * 0.8,
             distance * 0.9
           );
-          controls.target.set(0, 100, 0); // Slightly elevated target for upward pan
+          controls.target.set(0, 100, 0);
           controls.update();
           console.log('Camera: Home view');
           break;
@@ -386,7 +357,6 @@ const Scene: React.FC = () => {
   }, [cameraType, isAddPanelMode]);
 
   const handleShapeContextMenuRequest = (event: any, shape: Shape) => {
-    // Mouse pozisyonunu al
     const x = event.nativeEvent.clientX;
     const y = event.nativeEvent.clientY;
 
@@ -408,7 +378,6 @@ const Scene: React.FC = () => {
   const enterEditMode = (shapeId: string) => {
     console.log(`Entering edit mode for shape: ${shapeId}`);
 
-    // Diğer tüm nesneleri gizle
     const otherShapeIds = shapes
       .filter((shape) => shape.id !== shapeId)
       .map((shape) => shape.id);
@@ -417,7 +386,6 @@ const Scene: React.FC = () => {
     setEditingShapeId(shapeId);
     setEditMode(true);
 
-    // 🎯 RESTORE PERSISTENT PANELS - Bu shape için kaydedilmiş panelleri geri yükle
     if (shapePanels[shapeId]) {
       setSelectedFaces(shapePanels[shapeId]);
       console.log(
@@ -433,12 +401,10 @@ const Scene: React.FC = () => {
   const exitEditMode = () => {
     console.log('Exiting edit mode');
 
-    // Face highlight'ları temizle
     if (sceneRef) {
       clearFaceHighlight(sceneRef);
     }
 
-    // 🎯 SAVE PERSISTENT PANELS - Mevcut panelleri kaydet
     if (editingShapeId && selectedFaces.length > 0) {
       setShapePanels((prev) => ({
         ...prev,
@@ -449,14 +415,11 @@ const Scene: React.FC = () => {
       );
     }
 
-    // Tüm nesneleri tekrar göster
     setHiddenShapeIds([]);
     setEditingShapeId(null);
     setEditMode(false);
     setActiveTool(Tool.SELECT);
 
-    // Reset panel manager state (but keep persistent panels)
-    // Reset face edit mode
     setIsFaceEditMode(false);
     setSelectedFaceIndex(null);
 
@@ -470,10 +433,8 @@ const Scene: React.FC = () => {
       `Editing shape: ${contextMenu.shape.type} (ID: ${contextMenu.shape.id})`
     );
 
-    // Edit moduna gir
     enterEditMode(contextMenu.shape.id);
 
-    // 2D şekiller için edit moduna geç
     if (contextMenu.shape.is2DShape && contextMenu.shape.originalPoints) {
       if (contextMenu.shape.type === 'polyline2d') {
         setActiveTool(Tool.POLYLINE_EDIT);
@@ -483,7 +444,6 @@ const Scene: React.FC = () => {
         console.log('Edit mode not yet implemented for this 2D shape type');
       }
     } else {
-      // 3D şekiller için transform moduna geç
       setActiveTool(Tool.MOVE);
       console.log('Switched to Move mode for 3D shape editing');
     }
@@ -537,7 +497,6 @@ const Scene: React.FC = () => {
       setMeasurementOverlay(null);
       setMeasurementInput('');
       
-      // 🎯 2D şekil seçildiğinde otomatik Move tool'a geç
       if (shape.is2DShape) {
         useAppStore.getState().setActiveTool('Move');
         console.log(`2D shape selected, switched to Move tool: ${shape.type} (ID: ${shape.id})`);
@@ -553,29 +512,23 @@ const Scene: React.FC = () => {
     }
   }, [measurementOverlay]);
 
-  // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
   const handleFaceSelect = (faceIndex: number) => {
     setSelectedFaceIndex(faceIndex);
     console.log(`🎯 Face ${faceIndex} selected for panel creation`);
   };
 
-  // Handle face cycle updates from OpenCascadeShape
-  // Filter shapes based on edit mode
   const visibleShapes = shapes.filter(
     (shape) => !hiddenShapeIds.includes(shape.id)
   );
 
-  // Get the currently edited shape for displaying dimensions
   const editedShape = editingShapeId
     ? shapes.find((s) => s.id === editingShapeId)
     : null;
 
-  // Scene referansını al
   const [sceneRef, setSceneRef] = useState<THREE.Scene | null>(null);
 
   return (
     <div className="w-full h-full bg-gray-100">
-      {/* WebGL Style Edit Mode Panel */}
       {isEditMode && editedShape && (
         <EditMode
           editedShape={editedShape}
@@ -593,15 +546,15 @@ const Scene: React.FC = () => {
 
       <Canvas
         ref={canvasRef}
-        dpr={[1.5, 2]} // 🎯 HIGH QUALITY DPR - Better rendering quality
+        dpr={[1.5, 2]}
         shadows
         gl={{
           antialias: true,
           alpha: true,
           preserveDrawingBuffer: true,
           logarithmicDepthBuffer: true,
-          toneMapping: THREE.ACESFilmicToneMapping, // 🎯 CINEMATIC TONE MAPPING
-          toneMappingExposure: 1.2, // 🎯 ENHANCED EXPOSURE
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.2,
           outputColorSpace: THREE.SRGBColorSpace,
           powerPreference: 'high-performance',
           stencil: true,
@@ -623,7 +576,7 @@ const Scene: React.FC = () => {
         {cameraType === CameraType.PERSPECTIVE ? (
           <PerspectiveCamera
             makeDefault
-            position={[1000, 1600, 1800]} // More front-facing with slight upward angle
+            position={[1000, 1600, 1800]}
             fov={45}
             near={1}
             far={50000}
@@ -631,14 +584,13 @@ const Scene: React.FC = () => {
         ) : (
           <OrthographicCamera
             makeDefault
-            position={[1000, 1600, 1800]} // More front-facing with slight upward angle
+            position={[1000, 1600, 1800]}
             zoom={0.25}
             near={-50000}
             far={50000}
           />
         )}
 
-        {/* 🎯 HIGH QUALITY LIGHTING SYSTEM */}
         <Environment preset="city" intensity={0.6} blur={0.2} />
 
         <directionalLight
@@ -671,7 +623,6 @@ const Scene: React.FC = () => {
 
         <ambientLight intensity={0.3} color="#f1f5f9" />
 
-        {/* 🎯 NEW: Additional fill lights for better quality */}
         <pointLight
           position={[1000, 1000, 1000]}
           intensity={0.3}
@@ -717,7 +668,6 @@ const Scene: React.FC = () => {
           </Grid>
         </group>
 
-        {/* 🎯 PERSISTENT PANELS - Render shapes with their persistent panels */}
         {visibleShapes.map((shape) => {
           const isCurrentlyEditing = editingShapeId === shape.id;
 
@@ -728,7 +678,6 @@ const Scene: React.FC = () => {
               onContextMenuRequest={handleShapeContextMenuRequest}
               isEditMode={isEditMode}
               isBeingEdited={isCurrentlyEditing}
-              // Face Edit Mode props
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
               selectedFaceIndex={selectedFaceIndex}
               onFaceSelect={handleFaceSelect}
@@ -736,13 +685,11 @@ const Scene: React.FC = () => {
           );
         })}
 
-        {/* Dimensions Manager - Ölçülendirme sistemi */}
         <DimensionsManager 
           completedShapes={[]}
           shapes={visibleShapes}
         />
 
-        {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 120]}>
           <GizmoViewport
             axisColors={['#f73', '#0af', '#0f3']}
@@ -785,7 +732,6 @@ const Scene: React.FC = () => {
           document.body
         )}
 
-      {/* Context Menu Portal - Rendered outside Canvas */}
       {contextMenu.visible &&
         contextMenu.shape &&
         typeof document !== 'undefined' &&
@@ -805,7 +751,6 @@ const Scene: React.FC = () => {
           document.body
         )}
 
-      {/* Face Edit Mode Indicator */}
       {isFaceEditMode &&
         typeof document !== 'undefined' &&
         createPortal(
