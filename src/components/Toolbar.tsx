@@ -598,7 +598,17 @@ const Toolbar: React.FC = () => {
                   ? 'bg-green-600/90 text-white shadow-sm'
                   : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
               }`}
-              onClick={() => setActiveTool(tool.id)}
+              onClick={() => {
+                if (activeTool === tool.id) {
+                  // If already active, deactivate and switch to Select
+                  setActiveTool(Tool.SELECT);
+                  console.log(`${tool.label} tool deactivated`);
+                } else {
+                  // Activate the tool
+                  setActiveTool(tool.id);
+                  console.log(`${tool.label} tool activated`);
+                }
+              }}
               title={`${tool.label} (${tool.shortcut})`}
             >
               {tool.icon}
