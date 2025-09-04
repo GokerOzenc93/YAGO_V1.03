@@ -56,14 +56,35 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     // Uzatma çizgileri
     const extensionLines = [];
     if (isPreview && previewPosition) {
-      extensionLines.push([originalStart, previewPosition]);
-      extensionLines.push([originalEnd, previewPosition]);
+      // Preview modunda uzatma çizgilerini hesapla
+      const extLength = 30; // Sabit uzatma çizgisi uzunluğu
+      const mainVector = new THREE.Vector3().subVectors(end, start).normalize();
+      const perpVector = new THREE.Vector3(-mainVector.z, 0, mainVector.x);
+      
+      // Uzatma çizgilerini perpendicular yönde sınırla
+      const extStart1 = originalStart.clone().add(perpVector.clone().multiplyScalar(extLength));
+      const extEnd1 = start.clone().add(perpVector.clone().multiplyScalar(-extLength));
+      const extStart2 = originalEnd.clone().add(perpVector.clone().multiplyScalar(extLength));
+      const extEnd2 = end.clone().add(perpVector.clone().multiplyScalar(-extLength));
+      
+      extensionLines.push([originalStart, extStart1]);
+      extensionLines.push([originalEnd, extStart2]);
     } else {
+      // Normal modda uzatma çizgilerini sınırlı uzunlukta göster
+      const extLength = 50; // Maksimum uzatma çizgisi uzunluğu
+      
       if (originalStart.distanceTo(start) > 0.1) {
-        extensionLines.push([originalStart, start]);
+        const extVector = new THREE.Vector3().subVectors(start, originalStart);
+        const extDistance = Math.min(extVector.length(), extLength);
+        const extEnd = originalStart.clone().add(extVector.normalize().multiplyScalar(extDistance));
+        extensionLines.push([originalStart, extEnd]);
       }
+      
       if (originalEnd.distanceTo(end) > 0.1) {
-        extensionLines.push([originalEnd, end]);
+        const extVector = new THREE.Vector3().subVectors(end, originalEnd);
+        const extDistance = Math.min(extVector.length(), extLength);
+        const extEnd = originalEnd.clone().add(extVector.normalize().multiplyScalar(extDistance));
+        extensionLines.push([originalEnd, extEnd]);
       }
     }
     
@@ -134,8 +155,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           />
         </bufferGeometry>
         <lineBasicMaterial 
-          color={isPreview ? "#ff6b35" : "#00ff00"} 
-          linewidth={2}
+          color={isPreview ? "#ff6b35" : "#00ff00"}
+          linewidth={3}
+          depthTest={false}
         />
       </line>
 
@@ -154,9 +176,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#a9a9a9"} 
-            linewidth={1}
-            lineCap="round"
+            color={isPreview ? "#ff6b35" : "#00ff00"}
+            linewidth={2}
+            depthTest={false}
           />
         </line>
       ))}
@@ -176,9 +198,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#00ff00"} 
-            linewidth={2}
-            lineCap="round"
+            color={isPreview ? "#ff6b35" : "#00ff00"}
+            linewidth={3}
+            depthTest={false}
           />
         </line>
       ))}
@@ -188,10 +210,12 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         <Text
           ref={textRef}
           position={[0, 0, 0.1]}
-          fontSize={12} // Font size will be overridden by scale effect
+          fontSize={14}
           color={isPreview ? "#ff6b35" : "#00ff00"}
           anchorX="center"
           anchorY="middle"
+          outlineWidth={1}
+          outlineColor="#000000"
         >
           {formattedDistance}
         </Text>
@@ -317,7 +341,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     }
     
     // Positioning modunda snap detection yapma
-    if (!dimensionsState.isPositioning) {
+    if (!dimensionsState.isPositioning && !dimensionsState.secondPoint) {
       // STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
       const snapPoints = findSnapPoints(
         worldPoint,
@@ -344,6 +368,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
           snapToGrid(worldPoint.z, gridSize)
         );
       }
+    }
+    
+    // Positioning modunda snap detection KAPALI
+    if (dimensionsState.isPositioning) {
+      setDimensionsState(prev => ({ ...prev, currentSnapPoint: null }));
     }
     
     // Positioning modunda raw world point döndür
