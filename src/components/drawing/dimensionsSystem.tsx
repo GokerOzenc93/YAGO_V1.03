@@ -18,16 +18,19 @@ export interface SimpleDimension {
   textPosition: THREE.Vector3;
   originalStart?: THREE.Vector3;
   originalEnd?: THREE.Vector3;
+  previewPosition?: THREE.Vector3;
 }
 
 interface SimpleDimensionLineProps {
   dimension: SimpleDimension;
   isPreview?: boolean;
+  previewPosition?: THREE.Vector3;
 }
 
 const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({ 
   dimension, 
-  isPreview = false 
+  isPreview = false,
+  previewPosition
 }) => {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
@@ -52,11 +55,16 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     
     // Uzatma çizgileri
     const extensionLines = [];
-    if (originalStart.distanceTo(start) > 0.1) {
-      extensionLines.push([originalStart, start]);
-    }
-    if (originalEnd.distanceTo(end) > 0.1) {
-      extensionLines.push([originalEnd, end]);
+    if (isPreview && previewPosition) {
+      extensionLines.push([originalStart, previewPosition]);
+      extensionLines.push([originalEnd, previewPosition]);
+    } else {
+      if (originalStart.distanceTo(start) > 0.1) {
+        extensionLines.push([originalStart, start]);
+      }
+      if (originalEnd.distanceTo(end) > 0.1) {
+        extensionLines.push([originalEnd, end]);
+      }
     }
     
     // Ok uçları için hesaplamalar - daha küçük ve profesyonel
@@ -86,7 +94,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     }
 
     return { mainLine, extensionLines, arrows };
-  }, [dimension]);
+  }, [dimension, isPreview, previewPosition]);
 
   // Adjust text scale based on camera distance
   useEffect(() => {
@@ -546,7 +554,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       unit: measurementUnit,
       textPosition,
       originalStart: dimensionsState.firstPoint,
-      originalEnd: dimensionsState.secondPoint
+      originalEnd: dimensionsState.secondPoint,
+      previewPosition: dimensionsState.previewPosition // Fare konumunu prop olarak geç
     };
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
 
@@ -608,7 +617,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       {previewDimension && (
         <SimpleDimensionLine 
           dimension={previewDimension} 
-          isPreview={true}
+          isPreview={false}
+          previewPosition={dimensionsState.previewPosition}
         />
       )}
       
