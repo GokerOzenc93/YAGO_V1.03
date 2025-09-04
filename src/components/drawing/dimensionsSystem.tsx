@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useAppStore, Tool, SnapType, SnapSettings, OrthoMode } from '../../store/appStore';
-import { findSnapPoints, SnapPointIndicators } from './snapSystem';
+import { useAppStore, Tool, SnapType, SnapSettings, OrthoMode } from '../../store/appStore.ts';
+import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
-import { snapToGrid } from './utils';
-import { applyDimensionOrthoConstraint } from '../../utils/orthoUtils';
+import { snapToGrid } from './utils.ts';
+import { applyDimensionOrthoConstraint } from '../../utils/orthoUtils.ts';
 
 export interface SimpleDimension {
   id: string;
@@ -29,6 +29,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   dimension, 
   isPreview = false 
 }) => {
+  const { camera } = useThree();
+  const textRef = useRef<THREE.Mesh>(null);
+  
   const points = useMemo(() => {
     const start = dimension.startPoint;
     const end = dimension.endPoint;
@@ -94,6 +97,15 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     };
   }, [dimension]);
 
+  // Adjust text scale based on camera distance
+  useEffect(() => {
+    if (textRef.current) {
+      const distance = camera.position.distanceTo(textRef.current.position);
+      // Scale inversely with distance to keep size constant
+      textRef.current.scale.setScalar(distance / 200); 
+    }
+  }, [camera, dimension]);
+
   return (
     <group>
       {/* Ana ölçü çizgisi */}
@@ -110,7 +122,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           />
         </bufferGeometry>
         <lineBasicMaterial 
-          color={isPreview ? "#ff6b35" : "#2563eb"} 
+          color={isPreview ? "#ff6b35" : "#00ff00"} 
           linewidth={2}
         />
       </line>
@@ -130,7 +142,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#2563eb"} 
+            color={isPreview ? "#ff6b35" : "#a9a9a9"} 
             linewidth={1}
             lineDashSize={5}
             gapSize={3}
@@ -154,7 +166,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#2563eb"} 
+            color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={2}
           />
         </line>
@@ -175,26 +187,18 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             />
           </bufferGeometry>
           <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#2563eb"} 
+            color={isPreview ? "#ff6b35" : "#00ff00"} 
             linewidth={2}
           />
         </line>
       ))}
 
       {/* Ölçü metni */}
-      <Billboard position={dimension.textPosition}>
-        <mesh>
-          <planeGeometry args={[120, 30]} />
-          <meshBasicMaterial 
-            color="white" 
-            transparent 
-            opacity={0.9}
-          />
-        </mesh>
+      <Billboard position={dimension.textPosition} ref={textRef}>
         <Text
           position={[0, 0, 0.1]}
           fontSize={12}
-          color={isPreview ? "#ff6b35" : "#2563eb"}
+          color={isPreview ? "#ff6b35" : "#000000"}
           anchorX="center"
           anchorY="middle"
         >
@@ -240,8 +244,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     setSnapSettingsBatch,
     snapTolerance,
     snapSettings,
-    orthoMode, // 🎯 NEW: Get ortho mode
-    setOrthoMode // 🎯 NEW: Set ortho mode
+    orthoMode, 
+    setOrthoMode 
   } = useAppStore();
   
   const { camera, raycaster, gl } = useThree();
