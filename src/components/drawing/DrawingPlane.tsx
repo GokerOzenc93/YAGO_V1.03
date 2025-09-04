@@ -162,18 +162,22 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     // 🎯 ROBUST WORLD COORDINATE CALCULATION
     // Ray'i Y=0 düzlemiyle kesiştirir (2D çizim için)
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const worldPoint = new THREE.Vector3();
-    const intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    const rawWorldPoint = new THREE.Vector3();
+    let worldPoint = new THREE.Vector3();
+    const intersectionSuccess = raycaster.ray.intersectPlane(plane, rawWorldPoint);
     
     if (!intersectionSuccess) {
       console.warn('🎯 Ray plane intersection failed');
       return null;
     }
     
-    console.log(`🎯 WORLD POINT: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
+    // Initialize processable world point
+    worldPoint.copy(rawWorldPoint);
+    
+    console.log(`🎯 WORLD POINT: [${rawWorldPoint.x.toFixed(1)}, ${rawWorldPoint.y.toFixed(1)}, ${rawWorldPoint.z.toFixed(1)}]`);
     
     // Store mouse world position for dimensions preview
-    setMouseWorldPosition(worldPoint);
+    setMouseWorldPosition(rawWorldPoint);
     
     // 🎯 ORTHO MODE: Apply constraint for drawing tools
     if (orthoMode === OrthoMode.ON && drawingState.isDrawing && drawingState.currentPoint) {
