@@ -32,6 +32,12 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const textRef = useRef<THREE.Mesh>(null);
+  
+  // Ölçü yazısı için formatlama
+  const formattedDistance = useMemo(() => {
+    const value = dimension.distance;
+    return value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
+  }, [dimension.distance]);
 
   const points = useMemo(() => {
     const start = dimension.startPoint;
@@ -55,7 +61,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     
     // Ok uçları için hesaplamalar - daha küçük ve profesyonel
     const arrowSize = 10;
-    
     const dir = new THREE.Vector3().subVectors(end, start).normalize();
     const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize / 2);
     
@@ -170,12 +175,12 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
         <Text
           ref={textRef}
           position={[0, 0, 0.1]}
-          fontSize={12}
+          fontSize={12} // Font size will be overridden by scale effect
           color={isPreview ? "#ff6b35" : "#00ff00"}
           anchorX="center"
           anchorY="middle"
         >
-          {`${dimension.distance.toFixed(1)}`}
+          {formattedDistance}
         </Text>
       </Billboard>
     </group>
