@@ -55,67 +55,43 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     
     // Uzatma çizgileri
     const extensionLines = [];
-    if (isPreview && previewPosition) {
-      // Preview modunda uzatma çizgilerini hesapla
-      const extLength = 30; // Sabit uzatma çizgisi uzunluğu
-      const mainVector = new THREE.Vector3().subVectors(end, start).normalize();
-      const perpVector = new THREE.Vector3(-mainVector.z, 0, mainVector.x);
-      
-      // Uzatma çizgilerini perpendicular yönde sınırla
-      const extStart1 = originalStart.clone().add(perpVector.clone().multiplyScalar(extLength));
-      const extEnd1 = start.clone().add(perpVector.clone().multiplyScalar(-extLength));
-      const extStart2 = originalEnd.clone().add(perpVector.clone().multiplyScalar(extLength));
-      const extEnd2 = end.clone().add(perpVector.clone().multiplyScalar(-extLength));
-      
-      extensionLines.push([originalStart, extStart1]);
-      extensionLines.push([originalEnd, extStart2]);
-    } else {
-      // Normal modda uzatma çizgilerini sınırlı uzunlukta göster
-      const extLength = 50; // Maksimum uzatma çizgisi uzunluğu
-      
-      if (originalStart.distanceTo(start) > 0.1) {
-        const extVector = new THREE.Vector3().subVectors(start, originalStart);
-        const extDistance = Math.min(extVector.length(), extLength);
-        const extEnd = originalStart.clone().add(extVector.normalize().multiplyScalar(extDistance));
-        extensionLines.push([originalStart, extEnd]);
-      }
-      
-      if (originalEnd.distanceTo(end) > 0.1) {
-        const extVector = new THREE.Vector3().subVectors(end, originalEnd);
-        const extDistance = Math.min(extVector.length(), extLength);
-        const extEnd = originalEnd.clone().add(extVector.normalize().multiplyScalar(extDistance));
-        extensionLines.push([originalEnd, extEnd]);
-      }
+    
+    // Uzatma çizgileri daima orijinal noktadan, ölçü çizgisinin nihai noktasına kadar uzanır.
+    // Bu, hem tamamlanmış ölçülerde hem de önizlemede doğru davranışı sağlar.
+    if (originalStart.distanceTo(start) > 0.1) {
+      extensionLines.push([originalStart, start]);
+    }
+    
+    if (originalEnd.distanceTo(end) > 0.1) {
+      extensionLines.push([originalEnd, end]);
     }
     
     // Ok uçları için hesaplamalar - daha küçük ve profesyonel
-    const arrowSize = 10;
+    const arrowSize = 15;
     const dir = new THREE.Vector3().subVectors(end, start).normalize();
-    const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize / 2);
+    const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize * 0.5);
     
     const arrows = [];
-    if (distance > arrowSize * 2) {
-      // Çizgi yeterince uzunsa okları göster
-      const arrow1a = start.clone().add(dir.clone().multiplyScalar(arrowSize).add(perp));
-      const arrow1b = start.clone().add(dir.clone().multiplyScalar(arrowSize).sub(perp));
-      arrows.push([start, arrow1a], [start, arrow1b]);
-      
-      const arrow2a = end.clone().sub(dir.clone().multiplyScalar(arrowSize).add(perp));
-      const arrow2b = end.clone().sub(dir.clone().multiplyScalar(arrowSize).sub(perp));
-      arrows.push([end, arrow2a], [end, arrow2b]);
-    } else {
-      // Aksi halde, çizginin dışına taşan okları göster (metin için yer açmak adına)
-      const arrow1a = start.clone().add(dir.clone().multiplyScalar(-arrowSize).add(perp));
-      const arrow1b = start.clone().add(dir.clone().multiplyScalar(-arrowSize).sub(perp));
-      arrows.push([start, arrow1a], [start, arrow1b]);
-      
-      const arrow2a = end.clone().add(dir.clone().multiplyScalar(arrowSize).add(perp));
-      const arrow2b = end.clone().add(dir.clone().multiplyScalar(arrowSize).sub(perp));
-      arrows.push([end, arrow2a], [end, arrow2b]);
-    }
+    // Ok uçlarını üçgen olarak oluştur
+    const arrowGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(-arrowSize, arrowSize * 0.5, 0),
+      new THREE.Vector3(-arrowSize, -arrowSize * 0.5, 0),
+      new THREE.Vector3(0, 0, 0)
+    ]);
 
-    return { mainLine, extensionLines, arrows };
-  }, [dimension, isPreview, previewPosition]);
+    const arrowMesh1 = new THREE.Mesh(arrowGeometry);
+    arrowMesh1.position.copy(start);
+    arrowMesh1.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+    arrowMesh1.updateMatrixWorld();
+    
+    const arrowMesh2 = new THREE.Mesh(arrowGeometry);
+    arrowMesh2.position.copy(end);
+    arrowMesh2.quaternion.setFromUnitVectors(new THREE.Vector3(-1, 0, 0), dir);
+    arrowMesh2.updateMatrixWorld();
+    
+    return { mainLine, extensionLines, arrows: [arrowMesh1, arrowMesh2] };
+  }, [dimension]);
 
   // Adjust text scale based on camera distance
   useEffect(() => {
@@ -123,11 +99,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       if (textRef.current && groupRef.current) {
         const distance = camera.position.distanceTo(groupRef.current.position);
         
-        // Kamera uzaklığına göre ölçeklendirme
         const scaleFactor = distance / 200;
         
-        // Minimum ve maksimum ölçek sınırları
-        const clampedScale = Math.min(Math.max(scaleFactor, 0.5), 5); // 0.5x ile 5x arasında sınırla
+        const clampedScale = Math.min(Math.max(scaleFactor, 0.5), 5);
         
         textRef.current.scale.setScalar(clampedScale);
       }
@@ -185,24 +159,9 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       
       {/* Ok uçları */}
       {points.arrows.map((arrow, index) => (
-        <line key={`arrow-${index}`}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={2}
-              array={new Float32Array([
-                ...arrow[0].toArray(),
-                ...arrow[1].toArray()
-              ])}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#00ff00"} 
-            linewidth={3}
-            depthTest={false}
-          />
-        </line>
+        <primitive key={index} object={arrow} >
+          <meshBasicMaterial color={isPreview ? "#ff6b35" : "#00ff00"} depthTest={false} />
+        </primitive>
       ))}
 
       {/* Ölçü metni */}
@@ -214,7 +173,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           color={isPreview ? "#ff6b35" : "#00ff00"}
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0} // Yazı dış hatlarını kaldırdım
+          outlineWidth={0}
           outlineColor="#000000"
         >
           {formattedDistance}
@@ -575,8 +534,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       {previewDimension && (
         <SimpleDimensionLine 
           dimension={previewDimension} 
-          isPreview={false}
-          previewPosition={dimensionsState.previewPosition}
+          isPreview={true}
         />
       )}
       
