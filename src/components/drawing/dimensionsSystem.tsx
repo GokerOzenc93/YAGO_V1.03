@@ -60,7 +60,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     }
     
     // Ok uçları için hesaplamalar - daha küçük ve profesyonel
-    const arrowSize = 1;
+    const arrowSize = 10;
     const dir = new THREE.Vector3().subVectors(end, start).normalize();
     const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize / 2);
     
@@ -93,7 +93,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     const updateTextSize = () => {
       if (textRef.current && groupRef.current) {
         const distance = camera.position.distanceTo(groupRef.current.position);
-        const desiredSize = 25; // Okunabilir olması için ideal boyut
+        const desiredSize = 2; // Okunabilir olması için ideal boyut
         const scaleFactor = distance / desiredSize;
         textRef.current.scale.set(scaleFactor, scaleFactor, scaleFactor);
       }
