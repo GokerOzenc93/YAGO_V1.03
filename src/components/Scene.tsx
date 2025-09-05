@@ -166,8 +166,8 @@ const CameraController: React.FC<CameraControllerProps> = ({
       keyPanSpeed={7.0}
       mouseButtons={{
         LEFT: null, // Sol tık = Sadece seçim için
-        MIDDLE: THREE.MOUSE.PAN, // Orta tık = Pan (OrbitControls ile)
-        RIGHT: THREE.MOUSE.ROTATE, // Sağ tık = Döndürme
+        MIDDLE: THREE.MOUSE.ROTATE, // Orta tık = Döndürme
+        RIGHT: THREE.MOUSE.PAN, // Sağ tık = Pan
       }}
       touches={{
         ONE: THREE.TOUCH.ROTATE,
