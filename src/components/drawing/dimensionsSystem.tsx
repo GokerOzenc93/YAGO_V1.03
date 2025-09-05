@@ -48,8 +48,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     const originalStart = dimension.originalStart || start;
     const originalEnd = dimension.originalEnd || end;
     
-    const distance = start.distanceTo(end);
-    
     // Ana ölçü çizgisi
     const mainLine = [start, end];
     
@@ -69,7 +67,6 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
     // Ok uçları için hesaplamalar - daha küçük ve profesyonel
     const arrowSize = 15;
     const dir = new THREE.Vector3().subVectors(end, start).normalize();
-    const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(arrowSize * 0.5);
     
     const arrows = [];
     // Ok uçlarını üçgen olarak oluştur
@@ -278,9 +275,28 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda iken, ölçü çizgisini perpendicular düzlemde konumlandır
     if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      // Seçilen iki noktanın ortalama yüksekliğinde düzlem oluştur
-      const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -averageY);
+      const plane = new THREE.Plane();
+      const firstScreen = dimensionsState.firstPoint.clone().project(camera);
+      const secondScreen = dimensionsState.secondPoint.clone().project(camera);
+
+      // Yüzde yüz 2D ekran çizgisi oluştur
+      const direction2D = new THREE.Vector2().subVectors(secondScreen, firstScreen).normalize();
+
+      // Bu 2D çizgisine dik bir vektör
+      const perpendicular2D = new THREE.Vector2(-direction2D.y, direction2D.x);
+      
+      // Fare pozisyonunu 2D çizgisine dik olarak projeksiyon yap
+      const mouseScreenPosNDC = new THREE.Vector2(x, y);
+      const firstScreenNDC = new THREE.Vector2(firstScreen.x, firstScreen.y);
+      const dot = mouseScreenPosNDC.clone().sub(firstScreenNDC).dot(perpendicular2D);
+
+      // Sanal bir 3D düzlemi oluşturmak için bu ofseti kullan
+      const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+      const worldDirection = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint).normalize();
+      
+      // Kameradan çıkan ray'e dik bir düzlem tanımla
+      const planeNormal = camera.position.clone().sub(camera.target).normalize(); // Daha iyi bir düzlem tanımı
+      plane.setFromNormalAndCoplanarPoint(planeNormal, midPoint);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     } else {
       // Normal mod: Y=0 düzlemi
@@ -364,8 +380,8 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       setDimensionsState(prev => ({
         ...prev,
         secondPoint: point.clone(),
-        isPositioning: false, // Henüz positioning başlamadı
-        previewPosition: null
+        isPositioning: true, // İkinci tıklamadan sonra pozisyonlama başlar
+        previewPosition: point.clone() // Preview pozisyonu ilk başta fare ile aynı
       }));
       console.log(`🎯 Dimension: Second point selected, distance: ${convertToDisplayUnit(distance).toFixed(1)}${measurementUnit}`);
       console.log(`🎯 Dimension: Move mouse to position dimension line, then click to confirm`);
@@ -419,31 +435,45 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     const point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
-    
-    // ORTHO MODE: Apply constraint for dimension preview
-    if (orthoMode === OrthoMode.ON && dimensionsState.firstPoint && dimensionsState.secondPoint) {
-      const constrainedPoint = applyDimensionOrthoConstraint(point, dimensionsState.firstPoint, orthoMode);
+
+    if (dimensionsState.firstPoint && !dimensionsState.secondPoint) {
+      // İlk nokta seçildikten sonra preview çizgiyi güncelle
+      const distance = dimensionsState.firstPoint.distanceTo(point);
       setDimensionsState(prev => ({
         ...prev,
-        isPositioning: true,
-        previewPosition: constrainedPoint
+        secondPoint: point.clone(), // Geçici olarak ikinci noktayı ayarla
+        previewPosition: point.clone(),
+        isPositioning: true // Preview çizgi görünür
       }));
-      return;
-    }
-    
-    // İkinci nokta seçildikten sonra fareyle ölçü pozisyonunu güncelle
-    if (dimensionsState.firstPoint && dimensionsState.secondPoint) {
+    } else if (dimensionsState.firstPoint && dimensionsState.secondPoint && dimensionsState.isPositioning) {
+      // İkinci nokta seçildikten sonra farenin pozisyonunu takip et
+      const midPoint = new THREE.Vector3().addVectors(dimensionsState.firstPoint, dimensionsState.secondPoint).multiplyScalar(0.5);
+      const mainVector = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint);
+
+      // Fare noktasını dik yönde projeksiyon yap
+      const projectionVector = new THREE.Vector3().subVectors(point, midPoint);
+      const perpVector = new THREE.Vector3().crossVectors(mainVector, camera.position.clone().sub(midPoint)).normalize();
+      
+      const offsetDistance = projectionVector.dot(perpVector);
+      const newPreviewPosition = midPoint.clone().add(perpVector.multiplyScalar(offsetDistance));
+      
       setDimensionsState(prev => ({
         ...prev,
-        isPositioning: true,
-        previewPosition: point.clone()
+        previewPosition: newPreviewPosition
+      }));
+    } else {
+      // Henüz bir nokta seçilmemişse veya ölçü yerleştirme modunda değilse
+      setDimensionsState(prev => ({
+        ...prev,
+        isPositioning: false,
+        previewPosition: null
       }));
     }
   };
 
   // Preview ölçüsü oluştur
   const previewDimension = useMemo(() => {
-    if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.previewPosition) {
+    if (!dimensionsState.firstPoint || !dimensionsState.secondPoint || !dimensionsState.isPositioning) {
       return null;
     }
 
