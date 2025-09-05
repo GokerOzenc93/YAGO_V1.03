@@ -10,6 +10,7 @@ import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { DimensionsManager } from './dimensionsSystem';
 import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from '../../utils/orthoUtils';
+import { getPivotSelectionState, handlePivotPointSelection } from '../../utils/pivotPoint';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
@@ -653,6 +654,17 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    // Handle Pivot Point Selection
+    const pivotState = getPivotSelectionState();
+    if (pivotState.isActive && event.nativeEvent.button === 0) {
+      const point = getIntersectionPoint(event.nativeEvent);
+      if (point && handlePivotPointSelection(point)) {
+        event.stopPropagation();
+        console.log(`🎯 Pivot point selected from drawing plane at: [${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)}]`);
+        return;
+      }
+    }
+    
     // Handle Point to Point Move
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       if (event.nativeEvent.button !== 0) return;
