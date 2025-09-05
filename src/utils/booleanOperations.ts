@@ -142,6 +142,14 @@ export const performBooleanSubtract = (
       // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
       console.log('🎯 Cleaning up CSG subtraction result geometry...');
       
+       // Capture original counts before cleanup
+       const originalVertexCount = newGeom.attributes.position?.count || 0;
+       const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
+       
+      // Capture original counts before cleanup
+      const originalVertexCount = newGeom.attributes.position?.count || 0;
+      const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
+      
       // Yüksek tolerans değeri ile köşe noktalarını birleştirerek
       // yüzeyleri tek parça haline getirmeye çalışırız.
       newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-2);
