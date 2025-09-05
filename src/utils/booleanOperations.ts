@@ -1,89 +1,28 @@
 import * as THREE from 'three';
+import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import { Shape } from '../types/shapes';
 
-// Helper function to get shape bounds with transformations
+// Doğru bounding box hesaplama (rotation/scale destekli)
 const getShapeBounds = (shape: Shape): THREE.Box3 => {
   const geometry = shape.geometry;
   geometry.computeBoundingBox();
-  const bbox = geometry.boundingBox!;
-  
-  // Apply shape transformations
-  const min = new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
-  const max = new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
-  
-  // Apply scale
-  min.multiply(new THREE.Vector3(...shape.scale));
-  max.multiply(new THREE.Vector3(...shape.scale));
-  
-  // Apply position
-  min.add(new THREE.Vector3(...shape.position));
-  max.add(new THREE.Vector3(...shape.position));
-  
-  return new THREE.Box3(min, max);
+  const bbox = geometry.boundingBox!.clone(); // local bbox
+
+  const pos = new THREE.Vector3(...(shape.position || [0, 0, 0]));
+  const scale = new THREE.Vector3(...(shape.scale || [1, 1, 1]));
+  // shape.rotation olabilir; eğer yoksa 0,0,0 al
+  const rot = shape.rotation ? new THREE.Euler(...shape.rotation) : new THREE.Euler(0, 0, 0);
+  const quat = new THREE.Quaternion().setFromEuler(rot);
+
+  const m = new THREE.Matrix4().compose(pos, quat, scale);
+  bbox.applyMatrix4(m); // bbox'ı world/shape-space'e dönüştür
+
+  return bbox;
 };
 
 // Helper function to check if two bounding boxes intersect
 const boundsIntersect = (bounds1: THREE.Box3, bounds2: THREE.Box3): boolean => {
   return bounds1.intersectsBox(bounds2);
-};
-
-// Create a simple hollow box geometry for subtract operation
-const createHollowBoxGeometry = (
-  outerWidth: number,
-  outerHeight: number,
-  outerDepth: number,
-  innerWidth: number,
-  innerHeight: number,
-  innerDepth: number
-): THREE.BufferGeometry => {
-  console.log(`🎯 Creating hollow box: outer(${outerWidth}x${outerHeight}x${outerDepth}) inner(${innerWidth}x${innerHeight}x${innerDepth})`);
-  
-  // Create outer box
-  const outerGeometry = new THREE.BoxGeometry(outerWidth, outerHeight, outerDepth);
-  
-  // Create inner box (slightly smaller to create walls)
-  const wallThickness = Math.min(outerWidth, outerHeight, outerDepth) * 0.05; // 5% wall thickness
-  const actualInnerWidth = Math.max(innerWidth - wallThickness, innerWidth * 0.8);
-  const actualInnerHeight = Math.max(innerHeight - wallThickness, innerHeight * 0.8);
-  const actualInnerDepth = Math.max(innerDepth - wallThickness, innerDepth * 0.8);
-  
-  console.log(`🎯 Wall thickness: ${wallThickness.toFixed(1)}mm, actual inner: ${actualInnerWidth.toFixed(1)}x${actualInnerHeight.toFixed(1)}x${actualInnerDepth.toFixed(1)}`);
-  
-  // For now, return a modified outer geometry with indentations
-  const positions = outerGeometry.attributes.position;
-  const positionArray = positions.array as Float32Array;
-  
-  // Create indentation effect by moving inner vertices
-  for (let i = 0; i < positions.count; i++) {
-    const vertex = new THREE.Vector3(
-      positionArray[i * 3],
-      positionArray[i * 3 + 1],
-      positionArray[i * 3 + 2]
-    );
-    
-    // Check if vertex is in the inner region
-    const isInnerX = Math.abs(vertex.x) < actualInnerWidth / 2;
-    const isInnerY = Math.abs(vertex.y) < actualInnerHeight / 2;
-    const isInnerZ = Math.abs(vertex.z) < actualInnerDepth / 2;
-    
-    if (isInnerX && isInnerY && isInnerZ) {
-      // Move vertex inward to create hollow effect
-      const factor = 0.7; // Shrink factor
-      vertex.multiplyScalar(factor);
-      
-      positionArray[i * 3] = vertex.x;
-      positionArray[i * 3 + 1] = vertex.y;
-      positionArray[i * 3 + 2] = vertex.z;
-    }
-  }
-  
-  positions.needsUpdate = true;
-  outerGeometry.computeVertexNormals();
-  outerGeometry.computeBoundingBox();
-  outerGeometry.computeBoundingSphere();
-  
-  console.log('✅ Hollow box geometry created with indentation effect');
-  return outerGeometry;
 };
 
 // Find intersecting shapes
@@ -120,14 +59,39 @@ export const findIntersectingShapes = (
   return intersectingShapes;
 };
 
-// Perform boolean subtract operation
+// Create brush from shape with proper transforms
+const createBrushFromShape = (shape: Shape): Brush => {
+  const brush = new Brush(shape.geometry.clone());
+  
+  // Apply transforms
+  brush.position.fromArray(shape.position || [0, 0, 0]);
+  brush.scale.fromArray(shape.scale || [1, 1, 1]);
+  
+  if (shape.rotation) {
+    const euler = new THREE.Euler(...shape.rotation);
+    brush.quaternion.setFromEuler(euler);
+  }
+  
+  // CRITICAL: Update matrix world
+  brush.updateMatrixWorld(true);
+  
+  console.log(`🎯 Brush created:`, {
+    position: brush.position.toArray().map(v => v.toFixed(1)),
+    scale: brush.scale.toArray().map(v => v.toFixed(1)),
+    rotation: shape.rotation?.map(v => (v * 180 / Math.PI).toFixed(1)) || [0, 0, 0]
+  });
+  
+  return brush;
+};
+
+// Perform boolean subtract operation with three-bvh-csg
 export const performBooleanSubtract = (
   selectedShape: Shape,
   allShapes: Shape[],
   updateShape: (id: string, updates: Partial<Shape>) => void,
   deleteShape: (id: string) => void
 ): boolean => {
-  console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED =====');
+  console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape to subtract: ${selectedShape.type} (${selectedShape.id})`);
   
   // Find intersecting shapes
@@ -138,113 +102,93 @@ export const performBooleanSubtract = (
     return false;
   }
   
-  console.log(`🎯 Processing ${intersectingShapes.length} intersecting shapes`);
+  console.log(`🎯 Processing ${intersectingShapes.length} intersecting shapes with CSG`);
+  
+  const evaluator = new Evaluator();
   
   try {
     // Apply subtract operation to each intersecting shape
     intersectingShapes.forEach((targetShape, index) => {
-      console.log(`🎯 [${index + 1}/${intersectingShapes.length}] Processing target: ${targetShape.type} (${targetShape.id})`);
+      console.log(`🎯 [${index + 1}/${intersectingShapes.length}] Processing CSG subtract: ${targetShape.type} (${targetShape.id}) - ${selectedShape.type} (${selectedShape.id})`);
       
-      const selectedBounds = getShapeBounds(selectedShape);
-      const targetBounds = getShapeBounds(targetShape);
+      // Create brush for selected shape (the cutter)
+      const cutterBrush = createBrushFromShape(selectedShape);
       
-      // Calculate intersection volume
-      const intersectionMin = new THREE.Vector3(
-        Math.max(selectedBounds.min.x, targetBounds.min.x),
-        Math.max(selectedBounds.min.y, targetBounds.min.y),
-        Math.max(selectedBounds.min.z, targetBounds.min.z)
-      );
+      // Create brush for target shape (the one we cut)
+      const targetBrush = createBrushFromShape(targetShape);
       
-      const intersectionMax = new THREE.Vector3(
-        Math.min(selectedBounds.max.x, targetBounds.max.x),
-        Math.min(selectedBounds.max.y, targetBounds.max.y),
-        Math.min(selectedBounds.max.z, targetBounds.max.z)
-      );
+      console.log('🎯 Performing CSG subtraction...');
       
-      // Check if there's actual intersection
-      const hasIntersection = intersectionMin.x < intersectionMax.x && 
-                             intersectionMin.y < intersectionMax.y && 
-                             intersectionMin.z < intersectionMax.z;
+      // B - A (target minus cutter)
+      const resultMesh = evaluator.evaluate(targetBrush, cutterBrush, SUBTRACTION) as THREE.Mesh;
       
-      if (!hasIntersection) {
-        console.log(`❌ No actual intersection found between shapes`);
+      if (!resultMesh || !resultMesh.geometry) {
+        console.error('❌ CSG operation failed - no result mesh');
         return;
       }
       
-      // Calculate dimensions
-      const targetSize = targetBounds.getSize(new THREE.Vector3());
-      const intersectionSize = new THREE.Vector3().subVectors(intersectionMax, intersectionMin);
+      resultMesh.updateMatrixWorld(true);
       
-      console.log(`🎯 Target size: [${targetSize.x.toFixed(1)}, ${targetSize.y.toFixed(1)}, ${targetSize.z.toFixed(1)}]`);
-      console.log(`🎯 Intersection size: [${intersectionSize.x.toFixed(1)}, ${intersectionSize.y.toFixed(1)}, ${intersectionSize.z.toFixed(1)}]`);
+      console.log('✅ CSG subtraction completed, transforming result to local space...');
       
-      // Create hollow geometry
-      let newGeometry: THREE.BufferGeometry;
+      // Transform result geometry back into target's LOCAL space
+      const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+      const newGeom = resultMesh.geometry.clone();
+      newGeom.applyMatrix4(invTarget);
+      newGeom.computeVertexNormals();
+      newGeom.computeBoundingBox();
+      newGeom.computeBoundingSphere();
       
-      if (targetShape.type === 'box') {
-        // For box shapes, create proper hollow geometry
-        newGeometry = createHollowBoxGeometry(
-          targetSize.x,
-          targetSize.y,
-          targetSize.z,
-          intersectionSize.x,
-          intersectionSize.y,
-          intersectionSize.z
-        );
-      } else {
-        // For other shapes, use original geometry with scale modification
-        newGeometry = targetShape.geometry.clone();
-        console.log(`🎯 Using original geometry for ${targetShape.type} with scale modification`);
+      console.log(`🎯 Result geometry:`, {
+        vertices: newGeom.attributes.position?.count || 0,
+        triangles: newGeom.index ? newGeom.index.count / 3 : newGeom.attributes.position?.count / 3 || 0
+      });
+      
+      // Dispose old geometry
+      try { 
+        targetShape.geometry.dispose(); 
+      } catch (e) { 
+        console.warn('Could not dispose old geometry:', e);
       }
       
       // Update the target shape
       updateShape(targetShape.id, {
-        geometry: newGeometry,
+        geometry: newGeom,
         parameters: {
           ...targetShape.parameters,
           booleanOperation: 'subtract',
           subtractedShapeId: selectedShape.id,
           lastModified: Date.now(),
-          originalDimensions: {
-            width: targetSize.x,
-            height: targetSize.y,
-            depth: targetSize.z
-          },
-          cavityDimensions: {
-            width: intersectionSize.x,
-            height: intersectionSize.y,
-            depth: intersectionSize.z
-          }
         }
       });
       
-      console.log(`✅ Target shape ${targetShape.id} updated with hollow geometry`);
+      console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
     });
     
     // Delete the selected shape (the one being subtracted)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
     
-    console.log(`✅ ===== BOOLEAN SUBTRACT COMPLETED SUCCESSFULLY =====`);
-    console.log(`📊 Summary: ${intersectingShapes.length} shapes modified, 1 shape deleted`);
+    console.log(`✅ ===== BOOLEAN SUBTRACT COMPLETED SUCCESSFULLY (CSG) =====`);
+    console.log(`📊 Summary: ${intersectingShapes.length} shapes modified with CSG, 1 shape deleted`);
     
     return true;
     
   } catch (error) {
-    console.error('❌ ===== BOOLEAN SUBTRACT FAILED =====');
-    console.error('Error details:', error);
+    console.error('❌ ===== BOOLEAN SUBTRACT FAILED (CSG) =====');
+    console.error('CSG Error details:', error);
     return false;
   }
 };
 
-// Perform boolean union operation
+// Perform boolean union operation with three-bvh-csg
 export const performBooleanUnion = (
   selectedShape: Shape,
   allShapes: Shape[],
   updateShape: (id: string, updates: Partial<Shape>) => void,
   deleteShape: (id: string) => void
 ): boolean => {
-  console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED =====');
+  console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for union: ${selectedShape.type} (${selectedShape.id})`);
   
   // Find intersecting shapes
@@ -255,7 +199,9 @@ export const performBooleanUnion = (
     return false;
   }
   
-  console.log(`🎯 Processing union with ${intersectingShapes.length} intersecting shapes`);
+  console.log(`🎯 Processing union with ${intersectingShapes.length} intersecting shapes using CSG`);
+  
+  const evaluator = new Evaluator();
   
   try {
     // For union, merge with the first intersecting shape
@@ -263,29 +209,49 @@ export const performBooleanUnion = (
     
     console.log(`🎯 Union target: ${targetShape.type} (${targetShape.id})`);
     
-    const selectedBounds = getShapeBounds(selectedShape);
-    const targetBounds = getShapeBounds(targetShape);
+    // Create brushes
+    const selectedBrush = createBrushFromShape(selectedShape);
+    const targetBrush = createBrushFromShape(targetShape);
     
-    // Create union bounding box
-    const unionBounds = new THREE.Box3().copy(targetBounds).union(selectedBounds);
-    const unionSize = unionBounds.getSize(new THREE.Vector3());
-    const unionCenter = unionBounds.getCenter(new THREE.Vector3());
+    console.log('🎯 Performing CSG union...');
     
-    console.log(`🎯 Union size: [${unionSize.x.toFixed(1)}, ${unionSize.y.toFixed(1)}, ${unionSize.z.toFixed(1)}]`);
-    console.log(`🎯 Union center: [${unionCenter.x.toFixed(1)}, ${unionCenter.y.toFixed(1)}, ${unionCenter.z.toFixed(1)}]`);
+    // A + B (union)
+    const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION) as THREE.Mesh;
     
-    // Create new geometry that encompasses both shapes
-    const newGeometry = new THREE.BoxGeometry(unionSize.x, unionSize.y, unionSize.z);
+    if (!resultMesh || !resultMesh.geometry) {
+      console.error('❌ CSG union operation failed - no result mesh');
+      return false;
+    }
+    
+    resultMesh.updateMatrixWorld(true);
+    
+    console.log('✅ CSG union completed, transforming result to local space...');
+    
+    // Transform result geometry back into target's LOCAL space
+    const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+    const newGeom = resultMesh.geometry.clone();
+    newGeom.applyMatrix4(invTarget);
+    newGeom.computeVertexNormals();
+    newGeom.computeBoundingBox();
+    newGeom.computeBoundingSphere();
+    
+    console.log(`🎯 Union result geometry:`, {
+      vertices: newGeom.attributes.position?.count || 0,
+      triangles: newGeom.index ? newGeom.index.count / 3 : newGeom.attributes.position?.count / 3 || 0
+    });
+    
+    // Dispose old geometry
+    try { 
+      targetShape.geometry.dispose(); 
+    } catch (e) { 
+      console.warn('Could not dispose old geometry:', e);
+    }
     
     // Update the target shape
     updateShape(targetShape.id, {
-      geometry: newGeometry,
-      position: [unionCenter.x, unionCenter.y, unionCenter.z],
+      geometry: newGeom,
       parameters: {
         ...targetShape.parameters,
-        width: unionSize.x,
-        height: unionSize.y,
-        depth: unionSize.z,
         booleanOperation: 'union',
         unionedShapeId: selectedShape.id,
         lastModified: Date.now()
@@ -298,12 +264,12 @@ export const performBooleanUnion = (
     deleteShape(selectedShape.id);
     console.log(`🗑️ Merged shape deleted: ${selectedShape.id}`);
     
-    console.log(`✅ ===== BOOLEAN UNION COMPLETED SUCCESSFULLY =====`);
+    console.log(`✅ ===== BOOLEAN UNION COMPLETED SUCCESSFULLY (CSG) =====`);
     return true;
     
   } catch (error) {
-    console.error('❌ ===== BOOLEAN UNION FAILED =====');
-    console.error('Error details:', error);
+    console.error('❌ ===== BOOLEAN UNION FAILED (CSG) =====');
+    console.error('CSG Error details:', error);
     return false;
   }
 };
