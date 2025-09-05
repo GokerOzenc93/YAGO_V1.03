@@ -10,65 +10,16 @@ import {
   PerspectiveCamera,
   OrthographicCamera,
 } from '@react-three/drei';
-// Import paths have been removed as they are not needed for this single-file component
-// The necessary logic from those files will be included directly.
-// import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
-// import OpenCascadeShape from './OpenCascadeShape';
-// import DrawingPlane from './drawing/DrawingPlane';
-// import ContextMenu from './ContextMenu';
-// import EditMode from './ui/EditMode';
-// import { DimensionsManager } from './drawing/dimensionsSystem';
-// import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
-// import { clearFaceHighlight } from '../utils/faceSelection';
+import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
+import OpenCascadeShape from './OpenCascadeShape';
+import DrawingPlane from './drawing/DrawingPlane';
+import ContextMenu from './ContextMenu';
+import EditMode from './ui/EditMode';
+import { DimensionsManager } from './drawing/dimensionsSystem';
+import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
+import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
-// Dummy data and types to make the code runnable without external files
-const useAppStore = () => ({
-  shapes: [],
-  gridSize: 100,
-  selectShape: () => {},
-  cameraType: 'PERSPECTIVE',
-  activeTool: 'SELECT',
-  setActiveTool: () => {},
-  setEditingPolylineId: () => {},
-  isEditMode: false,
-  setEditMode: () => {},
-  editingShapeId: null,
-  setEditingShapeId: () => {},
-  hiddenShapeIds: [],
-  setHiddenShapeIds: () => {},
-  measurementUnit: 'mm',
-  convertToDisplayUnit: (value) => value,
-  convertToBaseUnit: (value) => value,
-  updateShape: () => {},
-  viewMode: '3D',
-  resetPointToPointMove: () => {},
-});
-
-const OpenCascadeShape = () => null;
-const DrawingPlane = () => null;
-const ContextMenu = () => null;
-const EditMode = () => null;
-const DimensionsManager = () => null;
-const fitCameraToShapes = () => {};
-const fitCameraToShape = () => {};
-const clearFaceHighlight = () => {};
-
-const CameraType = {
-  PERSPECTIVE: 'PERSPECTIVE',
-  ORTHOGRAPHIC: 'ORTHOGRAPHIC'
-};
-
-const Tool = {
-  SELECT: 'SELECT',
-  POLYLINE_EDIT: 'POLYLINE_EDIT',
-  MOVE: 'MOVE',
-  Polyline: 'Polyline',
-};
-
-const MeasurementUnit = {};
-
-const ViewMode = {};
 
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
