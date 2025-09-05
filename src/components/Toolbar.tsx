@@ -11,6 +11,7 @@ const Toolbar: React.FC = () => {
     addShape, 
     selectedShapeId, 
     modifyShape, 
+    performBooleanOperation,
     cameraType, 
     setCameraType, 
     snapSettings, 
@@ -570,18 +571,73 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Snap Controls */}
+        {/* Individual Snap Buttons */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           <button
-            onClick={() => setShowSnapMenu(!showSnapMenu)}
+            onClick={() => handleSnapToggle(SnapType.ENDPOINT)}
             className={`p-1 rounded transition-all ${
-              Object.values(snapSettings).some(enabled => enabled)
+              snapSettings[SnapType.ENDPOINT]
                 ? 'bg-blue-600/90 text-white shadow-sm'
                 : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
             }`}
-            title="Snap Settings"
+            title="Endpoint Snap"
           >
             <Target size={12} />
+          </button>
+          <button
+            onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
+            className={`p-1 rounded transition-all ${
+              snapSettings[SnapType.MIDPOINT]
+                ? 'bg-blue-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            title="Midpoint Snap"
+          >
+            <Navigation size={12} />
+          </button>
+          <button
+            onClick={() => handleSnapToggle(SnapType.CENTER)}
+            className={`p-1 rounded transition-all ${
+              snapSettings[SnapType.CENTER]
+                ? 'bg-blue-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            title="Center Snap"
+          >
+            <Crosshair size={12} />
+          </button>
+          <button
+            onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
+            className={`p-1 rounded transition-all ${
+              snapSettings[SnapType.PERPENDICULAR]
+                ? 'bg-blue-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            title="Perpendicular Snap"
+          >
+            <Zap size={12} />
+          </button>
+          <button
+            onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
+            className={`p-1 rounded transition-all ${
+              snapSettings[SnapType.INTERSECTION]
+                ? 'bg-blue-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            title="Intersection Snap"
+          >
+            <Intersection size={12} />
+          </button>
+          <button
+            onClick={() => handleSnapToggle(SnapType.NEAREST)}
+            className={`p-1 rounded transition-all ${
+              snapSettings[SnapType.NEAREST]
+                ? 'bg-blue-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            title="Nearest Snap"
+          >
+            <MapPin size={12} />
           </button>
         </div>
 
@@ -653,7 +709,15 @@ const Toolbar: React.FC = () => {
                   ? 'opacity-50 cursor-not-allowed text-gray-500'
                   : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
               }`}
-              onClick={() => selectedShapeId && setActiveTool(tool.id)}
+              onClick={() => {
+                if (selectedShapeId) {
+                  if (tool.id === Tool.BOOLEAN_UNION) {
+                    performBooleanOperation('union');
+                  } else if (tool.id === Tool.BOOLEAN_SUBTRACT) {
+                    performBooleanOperation('subtract');
+                  }
+                }
+              }}
               disabled={!selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
@@ -695,34 +759,6 @@ const Toolbar: React.FC = () => {
         </div>
       )}
       {/* Snap Settings Menu */}
-      {showSnapMenu && (
-        <div
-          className="fixed bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg"
-          style={{
-            left: '200px', // Adjust position as needed
-            top: '120px',
-          }}
-        >
-          <div className="px-3 py-1.5 border-b border-gray-600/50">
-            <div className="text-xs text-gray-400 font-medium">Snap Settings</div>
-          </div>
-          
-          {Object.entries(snapSettings).map(([snapType, enabled]) => (
-            <button
-              key={snapType}
-              className={`w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 transition-colors ${
-                enabled
-                  ? 'bg-blue-600/20 text-blue-300'
-                  : 'hover:bg-gray-700/50 text-gray-300'
-              }`}
-              onClick={() => handleSnapToggle(snapType as SnapType)}
-            >
-              <div className={`w-2 h-2 rounded-full ${enabled ? 'bg-blue-400' : 'bg-gray-500'}`} />
-              <span className="font-medium capitalize">{snapType.replace('_', ' ')}</span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

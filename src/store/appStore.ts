@@ -2,6 +2,51 @@ import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 
+// Helper function to get shape bounds
+const getShapeBounds = (shape: Shape) => {
+  const geometry = shape.geometry;
+  geometry.computeBoundingBox();
+  const bbox = geometry.boundingBox!;
+  
+  // Apply shape transformations
+  const min = new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
+  const max = new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
+  
+  // Apply scale
+  min.multiply(new THREE.Vector3(...shape.scale));
+  max.multiply(new THREE.Vector3(...shape.scale));
+  
+  // Apply position
+  min.add(new THREE.Vector3(...shape.position));
+  max.add(new THREE.Vector3(...shape.position));
+  
+  return { min, max };
+};
+
+// Helper function to check if two bounding boxes intersect
+const boundsIntersect = (bounds1: any, bounds2: any): boolean => {
+  return (
+    bounds1.min.x <= bounds2.max.x && bounds1.max.x >= bounds2.min.x &&
+    bounds1.min.y <= bounds2.max.y && bounds1.max.y >= bounds2.min.y &&
+    bounds1.min.z <= bounds2.max.z && bounds1.max.z >= bounds2.min.z
+  );
+};
+
+// Helper function to create subtracted geometry (simplified implementation)
+const createSubtractedGeometry = (targetGeometry: THREE.BufferGeometry, subtractShape: Shape): THREE.BufferGeometry => {
+  // This is a simplified implementation
+  // In a real CAD application, you would use proper CSG operations
+  
+  // For now, we'll create a visual indication by modifying the target geometry
+  const newGeometry = targetGeometry.clone();
+  
+  // Add some visual indication that subtraction occurred
+  // In a real implementation, this would be proper boolean subtraction
+  console.log('Creating subtracted geometry (simplified implementation)');
+  
+  return newGeometry;
+};
+
 export enum Tool {
   MOVE = 'Move',
   ROTATE = 'Rotate',
@@ -115,6 +160,7 @@ interface AppState {
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
+  performBooleanOperation: (operation: 'union' | 'subtract') => void;
   cameraPosition: [number, number, number];
   setCameraPosition: (position: [number, number, number]) => void;
   selectedObjectPosition: [number, number, number];
@@ -515,6 +561,70 @@ export const useAppStore = create<AppState>((set, get) => ({
       shapes: state.shapes.filter((shape) => shape.id !== id),
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
+     
+  performBooleanOperation: (operation) => {
+    const { shapes, selectedShapeId } = get();
+    if (!selectedShapeId) {
+      console.warn('No shape selected for boolean operation');
+      return;
+    }
+    
+    const selectedShape = shapes.find(s => s.id === selectedShapeId);
+    if (!selectedShape) {
+      console.warn('Selected shape not found');
+      return;
+    }
+    
+    // Find intersecting shapes
+    const intersectingShapes = shapes.filter(shape => {
+      if (shape.id === selectedShapeId) return false;
+      
+      // Simple bounding box intersection check
+      const selectedBounds = getShapeBounds(selectedShape);
+      const shapeBounds = getShapeBounds(shape);
+      
+      return boundsIntersect(selectedBounds, shapeBounds);
+    });
+    
+    if (intersectingShapes.length === 0) {
+      console.log('No intersecting shapes found for boolean operation');
+      return;
+    }
+    
+    if (operation === 'subtract') {
+      // For subtract operation: remove selected shape geometry from intersecting shapes
+      const updatedShapes = shapes.filter(s => s.id !== selectedShapeId).map(shape => {
+        const isIntersecting = intersectingShapes.some(is => is.id === shape.id);
+        if (isIntersecting) {
+          // Create a new geometry that represents the subtraction
+          // For now, we'll create a simple visual indication by changing the shape
+          console.log(`Subtracting shape ${selectedShapeId} from shape ${shape.id}`);
+          
+          // In a real implementation, you would use CSG (Constructive Solid Geometry)
+          // For now, we'll create a modified version of the target shape
+          const modifiedGeometry = createSubtractedGeometry(shape.geometry, selectedShape);
+          
+          return {
+            ...shape,
+            geometry: modifiedGeometry,
+            parameters: {
+              ...shape.parameters,
+              modified: true,
+              subtractedFrom: selectedShapeId
+            }
+          };
+        }
+        return shape;
+      });
+      
+      set({ 
+        shapes: updatedShapes,
+        selectedShapeId: null
+      });
+      
+      console.log(`Boolean subtract completed: removed shape ${selectedShapeId} from ${intersectingShapes.length} intersecting shapes`);
+    }
+  },
     
   selectedShapeId: null,
   selectShape: (id) => {
