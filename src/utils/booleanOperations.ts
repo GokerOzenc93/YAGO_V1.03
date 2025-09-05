@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createPolylineGeometry } from '../components/drawing/geometryCreator';
 
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
@@ -63,168 +62,6 @@ export const findIntersectingShapes = (
   
   console.log(`🎯 Found ${intersectingShapes.length} intersecting shapes`);
   return intersectingShapes;
-};
-
-// Extract actual boundary from CSG result
-const extractActualBoundary = (resultGeometry, vertices) => {
-  // This is a placeholder function - implement actual boundary extraction logic
-  // For now, return a simplified boundary based on the vertices
-  if (vertices.length < 3) return [];
-  
-  // Project vertices to XZ plane and find convex hull
-  const projectedPoints = vertices.map(v => new THREE.Vector2(v.x, v.z));
-  const hull2D = getConvexHull2D(projectedPoints);
-  
-  // Convert back to 3D points at Y=0
-  const boundaryPoints = hull2D.map(p => new THREE.Vector3(p.x, 0, p.y));
-  
-  // Close the loop if not already closed
-  if (boundaryPoints.length > 0) {
-    const first = boundaryPoints[0];
-    const last = boundaryPoints[boundaryPoints.length - 1];
-    if (!first.equals(last)) {
-      boundaryPoints.push(first.clone());
-    }
-  }
-  
-  return boundaryPoints;
-};
-
-// Extract boundary points from CSG result and recreate as clean polyline-based geometry
-const recreateShapeFromBooleanResult = (
-  resultGeometry: THREE.BufferGeometry,
-  originalPosition: [number, number, number],
-  originalScale: [number, number, number]
-): THREE.BufferGeometry => {
-  console.log('🎯 Recreating shape from boolean result...');
-  
-  try {
-    // Get all vertices from the result geometry
-    const positions = resultGeometry.attributes.position;
-    if (!positions) {
-      console.warn('No position attribute found, using original geometry');
-      return resultGeometry;
-    }
-    
-    // Extract all vertices and analyze the geometry structure
-    const vertices: THREE.Vector3[] = [];
-    const vertexMap = new Map<string, THREE.Vector3>();
-    const precision = 100; // Reduced precision for better grouping
-    
-    for (let i = 0; i < positions.count; i++) {
-      const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
-      const key = `${Math.round(vertex.x * precision)},${Math.round(vertex.y * precision)},${Math.round(vertex.z * precision)}`;
-      
-      if (!vertexMap.has(key)) {
-        vertexMap.set(key, vertex);
-        vertices.push(vertex);
-      }
-    }
-    
-    console.log(`🎯 Extracted ${vertices.length} unique vertices from boolean result`);
-    
-    // Find the bounding box to determine the shape's dimensions
-    const bbox = new THREE.Box3().setFromPoints(vertices);
-    const size = bbox.getSize(new THREE.Vector3());
-    const center = bbox.getCenter(new THREE.Vector3());
-    
-    console.log(`🎯 Shape bounds: ${size.x.toFixed(1)}x${size.y.toFixed(1)}x${size.z.toFixed(1)}mm`);
-    
-    // Analyze the geometry to find the actual boundary outline
-    // Instead of convex hull, find the actual perimeter of the shape
-    const boundaryPoints = extractActualBoundary(resultGeometry, vertices);
-    
-    if (boundaryPoints.length < 3) {
-      console.warn('🎯 Could not extract proper boundary, using bounding box');
-      // Fallback to bounding box
-      const min = bbox.min;
-      const max = bbox.max;
-      const fallbackPoints = [
-        new THREE.Vector3(min.x, 0, min.z),
-        new THREE.Vector3(max.x, 0, min.z),
-        new THREE.Vector3(max.x, 0, max.z),
-        new THREE.Vector3(min.x, 0, max.z),
-        new THREE.Vector3(min.x, 0, min.z) // Close the loop
-      ];
-      
-      const height = size.y;
-      const newGeometry = createPolylineGeometry(fallbackPoints, height, 50, false);
-      
-      // Position at the center of the original shape
-      const translation = new THREE.Matrix4().makeTranslation(
-        center.x,
-        originalPosition[1],
-        center.z
-      );
-      newGeometry.applyMatrix4(translation);
-      
-      return newGeometry;
-    }
-    
-    console.log(`🎯 Created boundary with ${boundaryPoints.length} points`);
-    
-    // Use the polyline geometry creator to make a clean extruded shape
-    const height = size.y; // Use the calculated height
-    const newGeometry = createPolylineGeometry(boundaryPoints, height, 50, false);
-    
-    // Position the new geometry at the center of the boolean result
-    const translation = new THREE.Matrix4().makeTranslation(
-      center.x,
-      originalPosition[1], // Keep original Y position
-      center.z
-    );
-    newGeometry.applyMatrix4(translation);
-    
-    console.log(`✅ Shape recreated with actual boundary geometry`);
-    return newGeometry;
-    
-  } catch (error) {
-    console.error('🎯 Error recreating shape from boolean result:', error);
-    console.log('🎯 Falling back to original geometry');
-    return resultGeometry;
-  }
-};
-
-// Simple 2D convex hull algorithm (Graham scan)
-const getConvexHull2D = (points: THREE.Vector2[]): THREE.Vector2[] => {
-  if (points.length < 3) return points;
-  
-  // Find the bottom-most point (and leftmost in case of tie)
-  let start = 0;
-  for (let i = 1; i < points.length; i++) {
-    if (points[i].y < points[start].y || 
-        (points[i].y === points[start].y && points[i].x < points[start].x)) {
-      start = i;
-    }
-  }
-  
-  // Swap start point to beginning
-  [points[0], points[start]] = [points[start], points[0]];
-  const startPoint = points[0];
-  
-  // Sort points by polar angle with respect to start point
-  const sortedPoints = points.slice(1).sort((a, b) => {
-    const angleA = Math.atan2(a.y - startPoint.y, a.x - startPoint.x);
-    const angleB = Math.atan2(b.y - startPoint.y, b.x - startPoint.x);
-    return angleA - angleB;
-  });
-  
-  // Build convex hull
-  const hull = [startPoint];
-  
-  for (const point of sortedPoints) {
-    // Remove points that make clockwise turn
-    while (hull.length > 1) {
-      const p1 = hull[hull.length - 2];
-      const p2 = hull[hull.length - 1];
-      const cross = (p2.x - p1.x) * (point.y - p1.y) - (p2.y - p1.y) * (point.x - p1.x);
-      if (cross > 0) break; // Counter-clockwise turn
-      hull.pop();
-    }
-    hull.push(point);
-  }
-  
-  return hull;
 };
 
 // Create brush from shape with proper transforms
@@ -302,20 +139,28 @@ export const performBooleanSubtract = (
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
       
-      // 🎯 RECREATE SHAPE - Create clean polyline-based geometry from boolean result
-      console.log('🎯 Recreating shape from boolean subtraction result...');
+      // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
+      console.log('🎯 Cleaning up CSG subtraction result geometry...');
       
-      // Store original transform info
-      const originalPosition = targetShape.position;
-      const originalScale = targetShape.scale;
+      // Capture original counts before cleanup
+      const originalVertexCount = newGeom.attributes.position?.count || 0;
+      const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
       
-      // Recreate the shape using polyline-based geometry creation
-      newGeom = recreateShapeFromBooleanResult(newGeom, originalPosition, originalScale);
+      // Yüksek tolerans değeri ile köşe noktalarını birleştirerek
+      // yüzeyleri tek parça haline getirmeye çalışırız.
+      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-2);
       
-      const finalVertexCount = newGeom.attributes.position?.count || 0;
-      const finalTriangleCount = newGeom.index ? newGeom.index.count / 3 : finalVertexCount / 3;
+      const cleanVertexCount = newGeom.attributes.position?.count || 0;
+      const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
       
-      console.log(`✅ Shape recreated: ${finalVertexCount} vertices, ${finalTriangleCount.toFixed(0)} triangles`);
+      console.log(`🎯 BufferGeometryUtils union cleanup: ${originalVertexCount} -> ${cleanVertexCount} vertices, ${originalTriangleCount.toFixed(0)} -> ${cleanTriangleCount.toFixed(0)} triangles`);
+      
+      // 2. Recompute all geometry properties
+      newGeom.computeVertexNormals();
+      newGeom.computeBoundingBox();
+      newGeom.computeBoundingSphere();
+      
+      console.log(`✅ Final union geometry: ${cleanVertexCount} vertices, ${cleanTriangleCount.toFixed(0)} triangles`);
       
       // Dispose old geometry
       try { 
@@ -352,137 +197,6 @@ export const performBooleanSubtract = (
     console.error('CSG Error details:', error);
     return false;
   }
-};
-
-/**
- * Advanced CSG geometry cleanup - removes extra vertices and creates clean surfaces for face selection
- */
-const cleanupCSGGeometry = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
-  console.log('🎯 Starting advanced CSG geometry cleanup...');
-  
-  const position = geometry.attributes.position;
-  const index = geometry.index;
-  
-  if (!position || !index) {
-    console.warn('Geometry missing position or index attributes');
-    return geometry;
-  }
-  
-  // 1. Coplanar face detection and merging
-  const faces: { vertices: THREE.Vector3[]; normal: THREE.Vector3; indices: number[] }[] = [];
-  const faceCount = index.count / 3;
-  
-  for (let i = 0; i < faceCount; i++) {
-    const a = index.getX(i * 3);
-    const b = index.getX(i * 3 + 1);
-    const c = index.getX(i * 3 + 2);
-    
-    const va = new THREE.Vector3().fromBufferAttribute(position, a);
-    const vb = new THREE.Vector3().fromBufferAttribute(position, b);
-    const vc = new THREE.Vector3().fromBufferAttribute(position, c);
-    
-    // Calculate face normal
-    const normal = new THREE.Vector3()
-      .subVectors(vb, va)
-      .cross(new THREE.Vector3().subVectors(vc, va))
-      .normalize();
-    
-    faces.push({
-      vertices: [va, vb, vc],
-      normal: normal,
-      indices: [a, b, c]
-    });
-  }
-  
-  // 2. Group coplanar faces
-  const coplanarGroups: typeof faces[] = [];
-  const processed = new Set<number>();
-  const NORMAL_TOLERANCE = 0.01; // ~0.6 degrees
-  const PLANE_TOLERANCE = 0.1; // 0.1mm
-  
-  for (let i = 0; i < faces.length; i++) {
-    if (processed.has(i)) continue;
-    
-    const group = [faces[i]];
-    processed.add(i);
-    
-    const refNormal = faces[i].normal;
-    const refPoint = faces[i].vertices[0];
-    
-    for (let j = i + 1; j < faces.length; j++) {
-      if (processed.has(j)) continue;
-      
-      const face = faces[j];
-      
-      // Check if normals are similar (or opposite)
-      const normalDot = Math.abs(refNormal.dot(face.normal));
-      if (normalDot < (1 - NORMAL_TOLERANCE)) continue;
-      
-      // Check if face is on the same plane
-      const distance = Math.abs(refNormal.dot(new THREE.Vector3().subVectors(face.vertices[0], refPoint)));
-      if (distance > PLANE_TOLERANCE) continue;
-      
-      group.push(face);
-      processed.add(j);
-    }
-    
-    coplanarGroups.push(group);
-  }
-  
-  console.log(`🎯 Found ${coplanarGroups.length} coplanar groups from ${faces.length} faces`);
-  
-  // 3. Create new geometry with merged coplanar faces
-  const newVertices: number[] = [];
-  const newIndices: number[] = [];
-  let vertexIndex = 0;
-  
-  for (const group of coplanarGroups) {
-    if (group.length === 1) {
-      // Single face - add as is
-      const face = group[0];
-      for (const vertex of face.vertices) {
-        newVertices.push(vertex.x, vertex.y, vertex.z);
-      }
-      newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-      vertexIndex += 3;
-    } else {
-      // Multiple coplanar faces - create a single quad or merged face
-      // For simplicity, we'll keep the largest face from the group
-      let largestFace = group[0];
-      let largestArea = 0;
-      
-      for (const face of group) {
-        const area = new THREE.Vector3()
-          .subVectors(face.vertices[1], face.vertices[0])
-          .cross(new THREE.Vector3().subVectors(face.vertices[2], face.vertices[0]))
-          .length() / 2;
-        
-        if (area > largestArea) {
-          largestArea = area;
-          largestFace = face;
-        }
-      }
-      
-      // Add the largest face
-      for (const vertex of largestFace.vertices) {
-        newVertices.push(vertex.x, vertex.y, vertex.z);
-      }
-      newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-      vertexIndex += 3;
-    }
-  }
-  
-  // 4. Create new geometry
-  const cleanGeometry = new THREE.BufferGeometry();
-  cleanGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newVertices, 3));
-  cleanGeometry.setIndex(newIndices);
-  
-  // 5. Final merge vertices to remove any remaining duplicates
-  const finalGeometry = BufferGeometryUtils.mergeVertices(cleanGeometry, 1e-4);
-  
-  console.log(`🎯 Advanced cleanup complete: ${faces.length} -> ${coplanarGroups.length} faces, ${newVertices.length/3} vertices`);
-  
-  return finalGeometry;
 };
 
 // Perform boolean union operation with three-bvh-csg
@@ -536,20 +250,27 @@ export const performBooleanUnion = (
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
-    // 🎯 RECREATE SHAPE - Create clean polyline-based geometry from boolean result
-    console.log('🎯 Recreating shape from boolean union result...');
+    // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
+    console.log('🎯 Cleaning up CSG union result geometry...');
     
-    // Store original transform info
-    const originalPosition = targetShape.position;
-    const originalScale = targetShape.scale;
+    // BufferGeometryUtils.mergeVertices kullanarak manuel birleştirme
+    // kodunu daha güvenilir bir çözümle değiştiriyoruz.
+    newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-2);
     
-    // Recreate the shape using polyline-based geometry creation
-    newGeom = recreateShapeFromBooleanResult(newGeom, originalPosition, originalScale);
+    const cleanVertexCount = newGeom.attributes.position?.count || 0;
+    const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
     
-    const finalVertexCount = newGeom.attributes.position?.count || 0;
-    const finalTriangleCount = newGeom.index ? newGeom.index.count / 3 : finalVertexCount / 3;
+    console.log(`🎯 Union geometry cleaned: ${newGeom.attributes.position?.count || 0} -> ${cleanVertexCount} vertices, ${newGeom.index ? newGeom.index.count/3 : 0} -> ${cleanTriangleCount.toFixed(0)} triangles`);
     
-    console.log(`✅ Shape recreated: ${finalVertexCount} vertices, ${finalTriangleCount.toFixed(0)} triangles`);
+    // Final geometry processing
+    newGeom.computeVertexNormals();
+    newGeom.computeBoundingBox();
+    newGeom.computeBoundingSphere();
+    
+    console.log(`🎯 Union result geometry:`, {
+      vertices: newGeom.attributes.position?.count || 0,
+      triangles: newGeom.index ? newGeom.index.count / 3 : newGeom.attributes.position?.count / 3 || 0
+    });
     
     // Dispose old geometry
     try { 
@@ -584,3 +305,4 @@ export const performBooleanUnion = (
     return false;
   }
 };
+
