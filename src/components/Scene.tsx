@@ -151,7 +151,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
       panSpeed={0.8}
       zoomSpeed={1.0}
       mouseButtons={{
-        LEFT: undefined, // Sol tık = Sadece seçim için
+        LEFT: null, // Sol tık = Sadece seçim için
         MIDDLE: THREE.MOUSE.ROTATE, // Orta tık = Döndürme
         RIGHT: THREE.MOUSE.PAN, // Sağ tık = Pan (kaydırma)
       }}
