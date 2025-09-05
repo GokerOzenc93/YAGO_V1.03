@@ -139,82 +139,9 @@ const CameraController: React.FC<CameraControllerProps> = ({
     if (!controlsRef.current) return;
 
     const controls = controlsRef.current;
-    let isPanning = false;
-    let panStart = new THREE.Vector2();
-    let panEnd = new THREE.Vector2();
-    let panDelta = new THREE.Vector2();
-
-    const handleMouseDown = (event: MouseEvent) => {
-      if (event.button === 1) { // Middle mouse button
-        isPanning = true;
-        panStart.set(event.clientX, event.clientY);
-        panEnd.copy(panStart);
-        event.preventDefault();
-        event.stopPropagation();
-        console.log('🎯 Pan started with middle button');
-      }
-    };
-
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!isPanning) return;
-      
-      event.preventDefault();
-      event.stopPropagation();
-      
-      panEnd.set(event.clientX, event.clientY);
-      panDelta.subVectors(panEnd, panStart).multiplyScalar(0.005);
-      
-      // Apply pan movement manually
-      const offset = new THREE.Vector3();
-      offset.copy(controls.object.position).sub(controls.target);
-      
-      // Calculate pan vectors
-      const targetDistance = offset.length();
-      const panLeft = new THREE.Vector3();
-      const panUp = new THREE.Vector3();
-      
-      panLeft.setFromMatrixColumn(controls.object.matrix, 0);
-      panUp.setFromMatrixColumn(controls.object.matrix, 1);
-      
-      panLeft.multiplyScalar(-panDelta.x * targetDistance);
-      panUp.multiplyScalar(panDelta.y * targetDistance);
-      
-      const pan = new THREE.Vector3();
-      pan.copy(panLeft).add(panUp);
-      
-      controls.target.add(pan);
-      controls.object.position.add(pan);
-      
-      panStart.copy(panEnd);
-      controls.update();
-      
-      console.log('🎯 Panning:', panDelta.x.toFixed(3), panDelta.y.toFixed(3));
-    };
-
-    const handleMouseUp = (event: MouseEvent) => {
-      if (event.button === 1) {
-        isPanning = false;
-        console.log('🎯 Pan ended');
-      }
-    };
-
-    const handleContextMenu = (event: MouseEvent) => {
-      if (event.button === 1) {
-        event.preventDefault();
-      }
-    };
-    const canvas = controls.domElement;
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseup', handleMouseUp);
-    canvas.addEventListener('contextmenu', handleContextMenu);
-
-    return () => {
-      canvas.removeEventListener('mousedown', handleMouseDown);
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('mouseup', handleMouseUp);
-      canvas.removeEventListener('contextmenu', handleContextMenu);
-    };
+    
+    // Simple solution: Just let OrbitControls handle everything
+    console.log('🎯 OrbitControls initialized with middle button pan');
   }, []);
   return (
     <OrbitControls
@@ -227,10 +154,10 @@ const CameraController: React.FC<CameraControllerProps> = ({
       maxPolarAngle={Math.PI}
       minPolarAngle={0}
       enableRotate={true}
-      enablePan={false}
+      enablePan={true}
       enableZoom={true}
       rotateSpeed={0.5}
-      panSpeed={0}
+      panSpeed={1.0}
       zoomSpeed={1.0}
       autoRotate={false}
       autoRotateSpeed={0}
