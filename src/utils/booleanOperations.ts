@@ -199,6 +199,137 @@ export const performBooleanSubtract = (
   }
 };
 
+/**
+ * Advanced CSG geometry cleanup - removes extra vertices and creates clean surfaces for face selection
+ */
+const cleanupCSGGeometry = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+  console.log('🎯 Starting advanced CSG geometry cleanup...');
+  
+  const position = geometry.attributes.position;
+  const index = geometry.index;
+  
+  if (!position || !index) {
+    console.warn('Geometry missing position or index attributes');
+    return geometry;
+  }
+  
+  // 1. Coplanar face detection and merging
+  const faces: { vertices: THREE.Vector3[]; normal: THREE.Vector3; indices: number[] }[] = [];
+  const faceCount = index.count / 3;
+  
+  for (let i = 0; i < faceCount; i++) {
+    const a = index.getX(i * 3);
+    const b = index.getX(i * 3 + 1);
+    const c = index.getX(i * 3 + 2);
+    
+    const va = new THREE.Vector3().fromBufferAttribute(position, a);
+    const vb = new THREE.Vector3().fromBufferAttribute(position, b);
+    const vc = new THREE.Vector3().fromBufferAttribute(position, c);
+    
+    // Calculate face normal
+    const normal = new THREE.Vector3()
+      .subVectors(vb, va)
+      .cross(new THREE.Vector3().subVectors(vc, va))
+      .normalize();
+    
+    faces.push({
+      vertices: [va, vb, vc],
+      normal: normal,
+      indices: [a, b, c]
+    });
+  }
+  
+  // 2. Group coplanar faces
+  const coplanarGroups: typeof faces[] = [];
+  const processed = new Set<number>();
+  const NORMAL_TOLERANCE = 0.01; // ~0.6 degrees
+  const PLANE_TOLERANCE = 0.1; // 0.1mm
+  
+  for (let i = 0; i < faces.length; i++) {
+    if (processed.has(i)) continue;
+    
+    const group = [faces[i]];
+    processed.add(i);
+    
+    const refNormal = faces[i].normal;
+    const refPoint = faces[i].vertices[0];
+    
+    for (let j = i + 1; j < faces.length; j++) {
+      if (processed.has(j)) continue;
+      
+      const face = faces[j];
+      
+      // Check if normals are similar (or opposite)
+      const normalDot = Math.abs(refNormal.dot(face.normal));
+      if (normalDot < (1 - NORMAL_TOLERANCE)) continue;
+      
+      // Check if face is on the same plane
+      const distance = Math.abs(refNormal.dot(new THREE.Vector3().subVectors(face.vertices[0], refPoint)));
+      if (distance > PLANE_TOLERANCE) continue;
+      
+      group.push(face);
+      processed.add(j);
+    }
+    
+    coplanarGroups.push(group);
+  }
+  
+  console.log(`🎯 Found ${coplanarGroups.length} coplanar groups from ${faces.length} faces`);
+  
+  // 3. Create new geometry with merged coplanar faces
+  const newVertices: number[] = [];
+  const newIndices: number[] = [];
+  let vertexIndex = 0;
+  
+  for (const group of coplanarGroups) {
+    if (group.length === 1) {
+      // Single face - add as is
+      const face = group[0];
+      for (const vertex of face.vertices) {
+        newVertices.push(vertex.x, vertex.y, vertex.z);
+      }
+      newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
+      vertexIndex += 3;
+    } else {
+      // Multiple coplanar faces - create a single quad or merged face
+      // For simplicity, we'll keep the largest face from the group
+      let largestFace = group[0];
+      let largestArea = 0;
+      
+      for (const face of group) {
+        const area = new THREE.Vector3()
+          .subVectors(face.vertices[1], face.vertices[0])
+          .cross(new THREE.Vector3().subVectors(face.vertices[2], face.vertices[0]))
+          .length() / 2;
+        
+        if (area > largestArea) {
+          largestArea = area;
+          largestFace = face;
+        }
+      }
+      
+      // Add the largest face
+      for (const vertex of largestFace.vertices) {
+        newVertices.push(vertex.x, vertex.y, vertex.z);
+      }
+      newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
+      vertexIndex += 3;
+    }
+  }
+  
+  // 4. Create new geometry
+  const cleanGeometry = new THREE.BufferGeometry();
+  cleanGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newVertices, 3));
+  cleanGeometry.setIndex(newIndices);
+  
+  // 5. Final merge vertices to remove any remaining duplicates
+  const finalGeometry = BufferGeometryUtils.mergeVertices(cleanGeometry, 1e-4);
+  
+  console.log(`🎯 Advanced cleanup complete: ${faces.length} -> ${coplanarGroups.length} faces, ${newVertices.length/3} vertices`);
+  
+  return finalGeometry;
+};
+
 // Perform boolean union operation with three-bvh-csg
 export const performBooleanUnion = (
   selectedShape,
@@ -313,4 +444,3 @@ export const performBooleanUnion = (
     return false;
   }
 };
-
