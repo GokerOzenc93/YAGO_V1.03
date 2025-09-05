@@ -291,12 +291,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 SOLID MODELS: Tüm nesneler katı model olarak görünsün
+    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
     if (isBeingEdited) {
-      return 0.8; // Edit edilen şekiller biraz şeffaf
+      return 0.1; // Edit edilen şekiller çok az görünür
     }
     
-    return 1.0; // Tüm şekiller tamamen katı (solid)
+    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
@@ -349,7 +349,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
     return {
       color: getShapeColor(),
-      transparent: opacityValue < 1.0, // 👈 Sadece gerektiğinde şeffaflık
+      transparent: true, // 👈 Şeffaflık aktif
       opacity: opacityValue,
       visible: true, // 👈 2D şekiller için görünür (gizmo etkileşimi için)
     };
