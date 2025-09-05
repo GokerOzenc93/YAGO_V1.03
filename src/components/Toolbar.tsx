@@ -148,16 +148,11 @@ const Toolbar: React.FC = () => {
     { id: Tool.POLYLINE, icon: <GitBranch size={12} />, label: 'Polyline', shortcut: 'PL', hasContextMenu: true },
     { id: Tool.RECTANGLE, icon: <Square size={12} />, label: 'Rectangle', shortcut: 'R' },
     { id: Tool.CIRCLE, icon: <Circle size={12} />, label: 'Circle', shortcut: 'C' },
-    { id: Tool.POLYGON, icon: <Pentagon size={12} />, label: 'Polygon', shortcut: 'P' },
   ];
 
-  const modifyTools = [
-    { id: ModificationType.MIRROR, icon: <FlipHorizontal size={12} />, label: 'Mirror', shortcut: 'Mi' },
-    { id: ModificationType.ARRAY, icon: <Copy1 size={12} />, label: 'Array', shortcut: 'Ar' },
-    { id: ModificationType.FILLET, icon: <Radius size={12} />, label: 'Fillet', shortcut: 'F' },
-    { id: ModificationType.CHAMFER, icon: <Minus size={12} />, label: 'Chamfer', shortcut: 'Ch' },
-    { id: Tool.TRIM, icon: <Scissors size={12} />, label: 'Trim', shortcut: 'Tr' },
-    { id: Tool.EXTEND, icon: <ArrowBigRightDash size={12} />, label: 'Extend', shortcut: 'Ex' },
+  const booleanTools = [
+    { id: Tool.BOOLEAN_UNION, icon: <Plus size={12} />, label: 'Union', shortcut: 'U' },
+    { id: Tool.BOOLEAN_SUBTRACT, icon: <Minus size={12} />, label: 'Subtract', shortcut: 'S' },
   ];
 
   const transformTools = [
@@ -170,16 +165,6 @@ const Toolbar: React.FC = () => {
 
   const measurementTools = [
     { id: Tool.DIMENSION, icon: <Ruler size={12} />, label: 'Dimension', shortcut: 'D' },
-  ];
-
-  const snapTools = [
-    { id: SnapType.ENDPOINT, icon: <Target size={12} />, label: 'Endpoint', shortcut: 'End' },
-    { id: SnapType.MIDPOINT, icon: <Navigation size={12} />, label: 'Midpoint', shortcut: 'Mid' },
-    { id: SnapType.CENTER, icon: <Crosshair size={12} />, label: 'Center', shortcut: 'Cen' },
-    { id: SnapType.QUADRANT, icon: <RotateCw size={12} />, label: 'Quadrant', shortcut: 'Qua' },
-    { id: SnapType.PERPENDICULAR, icon: <Zap size={12} />, label: 'Perpendicular', shortcut: 'Per' },
-    { id: SnapType.INTERSECTION, icon: <Intersection size={12} />, label: 'Intersection', shortcut: 'Int' },
-    { id: SnapType.NEAREST, icon: <MapPin size={12} />, label: 'Nearest', shortcut: 'Nea' },
   ];
 
   const menus = [
@@ -638,101 +623,29 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
-        {/* Snap Tools - Individual Buttons */}
+        {/* Boolean Operations */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
-          {snapTools.map((snap) => (
-            <button
-              key={snap.id}
-              className={`p-1 rounded transition-all ${
-                snapSettings[snap.id] && !shouldDisableSnap
-                  ? 'bg-blue-600/90 text-white shadow-sm'
-                  : shouldDisableSnap
-                  ? 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
-                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
-              }`}
-              onClick={() => !shouldDisableSnap && handleSnapToggle(snap.id)}
-              disabled={shouldDisableSnap}
-              title={
-                shouldDisableSnap 
-                  ? `${snap.label} - Disabled in ${activeTool} mode`
-                  : `${snap.label} (${snap.shortcut}) - ${snapSettings[snap.id] ? 'Enabled' : 'Disabled'}`
-              }
-            >
-              {snap.icon}
-            </button>
-          ))}
-        </div>
-
-        {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
-
-        {/* Snap Settings Menu */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
-          <button
-            className={`p-1 rounded transition-all ${
-              showSnapMenu && !shouldDisableSnap 
-                ? 'bg-gray-600/90 text-white' 
-                : shouldDisableSnap
-                ? 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
-                : 'text-gray-300 hover:bg-gray-600/50 hover:text-gray-100'
-            }`}
-            onClick={() => !shouldDisableSnap && setShowSnapMenu(!showSnapMenu)}
-            disabled={shouldDisableSnap}
-            title={shouldDisableSnap ? `Snap Settings - Disabled in ${activeTool} mode` : "Snap Settings Menu"}
-          >
-            <Settings size={12} />
-          </button>
-        </div>
-
-        <div className="relative">
-          {/* Snap Menu Dropdown */}
-          {showSnapMenu && !shouldDisableSnap && (
-            <div className="absolute top-full left-0 mt-1 bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg min-w-[180px]">
-              {snapTools.map((snap) => (
-                <button
-                  key={snap.id}
-                  className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700/50 flex items-center justify-between transition-colors ${
-                    snapSettings[snap.id] ? 'bg-green-600/20 text-green-300' : 'text-gray-300'
-                  }`}
-                  onClick={() => handleSnapToggle(snap.id)}
-                >
-                  <div className="flex items-center gap-1.5">
-                    {snap.icon}
-                    <span className="font-medium">{snap.label}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-gray-400">{snap.shortcut}</span>
-                    <div className={`w-2 h-2 rounded-full ${snapSettings[snap.id] ? 'bg-green-500' : 'bg-gray-600'}`} />
-                  </div>
-                </button>
-              ))}
-              <div className="border-t border-gray-600/50 my-1"></div>
-              <div className="px-3 py-1 text-[10px] text-gray-400">
-                Click to toggle snap modes
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
-
-        {/* Modify tools */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
-          {modifyTools.map((tool) => (
+          {booleanTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-1 rounded transition-all hover:bg-gray-600/50 text-gray-300 hover:text-gray-100 ${
-                !selectedShapeId ? 'opacity-50 cursor-not-allowed' : ''
+              className={`p-1 rounded transition-all ${
+                activeTool === tool.id
+                  ? 'bg-blue-600/90 text-white shadow-sm'
+                  : !selectedShapeId
+                  ? 'opacity-50 cursor-not-allowed text-gray-500'
+                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
               }`}
-              onClick={() => selectedShapeId && handleModify(tool.id)}
-              title={`${tool.label} (${tool.shortcut})`}
+              onClick={() => selectedShapeId && setActiveTool(tool.id)}
               disabled={!selectedShapeId}
+              title={`${tool.label} (${tool.shortcut})`}
             >
               {tool.icon}
             </button>
           ))}
         </div>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
       </div>
 
       {/* Polyline Context Menu */}
@@ -761,6 +674,35 @@ const Toolbar: React.FC = () => {
             <GitBranch size={11} />
             <span className="font-medium">Draw Polyline</span>
           </button>
+        </div>
+      )}
+      {/* Snap Settings Menu */}
+      {showSnapMenu && (
+        <div
+          className="fixed bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg"
+          style={{
+            left: '200px', // Adjust position as needed
+            top: '120px',
+          }}
+        >
+          <div className="px-3 py-1.5 border-b border-gray-600/50">
+            <div className="text-xs text-gray-400 font-medium">Snap Settings</div>
+          </div>
+          
+          {Object.entries(snapSettings).map(([snapType, enabled]) => (
+            <button
+              key={snapType}
+              className={`w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 transition-colors ${
+                enabled
+                  ? 'bg-blue-600/20 text-blue-300'
+                  : 'hover:bg-gray-700/50 text-gray-300'
+              }`}
+              onClick={() => handleSnapToggle(snapType as SnapType)}
+            >
+              <div className={`w-2 h-2 rounded-full ${enabled ? 'bg-blue-400' : 'bg-gray-500'}`} />
+              <span className="font-medium capitalize">{snapType.replace('_', ' ')}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>
