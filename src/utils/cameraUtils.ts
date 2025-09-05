@@ -112,6 +112,9 @@ export const fitCameraToShapes = (
   // Smoothly animate to new position
   controls.object.position.copy(newPosition);
   controls.target.copy(targetPosition);
+  
+  // 🎯 CRITICAL: Reset target to prevent pan drift
+  controls.target.set(0, 100, 0); // Slightly elevated target for upward pan
   controls.update();
 
   console.log('Camera fitted to shapes (EDIT MODE OPTIMIZED):', {
@@ -151,6 +154,9 @@ export const fitCameraToShape = (
   controls.object.position.copy(fixedPosition);
   controls.target.copy(targetPosition);
   
+  // 🎯 CRITICAL: Ensure target is at shape center for proper pan behavior
+  controls.target.copy(targetPosition);
+  
   // For orthographic camera, set appropriate zoom for this fixed distance
   if (camera instanceof THREE.OrthographicCamera) {
     camera.zoom = 0.6; // Optimized zoom for the fixed distance
@@ -182,7 +188,7 @@ export const resetCameraPosition = (
   
   // More front-facing position with slight upward pan
   controls.object.position.set(distance * 0.5, distance * 0.8, distance * 0.9);
-  controls.target.set(0, 100, 0); // Slightly elevated target
+  controls.target.set(0, 0, 0); // 🎯 RESET: Center target to prevent pan drift
   
   if (camera instanceof THREE.OrthographicCamera) {
     camera.zoom = 0.25;
