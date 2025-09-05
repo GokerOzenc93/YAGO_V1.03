@@ -7,6 +7,7 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
  * - applyMatrix4 should be done *before* calling this
  * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
  * rebuilds indexed geometry, merges vertices, computes normals/bounds
+ * - merges coplanar faces to eliminate unnecessary vertices
  *
  * @param {THREE.BufferGeometry} geom - geometry already in target-local space
  * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
@@ -117,7 +118,10 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
 
-  // 7) Recompute normals and bounds
+ // 7) 🎯 NEW: Merge coplanar faces to eliminate unnecessary vertices
+ console.log('🎯 Starting coplanar face merging...');
+ merged = mergeCoplanarFaces(merged, tolerance);
+ // 8) Recompute normals and bounds
   merged.computeVertexNormals();
   merged.computeBoundingBox();
   merged.computeBoundingSphere();
@@ -137,6 +141,199 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   return merged;
 }
 
+/**
+ * Merge coplanar faces to eliminate unnecessary vertices and create cleaner surfaces
+ * @param {THREE.BufferGeometry} geometry - Input geometry
+ * @param {number} tolerance - Tolerance for coplanarity check
+ * @returns {THREE.BufferGeometry} Geometry with merged coplanar faces
+ */
+function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
+  if (!geometry.index || !geometry.attributes.position) {
+    console.warn('mergeCoplanarFaces: Invalid geometry');
+    return geometry;
+  }
+
+  const positions = geometry.attributes.position.array;
+  const indices = geometry.index.array;
+  const triangleCount = indices.length / 3;
+
+  console.log(`🎯 Analyzing ${triangleCount} triangles for coplanar face merging...`);
+
+  // Calculate face normals and centers
+  const faceNormals = [];
+  const faceCenters = [];
+  const faceAreas = [];
+
+  for (let i = 0; i < triangleCount; i++) {
+    const i0 = indices[i * 3] * 3;
+    const i1 = indices[i * 3 + 1] * 3;
+    const i2 = indices[i * 3 + 2] * 3;
+
+    const v0 = new THREE.Vector3(positions[i0], positions[i0 + 1], positions[i0 + 2]);
+    const v1 = new THREE.Vector3(positions[i1], positions[i1 + 1], positions[i1 + 2]);
+    const v2 = new THREE.Vector3(positions[i2], positions[i2 + 1], positions[i2 + 2]);
+
+    // Calculate normal
+    const edge1 = new THREE.Vector3().subVectors(v1, v0);
+    const edge2 = new THREE.Vector3().subVectors(v2, v0);
+    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+
+    // Calculate center
+    const center = new THREE.Vector3().addVectors(v0, v1).add(v2).divideScalar(3);
+
+    // Calculate area
+    const area = edge1.cross(edge2).length() / 2;
+
+    faceNormals.push(normal);
+    faceCenters.push(center);
+    faceAreas.push(area);
+  }
+
+  // Group coplanar faces
+  const coplanarGroups = [];
+  const processed = new Set();
+  const normalTolerance = Math.cos(THREE.MathUtils.degToRad(1)); // 1 degree tolerance
+  const planeTolerance = tolerance * 10; // Distance tolerance for same plane
+
+  for (let i = 0; i < triangleCount; i++) {
+    if (processed.has(i)) continue;
+
+    const group = [i];
+    const baseNormal = faceNormals[i];
+    const baseCenter = faceCenters[i];
+    processed.add(i);
+
+    // Find coplanar faces
+    for (let j = i + 1; j < triangleCount; j++) {
+      if (processed.has(j)) continue;
+
+      const testNormal = faceNormals[j];
+      const testCenter = faceCenters[j];
+
+      // Check if normals are parallel (same or opposite direction)
+      const normalDot = Math.abs(baseNormal.dot(testNormal));
+      if (normalDot < normalTolerance) continue;
+
+      // Check if faces are on the same plane
+      const centerDiff = new THREE.Vector3().subVectors(testCenter, baseCenter);
+      const distanceToPlane = Math.abs(centerDiff.dot(baseNormal));
+      
+      if (distanceToPlane < planeTolerance) {
+        group.push(j);
+        processed.add(j);
+      }
+    }
+
+    if (group.length > 1) {
+      coplanarGroups.push(group);
+    }
+  }
+
+  console.log(`🎯 Found ${coplanarGroups.length} coplanar face groups`);
+
+  if (coplanarGroups.length === 0) {
+    return geometry; // No coplanar faces to merge
+  }
+
+  // Create new geometry with merged faces
+  const newPositions = [];
+  const newIndices = [];
+  let vertexIndex = 0;
+
+  // Keep non-coplanar faces as-is
+  const allGroupedFaces = new Set();
+  coplanarGroups.forEach(group => group.forEach(faceIndex => allGroupedFaces.add(faceIndex)));
+
+  for (let i = 0; i < triangleCount; i++) {
+    if (allGroupedFaces.has(i)) continue;
+
+    // Copy original triangle
+    const i0 = indices[i * 3] * 3;
+    const i1 = indices[i * 3 + 1] * 3;
+    const i2 = indices[i * 3 + 2] * 3;
+
+    newPositions.push(
+      positions[i0], positions[i0 + 1], positions[i0 + 2],
+      positions[i1], positions[i1 + 1], positions[i1 + 2],
+      positions[i2], positions[i2 + 1], positions[i2 + 2]
+    );
+
+    newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
+    vertexIndex += 3;
+  }
+
+  // Process coplanar groups - create simplified faces
+  let mergedFaceCount = 0;
+  coplanarGroups.forEach(group => {
+    // Collect all vertices from the group
+    const groupVertices = [];
+    const vertexSet = new Set();
+
+    group.forEach(faceIndex => {
+      for (let v = 0; v < 3; v++) {
+        const idx = indices[faceIndex * 3 + v] * 3;
+        const vertex = new THREE.Vector3(positions[idx], positions[idx + 1], positions[idx + 2]);
+        const key = `${vertex.x.toFixed(6)}_${vertex.y.toFixed(6)}_${vertex.z.toFixed(6)}`;
+        
+        if (!vertexSet.has(key)) {
+          vertexSet.add(key);
+          groupVertices.push(vertex);
+        }
+      }
+    });
+
+    if (groupVertices.length < 3) return;
+
+    // Create a simplified representation using convex hull or boundary detection
+    // For now, we'll use a simple approach: create triangles from the boundary vertices
+    const normal = faceNormals[group[0]];
+    
+    // Project vertices to 2D plane for triangulation
+    const u = new THREE.Vector3(1, 0, 0);
+    if (Math.abs(normal.dot(u)) > 0.9) {
+      u.set(0, 1, 0);
+    }
+    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+    u.crossVectors(v, normal).normalize();
+
+    const projectedVertices = groupVertices.map(vertex => ({
+      vertex,
+      u: vertex.dot(u),
+      v: vertex.dot(v)
+    }));
+
+    // Simple fan triangulation from first vertex
+    if (projectedVertices.length >= 3) {
+      const baseVertex = projectedVertices[0].vertex;
+      
+      for (let i = 1; i < projectedVertices.length - 1; i++) {
+        const v1 = projectedVertices[i].vertex;
+        const v2 = projectedVertices[i + 1].vertex;
+
+        // Add triangle vertices
+        newPositions.push(
+          baseVertex.x, baseVertex.y, baseVertex.z,
+          v1.x, v1.y, v1.z,
+          v2.x, v2.y, v2.z
+        );
+
+        newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
+        vertexIndex += 3;
+      }
+      
+      mergedFaceCount++;
+    }
+  });
+
+  console.log(`🎯 Merged ${coplanarGroups.length} coplanar groups into ${mergedFaceCount} simplified faces`);
+
+  // Create new geometry
+  const mergedGeometry = new THREE.BufferGeometry();
+  mergedGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPositions), 3));
+  mergedGeometry.setIndex(newIndices);
+
+  return mergedGeometry;
+}
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
 const Vector3 = THREE.Vector3;
