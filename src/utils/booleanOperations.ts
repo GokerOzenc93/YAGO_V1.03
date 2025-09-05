@@ -250,19 +250,27 @@ export const performBooleanUnion = (
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
-    // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
-    console.log('🎯 Cleaning up CSG union result geometry...');
+    // 🎯 ADVANCED GEOMETRY CLEANUP - Remove extra vertices and create clean surfaces
+    console.log('🎯 Advanced CSG geometry cleanup for face selection...');
     
-    // BufferGeometryUtils.mergeVertices kullanarak manuel birleştirme
-    // kodunu daha güvenilir bir çözümle değiştiriyoruz.
-    newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-2);
+    // 1. İlk temizlik - duplicate vertex'leri birleştir
+    newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-3);
+    // Capture original counts before cleanup
+    const originalVertexCount = newGeom.attributes.position?.count || 0;
+    const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
+    
+    // 1. İlk temizlik - duplicate vertex'leri birleştir
+    newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-3);
+    
+    // 2. Coplanar face'leri birleştir ve fazla vertex'leri kaldır
+    newGeom = cleanupCSGGeometry(newGeom);
     
     const cleanVertexCount = newGeom.attributes.position?.count || 0;
     const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
     
-    console.log(`🎯 Union geometry cleaned: ${newGeom.attributes.position?.count || 0} -> ${cleanVertexCount} vertices, ${newGeom.index ? newGeom.index.count/3 : 0} -> ${cleanTriangleCount.toFixed(0)} triangles`);
+    console.log(`🎯 Advanced cleanup: ${originalVertexCount} -> ${cleanVertexCount} vertices, ${originalTriangleCount.toFixed(0)} -> ${cleanTriangleCount.toFixed(0)} triangles`);
     
-    // Final geometry processing
+    // 3. Recompute all geometry properties
     newGeom.computeVertexNormals();
     newGeom.computeBoundingBox();
     newGeom.computeBoundingSphere();
