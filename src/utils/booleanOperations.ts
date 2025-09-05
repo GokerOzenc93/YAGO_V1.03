@@ -2,6 +2,128 @@ import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
+/**
+ * Clean up CSG-generated geometry:
+ * - applyMatrix4 should be done *before* calling this
+ * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
+ *   rebuilds indexed geometry, merges vertices, computes normals/bounds
+ *
+ * @param {THREE.BufferGeometry} geom - geometry already in target-local space
+ * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
+ * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
+ */
+export function cleanCSGGeometry(geom: THREE.BufferGeometry, tolerance = 1e-3): THREE.BufferGeometry {
+  // 1) Ensure positions exist
+  if (!geom.attributes.position) {
+    console.warn('cleanCSGGeometry: geometry has no position attribute');
+    return geom;
+  }
+
+  console.log(`🎯 Starting CSG geometry cleanup with tolerance: ${tolerance}`);
+  const originalVertexCount = geom.attributes.position.count;
+  const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
+
+  // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
+  let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
+
+  const posAttr = nonIndexed.attributes.position;
+  const posArray = posAttr.array as Float32Array;
+  const triCount = posArray.length / 9; // 3 verts * 3 components
+
+  // 3) Spatial hash to weld vertices with given tolerance
+  const vertexMap = new Map<string, number>(); // key -> newIndex
+  const uniqueVerts: number[] = []; // flattened xyz
+  const newIndices: number[] = []; // triangles (indices into uniqueVerts)
+  let nextIndex = 0;
+
+  const hash = (x: number, y: number, z: number) =>
+    `${Math.round(x / tolerance)}_${Math.round(y / tolerance)}_${Math.round(z / tolerance)}`;
+
+  let degenerateCount = 0;
+
+  for (let tri = 0; tri < triCount; tri++) {
+    const triIndices: number[] = [];
+    for (let v = 0; v < 3; v++) {
+      const i = tri * 9 + v * 3;
+      const x = posArray[i];
+      const y = posArray[i + 1];
+      const z = posArray[i + 2];
+      const key = hash(x, y, z);
+
+      let idx: number;
+      if (vertexMap.has(key)) {
+        idx = vertexMap.get(key)!;
+      } else {
+        idx = nextIndex++;
+        vertexMap.set(key, idx);
+        uniqueVerts.push(x, y, z);
+      }
+      triIndices.push(idx);
+    }
+
+    // remove degenerate triangles (two or three indices equal)
+    if (
+      triIndices[0] === triIndices[1] ||
+      triIndices[1] === triIndices[2] ||
+      triIndices[0] === triIndices[2]
+    ) {
+      degenerateCount++;
+      continue;
+    }
+
+    newIndices.push(triIndices[0], triIndices[1], triIndices[2]);
+  }
+
+  console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
+
+  // 4) Build new indexed BufferGeometry
+  const cleaned = new THREE.BufferGeometry();
+  const posBuffer = new Float32Array(uniqueVerts);
+  cleaned.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
+  cleaned.setIndex(newIndices);
+
+  // 5) Merge vertices with BufferGeometryUtils as extra safety
+  let merged: THREE.BufferGeometry;
+  try {
+    merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
+  } catch (err) {
+    console.warn('BufferGeometryUtils.mergeVertices failed, using cleaned geometry:', err);
+    merged = cleaned;
+  }
+
+  // 6) Remove isolated vertices - Recompute indices validity
+  if (!merged.index || merged.index.count < 3) {
+    console.warn('Invalid index after merge, converting to non-indexed and re-merging');
+    const nonIdx = merged.toNonIndexed();
+    merged.dispose();
+    merged = nonIdx;
+    try {
+      merged = BufferGeometryUtils.mergeVertices(merged, tolerance);
+    } catch (err) {
+      console.warn('Second merge attempt failed, using non-indexed geometry:', err);
+    }
+  }
+
+  // 7) Recompute normals and bounds
+  merged.computeVertexNormals();
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+
+  const finalVertexCount = merged.attributes.position.count;
+  const finalTriangleCount = merged.index ? merged.index.count / 3 : finalVertexCount / 3;
+
+  console.log(`🎯 CSG cleanup complete:`, {
+    originalVertices: originalVertexCount,
+    finalVertices: finalVertexCount,
+    originalTriangles: originalTriangleCount.toFixed(0),
+    finalTriangles: finalTriangleCount.toFixed(0),
+    degenerateRemoved: degenerateCount,
+    vertexReduction: `${(((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1)}%`
+  });
+
+  return merged;
+}
+
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
 const Vector3 = THREE.Vector3;
@@ -139,27 +261,9 @@ export const performBooleanSubtract = (
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
       
-      // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
-      console.log('🎯 Cleaning up CSG subtraction result geometry...');
-      
-      // 1. Use BufferGeometryUtils.mergeVertices to remove duplicate vertices
-      const originalVertexCount = newGeom.attributes.position?.count || 0;
-      const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
-      
-      // Yeni bir geometri oluştur ve optimize et
-      newGeom = BufferGeometryUtils.mergeVertices(newGeom);
-      
-      const cleanVertexCount = newGeom.attributes.position?.count || 0;
-      const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
-      
-      console.log(`🎯 BufferGeometryUtils union cleanup: ${originalVertexCount} -> ${cleanVertexCount} vertices, ${originalTriangleCount.toFixed(0)} -> ${cleanTriangleCount.toFixed(0)} triangles`);
-      
-      // 2. Recompute all geometry properties
-      newGeom.computeVertexNormals();
-      newGeom.computeBoundingBox();
-      newGeom.computeBoundingSphere();
-      
-      console.log(`✅ Final union geometry: ${cleanVertexCount} vertices, ${cleanTriangleCount.toFixed(0)} triangles`);
+      // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
+      console.log('🎯 Applying robust CSG cleanup to subtraction result...');
+      newGeom = cleanCSGGeometry(newGeom, 0.001); // 0.001mm tolerance for precision
       
       // Dispose old geometry
       try { 
@@ -249,93 +353,9 @@ export const performBooleanUnion = (
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
-    // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
-    console.log('🎯 Cleaning up CSG union result geometry...');
-    
-    // Merge duplicate vertices (weld)
-    const mergedGeometry = new THREE.BufferGeometry();
-    const positions = newGeom.attributes.position;
-    const indices = newGeom.index;
-    
-    if (positions && indices) {
-      // Create clean geometry with merged vertices
-      const positionArray = positions.array;
-      const indexArray = indices.array;
-      
-      // Use a tolerance for merging close vertices
-      const tolerance = 0.001;
-      const uniqueVertices = [];
-      const vertexMap = new Map();
-      const newIndices = [];
-      
-      // Process each triangle
-      for (let i = 0; i < indexArray.length; i += 3) {
-        const triangle = [
-          indexArray[i],
-          indexArray[i + 1], 
-          indexArray[i + 2]
-        ];
-        
-        const newTriangle = [];
-        
-        for (const vertexIndex of triangle) {
-          const vertex = new THREE.Vector3(
-            positionArray[vertexIndex * 3],
-            positionArray[vertexIndex * 3 + 1],
-            positionArray[vertexIndex * 3 + 2]
-          );
-          
-          // Create a key for this vertex position
-          const key = `${Math.round(vertex.x / tolerance)}_${Math.round(vertex.y / tolerance)}_${Math.round(vertex.z / tolerance)}`;
-          
-          let newIndex;
-          if (vertexMap.has(key)) {
-            newIndex = vertexMap.get(key);
-          } else {
-            newIndex = uniqueVertices.length;
-            uniqueVertices.push(vertex);
-            vertexMap.set(key, newIndex);
-          }
-          
-          newTriangle.push(newIndex);
-        }
-        
-        // Only add triangle if it's not degenerate
-        if (newTriangle[0] !== newTriangle[1] && 
-            newTriangle[1] !== newTriangle[2] && 
-            newTriangle[0] !== newTriangle[2]) {
-          newIndices.push(...newTriangle);
-        }
-      }
-      
-      // Create clean position array
-      const cleanPositions = new Float32Array(uniqueVertices.length * 3);
-      uniqueVertices.forEach((vertex, index) => {
-        cleanPositions[index * 3] = vertex.x;
-        cleanPositions[index * 3 + 1] = vertex.y;
-        cleanPositions[index * 3 + 2] = vertex.z;
-      });
-      
-      // Set clean attributes
-      mergedGeometry.setAttribute('position', new THREE.BufferAttribute(cleanPositions, 3));
-      mergedGeometry.setIndex(newIndices);
-      
-      console.log(`🎯 Union geometry cleaned: ${positions.count} -> ${uniqueVertices.length} vertices, ${indexArray.length/3} -> ${newIndices.length/3} triangles`);
-      
-      // Use cleaned geometry
-      newGeom.dispose();
-      newGeom = mergedGeometry;
-    }
-    
-    // Final geometry processing
-    newGeom.computeVertexNormals();
-    newGeom.computeBoundingBox();
-    newGeom.computeBoundingSphere();
-    
-    console.log(`🎯 Union result geometry:`, {
-      vertices: newGeom.attributes.position?.count || 0,
-      triangles: newGeom.index ? newGeom.index.count / 3 : newGeom.attributes.position?.count / 3 || 0
-    });
+    // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
+    console.log('🎯 Applying robust CSG cleanup to union result...');
+    newGeom = cleanCSGGeometry(newGeom, 0.001); // 0.001mm tolerance for precision
     
     // Dispose old geometry
     try { 
