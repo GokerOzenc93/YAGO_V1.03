@@ -73,114 +73,70 @@ const recreateShapeFromBooleanResult = (
 ): THREE.BufferGeometry => {
   console.log('🎯 Recreating shape from boolean result...');
   
-  try {
-    // Get all vertices from the result geometry
-    const positions = resultGeometry.attributes.position;
-    if (!positions) {
-      console.warn('No position attribute found, using original geometry');
-      return resultGeometry;
-    }
-    
-    // Extract all vertices and analyze the geometry structure
-    const vertices: THREE.Vector3[] = [];
-    const vertexMap = new Map<string, THREE.Vector3>();
-    const precision = 100; // Reduced precision for better grouping
-    
-    for (let i = 0; i < positions.count; i++) {
-      const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
-      const key = `${Math.round(vertex.x * precision)},${Math.round(vertex.y * precision)},${Math.round(vertex.z * precision)}`;
-      
-      if (!vertexMap.has(key)) {
-        vertexMap.set(key, vertex);
-        vertices.push(vertex);
-      }
-    }
-    
-    console.log(`🎯 Extracted ${vertices.length} unique vertices from boolean result`);
-    
-    // Find the bounding box to determine the shape's dimensions
-    const bbox = new THREE.Box3().setFromPoints(vertices);
-    const size = bbox.getSize(new THREE.Vector3());
-    const center = bbox.getCenter(new THREE.Vector3());
-    
-    console.log(`🎯 Shape bounds: ${size.x.toFixed(1)}x${size.y.toFixed(1)}x${size.z.toFixed(1)}mm`);
-    
-    // Analyze the geometry to find the actual boundary outline
-    // Instead of convex hull, find the actual perimeter of the shape
-    const boundaryPoints = extractActualBoundary(resultGeometry, vertices);
-    
-    if (boundaryPoints.length < 3) {
-      console.warn('🎯 Could not extract proper boundary, using bounding box');
-      // Fallback to bounding box
-      const min = bbox.min;
-      const max = bbox.max;
-      const fallbackPoints = [
-        new THREE.Vector3(min.x, 0, min.z),
-        new THREE.Vector3(max.x, 0, min.z),
-        new THREE.Vector3(max.x, 0, max.z),
-        new THREE.Vector3(min.x, 0, max.z),
-        new THREE.Vector3(min.x, 0, min.z) // Close the loop
-      ];
-      
-      const height = size.y;
-      const newGeometry = createPolylineGeometry(fallbackPoints, height, 50, false);
-      
-      // Position at the center of the original shape
-      const translation = new THREE.Matrix4().makeTranslation(
-        center.x,
-        originalPosition[1],
-        center.z
-      );
-      newGeometry.applyMatrix4(translation);
-      
-      return newGeometry;
-    }
-    
-    console.log(`🎯 Created boundary with ${boundaryPoints.length} points`);
-    
-    // Use the polyline geometry creator to make a clean extruded shape
-    const height = size.y; // Use the calculated height
-    const newGeometry = createPolylineGeometry(boundaryPoints, height, 50, false);
-    
-    // Position the new geometry at the center of the boolean result
-    const translation = new THREE.Matrix4().makeTranslation(
-      center.x,
-      originalPosition[1], // Keep original Y position
-      center.z
-    );
-    newGeometry.applyMatrix4(translation);
-    
-    console.log(`✅ Shape recreated with actual boundary geometry`);
-    return newGeometry;
-    
-  } catch (error) {
-    console.error('🎯 Error recreating shape from boolean result:', error);
-    console.log('🎯 Falling back to original geometry');
+  // Get all vertices from the result geometry
+  const positions = resultGeometry.attributes.position;
+  if (!positions) {
+    console.warn('No position attribute found, using original geometry');
     return resultGeometry;
   }
-};
-
-// Extract actual boundary from geometry
-const extractActualBoundary = (geometry: THREE.BufferGeometry, vertices: THREE.Vector3[]): THREE.Vector3[] => {
-  // Project vertices to XZ plane and find convex hull
-  const projectedPoints = vertices.map(v => new THREE.Vector2(v.x, v.z));
-  const uniquePoints = Array.from(
-    new Map(projectedPoints.map(p => [`${p.x.toFixed(3)},${p.y.toFixed(3)}`, p])).values()
-  );
   
-  if (uniquePoints.length < 3) return [];
+  // Extract unique vertices
+  const vertices: THREE.Vector3[] = [];
+  const vertexMap = new Map<string, THREE.Vector3>();
+  const precision = 1000; // 1mm precision
   
-  const hull2D = getConvexHull2D(uniquePoints);
+  for (let i = 0; i < positions.count; i++) {
+    const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
+    const key = `${Math.round(vertex.x * precision)},${Math.round(vertex.y * precision)},${Math.round(vertex.z * precision)}`;
+    
+    if (!vertexMap.has(key)) {
+      vertexMap.set(key, vertex);
+      vertices.push(vertex);
+    }
+  }
   
-  // Convert back to 3D points at Y=0
-  const boundaryPoints = hull2D.map(p => new THREE.Vector3(p.x, 0, p.y));
+  console.log(`🎯 Extracted ${vertices.length} unique vertices from boolean result`);
   
-  // Close the loop
-  if (boundaryPoints.length > 0) {
+  // Find the bounding box to determine the shape's dimensions
+  const bbox = new THREE.Box3().setFromPoints(vertices);
+  const size = bbox.getSize(new THREE.Vector3());
+  const center = bbox.getCenter(new THREE.Vector3());
+  
+  console.log(`🎯 Shape bounds: ${size.x.toFixed(1)}x${size.y.toFixed(1)}x${size.z.toFixed(1)}mm`);
+  
+  // Create boundary points by projecting to XZ plane (top view)
+  const boundaryPoints: THREE.Vector3[] = [];
+  const projectedVertices = vertices.map(v => new THREE.Vector2(v.x, v.z));
+  
+  // Find convex hull of projected points to get clean boundary
+  const hull = getConvexHull2D(projectedVertices);
+  
+  // Convert hull back to 3D points at ground level (Y=0)
+  hull.forEach(point2D => {
+    boundaryPoints.push(new THREE.Vector3(point2D.x, 0, point2D.y));
+  });
+  
+  // Close the boundary if not already closed
+  if (boundaryPoints.length > 2 && !boundaryPoints[0].equals(boundaryPoints[boundaryPoints.length - 1])) {
     boundaryPoints.push(boundaryPoints[0].clone());
   }
   
-  return boundaryPoints;
+  console.log(`🎯 Created boundary with ${boundaryPoints.length} points`);
+  
+  // Use the polyline geometry creator to make a clean extruded shape
+  const height = size.y; // Use the original height
+  const newGeometry = createPolylineGeometry(boundaryPoints, height, 50, false);
+  
+  // Position the new geometry at the original position
+  const translation = new THREE.Matrix4().makeTranslation(
+    originalPosition[0],
+    originalPosition[1],
+    originalPosition[2]
+  );
+  newGeometry.applyMatrix4(translation);
+  
+  console.log(`✅ Shape recreated with clean polyline-based geometry`);
+  return newGeometry;
 };
 
 // Simple 2D convex hull algorithm (Graham scan)
