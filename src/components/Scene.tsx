@@ -147,6 +147,9 @@ const CameraController: React.FC<CameraControllerProps> = ({
       enableRotate={true}
       enablePan={true}
       enableZoom={true}
+      rotateSpeed={0.5}
+      panSpeed={0.8}
+      zoomSpeed={1.0}
       mouseButtons={{
         LEFT: undefined, // Sol tık = Sadece seçim için
         MIDDLE: THREE.MOUSE.ROTATE, // Orta tık = Döndürme
@@ -156,9 +159,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
         ONE: THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN,
       }}
-      target0={undefined}
-      position0={undefined}
-      zoom0={undefined}
       onChange={() => {
         if (controlsRef.current) {
           const camera = controlsRef.current.object;
