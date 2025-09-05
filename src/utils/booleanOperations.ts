@@ -263,7 +263,7 @@ export const performBooleanSubtract = (
       
       // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.01); // 0.01mm tolerance for precision
+      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
       
       // Dispose old geometry
       try { 
@@ -355,7 +355,7 @@ export const performBooleanUnion = (
     
     // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.01); // 0.01mm tolerance for precision
+    newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
     
     // Dispose old geometry
     try { 
