@@ -609,7 +609,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
      
   performBooleanOperation: (operation) => {
-    const { shapes, selectedShapeId } = get();
+    const { shapes, selectedShapeId, updateShape, deleteShape } = get();
     if (!selectedShapeId) {
       console.warn('No shape selected for boolean operation');
       return;
@@ -621,50 +621,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     
-    // Find intersecting shapes
-    const intersectingShapes = shapes.filter(shape => {
-      if (shape.id === selectedShapeId) return false;
-      
-      // Simple bounding box intersection check
-      const selectedBounds = getShapeBounds(selectedShape);
-      const shapeBounds = getShapeBounds(shape);
-      
-      return boundsIntersect(selectedBounds, shapeBounds);
-    });
-    
-    if (intersectingShapes.length === 0) {
-      console.log('No intersecting shapes found for boolean operation');
-      return;
+    let success = false;
+    if (operation === 'subtract') {
+      success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
+    } else if (operation === 'union') {
+      success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
     }
     
-    if (operation === 'subtract') {
-      // For subtract operation: remove selected shape geometry from intersecting shapes
-      const updatedShapes = shapes.filter(s => s.id !== selectedShapeId).map(shape => {
-        const isIntersecting = intersectingShapes.some(is => is.id === shape.id);
-        if (isIntersecting) {
-          console.log(`🎯 Boolean Subtract: Removing shape ${selectedShapeId} from shape ${shape.id}`);
-          const modifiedGeometry = createSubtractedGeometry(shape.geometry, selectedShape);
-          
-          return {
-            ...shape,
-            geometry: modifiedGeometry,
-            parameters: {
-              ...shape.parameters,
-              booleanOperation: 'subtract',
-              subtractedShapeId: selectedShapeId,
-              lastModified: Date.now()
-            }
-          };
-        }
-        return shape;
-      });
-      
-      set({ 
-        shapes: updatedShapes,
-        selectedShapeId: null
-      });
-      
-      console.log(`Boolean subtract completed: removed shape ${selectedShapeId} from ${intersectingShapes.length} intersecting shapes`);
+    if (success) {
+      set({ selectedShapeId: null });
     }
   },
     
