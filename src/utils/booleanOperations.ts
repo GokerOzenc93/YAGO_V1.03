@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
+import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Shape } from '../types/shapes';
 
 // Doğru bounding box hesaplama (rotation/scale destekli)
@@ -86,146 +87,24 @@ const createBrushFromShape = (shape: Shape): Brush => {
 
 // Perform boolean subtract operation with three-bvh-csg
 export const performBooleanSubtract = (
-  selectedShape: Shape,
-  allShapes: Shape[],
-  updateShape: (id: string, updates: Partial<Shape>) => void,
-  deleteShape: (id: string) => void
-): boolean => {
-  console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
-  console.log(`🎯 Selected shape to subtract: ${selectedShape.type} (${selectedShape.id})`);
-  
-  // Find intersecting shapes
-  const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
-  
-  if (intersectingShapes.length === 0) {
-    console.log('❌ No intersecting shapes found for boolean operation');
-    return false;
-  }
-  
-  console.log(`🎯 Processing ${intersectingShapes.length} intersecting shapes with CSG`);
-  
-  const evaluator = new Evaluator();
-  
-  try {
-    // Apply subtract operation to each intersecting shape
-    intersectingShapes.forEach((targetShape, index) => {
-      console.log(`🎯 [${index + 1}/${intersectingShapes.length}] Processing CSG subtract: ${targetShape.type} (${targetShape.id}) - ${selectedShape.type} (${selectedShape.id})`);
+      // 1. Use BufferGeometryUtils to merge duplicate vertices automatically
+      const originalVertexCount = newGeom.attributes.position?.count || 0;
+      const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
       
-      // Create brush for selected shape (the cutter)
-      const cutterBrush = createBrushFromShape(selectedShape);
+      // Merge vertices with tolerance (removes coplanar faces and duplicates)
+      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-3);
       
-      // Create brush for target shape (the one we cut)
-      const targetBrush = createBrushFromShape(targetShape);
+      const cleanVertexCount = newGeom.attributes.position?.count || 0;
+      const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
       
-      console.log('🎯 Performing CSG subtraction...');
+      console.log(`🎯 BufferGeometryUtils union cleanup: ${originalVertexCount} -> ${cleanVertexCount} vertices, ${originalTriangleCount.toFixed(0)} -> ${cleanTriangleCount.toFixed(0)} triangles`);
       
-      // B - A (target minus cutter)
-      const resultMesh = evaluator.evaluate(targetBrush, cutterBrush, SUBTRACTION) as THREE.Mesh;
-      
-      if (!resultMesh || !resultMesh.geometry) {
-        console.error('❌ CSG operation failed - no result mesh');
-        return;
-      }
-      
-      resultMesh.updateMatrixWorld(true);
-      
-      console.log('✅ CSG subtraction completed, transforming result to local space...');
-      
-      // Transform result geometry back into target's LOCAL space
-      const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
-      let newGeom = resultMesh.geometry.clone();
-      newGeom.applyMatrix4(invTarget);
-      
-      // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
-      console.log('🎯 Cleaning up CSG result geometry...');
-      
-      // Merge duplicate vertices (weld)
-      const mergedGeometry = new THREE.BufferGeometry();
-      const positions = newGeom.attributes.position;
-      const indices = newGeom.index;
-      
-      if (positions && indices) {
-        // Create clean geometry with merged vertices
-        const positionArray = positions.array as Float32Array;
-        const indexArray = indices.array as Uint32Array;
-        
-        // Use a tolerance for merging close vertices
-        const tolerance = 0.001;
-        const uniqueVertices: THREE.Vector3[] = [];
-        const vertexMap = new Map<string, number>();
-        const newIndices: number[] = [];
-        
-        // Process each triangle
-        for (let i = 0; i < indexArray.length; i += 3) {
-          const triangle = [
-            indexArray[i],
-            indexArray[i + 1], 
-            indexArray[i + 2]
-          ];
-          
-          const newTriangle: number[] = [];
-          
-          for (const vertexIndex of triangle) {
-            const vertex = new THREE.Vector3(
-              positionArray[vertexIndex * 3],
-              positionArray[vertexIndex * 3 + 1],
-              positionArray[vertexIndex * 3 + 2]
-            );
-            
-            // Create a key for this vertex position
-            const key = `${Math.round(vertex.x / tolerance)}_${Math.round(vertex.y / tolerance)}_${Math.round(vertex.z / tolerance)}`;
-            
-            let newIndex: number;
-            if (vertexMap.has(key)) {
-              newIndex = vertexMap.get(key)!;
-            } else {
-              newIndex = uniqueVertices.length;
-              uniqueVertices.push(vertex);
-              vertexMap.set(key, newIndex);
-            }
-            
-            newTriangle.push(newIndex);
-          }
-          
-          // Only add triangle if it's not degenerate
-          if (newTriangle[0] !== newTriangle[1] && 
-              newTriangle[1] !== newTriangle[2] && 
-              newTriangle[0] !== newTriangle[2]) {
-            newIndices.push(...newTriangle);
-          }
-        }
-        
-        // Create clean position array
-        const cleanPositions = new Float32Array(uniqueVertices.length * 3);
-        uniqueVertices.forEach((vertex, index) => {
-          cleanPositions[index * 3] = vertex.x;
-          cleanPositions[index * 3 + 1] = vertex.y;
-          cleanPositions[index * 3 + 2] = vertex.z;
-        });
-        
-        // Set clean attributes
-        mergedGeometry.setAttribute('position', new THREE.BufferAttribute(cleanPositions, 3));
-        mergedGeometry.setIndex(newIndices);
-        
-        console.log(`🎯 Geometry cleaned: ${positions.count} -> ${uniqueVertices.length} vertices, ${indexArray.length/3} -> ${newIndices.length/3} triangles`);
-        
-        // Use cleaned geometry
-        newGeom.dispose();
-        newGeom = mergedGeometry;
-      }
-      
-      // Final geometry processing
+      // 2. Recompute all geometry properties
       newGeom.computeVertexNormals();
       newGeom.computeBoundingBox();
       newGeom.computeBoundingSphere();
       
-      console.log(`🎯 Result geometry:`, {
-        vertices: newGeom.attributes.position?.count || 0,
-        triangles: newGeom.index ? newGeom.index.count / 3 : newGeom.attributes.position?.count / 3 || 0
-      });
-      
-      // Dispose old geometry
-      try { 
+      console.log(`✅ Final union geometry: ${cleanVertexCount} vertices, ${cleanTriangleCount.toFixed(0)} triangles`);
         targetShape.geometry.dispose(); 
       } catch (e) { 
         console.warn('Could not dispose old geometry:', e);
