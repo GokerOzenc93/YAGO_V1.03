@@ -118,10 +118,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
 
- // 7) 🎯 NEW: Merge coplanar faces to eliminate unnecessary vertices
- console.log('🎯 Starting coplanar face merging...');
- merged = mergeCoplanarFaces(merged, tolerance);
- // 8) Recompute normals and bounds
+ // 7) Recompute normals and bounds
   merged.computeVertexNormals();
   merged.computeBoundingBox();
   merged.computeBoundingSphere();
