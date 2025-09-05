@@ -134,6 +134,74 @@ const CameraController: React.FC<CameraControllerProps> = ({
     (window as any).cameraControls = controlsRef.current;
   }, []);
 
+  // 🎯 CUSTOM PAN BEHAVIOR - Prevent initial jump
+  useEffect(() => {
+    if (!controlsRef.current) return;
+
+    const controls = controlsRef.current;
+    let isPanning = false;
+    let panStart = new THREE.Vector2();
+    let panEnd = new THREE.Vector2();
+    let panDelta = new THREE.Vector2();
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button === 1) { // Middle mouse button
+        isPanning = true;
+        panStart.set(event.clientX, event.clientY);
+        panEnd.copy(panStart);
+        event.preventDefault();
+      }
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isPanning) return;
+      
+      panEnd.set(event.clientX, event.clientY);
+      panDelta.subVectors(panEnd, panStart).multiplyScalar(0.002);
+      
+      // Apply pan movement manually
+      const offset = new THREE.Vector3();
+      offset.copy(controls.object.position).sub(controls.target);
+      
+      // Calculate pan vectors
+      const targetDistance = offset.length();
+      const panLeft = new THREE.Vector3();
+      const panUp = new THREE.Vector3();
+      
+      panLeft.setFromMatrixColumn(controls.object.matrix, 0);
+      panUp.setFromMatrixColumn(controls.object.matrix, 1);
+      
+      panLeft.multiplyScalar(-panDelta.x * targetDistance);
+      panUp.multiplyScalar(panDelta.y * targetDistance);
+      
+      const pan = new THREE.Vector3();
+      pan.copy(panLeft).add(panUp);
+      
+      controls.target.add(pan);
+      controls.object.position.add(pan);
+      
+      panStart.copy(panEnd);
+      controls.update();
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      if (event.button === 1) {
+        isPanning = false;
+      }
+    };
+
+    const canvas = controls.domElement;
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    return () => {
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
   return (
     <OrbitControls
       ref={controlsRef}
@@ -145,10 +213,10 @@ const CameraController: React.FC<CameraControllerProps> = ({
       maxPolarAngle={Math.PI}
       minPolarAngle={0}
       enableRotate={true}
-      enablePan={true}
+      enablePan={false}
       enableZoom={true}
       rotateSpeed={0.5}
-      panSpeed={0.8}
+      panSpeed={0}
       zoomSpeed={1.0}
       autoRotate={false}
       autoRotateSpeed={0}
@@ -156,7 +224,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
       keyPanSpeed={7.0}
       mouseButtons={{
         LEFT: null, // Sol tık = Sadece seçim için
-        MIDDLE: THREE.MOUSE.PAN, // Orta tık = Pan (kaydırma)
+        MIDDLE: null, // Orta tık = Custom pan (manuel kontrol)
         RIGHT: THREE.MOUSE.ROTATE, // Sağ tık = Döndürme
       }}
       touches={{
