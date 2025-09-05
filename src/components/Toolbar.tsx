@@ -7,6 +7,7 @@ const Toolbar: React.FC = () => {
   const { 
     setActiveTool, 
     activeTool, 
+    setLastTransformTool,
     addShape, 
     selectedShapeId, 
     modifyShape, 
@@ -59,6 +60,12 @@ const Toolbar: React.FC = () => {
   // 🎯 NEW: Handle ortho mode toggle
   const handleOrthoModeToggle = () => {
     toggleOrthoMode();
+  };
+
+  // Handle transform tool selection
+  const handleTransformToolSelect = (tool: Tool) => {
+    setActiveTool(tool);
+    setLastTransformTool(tool);
   };
 
   const handleModify = (type: ModificationType) => {
@@ -556,9 +563,18 @@ const Toolbar: React.FC = () => {
               className={`p-1 rounded transition-all ${
                 activeTool === tool.id
                   ? 'bg-blue-600/90 text-white shadow-sm'
-                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                  : tool.id === Tool.SELECT || selectedShapeId
+                  ? 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                  : 'opacity-50 cursor-not-allowed text-gray-500'
               }`}
-              onClick={() => setActiveTool(tool.id)}
+              onClick={() => {
+                if (tool.id === Tool.SELECT) {
+                  setActiveTool(tool.id);
+                } else if (selectedShapeId) {
+                  handleTransformToolSelect(tool.id);
+                }
+              }}
+              disabled={tool.id !== Tool.SELECT && !selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
               {tool.icon}

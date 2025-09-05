@@ -107,6 +107,8 @@ export const UNIT_CONVERSIONS = {
 interface AppState {
   activeTool: Tool;
   setActiveTool: (tool: Tool) => void;
+  lastTransformTool: Tool;
+  setLastTransformTool: (tool: Tool) => void;
   shapes: Shape[];
   addShape: (shape: Shape) => void;
   updateShape: (id: string, updates: Partial<Shape>) => void;
@@ -213,6 +215,13 @@ cylinder.position = [750, 250, 0];
 export const useAppStore = create<AppState>((set, get) => ({
   activeTool: Tool.SELECT,
   setActiveTool: (tool) => set({ activeTool: tool }),
+  lastTransformTool: Tool.MOVE,
+  setLastTransformTool: (tool) => {
+    // Only store actual transform tools
+    if ([Tool.MOVE, Tool.ROTATE, Tool.SCALE].includes(tool)) {
+      set({ lastTransformTool: tool });
+    }
+  },
   
   gridSize: 50,
   setGridSize: (size) => set({ gridSize: size }),
@@ -508,7 +517,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
     
   selectedShapeId: null,
-  selectShape: (id) => set({ selectedShapeId: id }),
+  selectShape: (id) => {
+    const { activeTool, lastTransformTool } = get();
+    
+    // If selecting a shape while in SELECT mode, auto-switch to last transform tool
+    if (id && activeTool === Tool.SELECT) {
+      set({ 
+        selectedShapeId: id,
+        activeTool: lastTransformTool
+      });
+      console.log(`🎯 Auto-switched from SELECT to ${lastTransformTool} mode`);
+    } else {
+      set({ selectedShapeId: id });
+    }
+  },
   
   history: {
     past: [],
