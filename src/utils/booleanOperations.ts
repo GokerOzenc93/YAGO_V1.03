@@ -471,11 +471,12 @@ export const performBooleanSubtract = (
       // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
       newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+      newGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
       
       // Dispose old geometry
-      try { 
-        targetShape.geometry.dispose(); 
-      } catch (e) { 
+      try {  
+        targetShape.geometry.dispose();  
+      } catch (e) {  
         console.warn('Could not dispose old geometry:', e);
       }
       
@@ -563,11 +564,12 @@ export const performBooleanUnion = (
     // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
     newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+    newGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
     
     // Dispose old geometry
-    try { 
-      targetShape.geometry.dispose(); 
-    } catch (e) { 
+    try {  
+      targetShape.geometry.dispose();  
+    } catch (e) {  
       console.warn('Could not dispose old geometry:', e);
     }
     
