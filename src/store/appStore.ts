@@ -613,7 +613,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!selectedShapeId) {
       console.warn('No shape selected for boolean operation');
       return;
-     console.log(`🎯 Boolean subtract completed: Shape ${selectedShapeId} removed from ${intersectingShapes.length} intersecting shapes with geometry modification`);
     }
     
     const selectedShape = shapes.find(s => s.id === selectedShapeId);
