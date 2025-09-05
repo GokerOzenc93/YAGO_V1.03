@@ -59,6 +59,9 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
     orthoMode
   } = useAppStore();
   
+  // Check if current tool should have snap disabled
+  const shouldDisableSnap = [Tool.SELECT, Tool.MOVE, Tool.ROTATE, Tool.SCALE].includes(activeTool);
+  
   // Drawing state
   const [drawingState, setDrawingState] = useState<DrawingState>(INITIAL_DRAWING_STATE);
   const [completedShapes, setCompletedShapes] = useState<CompletedShape[]>([]);
@@ -188,8 +191,8 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       }
     }
     
-    // Only handle snap detection for non-dimension tools
-    if (activeTool !== Tool.DIMENSION) {
+    // Only handle snap detection for drawing tools (not select/transform/dimension tools)
+    if (activeTool !== Tool.DIMENSION && !shouldDisableSnap) {
       // 🎯 SNAP DETECTION with increased tolerance for perspective
       const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 3 : 1);
       
@@ -224,6 +227,18 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
       }
       
       return finalPoint;
+    } else {
+      // For select/transform/dimension tools, clear snap point and return raw world point
+      updateDrawingState({ snapPoint: null });
+      
+      // For select/transform tools, still apply grid snap for consistency
+      if (shouldDisableSnap) {
+        return new THREE.Vector3(
+          snapToGrid(worldPoint.x, gridSize),
+          0,
+          snapToGrid(worldPoint.z, gridSize)
+        );
+      }
     }
 
     // For dimension tool, return raw world point
