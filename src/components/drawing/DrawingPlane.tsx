@@ -546,7 +546,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // UNIFIED: Handle polyline/polygon drawing
-  const handlePolylinePolygonDrawing = (point: THREE.Vector3) => {
+  const handlePolylinePolygonDrawing = async (point: THREE.Vector3) => {
     if (!drawingState.isDrawing) {
       setDrawingState({
         isDrawing: true,
