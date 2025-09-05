@@ -280,7 +280,7 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       const secondScreen = dimensionsState.secondPoint.clone().project(camera);
 
       // Yüzde yüz 2D ekran çizgisi oluştur
-      const direction2D = new THREE.Vector2().subVectors(secondScreen, firstScreen).normalize();
+      const direction2D = new THREE.Vector2().subVectors(new THREE.Vector2(secondScreen.x, secondScreen.y), new THREE.Vector2(firstScreen.x, firstScreen.y)).normalize();
 
       // Bu 2D çizgisine dik bir vektör
       const perpendicular2D = new THREE.Vector2(-direction2D.y, direction2D.x);
