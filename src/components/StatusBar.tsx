@@ -18,7 +18,8 @@ const StatusBar: React.FC = () => {
     convertToDisplayUnit,
     shapes,
     viewMode, // 🎯 NEW: Get current view mode
-    setViewMode // 🎯 NEW: Set view mode
+    setViewMode, // 🎯 NEW: Set view mode
+    geometryMode
   } = useAppStore();
   
   const formatValue = (value: number) => convertToDisplayUnit(value).toFixed(2);
