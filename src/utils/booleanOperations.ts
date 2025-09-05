@@ -26,7 +26,20 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
   let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
 
+  // 2.1) Validate geometry after conversion
+  if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
+    console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
+    return new THREE.BufferGeometry();
+  }
+
   const posAttr = nonIndexed.attributes.position;
+  
+  // 2.2) Validate position attribute array
+  if (!posAttr.array || posAttr.array.length === 0) {
+    console.warn('cleanCSGGeometry: position attribute has no array or empty array');
+    return new THREE.BufferGeometry();
+  }
+  
   const posArray = posAttr.array;
   const triCount = posArray.length / 9; // 3 verts * 3 components
 
