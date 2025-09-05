@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
+import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {
