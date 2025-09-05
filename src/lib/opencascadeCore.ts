@@ -21,7 +21,7 @@ export const initializeOpenCascade = async (): Promise<OpenCascadeInstance> => {
   initPromise = initOpenCascade({
     locateFile: (path: string) => {
       // Use CDN for OpenCascade.js files
-      return `https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.2a/${path}`;
+      return `https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/${path}`;
     }
   }).then((oc) => {
     ocInstance = oc;
