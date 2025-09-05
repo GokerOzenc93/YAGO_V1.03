@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CSG } from 'three-bvh-csg';
 import { Shape } from '../types/shapes';
 
 // Helper function to get shape bounds with transformations
@@ -31,82 +32,21 @@ const boundsIntersect = (bounds1: THREE.Box3, bounds2: THREE.Box3): boolean => {
   );
 };
 
-// Create a modified geometry with cavity effect
-const createSubtractedGeometry = (
-  targetGeometry: THREE.BufferGeometry, 
-  subtractShape: Shape
-): THREE.BufferGeometry => {
-  console.log('🎯 Creating subtracted geometry...');
+// Helper function to create mesh from shape for CSG operations
+const createMeshFromShape = (shape: Shape): THREE.Mesh => {
+  const geometry = shape.geometry.clone();
+  const material = new THREE.MeshBasicMaterial({ color: 0x888888 });
+  const mesh = new THREE.Mesh(geometry, material);
   
-  // Clone the original geometry
-  const newGeometry = targetGeometry.clone();
+  // Apply transformations
+  mesh.position.set(...shape.position);
+  mesh.rotation.set(...shape.rotation);
+  mesh.scale.set(...shape.scale);
   
-  // Get the subtract shape's bounds and center
-  const subtractBounds = getShapeBounds(subtractShape);
-  const subtractCenter = new THREE.Vector3(
-    (subtractBounds.min.x + subtractBounds.max.x) / 2,
-    (subtractBounds.min.y + subtractBounds.max.y) / 2,
-    (subtractBounds.min.z + subtractBounds.max.z) / 2
-  );
+  // Update matrix
+  mesh.updateMatrixWorld(true);
   
-  // Calculate influence radius based on subtract shape size
-  const influenceRadius = Math.max(
-    subtractBounds.max.x - subtractBounds.min.x,
-    subtractBounds.max.y - subtractBounds.min.y,
-    subtractBounds.max.z - subtractBounds.min.z
-  ) / 2;
-  
-  console.log('🎯 Subtract operation:', {
-    center: subtractCenter.toArray().map(v => v.toFixed(1)),
-    influenceRadius: influenceRadius.toFixed(1),
-    shapeType: subtractShape.type
-  });
-  
-  // Modify vertices to create cavity effect
-  const positions = newGeometry.attributes.position;
-  if (positions) {
-    const positionArray = positions.array as Float32Array;
-    let modifiedVertices = 0;
-    
-    for (let i = 0; i < positions.count; i++) {
-      const vertex = new THREE.Vector3(
-        positionArray[i * 3],
-        positionArray[i * 3 + 1],
-        positionArray[i * 3 + 2]
-      );
-      
-      // Check if vertex is within the subtract shape's influence
-      const distance = vertex.distanceTo(subtractCenter);
-      
-      if (distance < influenceRadius) {
-        // Create a cavity effect by pushing vertices inward
-        const direction = vertex.clone().sub(subtractCenter).normalize();
-        const pushDistance = (influenceRadius - distance) * 0.4; // Cavity depth factor
-        
-        // Push vertex inward (toward the center)
-        vertex.sub(direction.multiplyScalar(pushDistance));
-        
-        // Update the position array
-        positionArray[i * 3] = vertex.x;
-        positionArray[i * 3 + 1] = vertex.y;
-        positionArray[i * 3 + 2] = vertex.z;
-        
-        modifiedVertices++;
-      }
-    }
-    
-    console.log(`🎯 Modified ${modifiedVertices} vertices for cavity effect`);
-    
-    // Mark the attribute as needing update
-    positions.needsUpdate = true;
-    
-    // Recompute geometry properties
-    newGeometry.computeVertexNormals();
-    newGeometry.computeBoundingBox();
-    newGeometry.computeBoundingSphere();
-  }
-  
-  return newGeometry;
+  return mesh;
 };
 
 // Find intersecting shapes
@@ -132,14 +72,14 @@ export const findIntersectingShapes = (
   return intersectingShapes;
 };
 
-// Perform boolean subtract operation
+// Perform boolean subtract operation using three-bvh-csg
 export const performBooleanSubtract = (
   selectedShape: Shape,
   allShapes: Shape[],
   updateShape: (id: string, updates: Partial<Shape>) => void,
   deleteShape: (id: string) => void
 ): boolean => {
-  console.log('🎯 Starting boolean subtract operation...');
+  console.log('🎯 Starting CSG boolean subtract operation...');
   
   // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
@@ -151,42 +91,150 @@ export const performBooleanSubtract = (
   
   console.log(`🎯 Found ${intersectingShapes.length} intersecting shapes`);
   
-  // Apply subtract operation to each intersecting shape
-  intersectingShapes.forEach(targetShape => {
-    console.log(`🎯 Subtracting ${selectedShape.type} from ${targetShape.type}`);
-    
-    // Create modified geometry
-    const modifiedGeometry = createSubtractedGeometry(targetShape.geometry, selectedShape);
-    
-    // Update the target shape with modified geometry
-    updateShape(targetShape.id, {
-      geometry: modifiedGeometry,
-      parameters: {
-        ...targetShape.parameters,
-        booleanOperation: 'subtract',
-        subtractedShapeId: selectedShape.id,
-        lastModified: Date.now()
+  try {
+    // Apply subtract operation to each intersecting shape
+    intersectingShapes.forEach(targetShape => {
+      console.log(`🎯 CSG Subtracting ${selectedShape.type} from ${targetShape.type}`);
+      
+      // Create meshes for CSG operation
+      const targetMesh = createMeshFromShape(targetShape);
+      const subtractMesh = createMeshFromShape(selectedShape);
+      
+      // Perform CSG subtract operation
+      const resultMesh = CSG.subtract(targetMesh, subtractMesh);
+      
+      if (resultMesh && resultMesh.geometry) {
+        // Apply the result geometry to world space
+        resultMesh.geometry.applyMatrix4(resultMesh.matrixWorld);
+        
+        // Update the target shape with new geometry
+        const newGeometry = resultMesh.geometry.clone();
+        newGeometry.computeBoundingBox();
+        newGeometry.computeBoundingSphere();
+        newGeometry.computeVertexNormals();
+        
+        updateShape(targetShape.id, {
+          geometry: newGeometry,
+          parameters: {
+            ...targetShape.parameters,
+            booleanOperation: 'subtract',
+            subtractedShapeId: selectedShape.id,
+            lastModified: Date.now()
+          }
+        });
+        
+        console.log(`✅ CSG subtract applied to shape ${targetShape.id}`);
+        
+        // Clean up temporary meshes
+        targetMesh.geometry.dispose();
+        (targetMesh.material as THREE.Material).dispose();
+        subtractMesh.geometry.dispose();
+        (subtractMesh.material as THREE.Material).dispose();
+        
+        if (resultMesh.geometry !== newGeometry) {
+          resultMesh.geometry.dispose();
+        }
+        if (resultMesh.material) {
+          (resultMesh.material as THREE.Material).dispose();
+        }
+      } else {
+        console.warn(`⚠️ CSG operation failed for shape ${targetShape.id}`);
       }
     });
     
-    console.log(`✅ Applied subtract operation to shape ${targetShape.id}`);
-  });
-  
-  // Delete the selected shape (the one being subtracted)
-  deleteShape(selectedShape.id);
-  console.log(`🗑️ Deleted subtracted shape: ${selectedShape.id}`);
-  
-  console.log(`✅ Boolean subtract completed: ${intersectingShapes.length} shapes modified`);
-  return true;
+    // Delete the selected shape (the one being subtracted)
+    deleteShape(selectedShape.id);
+    console.log(`🗑️ Deleted subtracted shape: ${selectedShape.id}`);
+    
+    console.log(`✅ CSG Boolean subtract completed: ${intersectingShapes.length} shapes modified`);
+    return true;
+    
+  } catch (error) {
+    console.error('❌ CSG Boolean subtract failed:', error);
+    return false;
+  }
 };
 
-// Perform boolean union operation (placeholder for future implementation)
+// Perform boolean union operation using three-bvh-csg
 export const performBooleanUnion = (
   selectedShape: Shape,
   allShapes: Shape[],
   updateShape: (id: string, updates: Partial<Shape>) => void,
   deleteShape: (id: string) => void
 ): boolean => {
-  console.log('🎯 Boolean union operation - not yet implemented');
-  return false;
+  console.log('🎯 Starting CSG boolean union operation...');
+  
+  // Find intersecting shapes
+  const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
+  
+  if (intersectingShapes.length === 0) {
+    console.log('❌ No intersecting shapes found for union operation');
+    return false;
+  }
+  
+  console.log(`🎯 Found ${intersectingShapes.length} intersecting shapes for union`);
+  
+  try {
+    // For union, we'll merge the selected shape with the first intersecting shape
+    const targetShape = intersectingShapes[0];
+    
+    console.log(`🎯 CSG Union ${selectedShape.type} with ${targetShape.type}`);
+    
+    // Create meshes for CSG operation
+    const targetMesh = createMeshFromShape(targetShape);
+    const unionMesh = createMeshFromShape(selectedShape);
+    
+    // Perform CSG union operation
+    const resultMesh = CSG.union(targetMesh, unionMesh);
+    
+    if (resultMesh && resultMesh.geometry) {
+      // Apply the result geometry to world space
+      resultMesh.geometry.applyMatrix4(resultMesh.matrixWorld);
+      
+      // Update the target shape with new geometry
+      const newGeometry = resultMesh.geometry.clone();
+      newGeometry.computeBoundingBox();
+      newGeometry.computeBoundingSphere();
+      newGeometry.computeVertexNormals();
+      
+      updateShape(targetShape.id, {
+        geometry: newGeometry,
+        parameters: {
+          ...targetShape.parameters,
+          booleanOperation: 'union',
+          unionedShapeId: selectedShape.id,
+          lastModified: Date.now()
+        }
+      });
+      
+      console.log(`✅ CSG union applied to shape ${targetShape.id}`);
+      
+      // Clean up temporary meshes
+      targetMesh.geometry.dispose();
+      (targetMesh.material as THREE.Material).dispose();
+      unionMesh.geometry.dispose();
+      (unionMesh.material as THREE.Material).dispose();
+      
+      if (resultMesh.geometry !== newGeometry) {
+        resultMesh.geometry.dispose();
+      }
+      if (resultMesh.material) {
+        (resultMesh.material as THREE.Material).dispose();
+      }
+      
+      // Delete the selected shape (it's now merged)
+      deleteShape(selectedShape.id);
+      console.log(`🗑️ Deleted merged shape: ${selectedShape.id}`);
+      
+      console.log(`✅ CSG Boolean union completed`);
+      return true;
+    } else {
+      console.warn(`⚠️ CSG union operation failed`);
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('❌ CSG Boolean union failed:', error);
+    return false;
+  }
 };
