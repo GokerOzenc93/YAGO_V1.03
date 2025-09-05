@@ -87,6 +87,57 @@ const createBrushFromShape = (shape: Shape): Brush => {
 
 // Perform boolean subtract operation with three-bvh-csg
 export const performBooleanSubtract = (
+  selectedShape: Shape,
+  allShapes: Shape[],
+  updateShape: (id: string, updates: Partial<Shape>) => void,
+  deleteShape: (id: string) => void
+): boolean => {
+  console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
+  console.log(`🎯 Selected shape for subtraction: ${selectedShape.type} (${selectedShape.id})`);
+  
+  // Find intersecting shapes
+  const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
+  
+  if (intersectingShapes.length === 0) {
+    console.log('❌ No intersecting shapes found for subtract operation');
+    return false;
+  }
+  
+  console.log(`🎯 Processing subtraction with ${intersectingShapes.length} intersecting shapes using CSG`);
+  
+  const evaluator = new Evaluator();
+  
+  try {
+    // Process each intersecting shape
+    intersectingShapes.forEach((targetShape, index) => {
+      console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
+      
+      // Create brushes
+      const selectedBrush = createBrushFromShape(selectedShape);
+      const targetBrush = createBrushFromShape(targetShape);
+      
+      console.log('🎯 Performing CSG subtraction...');
+      
+      // A - B (subtraction)
+      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION) as THREE.Mesh;
+      
+      if (!resultMesh || !resultMesh.geometry) {
+        console.error('❌ CSG subtraction operation failed - no result mesh');
+        return;
+      }
+      
+      resultMesh.updateMatrixWorld(true);
+      
+      console.log('✅ CSG subtraction completed, transforming result to local space...');
+      
+      // Transform result geometry back into target's LOCAL space
+      const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+      let newGeom = resultMesh.geometry.clone();
+      newGeom.applyMatrix4(invTarget);
+      
+      // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
+      console.log('🎯 Cleaning up CSG subtraction result geometry...');
+      
       // 1. Use BufferGeometryUtils to merge duplicate vertices automatically
       const originalVertexCount = newGeom.attributes.position?.count || 0;
       const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
@@ -105,6 +156,9 @@ export const performBooleanSubtract = (
       newGeom.computeBoundingSphere();
       
       console.log(`✅ Final union geometry: ${cleanVertexCount} vertices, ${cleanTriangleCount.toFixed(0)} triangles`);
+      
+      // Dispose old geometry
+      try { 
         targetShape.geometry.dispose(); 
       } catch (e) { 
         console.warn('Could not dispose old geometry:', e);
