@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
@@ -29,92 +28,6 @@ const getShapeBounds = (shape) => {
 // Helper function to check if two bounding boxes intersect
 const boundsIntersect = (bounds1, bounds2) => {
   return bounds1.intersectsBox(bounds2);
-};
-
-// Create boundary-only geometry from CSG result
-const createBoundaryOnlyGeometry = (csgGeometry: THREE.BufferGeometry): THREE.BufferGeometry => {
-  console.log('🎯 Creating boundary-only geometry from CSG result...');
-  
-  // Get all vertices from CSG result
-  const positions = csgGeometry.attributes.position;
-  const vertices: THREE.Vector3[] = [];
-  
-  for (let i = 0; i < positions.count; i++) {
-    const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
-    vertices.push(vertex);
-  }
-  
-  console.log(`🎯 Processing ${vertices.length} vertices for boundary detection...`);
-  
-  // Find boundary vertices (vertices that are on the outer surface)
-  const boundaryVertices: THREE.Vector3[] = [];
-  const tolerance = 0.1; // Tolerance for boundary detection
-  
-  // Calculate bounding box
-  const bbox = new THREE.Box3().setFromPoints(vertices);
-  const center = bbox.getCenter(new THREE.Vector3());
-  const size = bbox.getSize(new THREE.Vector3());
-  
-  console.log(`🎯 Bounding box: center=[${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}], size=[${size.x.toFixed(1)}, ${size.y.toFixed(1)}, ${size.z.toFixed(1)}]`);
-  
-  // Find vertices on each face of the bounding box
-  vertices.forEach(vertex => {
-    const isOnBoundary = 
-      Math.abs(vertex.x - bbox.min.x) < tolerance || // Left face
-      Math.abs(vertex.x - bbox.max.x) < tolerance || // Right face
-      Math.abs(vertex.y - bbox.min.y) < tolerance || // Bottom face
-      Math.abs(vertex.y - bbox.max.y) < tolerance || // Top face
-      Math.abs(vertex.z - bbox.min.z) < tolerance || // Front face
-      Math.abs(vertex.z - bbox.max.z) < tolerance;   // Back face
-    
-    if (isOnBoundary) {
-      boundaryVertices.push(vertex);
-    }
-  });
-  
-  console.log(`🎯 Found ${boundaryVertices.length} boundary vertices`);
-  
-  // Remove duplicate boundary vertices
-  const uniqueBoundaryVertices: THREE.Vector3[] = [];
-  const vertexMap = new Map<string, THREE.Vector3>();
-  const precision = 1000;
-  
-  boundaryVertices.forEach(vertex => {
-    const key = `${Math.round(vertex.x * precision)}_${Math.round(vertex.y * precision)}_${Math.round(vertex.z * precision)}`;
-    if (!vertexMap.has(key)) {
-      vertexMap.set(key, vertex);
-      uniqueBoundaryVertices.push(vertex);
-    }
-  });
-  
-  console.log(`🎯 Unique boundary vertices: ${uniqueBoundaryVertices.length}`);
-  
-  // Create convex hull from boundary vertices for clean outer surface
-  if (uniqueBoundaryVertices.length >= 4) {
-    try {
-      const convexGeometry = new ConvexGeometry(uniqueBoundaryVertices);
-      convexGeometry.computeVertexNormals();
-      convexGeometry.computeBoundingBox();
-      convexGeometry.computeBoundingSphere();
-      
-      console.log(`✅ Boundary-only geometry created: ${convexGeometry.attributes.position.count} vertices, ${convexGeometry.index ? convexGeometry.index.count / 3 : convexGeometry.attributes.position.count / 3} triangles`);
-      
-      return convexGeometry;
-    } catch (error) {
-      console.warn('🎯 ConvexGeometry failed, using simplified box geometry:', error);
-    }
-  }
-  
-  // Fallback: Create simplified box geometry based on bounding box
-  const simplifiedGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-  simplifiedGeometry.translate(center.x, center.y, center.z);
-  simplifiedGeometry.computeVertexNormals();
-  simplifiedGeometry.computeBoundingBox();
-  simplifiedGeometry.computeBoundingSphere();
-  
-  console.log(`✅ Fallback boundary geometry created: simplified box`);
-  
-  return simplifiedGeometry;
 };
 
 // Find intersecting shapes
@@ -229,8 +142,44 @@ export const performBooleanSubtract = (
       // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
       console.log('🎯 Cleaning up CSG subtraction result geometry...');
       
-      // 🎯 CREATE BOUNDARY-ONLY GEOMETRY - Only outer surfaces, no internal vertices
-      newGeom = createBoundaryOnlyGeometry(newGeom);
+      // Use BufferGeometryUtils.mergeVertices to remove duplicate vertices
+      const originalVertexCount = newGeom.attributes.position?.count || 0;
+      const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
+      
+      // Set a higher tolerance for merging vertices, which can help combine faces.
+      // This is the key change to get single faces.
+      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 0.01);
+      
+      const cleanVertexCount = newGeom.attributes.position?.count || 0;
+      const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
+      
+      console.log(`🎯 BufferGeometryUtils union cleanup: ${originalVertexCount} -> ${cleanVertexCount} vertices, ${originalTriangleCount.toFixed(0)} -> ${cleanTriangleCount.toFixed(0)} triangles`);
+      
+      // 2. Recompute all geometry properties
+      newGeom.computeVertexNormals();
+      newGeom.computeBoundingBox();
+      newGeom.computeBoundingSphere();
+      
+      console.log(`✅ Final union geometry: ${cleanVertexCount} vertices, ${cleanTriangleCount.toFixed(0)} triangles`);
+      
+      // Dispose old geometry
+      try { 
+        targetShape.geometry.dispose(); 
+      } catch (e) { 
+        console.warn('Could not dispose old geometry:', e);
+      }
+      
+      // Update the target shape
+      updateShape(targetShape.id, {
+        geometry: newGeom,
+        parameters: {
+          ...targetShape.parameters,
+          booleanOperation: 'subtract',
+          subtractedShapeId: selectedShape.id,
+          lastModified: Date.now(),
+        }
+      });
+      
       console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
     });
     
