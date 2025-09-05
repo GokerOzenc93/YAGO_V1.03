@@ -26,6 +26,9 @@ const Toolbar: React.FC = () => {
   const [showSnapMenu, setShowSnapMenu] = useState(false);
   const [polylineMenuPosition, setPolylineMenuPosition] = useState({ x: 0, y: 0 });
 
+  // Check if current tool should have snap disabled
+  const shouldDisableSnap = ['Select', 'Move', 'Rotate', 'Scale'].includes(activeTool);
+
   // Helper functions for view mode
   const getViewModeLabel = () => {
     switch (viewMode) {
@@ -625,12 +628,19 @@ const Toolbar: React.FC = () => {
             <button
               key={snap.id}
               className={`p-1 rounded transition-all ${
-                snapSettings[snap.id]
+                snapSettings[snap.id] && !shouldDisableSnap
                   ? 'bg-blue-600/90 text-white shadow-sm'
+                  : shouldDisableSnap
+                  ? 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
                   : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
               }`}
-              onClick={() => handleSnapToggle(snap.id)}
-              title={`${snap.label} (${snap.shortcut}) - ${snapSettings[snap.id] ? 'Enabled' : 'Disabled'}`}
+              onClick={() => !shouldDisableSnap && handleSnapToggle(snap.id)}
+              disabled={shouldDisableSnap}
+              title={
+                shouldDisableSnap 
+                  ? `${snap.label} - Disabled in ${activeTool} mode`
+                  : `${snap.label} (${snap.shortcut}) - ${snapSettings[snap.id] ? 'Enabled' : 'Disabled'}`
+              }
             >
               {snap.icon}
             </button>
@@ -644,10 +654,15 @@ const Toolbar: React.FC = () => {
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           <button
             className={`p-1 rounded transition-all ${
-              showSnapMenu ? 'bg-gray-600/90 text-white' : 'text-gray-300 hover:bg-gray-600/50 hover:text-gray-100'
+              showSnapMenu && !shouldDisableSnap 
+                ? 'bg-gray-600/90 text-white' 
+                : shouldDisableSnap
+                ? 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
+                : 'text-gray-300 hover:bg-gray-600/50 hover:text-gray-100'
             }`}
-            onClick={() => setShowSnapMenu(!showSnapMenu)}
-            title="Snap Settings Menu"
+            onClick={() => !shouldDisableSnap && setShowSnapMenu(!showSnapMenu)}
+            disabled={shouldDisableSnap}
+            title={shouldDisableSnap ? `Snap Settings - Disabled in ${activeTool} mode` : "Snap Settings Menu"}
           >
             <Settings size={12} />
           </button>
@@ -655,7 +670,7 @@ const Toolbar: React.FC = () => {
 
         <div className="relative">
           {/* Snap Menu Dropdown */}
-          {showSnapMenu && (
+          {showSnapMenu && !shouldDisableSnap && (
             <div className="absolute top-full left-0 mt-1 bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg min-w-[180px]">
               {snapTools.map((snap) => (
                 <button
