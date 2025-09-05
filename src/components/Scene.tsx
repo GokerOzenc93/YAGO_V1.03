@@ -161,35 +161,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
         ONE: THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN,
       }}
-      enableDamping={true}
-      dampingFactor={0.05}
-      rotateSpeed={0.5}
-      panSpeed={0.8}
-      zoomSpeed={1.0}
-      autoRotate={false}
-      autoRotateSpeed={2.0}
-      minDistance={100}
-      maxDistance={10000}
-      minPolarAngle={0}
-      maxPolarAngle={Math.PI}
-      minAzimuthAngle={-Infinity}
-      maxAzimuthAngle={Infinity}
-      enableKeys={true}
-      keys={{
-        LEFT: 'ArrowLeft',
-        UP: 'ArrowUp', 
-        RIGHT: 'ArrowRight',
-        BOTTOM: 'ArrowDown'
-      }}
-      target0={controlsRef.current?.target || new THREE.Vector3(0, 0, 0)}
-      position0={controlsRef.current?.object?.position || new THREE.Vector3(1000, 1000, 1000)}
-      zoom0={controlsRef.current?.object?.zoom || 1}
-      reset={() => {
-        // Custom reset behavior - don't reset to default position
-        if (controlsRef.current) {
-          controlsRef.current.update();
-        }
-      }}
       onChange={() => {
         if (controlsRef.current) {
           const camera = controlsRef.current.object;
