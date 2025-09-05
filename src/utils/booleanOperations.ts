@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import CSG from 'three-bvh-csg';
+import { CSG } from 'three-bvh-csg';
 import { Shape } from '../types/shapes';
 
 // Helper function to get shape bounds with transformations
