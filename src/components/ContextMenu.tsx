@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation } from 'lucide-react';
+import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation, Target } from 'lucide-react';
 import { useAppStore, Tool } from '../store/appStore';
 import { startPivotPointSelection } from '../utils/pivotPoint';
 
