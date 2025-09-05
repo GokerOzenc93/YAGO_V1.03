@@ -122,48 +122,85 @@ const OpenCascadeShape: React.FC<Props> = ({
     };
     
     let originalPosition = new THREE.Vector3(...shape.position);
+    let originalRotation = new THREE.Euler(...shape.rotation);
+    let originalScale = new THREE.Vector3(...shape.scale);
     
     const handleObjectChange = () => {
       if (!meshRef.current) return;
 
-      let position = meshRef.current.position.clone();
-      
-      // 🎯 NEW: Apply ortho mode constraint
-      position = applyOrthoConstraint(position, originalPosition, orthoMode);
-      meshRef.current.position.copy(position);
-      
-      const snappedPosition = [
-        Math.round(position.x / gridSize) * gridSize,
-        Math.round(position.y / gridSize) * gridSize,
-        Math.round(position.z / gridSize) * gridSize,
-      ] as [number, number, number];
+      if (activeTool === 'Move') {
+        let position = meshRef.current.position.clone();
+        
+        // 🎯 NEW: Apply ortho mode constraint
+        position = applyOrthoConstraint(position, originalPosition, orthoMode);
+        meshRef.current.position.copy(position);
+        
+        const snappedPosition = [
+          Math.round(position.x / gridSize) * gridSize,
+          Math.round(position.y / gridSize) * gridSize,
+          Math.round(position.z / gridSize) * gridSize,
+        ] as [number, number, number];
 
-      meshRef.current.position.set(...snappedPosition);
-      setSelectedObjectPosition(snappedPosition);
-      
-      // 🎯 UPDATE SHAPE POSITION IN STORE - 2D ve 3D şekiller için
-      updateShape(shape.id, {
-        position: snappedPosition
-      });
-      
-      console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
+        meshRef.current.position.set(...snappedPosition);
+        setSelectedObjectPosition(snappedPosition);
+        
+        // 🎯 UPDATE SHAPE POSITION IN STORE
+        updateShape(shape.id, {
+          position: snappedPosition
+        });
+        
+        console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
+      } else if (activeTool === 'Rotate') {
+        const rotation = meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
+        
+        // 🎯 UPDATE SHAPE ROTATION IN STORE
+        updateShape(shape.id, {
+          rotation: rotation
+        });
+        
+        console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
+      } else if (activeTool === 'Scale') {
+        const scale = meshRef.current.scale.toArray() as [number, number, number];
+        
+        // 🎯 UPDATE SHAPE SCALE IN STORE
+        updateShape(shape.id, {
+          scale: scale
+        });
+        
+        console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
+      }
     };
     
     const handleMouseDown = () => {
       // Store original position when starting to drag
       originalPosition = new THREE.Vector3(...shape.position);
+      originalRotation = new THREE.Euler(...shape.rotation);
+      originalScale = new THREE.Vector3(...shape.scale);
     };
 
     const handleObjectChangeEnd = () => {
       if (!meshRef.current) return;
       
-      // Final position update
-      const finalPosition = meshRef.current.position.toArray() as [number, number, number];
-      updateShape(shape.id, {
-        position: finalPosition
-      });
-      
-      console.log(`🎯 Shape ${shape.id} final position:`, finalPosition);
+      // Final update based on active tool
+      if (activeTool === 'Move') {
+        const finalPosition = meshRef.current.position.toArray() as [number, number, number];
+        updateShape(shape.id, {
+          position: finalPosition
+        });
+        console.log(`🎯 Shape ${shape.id} final position:`, finalPosition);
+      } else if (activeTool === 'Rotate') {
+        const finalRotation = meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
+        updateShape(shape.id, {
+          rotation: finalRotation
+        });
+        console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
+      } else if (activeTool === 'Scale') {
+        const finalScale = meshRef.current.scale.toArray() as [number, number, number];
+        updateShape(shape.id, {
+          scale: finalScale
+        });
+        console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
+      }
     };
     
     controls.addEventListener('mouseDown', handleMouseDown);
@@ -175,7 +212,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       controls.removeEventListener('objectChange', handleObjectChange);
       controls.removeEventListener('mouseUp', handleObjectChangeEnd);
     };
-  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape, orthoMode, shape.position]);
+  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape, orthoMode, shape.position, shape.rotation, shape.scale, activeTool]);
 
   useEffect(() => {
     if (isSelected && meshRef.current) {
@@ -413,6 +450,8 @@ const OpenCascadeShape: React.FC<Props> = ({
             showX={true}
             showY={shape.is2DShape ? false : true} // 2D şekillerde Y ekseni gizli
             showZ={true}
+            enabled={true}
+            space="local"
             onObjectChange={() => {
               console.log('🎯 GIZMO CHANGE - Transform controls object changed');
             }}
