@@ -295,7 +295,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       const worldDirection = new THREE.Vector3().subVectors(dimensionsState.secondPoint, dimensionsState.firstPoint).normalize();
       
       // Kameradan çıkan ray'e dik bir düzlem tanımla
-      const planeNormal = camera.position.clone().sub(camera.target).normalize(); // Daha iyi bir düzlem tanımı
+      const cameraControls = (window as any).cameraControls;
+      const target = cameraControls?.target || new THREE.Vector3(0, 0, 0);
+      const planeNormal = camera.position.clone().sub(target).normalize(); // Daha iyi bir düzlem tanımı
       plane.setFromNormalAndCoplanarPoint(planeNormal, midPoint);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
     } else {
