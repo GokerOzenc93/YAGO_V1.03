@@ -1,7 +1,6 @@
 import React from 'react';
-import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation, Target } from 'lucide-react';
+import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation } from 'lucide-react';
 import { useAppStore, Tool } from '../store/appStore';
-import { startPivotPointSelection } from '../utils/pivotPoint';
 
 interface ContextMenuProps {
   position: { x: number; y: number };
@@ -49,13 +48,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     onClose();
   };
 
-  const handleSelectPivotPoint = () => {
-    // Pivot point selection modunu başlat
-    startPivotPointSelection(shapeId);
-    selectShape(shapeId);
-    console.log(`Pivot point selection started for shape: ${shapeId}`);
-    onClose();
-  };
   const menuItems = [
     {
       icon: <Edit size={14} />,
@@ -79,14 +71,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       enabled: true,
       shortcut: 'P2P',
       description: 'Move object from one snap point to another'
-    },
-    {
-      icon: <Target size={14} />,
-      label: 'Select Pivot Point',
-      action: handleSelectPivotPoint,
-      enabled: true,
-      shortcut: 'SPP',
-      description: 'Select a new pivot point for transformations'
     },
     {
       icon: <RotateCcw size={14} />,

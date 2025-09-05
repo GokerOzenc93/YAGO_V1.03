@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
@@ -12,13 +12,6 @@ import {
   highlightFace,
   clearFaceHighlight
 } from '../utils/faceSelection';
-import { 
-  getPivotPoint, 
-  getPivotSelectionState, 
-  handlePivotPointSelection,
-  createPivotPointIndicator,
-  hasCustomPivotPoint
-} from '../utils/pivotPoint';
 
 interface Props {
   shape: Shape;
@@ -67,35 +60,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   const edgesGeometry = useMemo(() => {
     return new THREE.EdgesGeometry(shapeGeometry);
   }, [shapeGeometry]);
-  // Pivot point indicator
-  const [pivotIndicator, setPivotIndicator] = useState<THREE.Group | null>(null);
-
-  // Update pivot indicator when shape or pivot changes
-  useEffect(() => {
-    if (isSelected && meshRef.current) {
-      const pivotPos = getPivotPoint(shape);
-      const indicator = createPivotPointIndicator(pivotPos);
-      setPivotIndicator(indicator);
-      
-      return () => {
-        if (indicator) {
-          indicator.removeFromParent();
-          indicator.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.geometry.dispose();
-              if (Array.isArray(child.material)) {
-                child.material.forEach(mat => mat.dispose());
-              } else {
-                child.material.dispose();
-              }
-            }
-          });
-        }
-      };
-    } else {
-      setPivotIndicator(null);
-    }
-  }, [isSelected, shape.id, shape.position]);
 
   // Debug: Log shape information when selected
   useEffect(() => {
@@ -131,10 +95,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (!transformRef.current || !isSelected) return;
 
     const controls = transformRef.current;
-    
-    // Set transform controls position to pivot point
-    const pivotPos = getPivotPoint(shape);
-    controls.position.copy(pivotPos);
     
     // 🎯 NEW: Ortho mode constraint function
     const applyOrthoConstraint = (position: THREE.Vector3, originalPosition: THREE.Vector3) => {
@@ -271,28 +231,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Check if pivot point selection is active
-    const pivotState = getPivotSelectionState();
-    if (pivotState.isActive && pivotState.targetShapeId === shape.id && e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      
-      // Get intersection point for pivot selection
-      const rect = gl.domElement.getBoundingClientRect();
-      const x = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
-      
-      raycaster.setFromCamera({ x, y }, camera);
-      const intersects = raycaster.intersectObject(meshRef.current!, true);
-      
-      if (intersects.length > 0) {
-        const worldPoint = intersects[0].point;
-        if (handlePivotPointSelection(worldPoint)) {
-          console.log(`🎯 Pivot point selected at: [${worldPoint.x.toFixed(1)}, ${worldPoint.y.toFixed(1)}, ${worldPoint.z.toFixed(1)}]`);
-          return;
-        }
-      }
-    }
-    
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -499,7 +437,6 @@ const OpenCascadeShape: React.FC<Props> = ({
           <TransformControls
             ref={transformRef}
             object={meshRef.current}
-            position={getPivotPoint(shape)}
             mode={
               activeTool === 'Move'
                 ? 'translate'
@@ -520,11 +457,6 @@ const OpenCascadeShape: React.FC<Props> = ({
             }}
           />
         )}
-
-      {/* Pivot Point Indicator */}
-      {isSelected && pivotIndicator && hasCustomPivotPoint(shape.id) && (
-        <primitive object={pivotIndicator} />
-      )}
     </group>
   );
 };
