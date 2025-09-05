@@ -191,15 +191,9 @@ const CameraController: React.FC<CameraControllerProps> = ({
       ref={controlsRef}
       makeDefault
       enabled={true}
-      enableDamping={true}
       dampingFactor={0.05}
       screenSpacePanning={true}
       maxDistance={20000}
-      maxPolarAngle={Math.PI}
-      minPolarAngle={0}
-      // Orijinal varsayılan OrbitControls ayarları geri yüklendi.
-      // Bu, sol tıklamayla döndürme, orta tuşla kaydırma ve tekerlek ile yakınlaştırma sağlar.
-      // 'mouseButtons' ve 'touches' ayarları kaldırıldı.
       onChange={() => {
         if (controlsRef.current) {
           const camera = controlsRef.current.object;
