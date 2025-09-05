@@ -570,6 +570,24 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
+        {/* Snap Controls */}
+        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+          <button
+            onClick={() => setShowSnapMenu(!showSnapMenu)}
+            className={`p-1 rounded transition-all ${
+              Object.values(snapSettings).some(enabled => enabled)
+                ? 'bg-blue-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            title="Snap Settings"
+          >
+            <Target size={12} />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+
         {/* Drawing tools */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {drawingTools.map((tool) => (
