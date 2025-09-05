@@ -150,14 +150,19 @@ const CameraController: React.FC<CameraControllerProps> = ({
         panStart.set(event.clientX, event.clientY);
         panEnd.copy(panStart);
         event.preventDefault();
+        event.stopPropagation();
+        console.log('🎯 Pan started with middle button');
       }
     };
 
     const handleMouseMove = (event: MouseEvent) => {
       if (!isPanning) return;
       
+      event.preventDefault();
+      event.stopPropagation();
+      
       panEnd.set(event.clientX, event.clientY);
-      panDelta.subVectors(panEnd, panStart).multiplyScalar(0.002);
+      panDelta.subVectors(panEnd, panStart).multiplyScalar(0.005);
       
       // Apply pan movement manually
       const offset = new THREE.Vector3();
@@ -182,24 +187,33 @@ const CameraController: React.FC<CameraControllerProps> = ({
       
       panStart.copy(panEnd);
       controls.update();
+      
+      console.log('🎯 Panning:', panDelta.x.toFixed(3), panDelta.y.toFixed(3));
     };
 
     const handleMouseUp = (event: MouseEvent) => {
       if (event.button === 1) {
         isPanning = false;
+        console.log('🎯 Pan ended');
       }
     };
 
+    const handleContextMenu = (event: MouseEvent) => {
+      if (event.button === 1) {
+        event.preventDefault();
+      }
+    };
     const canvas = controls.domElement;
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', handleMouseUp);
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown);
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseup', handleMouseUp);
+      canvas.removeEventListener('contextmenu', handleContextMenu);
     };
   }, []);
   return (
@@ -224,7 +238,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
       keyPanSpeed={7.0}
       mouseButtons={{
         LEFT: null, // Sol tık = Sadece seçim için
-        MIDDLE: null, // Orta tık = Custom pan (manuel kontrol)
+        MIDDLE: THREE.MOUSE.PAN, // Orta tık = Pan (OrbitControls ile)
         RIGHT: THREE.MOUSE.ROTATE, // Sağ tık = Döndürme
       }}
       touches={{
