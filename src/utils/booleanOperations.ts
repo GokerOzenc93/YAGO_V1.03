@@ -142,13 +142,9 @@ export const performBooleanSubtract = (
       // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
       console.log('🎯 Cleaning up CSG subtraction result geometry...');
       
-      // Use BufferGeometryUtils.mergeVertices to remove duplicate vertices
-      const originalVertexCount = newGeom.attributes.position?.count || 0;
-      const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
-      
-      // Set a higher tolerance for merging vertices, which can help combine faces.
-      // This is the key change to get single faces.
-      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 0.01);
+      // Yüksek tolerans değeri ile köşe noktalarını birleştirerek
+      // yüzeyleri tek parça haline getirmeye çalışırız.
+      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-2);
       
       const cleanVertexCount = newGeom.attributes.position?.count || 0;
       const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
@@ -253,80 +249,14 @@ export const performBooleanUnion = (
     // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
     console.log('🎯 Cleaning up CSG union result geometry...');
     
-    // Merge duplicate vertices (weld)
-    const mergedGeometry = new THREE.BufferGeometry();
-    const positions = newGeom.attributes.position;
-    const indices = newGeom.index;
+    // BufferGeometryUtils.mergeVertices kullanarak manuel birleştirme
+    // kodunu daha güvenilir bir çözümle değiştiriyoruz.
+    newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-2);
     
-    if (positions && indices) {
-      // Create clean geometry with merged vertices
-      const positionArray = positions.array;
-      const indexArray = indices.array;
-      
-      // Use a tolerance for merging close vertices
-      const tolerance = 0.001;
-      const uniqueVertices = [];
-      const vertexMap = new Map();
-      const newIndices = [];
-      
-      // Process each triangle
-      for (let i = 0; i < indexArray.length; i += 3) {
-        const triangle = [
-          indexArray[i],
-          indexArray[i + 1], 
-          indexArray[i + 2]
-        ];
-        
-        const newTriangle = [];
-        
-        for (const vertexIndex of triangle) {
-          const vertex = new THREE.Vector3(
-            positionArray[vertexIndex * 3],
-            positionArray[vertexIndex * 3 + 1],
-            positionArray[vertexIndex * 3 + 2]
-          );
-          
-          // Create a key for this vertex position
-          const key = `${Math.round(vertex.x / tolerance)}_${Math.round(vertex.y / tolerance)}_${Math.round(vertex.z / tolerance)}`;
-          
-          let newIndex;
-          if (vertexMap.has(key)) {
-            newIndex = vertexMap.get(key);
-          } else {
-            newIndex = uniqueVertices.length;
-            uniqueVertices.push(vertex);
-            vertexMap.set(key, newIndex);
-          }
-          
-          newTriangle.push(newIndex);
-        }
-        
-        // Only add triangle if it's not degenerate
-        if (newTriangle[0] !== newTriangle[1] && 
-            newTriangle[1] !== newTriangle[2] && 
-            newTriangle[0] !== newTriangle[2]) {
-          newIndices.push(...newTriangle);
-        }
-      }
-      
-      // Create clean position array
-      const cleanPositions = new Float32Array(uniqueVertices.length * 3);
-      uniqueVertices.forEach((vertex, index) => {
-        cleanPositions[index * 3] = vertex.x;
-        cleanPositions[index * 3 + 1] = vertex.y;
-        cleanPositions[index * 3 + 2] = vertex.z;
-      });
-      
-      // Set clean attributes
-      mergedGeometry.setAttribute('position', new THREE.BufferAttribute(cleanPositions, 3));
-      mergedGeometry.setIndex(newIndices);
-      
-      console.log(`🎯 Union geometry cleaned: ${positions.count} -> ${uniqueVertices.length} vertices, ${indexArray.length/3} -> ${newIndices.length/3} triangles`);
-      
-      // Use cleaned geometry
-      newGeom.dispose();
-      newGeom = mergedGeometry;
-    }
+    const cleanVertexCount = newGeom.attributes.position?.count || 0;
+    const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
+    
+    console.log(`🎯 Union geometry cleaned: ${newGeom.attributes.position?.count || 0} -> ${cleanVertexCount} vertices, ${newGeom.index ? newGeom.index.count/3 : 0} -> ${cleanTriangleCount.toFixed(0)} triangles`);
     
     // Final geometry processing
     newGeom.computeVertexNormals();
