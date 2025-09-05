@@ -160,140 +160,30 @@ const recreateShapeFromBooleanResult = (
   }
 };
 
-// Extract actual boundary from the boolean result geometry
+// Extract actual boundary from geometry
 const extractActualBoundary = (geometry: THREE.BufferGeometry, vertices: THREE.Vector3[]): THREE.Vector3[] => {
-  console.log('🎯 Extracting actual boundary from geometry...');
+  // Project vertices to XZ plane and find convex hull
+  const projectedPoints = vertices.map(v => new THREE.Vector2(v.x, v.z));
+  const uniquePoints = Array.from(
+    new Map(projectedPoints.map(p => [`${p.x.toFixed(3)},${p.y.toFixed(3)}`, p])).values()
+  );
   
-  try {
-    // Find boundary edges (edges that appear only once in the geometry)
-    const edgeMap = new Map<string, number>();
-    const positions = geometry.attributes.position;
-    const indices = geometry.index;
-    
-    if (!positions || !indices) {
-      console.warn('🎯 Missing position or index data, using convex hull fallback');
-      return getConvexHull2D(vertices.map(v => new THREE.Vector2(v.x, v.z)))
-        .map(p => new THREE.Vector3(p.x, 0, p.y));
-    }
-    
-    // Count edge occurrences
-    for (let i = 0; i < indices.count; i += 3) {
-      const a = indices.getX(i);
-      const b = indices.getX(i + 1);
-      const c = indices.getX(i + 2);
-      
-      const edges = [
-        [Math.min(a, b), Math.max(a, b)],
-        [Math.min(b, c), Math.max(b, c)],
-        [Math.min(c, a), Math.max(c, a)]
-      ];
-      
-      for (const [v1, v2] of edges) {
-        const key = `${v1}-${v2}`;
-        edgeMap.set(key, (edgeMap.get(key) || 0) + 1);
-      }
-    }
-    
-    // Find boundary edges (count = 1)
-    const boundaryEdges: [number, number][] = [];
-    for (const [key, count] of edgeMap.entries()) {
-      if (count === 1) {
-        const [v1, v2] = key.split('-').map(Number);
-        boundaryEdges.push([v1, v2]);
-      }
-    }
-    
-    if (boundaryEdges.length === 0) {
-      console.warn('🎯 No boundary edges found, using convex hull');
-      return getConvexHull2D(vertices.map(v => new THREE.Vector2(v.x, v.z)))
-        .map(p => new THREE.Vector3(p.x, 0, p.y));
-    }
-    
-    // Build boundary path by connecting edges
-    const boundaryPath = buildBoundaryPath(boundaryEdges, positions);
-    
-    if (boundaryPath.length < 3) {
-      console.warn('🎯 Could not build proper boundary path, using convex hull');
-      return getConvexHull2D(vertices.map(v => new THREE.Vector2(v.x, v.z)))
-        .map(p => new THREE.Vector3(p.x, 0, p.y));
-    }
-    
-    console.log(`🎯 Extracted boundary path with ${boundaryPath.length} points`);
-    return boundaryPath;
-    
-  } catch (error) {
-    console.error('🎯 Error extracting boundary:', error);
-    // Fallback to convex hull
-    return getConvexHull2D(vertices.map(v => new THREE.Vector2(v.x, v.z)))
-      .map(p => new THREE.Vector3(p.x, 0, p.y));
+  if (uniquePoints.length < 3) return [];
+  
+  const hull2D = getConvexHull2D(uniquePoints);
+  
+  // Convert back to 3D points at Y=0
+  const boundaryPoints = hull2D.map(p => new THREE.Vector3(p.x, 0, p.y));
+  
+  // Close the loop
+  if (boundaryPoints.length > 0) {
+    boundaryPoints.push(boundaryPoints[0].clone());
   }
+  
+  return boundaryPoints;
 };
 
-// Build boundary path from boundary edges
-const buildBoundaryPath = (edges: [number, number][], positions: THREE.BufferAttribute): THREE.Vector3[] => {
-  if (edges.length === 0) return [];
-  
-  // Build adjacency list
-  const adjacency = new Map<number, number[]>();
-  for (const [v1, v2] of edges) {
-    if (!adjacency.has(v1)) adjacency.set(v1, []);
-    if (!adjacency.has(v2)) adjacency.set(v2, []);
-    adjacency.get(v1)!.push(v2);
-    adjacency.get(v2)!.push(v1);
-  }
-  
-  // Find the boundary loop
-  const visited = new Set<string>();
-  const path: THREE.Vector3[] = [];
-  
-  // Start from any vertex
-  let current = edges[0][0];
-  let previous = -1;
-  
-  while (true) {
-    // Add current vertex to path
-    const vertex = new THREE.Vector3().fromBufferAttribute(positions, current);
-    // Project to XZ plane (Y=0) for 2D boundary
-    path.push(new THREE.Vector3(vertex.x, 0, vertex.z));
-    
-    // Find next unvisited neighbor
-    const neighbors = adjacency.get(current) || [];
-    let next = -1;
-    
-    for (const neighbor of neighbors) {
-      if (neighbor === previous) continue; // Don't go back
-      const edgeKey = `${Math.min(current, neighbor)}-${Math.max(current, neighbor)}`;
-      if (!visited.has(edgeKey)) {
-        visited.add(edgeKey);
-        next = neighbor;
-        break;
-      }
-    }
-    
-    if (next === -1 || next === edges[0][0]) {
-      // End of path or back to start
-      break;
-    }
-    
-    previous = current;
-    current = next;
-    
-    // Safety check to prevent infinite loops
-    if (path.length > edges.length + 1) {
-      console.warn('🎯 Boundary path too long, breaking');
-      break;
-    }
-  }
-  
-  // Close the path if needed
-  if (path.length > 2 && !path[0].equals(path[path.length - 1])) {
-    path.push(path[0].clone());
-  }
-  
-  return path;
-};
-
-// Simple 2D convex hull algorithm (Graham scan) - fallback
+// Simple 2D convex hull algorithm (Graham scan)
 const getConvexHull2D = (points: THREE.Vector2[]): THREE.Vector2[] => {
   if (points.length < 3) return points;
   
