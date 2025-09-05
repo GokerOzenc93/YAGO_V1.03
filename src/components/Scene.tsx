@@ -145,9 +145,9 @@ const CameraController: React.FC<CameraControllerProps> = ({
       minPolarAngle={0}
       target={[0, 0, 0]}
       mouseButtons={{
-        LEFT: -1, // Sol tık = DEVRE DIŞI (sadece seçim için)
-        MIDDLE: THREE.MOUSE.ROTATE, // Orta tık BASILI TUTMA = Döndürme 🎯 (EDIT MODUNDA DA ÇALIŞIR!)
-        RIGHT: THREE.MOUSE.PAN, // Sağ tık = Pan (kaydırma) 🎯
+        LEFT: THREE.MOUSE.ROTATE, // Sol tık = Döndürme (varsayılan)
+        MIDDLE: THREE.MOUSE.DOLLY, // Orta tık = Zoom
+        RIGHT: THREE.MOUSE.PAN, // Sağ tık = Pan (kaydırma)
       }}
       touches={{
         ONE: THREE.TOUCH.ROTATE,
