@@ -305,3 +305,6 @@ export const performBooleanUnion = (
     return false;
   }
 };
+
+
+export { performBooleanSubtract, performBooleanUnion }
