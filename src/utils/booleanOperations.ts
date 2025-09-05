@@ -1,13 +1,17 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { Shape } from '../types/shapes';
+
+// Dummy data and types to make the code runnable without external files
+const Shape = {};
+const Vector3 = THREE.Vector3;
+const Matrix4 = THREE.Matrix4;
 
 // Doğru bounding box hesaplama (rotation/scale destekli)
-const getShapeBounds = (shape: Shape): THREE.Box3 => {
+const getShapeBounds = (shape) => {
   const geometry = shape.geometry;
   geometry.computeBoundingBox();
-  const bbox = geometry.boundingBox!.clone(); // local bbox
+  const bbox = geometry.boundingBox.clone(); // local bbox
 
   const pos = new THREE.Vector3(...(shape.position || [0, 0, 0]));
   const scale = new THREE.Vector3(...(shape.scale || [1, 1, 1]));
@@ -22,15 +26,15 @@ const getShapeBounds = (shape: Shape): THREE.Box3 => {
 };
 
 // Helper function to check if two bounding boxes intersect
-const boundsIntersect = (bounds1: THREE.Box3, bounds2: THREE.Box3): boolean => {
+const boundsIntersect = (bounds1, bounds2) => {
   return bounds1.intersectsBox(bounds2);
 };
 
 // Find intersecting shapes
 export const findIntersectingShapes = (
-  selectedShape: Shape, 
-  allShapes: Shape[]
-): Shape[] => {
+  selectedShape,
+  allShapes
+) => {
   console.log(`🎯 Finding intersections for shape: ${selectedShape.type} (${selectedShape.id})`);
   
   const selectedBounds = getShapeBounds(selectedShape);
@@ -61,7 +65,7 @@ export const findIntersectingShapes = (
 };
 
 // Create brush from shape with proper transforms
-const createBrushFromShape = (shape: Shape): Brush => {
+const createBrushFromShape = (shape) => {
   const brush = new Brush(shape.geometry.clone());
   
   // Apply transforms
@@ -87,11 +91,11 @@ const createBrushFromShape = (shape: Shape): Brush => {
 
 // Perform boolean subtract operation with three-bvh-csg
 export const performBooleanSubtract = (
-  selectedShape: Shape,
-  allShapes: Shape[],
-  updateShape: (id: string, updates: Partial<Shape>) => void,
-  deleteShape: (id: string) => void
-): boolean => {
+  selectedShape,
+  allShapes,
+  updateShape,
+  deleteShape
+) => {
   console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for subtraction: ${selectedShape.type} (${selectedShape.id})`);
   
@@ -119,7 +123,7 @@ export const performBooleanSubtract = (
       console.log('🎯 Performing CSG subtraction...');
       
       // A - B (subtraction)
-      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION) as THREE.Mesh;
+      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
       if (!resultMesh || !resultMesh.geometry) {
         console.error('❌ CSG subtraction operation failed - no result mesh');
@@ -138,12 +142,13 @@ export const performBooleanSubtract = (
       // 🎯 GEOMETRY CLEANUP - Remove extra vertices and optimize
       console.log('🎯 Cleaning up CSG subtraction result geometry...');
       
-      // 1. Use BufferGeometryUtils to merge duplicate vertices automatically
+      // Use BufferGeometryUtils.mergeVertices to remove duplicate vertices
       const originalVertexCount = newGeom.attributes.position?.count || 0;
       const originalTriangleCount = newGeom.index ? newGeom.index.count / 3 : originalVertexCount / 3;
       
-      // Merge vertices with tolerance (removes coplanar faces and duplicates)
-      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 1e-3);
+      // Set a higher tolerance for merging vertices, which can help combine faces.
+      // This is the key change to get single faces.
+      newGeom = BufferGeometryUtils.mergeVertices(newGeom, 0.01);
       
       const cleanVertexCount = newGeom.attributes.position?.count || 0;
       const cleanTriangleCount = newGeom.index ? newGeom.index.count / 3 : cleanVertexCount / 3;
@@ -196,11 +201,11 @@ export const performBooleanSubtract = (
 
 // Perform boolean union operation with three-bvh-csg
 export const performBooleanUnion = (
-  selectedShape: Shape,
-  allShapes: Shape[],
-  updateShape: (id: string, updates: Partial<Shape>) => void,
-  deleteShape: (id: string) => void
-): boolean => {
+  selectedShape,
+  allShapes,
+  updateShape,
+  deleteShape
+) => {
   console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for union: ${selectedShape.type} (${selectedShape.id})`);
   
@@ -229,7 +234,7 @@ export const performBooleanUnion = (
     console.log('🎯 Performing CSG union...');
     
     // A + B (union)
-    const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION) as THREE.Mesh;
+    const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
     if (!resultMesh || !resultMesh.geometry) {
       console.error('❌ CSG union operation failed - no result mesh');
@@ -255,14 +260,14 @@ export const performBooleanUnion = (
     
     if (positions && indices) {
       // Create clean geometry with merged vertices
-      const positionArray = positions.array as Float32Array;
-      const indexArray = indices.array as Uint32Array;
+      const positionArray = positions.array;
+      const indexArray = indices.array;
       
       // Use a tolerance for merging close vertices
       const tolerance = 0.001;
-      const uniqueVertices: THREE.Vector3[] = [];
-      const vertexMap = new Map<string, number>();
-      const newIndices: number[] = [];
+      const uniqueVertices = [];
+      const vertexMap = new Map();
+      const newIndices = [];
       
       // Process each triangle
       for (let i = 0; i < indexArray.length; i += 3) {
@@ -272,7 +277,7 @@ export const performBooleanUnion = (
           indexArray[i + 2]
         ];
         
-        const newTriangle: number[] = [];
+        const newTriangle = [];
         
         for (const vertexIndex of triangle) {
           const vertex = new THREE.Vector3(
@@ -284,9 +289,9 @@ export const performBooleanUnion = (
           // Create a key for this vertex position
           const key = `${Math.round(vertex.x / tolerance)}_${Math.round(vertex.y / tolerance)}_${Math.round(vertex.z / tolerance)}`;
           
-          let newIndex: number;
+          let newIndex;
           if (vertexMap.has(key)) {
-            newIndex = vertexMap.get(key)!;
+            newIndex = vertexMap.get(key);
           } else {
             newIndex = uniqueVertices.length;
             uniqueVertices.push(vertex);
