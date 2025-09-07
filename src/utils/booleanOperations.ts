@@ -461,8 +461,8 @@ export const performBooleanSubtract = (
       // A - B (çıkarma)
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
-      if (!resultMesh || !resultMesh.geometry) {
-        console.error('❌ CSG çıkarma işlemi başarısız oldu - sonuç mesh yok.');
+      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+        console.error('❌ CSG çıkarma işlemi başarısız oldu veya boş geometri döndü. İşlem iptal edildi.');
         return;
       }
       
@@ -554,8 +554,8 @@ export const performBooleanUnion = (
     // A + B (birleştirme)
     const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
-    if (!resultMesh || !resultMesh.geometry) {
-      console.error('❌ CSG birleştirme işlemi başarısız oldu - sonuç mesh yok.');
+    if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+      console.error('❌ CSG birleştirme işlemi başarısız oldu veya boş geometri döndü. İşlem iptal edildi.');
       return false;
     }
     
