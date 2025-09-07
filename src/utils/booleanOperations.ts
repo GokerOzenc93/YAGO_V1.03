@@ -113,6 +113,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) {
 
 /**
  * Aynı düzlemdeki yüzeyleri birleştirerek gereksiz vertex ve çizgileri kaldırır.
+ * Bu fonksiyon, birleşik yüzeyin kenarlarını (boundary) doğru şekilde bulup yeniden üçgenler.
  *
  * @param {THREE.BufferGeometry} geometry - Girdi geometrisi.
  * @param {number} tolerance - Yüzeylerin aynı düzlemde olup olmadığını kontrol etmek için tolerans.
@@ -132,7 +133,6 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
   const faceNormals = [];
   const faceCenters = [];
-  const vertexToTriangles = new Map();
   const indexToVertex = new Map();
 
   for (let i = 0; i < geometry.attributes.position.count; i++) {
@@ -155,14 +155,6 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
     faceNormals.push(normal);
     faceCenters.push(center);
-    
-    // Her bir vertex'in hangi üçgenlerde yer aldığını kaydet
-    [i0, i1, i2].forEach(vertexIndex => {
-      if (!vertexToTriangles.has(vertexIndex)) {
-        vertexToTriangles.set(vertexIndex, []);
-      }
-      vertexToTriangles.get(vertexIndex).push(i);
-    });
   }
 
   const coplanarGroups = [];
@@ -208,97 +200,115 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
   const newPositions: number[] = [];
   const newIndices: number[] = [];
-  let vertexIndex = 0;
+  const vertexToNewIndex = new Map();
+  let newIndexCounter = 0;
 
+  // Coplanar olmayan yüzeyleri olduğu gibi ekle
   const allGroupedFaces = new Set();
   coplanarGroups.forEach(group => group.forEach(faceIndex => allGroupedFaces.add(faceIndex)));
 
   for (let i = 0; i < triangleCount; i++) {
     if (allGroupedFaces.has(i)) continue;
-
     const i0 = indices[i * 3];
     const i1 = indices[i * 3 + 1];
     const i2 = indices[i * 3 + 2];
-
-    const v0 = indexToVertex.get(i0);
-    const v1 = indexToVertex.get(i1);
-    const v2 = indexToVertex.get(i2);
-
-    newPositions.push(
-      v0.x, v0.y, v0.z,
-      v1.x, v1.y, v1.z,
-      v2.x, v2.y, v2.z
-    );
-
-    newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-    vertexIndex += 3;
-  }
-
-  let mergedFaceCount = 0;
-  coplanarGroups.forEach(group => {
-    const groupVertices = [];
-    const vertexSet = new Set();
-
-    group.forEach(faceIndex => {
-      for (let v = 0; v < 3; v++) {
-        const idx = indices[faceIndex * 3 + v];
-        const vertex = indexToVertex.get(idx);
-        const key = `${vertex.x.toFixed(6)}_${vertex.y.toFixed(6)}_${vertex.z.toFixed(6)}`;
-        
-        if (!vertexSet.has(key)) {
-          vertexSet.add(key);
-          groupVertices.push(vertex);
-        }
+    [i0, i1, i2].forEach(oldIndex => {
+      if (!vertexToNewIndex.has(oldIndex)) {
+        const v = indexToVertex.get(oldIndex);
+        newPositions.push(v.x, v.y, v.z);
+        vertexToNewIndex.set(oldIndex, newIndexCounter++);
       }
     });
+    newIndices.push(vertexToNewIndex.get(i0), vertexToNewIndex.get(i1), vertexToNewIndex.get(i2));
+  }
+  
+  // Eş düzlemli yüzeyleri işle
+  coplanarGroups.forEach(group => {
+    // Tüm vertexleri ve kenarları topla
+    const edges = new Map();
+    const groupVertices = new Map();
 
-    if (groupVertices.length < 3) return;
+    group.forEach(faceIndex => {
+        const i0 = indices[faceIndex * 3];
+        const i1 = indices[faceIndex * 3 + 1];
+        const i2 = indices[faceIndex * 3 + 2];
+        const v0 = indexToVertex.get(i0);
+        const v1 = indexToVertex.get(i1);
+        const v2 = indexToVertex.get(i2);
+        
+        [v0, v1, v2].forEach(v => {
+            const key = `${v.x.toFixed(6)}_${v.y.toFixed(6)}_${v.z.toFixed(6)}`;
+            groupVertices.set(key, v);
+        });
 
-    const normal = faceNormals[group[0]];
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, groupVertices[0]);
-    const origin2d = new THREE.Vector3();
-    const up = new THREE.Vector3();
-    plane.projectPoint(new THREE.Vector3(0,1,0), origin2d);
-    plane.projectPoint(new THREE.Vector3(0,1,0).add(normal), up);
-    up.sub(origin2d).normalize();
-    const right = new THREE.Vector3().crossVectors(normal, up).normalize();
-
-    const projectedVertices = groupVertices.map(p => {
-      const v = p.clone().sub(origin2d);
-      return new THREE.Vector2(v.dot(right), v.dot(up));
+        const addEdge = (a, b) => {
+            const key = a.clone().add(b).toArray().sort().join('_');
+            edges.set(key, (edges.get(key) || 0) + 1);
+        };
+        addEdge(v0, v1);
+        addEdge(v1, v2);
+        addEdge(v2, v0);
     });
 
-    // Convex hull kullanarak dış sınırı bul
-    const points2d = new THREE.ShapeUtils.isClockWise(projectedVertices) ? projectedVertices.reverse() : projectedVertices;
-    const shape = new THREE.Shape(points2d);
+    // Sadece bir kez görünen kenarlar dış sınırdır (boundary)
+    const boundaryEdges = [];
+    for(const [key, count] of edges.entries()) {
+        if (count === 1) {
+            const [x, y, z] = key.split('_').map(Number);
+            boundaryEdges.push(new THREE.Vector3(x / 2, y / 2, z / 2));
+        }
+    }
     
-    const geometry2d = new THREE.ShapeGeometry(shape);
+    // Boundary vertexlerini bul ve sırala
+    const boundaryVertices = Array.from(groupVertices.values()).filter(v => 
+        boundaryEdges.some(edgeCenter => v.distanceTo(edgeCenter) < tolerance * 2)
+    );
+    
+    if (boundaryVertices.length < 3) {
+      console.warn('Dış sınır oluşturulamadı, yüzey birleştirme atlandı.');
+      return;
+    }
+
+    const normal = faceNormals[group[0]];
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, boundaryVertices[0]);
+    const up = new THREE.Vector3(0, 1, 0);
+    if (Math.abs(up.dot(normal)) > 0.9) up.set(1, 0, 0);
+    const right = new THREE.Vector3().crossVectors(up, normal).normalize();
+    up.crossVectors(normal, right).normalize();
+    
+    // Vertexleri 2D'ye projekte et ve sırala (basit bir yaklaşım)
+    const projected2D = boundaryVertices.map(v => new THREE.Vector2(v.dot(right), v.dot(up)));
+    const center2D = projected2D.reduce((acc, v) => acc.add(v), new THREE.Vector2()).divideScalar(projected2D.length);
+    projected2D.sort((a, b) => Math.atan2(a.y - center2D.y, a.x - center2D.x) - Math.atan2(b.y - center2D.y, b.x - center2D.x));
+
+    const newShape = new THREE.Shape(projected2D);
+    const geometry2d = new THREE.ShapeGeometry(newShape);
+    
     const pos2d = geometry2d.attributes.position;
-    const newPos3d: number[] = [];
-    const newIndices3d: number[] = [];
-
+    
     for (let i = 0; i < pos2d.count; i++) {
-        const x = pos2d.getX(i);
-        const y = pos2d.getY(i);
-        const z = pos2d.getZ(i);
+      const x = pos2d.getX(i);
+      const y = pos2d.getY(i);
+      const z = pos2d.getZ(i);
+      
+      const v3d = right.clone().multiplyScalar(x).addScaledVector(up, y).addScaledVector(normal, z);
+      const newVertexKey = `${v3d.x.toFixed(6)}_${v3d.y.toFixed(6)}_${v3d.z.toFixed(6)}`;
 
-        const p3d = origin2d.clone().addScaledVector(right, x).addScaledVector(up, y).addScaledVector(normal, z);
-        newPos3d.push(p3d.x, p3d.y, p3d.z);
-    }
-
-    if (geometry2d.index) {
-        for (let i = 0; i < geometry2d.index.count; i++) {
-            newIndices3d.push(geometry2d.index.getX(i) + vertexIndex);
-        }
-    } else {
-        for (let i = 0; i < pos2d.count; i++) {
-            newIndices3d.push(i + vertexIndex);
-        }
+      let newVertexIndex = vertexToNewIndex.get(newVertexKey);
+      if (newVertexIndex === undefined) {
+        newPositions.push(v3d.x, v3d.y, v3d.z);
+        newVertexIndex = newIndexCounter++;
+        vertexToNewIndex.set(newVertexKey, newVertexIndex);
+      }
     }
     
-    newPositions.push(...newPos3d);
-    newIndices.push(...newIndices3d);
-    vertexIndex += pos2d.count;
+    for(let i = 0; i < geometry2d.index.count; i++) {
+        const oldIndex = geometry2d.index.getX(i);
+        const v3d = right.clone().multiplyScalar(pos2d.getX(oldIndex)).addScaledVector(up, pos2d.getY(oldIndex));
+        const newVertexKey = `${v3d.x.toFixed(6)}_${v3d.y.toFixed(6)}_${v3d.z.toFixed(6)}`;
+        newIndices.push(vertexToNewIndex.get(newVertexKey));
+    }
+    
     mergedFaceCount++;
   });
 
@@ -314,6 +324,7 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
   
   return mergedGeometry;
 }
+
 
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
@@ -583,5 +594,3 @@ export const performBooleanUnion = (
     return false;
   }
 };
-
-}
