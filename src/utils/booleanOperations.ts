@@ -478,7 +478,24 @@ export const performBooleanSubtract = (
       // 🎯 GELİŞTİRİLMİŞ CSG TEMİZLEME - Gelişmiş geometri temizleme
       console.log('🎯 Çıkarma sonucuna gelişmiş CSG temizleme uygulanıyor...');
       newGeom = cleanCSGGeometry(newGeom, 0.05);
-      newGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
+      
+      // *** YENİ GÜVENLİK KONTROLÜ ***
+      const cleanedPositionCount = newGeom.attributes.position ? newGeom.attributes.position.count : 0;
+      if (cleanedPositionCount === 0) {
+        console.error('❌ Temizleme işlemi sonucunda boş geometri oluştu. Yüzey birleştirme atlanıyor.');
+        // Bu durumda, hiçbir şey yapmayarak orijinal hedef şeklin silinmesini engelliyoruz.
+        return;
+      }
+      
+      const mergedGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
+      
+      // *** YENİ GÜVENLİK KONTROLÜ ***
+      const mergedPositionCount = mergedGeom.attributes.position ? mergedGeom.attributes.position.count : 0;
+      if (mergedPositionCount > 0) {
+        newGeom = mergedGeom;
+      } else {
+        console.warn('⚠️ Yüzey birleştirme işlemi başarısız oldu veya boş geometri döndü. Temizlenmiş (ama birleştirilmemiş) geometri kullanılıyor.');
+      }
       
       // Eski geometriyi temizle
       try {  
@@ -571,7 +588,24 @@ export const performBooleanUnion = (
     // 🎯 GELİŞTİRİLMİŞ CSG TEMİZLEME - Gelişmiş geometri temizleme
     console.log('🎯 Birleştirme sonucuna gelişmiş CSG temizleme uygulanıyor...');
     newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
-    newGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
+    
+    // *** YENİ GÜVENLİK KONTROLÜ ***
+    const cleanedPositionCount = newGeom.attributes.position ? newGeom.attributes.position.count : 0;
+    if (cleanedPositionCount === 0) {
+      console.error('❌ Temizleme işlemi sonucunda boş geometri oluştu. Yüzey birleştirme atlanıyor.');
+      // Bu durumda, hiçbir şey yapmayarak orijinal hedef şeklin silinmesini engelliyoruz.
+      return false;
+    }
+    
+    const mergedGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
+    
+    // *** YENİ GÜVENLİK KONTROLÜ ***
+    const mergedPositionCount = mergedGeom.attributes.position ? mergedGeom.attributes.position.count : 0;
+    if (mergedPositionCount > 0) {
+      newGeom = mergedGeom;
+    } else {
+      console.warn('⚠️ Yüzey birleştirme işlemi başarısız oldu veya boş geometri döndü. Temizlenmiş (ama birleştirilmemiş) geometri kullanılıyor.');
+    }
     
     // Eski geometriyi temizle
     try {  
