@@ -3,130 +3,103 @@ import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
- * Clean up CSG-generated geometry:
- * - applyMatrix4 should be done *before* calling this
- * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
- * rebuilds indexed geometry, merges vertices, computes normals/bounds
- * - merges coplanar faces to eliminate unnecessary vertices
+ * Temizleme işlemi için bir geometriyi BufferGeometryUtils.mergeVertices ile işler.
+ * Bu fonksiyon, birleştirme sonrası oluşabilecek kopuklukları da gidermek için
+ * ek adımlar içerir.
  *
- * @param {THREE.BufferGeometry} geom - geometry already in target-local space
- * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
- * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
+ * @param {THREE.BufferGeometry} geom - İşlenecek geometri.
+ * @param {number} tolerance - Vertex birleştirme toleransı.
+ * @returns {THREE.BufferGeometry} Temizlenmiş geometri.
  */
-export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increased for better welding
-  // 1) Ensure positions exist
-  if (!geom.attributes.position) {
-    console.warn('cleanCSGGeometry: geometry has no position attribute');
+function weldAndClean(geom, tolerance) {
+  let merged;
+  try {
+    merged = BufferGeometryUtils.mergeVertices(geom, tolerance);
+  } catch (err) {
+    console.warn('BufferGeometryUtils.mergeVertices başarısız oldu, orijinal geometri kullanılıyor:', err);
     return geom;
   }
 
-  console.log(`🎯 Starting CSG geometry cleanup with tolerance: ${tolerance}`);
-  const originalVertexCount = geom.attributes.position.count;
-  const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
-
-  // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
-  let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
-
-  // 2.1) Validate geometry after conversion
-  if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
-    console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
-    return new THREE.BufferGeometry();
-  }
-
-  const posAttr = nonIndexed.attributes.position;
-  
-  // 2.2) Validate position attribute array
-  if (!posAttr.array || posAttr.array.length === 0) {
-    console.warn('cleanCSGGeometry: position attribute has no array or empty array');
-    return new THREE.BufferGeometry();
-  }
-  
-  const posArray = posAttr.array;
-  const triCount = posArray.length / 9; // 3 verts * 3 components
-
-  // 3) Spatial hash to weld vertices with given tolerance
-  const vertexMap = new Map(); // key -> newIndex
-  const uniqueVerts = []; // flattened xyz
-  const newIndices = []; // triangles (indices into uniqueVerts)
-  let nextIndex = 0;
-
-  const hash = (x, y, z) =>
-    `${Math.round(x / tolerance)}_${Math.round(y / tolerance)}_${Math.round(z / tolerance)}`;
-
-  let degenerateCount = 0;
-
-  for (let tri = 0; tri < triCount; tri++) {
-    const triIndices = [];
-    for (let v = 0; v < 3; v++) {
-      const i = tri * 9 + v * 3;
-      const x = posArray[i];
-      const y = posArray[i + 1];
-      const z = posArray[i + 2];
-      const key = hash(x, y, z);
-
-      let idx;
-      if (vertexMap.has(key)) {
-        idx = vertexMap.get(key);
-      } else {
-        idx = nextIndex++;
-        vertexMap.set(key, idx);
-        uniqueVerts.push(x, y, z);
-      }
-      triIndices.push(idx);
-    }
-
-    // remove degenerate triangles (two or three indices equal)
-    if (
-      triIndices[0] === triIndices[1] ||
-      triIndices[1] === triIndices[2] ||
-      triIndices[0] === triIndices[2]
-    ) {
-      degenerateCount++;
-      continue;
-    }
-
-    newIndices.push(triIndices[0], triIndices[1], triIndices[2]);
-  }
-
-  console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
-
-  // 4) Build new indexed BufferGeometry
-  const cleaned = new THREE.BufferGeometry();
-  const posBuffer = new Float32Array(uniqueVerts);
-  cleaned.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
-  cleaned.setIndex(newIndices);
-
-  // 5) Merge vertices with BufferGeometryUtils as extra safety
-  let merged;
-  try {
-    merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
-  } catch (err) {
-    console.warn('BufferGeometryUtils.mergeVertices failed, using cleaned geometry:', err);
-    merged = cleaned;
-  }
-
-  // 6) Remove isolated vertices - Recompute indices validity
+  // mergeVertices sonrası bazı üçgenler geçerliliğini yitirebilir.
+  // Bu durumda, geometriyi non-indexed yapıp tekrar işlemeyi deneyeceğiz.
   if (!merged.index || merged.index.count < 3) {
-    console.warn('Invalid index after merge, converting to non-indexed and re-merging');
-    const nonIdx = merged.toNonIndexed();
+    console.warn('Birleştirme sonrası geçersiz indeks, non-indexed geometriye çevriliyor ve tekrar birleştiriliyor.');
+    const nonIndexed = merged.toNonIndexed();
     merged.dispose();
-    merged = nonIdx;
+    
     try {
-      merged = BufferGeometryUtils.mergeVertices(merged, tolerance);
+      merged = BufferGeometryUtils.mergeVertices(nonIndexed, tolerance);
     } catch (err) {
-      console.warn('Second merge attempt failed, using non-indexed geometry:', err);
+      console.warn('İkinci birleştirme denemesi de başarısız oldu, non-indexed geometri kullanılıyor:', err);
+      return nonIndexed;
     }
   }
 
- // 7) Recompute normals and bounds
+  // Oluşan geometrinin normal ve sınırlarını yeniden hesapla
   merged.computeVertexNormals();
   merged.computeBoundingBox();
   merged.computeBoundingSphere();
 
+  return merged;
+}
+
+/**
+ * CSG işleminden sonra oluşan geometrinin temizlenmesi:
+ * - Vertex'leri kaynaklar (weld).
+ * - Dejenere üçgenleri (nokta veya çizgi halini almış) kaldırır.
+ *
+ * @param {THREE.BufferGeometry} geom - Temizlenecek BufferGeometry.
+ * @param {number} tolerance - Kaynaklama toleransı.
+ * @returns {THREE.BufferGeometry} Temizlenmiş ve optimize edilmiş BufferGeometry.
+ */
+export function cleanCSGGeometry(geom, tolerance = 1e-2) {
+  if (!geom.attributes.position) {
+    console.warn('cleanCSGGeometry: geometrinin position özelliği bulunmuyor.');
+    return geom;
+  }
+
+  console.log(`🎯 CSG geometri temizleme işlemi başladı, tolerans: ${tolerance}`);
+  const originalVertexCount = geom.attributes.position.count;
+  const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
+
+  // 1) Geometry'yi non-indexed hale getir
+  let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
+
+  // 2) Dejenere üçgenleri kaldır
+  const posAttr = nonIndexed.attributes.position;
+  const posArray = posAttr.array;
+  const newPositions: number[] = [];
+
+  const triCount = posArray.length / 9;
+  let degenerateCount = 0;
+
+  for (let tri = 0; tri < triCount; tri++) {
+    const i = tri * 9;
+    const v1 = new THREE.Vector3(posArray[i], posArray[i + 1], posArray[i + 2]);
+    const v2 = new THREE.Vector3(posArray[i + 3], posArray[i + 4], posArray[i + 5]);
+    const v3 = new THREE.Vector3(posArray[i + 6], posArray[i + 7], posArray[i + 8]);
+
+    // Üç vertex'in birbirinden farklı olup olmadığını kontrol et
+    if (v1.distanceTo(v2) > 1e-6 && v2.distanceTo(v3) > 1e-6 && v3.distanceTo(v1) > 1e-6) {
+      newPositions.push(...v1.toArray(), ...v2.toArray(), ...v3.toArray());
+    } else {
+      degenerateCount++;
+    }
+  }
+
+  console.log(`🎯 ${degenerateCount} dejenere üçgen kaldırıldı.`);
+  
+  // 3) Yeni geometriyi oluştur
+  const cleanedGeom = new THREE.BufferGeometry();
+  cleanedGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPositions), 3));
+  
+  // 4) Vertexleri kaynakla (weld)
+  const merged = weldAndClean(cleanedGeom, tolerance);
+
   const finalVertexCount = merged.attributes.position.count;
   const finalTriangleCount = merged.index ? merged.index.count / 3 : finalVertexCount / 3;
 
-  console.log(`🎯 CSG cleanup complete:`, {
+  console.log(`🎯 CSG temizleme tamamlandı:`, {
     originalVertices: originalVertexCount,
     finalVertices: finalVertexCount,
     originalTriangles: originalTriangleCount.toFixed(0),
@@ -139,14 +112,15 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 }
 
 /**
- * Merge coplanar faces to eliminate unnecessary vertices and create cleaner surfaces
- * @param {THREE.BufferGeometry} geometry - Input geometry
- * @param {number} tolerance - Tolerance for coplanarity check
- * @returns {THREE.BufferGeometry} Geometry with merged coplanar faces
+ * Aynı düzlemdeki yüzeyleri birleştirerek gereksiz vertex ve çizgileri kaldırır.
+ *
+ * @param {THREE.BufferGeometry} geometry - Girdi geometrisi.
+ * @param {number} tolerance - Yüzeylerin aynı düzlemde olup olmadığını kontrol etmek için tolerans.
+ * @returns {THREE.BufferGeometry} Birleştirilmiş yüzeylere sahip yeni geometri.
  */
 function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
   if (!geometry.index || !geometry.attributes.position) {
-    console.warn('mergeCoplanarFaces: Invalid geometry');
+    console.warn('mergeCoplanarFaces: Geçersiz geometri.');
     return geometry;
   }
 
@@ -154,12 +128,10 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
   const indices = geometry.index.array;
   const triangleCount = indices.length / 3;
 
-  console.log(`🎯 Analyzing ${triangleCount} triangles for coplanar face merging...`);
+  console.log(`🎯 Birleştirilecek ${triangleCount} üçgen analiz ediliyor...`);
 
-  // Calculate face normals and centers
   const faceNormals = [];
   const faceCenters = [];
-  const faceAreas = [];
 
   for (let i = 0; i < triangleCount; i++) {
     const i0 = indices[i * 3] * 3;
@@ -170,27 +142,19 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     const v1 = new THREE.Vector3(positions[i1], positions[i1 + 1], positions[i1 + 2]);
     const v2 = new THREE.Vector3(positions[i2], positions[i2 + 1], positions[i2 + 2]);
 
-    // Calculate normal
     const edge1 = new THREE.Vector3().subVectors(v1, v0);
     const edge2 = new THREE.Vector3().subVectors(v2, v0);
     const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-
-    // Calculate center
     const center = new THREE.Vector3().addVectors(v0, v1).add(v2).divideScalar(3);
-
-    // Calculate area
-    const area = edge1.cross(edge2).length() / 2;
 
     faceNormals.push(normal);
     faceCenters.push(center);
-    faceAreas.push(area);
   }
 
-  // Group coplanar faces
   const coplanarGroups = [];
   const processed = new Set();
-  const normalTolerance = Math.cos(THREE.MathUtils.degToRad(1)); // 1 degree tolerance
-  const planeTolerance = tolerance * 10; // Distance tolerance for same plane
+  const normalTolerance = Math.cos(THREE.MathUtils.degToRad(1));
+  const planeTolerance = tolerance;
 
   for (let i = 0; i < triangleCount; i++) {
     if (processed.has(i)) continue;
@@ -200,18 +164,14 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     const baseCenter = faceCenters[i];
     processed.add(i);
 
-    // Find coplanar faces
     for (let j = i + 1; j < triangleCount; j++) {
       if (processed.has(j)) continue;
 
       const testNormal = faceNormals[j];
       const testCenter = faceCenters[j];
 
-      // Check if normals are parallel (same or opposite direction)
-      const normalDot = Math.abs(baseNormal.dot(testNormal));
-      if (normalDot < normalTolerance) continue;
+      if (Math.abs(baseNormal.dot(testNormal)) < normalTolerance) continue;
 
-      // Check if faces are on the same plane
       const centerDiff = new THREE.Vector3().subVectors(testCenter, baseCenter);
       const distanceToPlane = Math.abs(centerDiff.dot(baseNormal));
       
@@ -226,25 +186,22 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     }
   }
 
-  console.log(`🎯 Found ${coplanarGroups.length} coplanar face groups`);
+  console.log(`🎯 ${coplanarGroups.length} adet eş düzlemli (coplanar) yüzey grubu bulundu.`);
 
   if (coplanarGroups.length === 0) {
-    return geometry; // No coplanar faces to merge
+    return geometry;
   }
 
-  // Create new geometry with merged faces
-  const newPositions = [];
-  const newIndices = [];
+  const newPositions: number[] = [];
+  const newIndices: number[] = [];
   let vertexIndex = 0;
 
-  // Keep non-coplanar faces as-is
   const allGroupedFaces = new Set();
   coplanarGroups.forEach(group => group.forEach(faceIndex => allGroupedFaces.add(faceIndex)));
 
   for (let i = 0; i < triangleCount; i++) {
     if (allGroupedFaces.has(i)) continue;
 
-    // Copy original triangle
     const i0 = indices[i * 3] * 3;
     const i1 = indices[i * 3 + 1] * 3;
     const i2 = indices[i * 3 + 2] * 3;
@@ -259,10 +216,8 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     vertexIndex += 3;
   }
 
-  // Process coplanar groups - create simplified faces
   let mergedFaceCount = 0;
   coplanarGroups.forEach(group => {
-    // Collect all vertices from the group
     const groupVertices = [];
     const vertexSet = new Set();
 
@@ -281,56 +236,67 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
     if (groupVertices.length < 3) return;
 
-    // Create a simplified representation using convex hull or boundary detection
-    // For now, we'll use a simple approach: create triangles from the boundary vertices
     const normal = faceNormals[group[0]];
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, groupVertices[0]);
+    const origin2d = new THREE.Vector3();
+    const up = new THREE.Vector3();
+    plane.projectPoint(new THREE.Vector3(0,1,0), origin2d);
+    plane.projectPoint(new THREE.Vector3(0,1,0).add(normal), up);
+    up.sub(origin2d).normalize();
+    const right = new THREE.Vector3().crossVectors(normal, up).normalize();
+
+    const projectedVertices = groupVertices.map(p => {
+      const v = p.clone().sub(origin2d);
+      return new THREE.Vector2(v.dot(right), v.dot(up));
+    });
+
+    // Convex hull kullanarak dış sınırı bul
+    const points2d = new THREE.ShapeUtils.isClockWise(projectedVertices) ? projectedVertices.reverse() : projectedVertices;
+    const shape = new THREE.Shape(points2d);
     
-    // Project vertices to 2D plane for triangulation
-    const u = new THREE.Vector3(1, 0, 0);
-    if (Math.abs(normal.dot(u)) > 0.9) {
-      u.set(0, 1, 0);
+    const geometry2d = new THREE.ShapeGeometry(shape);
+    const pos2d = geometry2d.attributes.position;
+    const newPos3d: number[] = [];
+    const newIndices3d: number[] = [];
+
+    for (let i = 0; i < pos2d.count; i++) {
+        const x = pos2d.getX(i);
+        const y = pos2d.getY(i);
+        const z = pos2d.getZ(i);
+
+        const p3d = origin2d.clone().addScaledVector(right, x).addScaledVector(up, y).addScaledVector(normal, z);
+        newPos3d.push(p3d.x, p3d.y, p3d.z);
     }
-    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
-    u.crossVectors(v, normal).normalize();
 
-    const projectedVertices = groupVertices.map(vertex => ({
-      vertex,
-      u: vertex.dot(u),
-      v: vertex.dot(v)
-    }));
-
-    // Simple fan triangulation from first vertex
-    if (projectedVertices.length >= 3) {
-      const baseVertex = projectedVertices[0].vertex;
-      
-      for (let i = 1; i < projectedVertices.length - 1; i++) {
-        const v1 = projectedVertices[i].vertex;
-        const v2 = projectedVertices[i + 1].vertex;
-
-        // Add triangle vertices
-        newPositions.push(
-          baseVertex.x, baseVertex.y, baseVertex.z,
-          v1.x, v1.y, v1.z,
-          v2.x, v2.y, v2.z
-        );
-
-        newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-        vertexIndex += 3;
-      }
-      
-      mergedFaceCount++;
+    if (geometry2d.index) {
+        for (let i = 0; i < geometry2d.index.count; i++) {
+            newIndices3d.push(geometry2d.index.getX(i) + vertexIndex);
+        }
+    } else {
+        for (let i = 0; i < pos2d.count; i++) {
+            newIndices3d.push(i + vertexIndex);
+        }
     }
+    
+    newPositions.push(...newPos3d);
+    newIndices.push(...newIndices3d);
+    vertexIndex += pos2d.count;
+    mergedFaceCount++;
   });
 
-  console.log(`🎯 Merged ${coplanarGroups.length} coplanar groups into ${mergedFaceCount} simplified faces`);
+  console.log(`🎯 ${coplanarGroups.length} grup, ${mergedFaceCount} basitleştirilmiş yüzeyde birleştirildi.`);
 
-  // Create new geometry
   const mergedGeometry = new THREE.BufferGeometry();
   mergedGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPositions), 3));
-  mergedGeometry.setIndex(newIndices);
-
+  mergedGeometry.setIndex(new THREE.BufferAttribute(new Uint32Array(newIndices), 1));
+  
+  mergedGeometry.computeVertexNormals();
+  mergedGeometry.computeBoundingBox();
+  mergedGeometry.computeBoundingSphere();
+  
   return mergedGeometry;
 }
+
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
 const Vector3 = THREE.Vector3;
@@ -364,10 +330,10 @@ export const findIntersectingShapes = (
   selectedShape,
   allShapes
 ) => {
-  console.log(`🎯 Finding intersections for shape: ${selectedShape.type} (${selectedShape.id})`);
+  console.log(`🎯 Şekil için kesişimleri bulunuyor: ${selectedShape.type} (${selectedShape.id})`);
   
   const selectedBounds = getShapeBounds(selectedShape);
-  console.log(`🎯 Selected shape bounds:`, {
+  console.log(`🎯 Seçilen şekil sınırları:`, {
     min: [selectedBounds.min.x.toFixed(1), selectedBounds.min.y.toFixed(1), selectedBounds.min.z.toFixed(1)],
     max: [selectedBounds.max.x.toFixed(1), selectedBounds.max.y.toFixed(1), selectedBounds.max.z.toFixed(1)]
   });
@@ -379,8 +345,8 @@ export const findIntersectingShapes = (
     const intersects = boundsIntersect(selectedBounds, shapeBounds);
     
     if (intersects) {
-      console.log(`✅ Intersection found: ${selectedShape.type} (${selectedShape.id}) with ${shape.type} (${shape.id})`);
-      console.log(`🎯 Target shape bounds:`, {
+      console.log(`✅ Kesişim bulundu: ${selectedShape.type} (${selectedShape.id}) ile ${shape.type} (${shape.id})`);
+      console.log(`🎯 Hedef şekil sınırları:`, {
         min: [shapeBounds.min.x.toFixed(1), shapeBounds.min.y.toFixed(1), shapeBounds.min.z.toFixed(1)],
         max: [shapeBounds.max.x.toFixed(1), shapeBounds.max.y.toFixed(1), shapeBounds.max.z.toFixed(1)]
       });
@@ -389,7 +355,7 @@ export const findIntersectingShapes = (
     return intersects;
   });
   
-  console.log(`🎯 Found ${intersectingShapes.length} intersecting shapes`);
+  console.log(`🎯 ${intersectingShapes.length} adet kesişen şekil bulundu.`);
   return intersectingShapes;
 };
 
@@ -409,7 +375,7 @@ const createBrushFromShape = (shape) => {
   // CRITICAL: Update matrix world
   brush.updateMatrixWorld(true);
   
-  console.log(`🎯 Brush created:`, {
+  console.log(`🎯 Fırça (brush) oluşturuldu:`, {
     position: brush.position.toArray().map(v => v.toFixed(1)),
     scale: brush.scale.toArray().map(v => v.toFixed(1)),
     rotation: shape.rotation?.map(v => (v * 180 / Math.PI).toFixed(1)) || [0, 0, 0]
@@ -425,62 +391,62 @@ export const performBooleanSubtract = (
   updateShape,
   deleteShape
 ) => {
-  console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
-  console.log(`🎯 Selected shape for subtraction: ${selectedShape.type} (${selectedShape.id})`);
+  console.log('🎯 ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞLATILDI (CSG) =====');
+  console.log(`🎯 Çıkarma işlemi için seçilen şekil: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Find intersecting shapes
+  // Kesişen şekilleri bul
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
-    console.log('❌ No intersecting shapes found for subtract operation');
+    console.log('❌ Çıkarma işlemi için kesişen şekil bulunamadı.');
     return false;
   }
   
-  console.log(`🎯 Processing subtraction with ${intersectingShapes.length} intersecting shapes using CSG`);
+  console.log(`🎯 ${intersectingShapes.length} adet kesişen şekil ile çıkarma işlemi yapılıyor (CSG).`);
   
   const evaluator = new Evaluator();
   
   try {
-    // Process each intersecting shape
+    // Kesişen her bir şekli işle
     intersectingShapes.forEach((targetShape, index) => {
-      console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
+      console.log(`🎯 Çıkarma işlemi ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
-      // Create brushes
+      // Fırçaları oluştur
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
-      console.log('🎯 Performing CSG subtraction...');
+      console.log('🎯 CSG çıkarma işlemi uygulanıyor...');
       
-      // A - B (subtraction)
+      // A - B (çıkarma)
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
       if (!resultMesh || !resultMesh.geometry) {
-        console.error('❌ CSG subtraction operation failed - no result mesh');
+        console.error('❌ CSG çıkarma işlemi başarısız oldu - sonuç mesh yok.');
         return;
       }
       
       resultMesh.updateMatrixWorld(true);
       
-      console.log('✅ CSG subtraction completed, transforming result to local space...');
+      console.log('✅ CSG çıkarma işlemi tamamlandı, sonuç yerel alana dönüştürülüyor...');
       
-      // Transform result geometry back into target's LOCAL space
+      // Sonuç geometrisini hedef şeklin YEREL alanına geri dönüştür
       const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
       
-      // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
-      console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+      // 🎯 GELİŞTİRİLMİŞ CSG TEMİZLEME - Gelişmiş geometri temizleme
+      console.log('🎯 Çıkarma sonucuna gelişmiş CSG temizleme uygulanıyor...');
+      newGeom = cleanCSGGeometry(newGeom, 0.05);
       newGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
       
-      // Dispose old geometry
+      // Eski geometriyi temizle
       try {  
         targetShape.geometry.dispose();  
       } catch (e) {  
-        console.warn('Could not dispose old geometry:', e);
+        console.warn('Eski geometri temizlenemedi:', e);
       }
       
-      // Update the target shape
+      // Hedef şekli güncelle
       updateShape(targetShape.id, {
         geometry: newGeom,
         parameters: {
@@ -491,21 +457,21 @@ export const performBooleanSubtract = (
         }
       });
       
-      console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
+      console.log(`✅ Hedef şekil ${targetShape.id}, CSG sonucuyla güncellendi.`);
     });
     
-    // Delete the selected shape (the one being subtracted)
+    // Seçilen şekli sil (çıkarılacak olan)
     deleteShape(selectedShape.id);
-    console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
+    console.log(`🗑️ Çıkarılan şekil silindi: ${selectedShape.id}`);
     
-    console.log(`✅ ===== BOOLEAN SUBTRACT COMPLETED SUCCESSFULLY (CSG) =====`);
-    console.log(`📊 Summary: ${intersectingShapes.length} shapes modified with CSG, 1 shape deleted`);
+    console.log(`✅ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
+    console.log(`📊 Özet: ${intersectingShapes.length} şekil CSG ile düzenlendi, 1 şekil silindi.`);
     
     return true;
     
   } catch (error) {
-    console.error('❌ ===== BOOLEAN SUBTRACT FAILED (CSG) =====');
-    console.error('CSG Error details:', error);
+    console.error('❌ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARISIZ OLDU (CSG) =====');
+    console.error('CSG Hata detayları:', error);
     return false;
   }
 };
@@ -517,63 +483,63 @@ export const performBooleanUnion = (
   updateShape,
   deleteShape
 ) => {
-  console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED (CSG) =====');
-  console.log(`🎯 Selected shape for union: ${selectedShape.type} (${selectedShape.id})`);
+  console.log('🎯 ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞLATILDI (CSG) =====');
+  console.log(`🎯 Birleştirme işlemi için seçilen şekil: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Find intersecting shapes
+  // Kesişen şekilleri bul
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
-    console.log('❌ No intersecting shapes found for union operation');
+    console.log('❌ Birleştirme işlemi için kesişen şekil bulunamadı.');
     return false;
   }
   
-  console.log(`🎯 Processing union with ${intersectingShapes.length} intersecting shapes using CSG`);
+  console.log(`🎯 ${intersectingShapes.length} adet kesişen şekil ile birleştirme işlemi yapılıyor (CSG).`);
   
   const evaluator = new Evaluator();
   
   try {
-    // For union, merge with the first intersecting shape
+    // Birleştirme için, ilk kesişen şekil ile birleştir
     const targetShape = intersectingShapes[0];
     
-    console.log(`🎯 Union target: ${targetShape.type} (${targetShape.id})`);
+    console.log(`🎯 Birleştirme hedefi: ${targetShape.type} (${targetShape.id})`);
     
-    // Create brushes
+    // Fırçaları oluştur
     const selectedBrush = createBrushFromShape(selectedShape);
     const targetBrush = createBrushFromShape(targetShape);
     
-    console.log('🎯 Performing CSG union...');
+    console.log('🎯 CSG birleştirme işlemi uygulanıyor...');
     
-    // A + B (union)
+    // A + B (birleştirme)
     const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
     if (!resultMesh || !resultMesh.geometry) {
-      console.error('❌ CSG union operation failed - no result mesh');
+      console.error('❌ CSG birleştirme işlemi başarısız oldu - sonuç mesh yok.');
       return false;
     }
     
     resultMesh.updateMatrixWorld(true);
     
-    console.log('✅ CSG union completed, transforming result to local space...');
+    console.log('✅ CSG birleştirme işlemi tamamlandı, sonuç yerel alana dönüştürülüyor...');
     
-    // Transform result geometry back into target's LOCAL space
+    // Sonuç geometrisini hedef şeklin YEREL alanına geri dönüştür
     const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
-    // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
-    console.log('🎯 Applying robust CSG cleanup to union result...');
+    // 🎯 GELİŞTİRİLMİŞ CSG TEMİZLEME - Gelişmiş geometri temizleme
+    console.log('🎯 Birleştirme sonucuna gelişmiş CSG temizleme uygulanıyor...');
     newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
     newGeom = mergeCoplanarFaces(newGeom, 0.05); // Yüzeyleri birleştir
     
-    // Dispose old geometry
+    // Eski geometriyi temizle
     try {  
       targetShape.geometry.dispose();  
     } catch (e) {  
-      console.warn('Could not dispose old geometry:', e);
+      console.warn('Eski geometri temizlenemedi:', e);
     }
     
-    // Update the target shape
+    // Hedef şekli güncelle
     updateShape(targetShape.id, {
       geometry: newGeom,
       parameters: {
@@ -584,18 +550,20 @@ export const performBooleanUnion = (
       }
     });
     
-    console.log(`✅ Target shape ${targetShape.id} updated with union geometry`);
+    console.log(`✅ Hedef şekil ${targetShape.id}, birleştirme geometrisiyle güncellendi.`);
     
-    // Delete the selected shape (it's now merged)
+    // Seçilen şekli sil (artık birleştirildiği için)
     deleteShape(selectedShape.id);
-    console.log(`🗑️ Merged shape deleted: ${selectedShape.id}`);
+    console.log(`🗑️ Birleştirilen şekil silindi: ${selectedShape.id}`);
     
-    console.log(`✅ ===== BOOLEAN UNION COMPLETED SUCCESSFULLY (CSG) =====`);
+    console.log(`✅ ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
     return true;
     
   } catch (error) {
-    console.error('❌ ===== BOOLEAN UNION FAILED (CSG) =====');
-    console.error('CSG Error details:', error);
+    console.error('❌ ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞARISIZ OLDU (CSG) =====');
+    console.error('CSG Hata detayları:', error);
     return false;
   }
 };
+
+}
