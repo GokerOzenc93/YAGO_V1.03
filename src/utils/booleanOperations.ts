@@ -449,7 +449,10 @@ export const performBooleanSubtract = (
   
   try {
     // Kesişen her bir şekli işle
+    let allOperationsSuccessful = true;
     intersectingShapes.forEach((targetShape, index) => {
+      if (!allOperationsSuccessful) return;
+
       console.log(`🎯 Çıkarma işlemi ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
       // Fırçaları oluştur
@@ -463,6 +466,7 @@ export const performBooleanSubtract = (
       
       if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
         console.error('❌ CSG çıkarma işlemi başarısız oldu veya boş geometri döndü. İşlem iptal edildi.');
+        allOperationsSuccessful = false;
         return;
       }
       
@@ -483,7 +487,7 @@ export const performBooleanSubtract = (
       const cleanedPositionCount = newGeom.attributes.position ? newGeom.attributes.position.count : 0;
       if (cleanedPositionCount === 0) {
         console.error('❌ Temizleme işlemi sonucunda boş geometri oluştu. Yüzey birleştirme atlanıyor.');
-        // Bu durumda, hiçbir şey yapmayarak orijinal hedef şeklin silinmesini engelliyoruz.
+        allOperationsSuccessful = false;
         return;
       }
       
@@ -518,14 +522,17 @@ export const performBooleanSubtract = (
       console.log(`✅ Hedef şekil ${targetShape.id}, CSG sonucuyla güncellendi.`);
     });
     
-    // Seçilen şekli sil (çıkarılacak olan)
-    deleteShape(selectedShape.id);
-    console.log(`🗑️ Çıkarılan şekil silindi: ${selectedShape.id}`);
-    
-    console.log(`✅ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
-    console.log(`📊 Özet: ${intersectingShapes.length} şekil CSG ile düzenlendi, 1 şekil silindi.`);
-    
-    return true;
+    // Eğer tüm operasyonlar başarılıysa, orijinal şekli sil
+    if (allOperationsSuccessful) {
+      deleteShape(selectedShape.id);
+      console.log(`🗑️ Çıkarılan şekil silindi: ${selectedShape.id}`);
+      console.log(`✅ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
+      console.log(`📊 Özet: ${intersectingShapes.length} şekil CSG ile düzenlendi, 1 şekil silindi.`);
+      return true;
+    } else {
+      console.error('❌ ===== BOOLEAN ÇIKARMA İŞLEMİ İPTAL EDİLDİ (CSG) =====');
+      return false;
+    }
     
   } catch (error) {
     console.error('❌ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARISIZ OLDU (CSG) =====');
