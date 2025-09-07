@@ -223,6 +223,7 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
   }
   
   // Eş düzlemli yüzeyleri işle
+  let mergedFaceCount = 0;
   coplanarGroups.forEach(group => {
     // Tüm vertexleri ve kenarları topla
     const edges = new Map();
@@ -242,7 +243,7 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
         });
 
         const addEdge = (a, b) => {
-            const key = a.clone().add(b).toArray().sort().join('_');
+            const key = [a, b].sort((vA, vB) => vA.x - vB.x || vA.y - vB.y || vA.z - vB.z).map(v => v.toArray().map(c => c.toFixed(6)).join('_')).join('|');
             edges.set(key, (edges.get(key) || 0) + 1);
         };
         addEdge(v0, v1);
@@ -254,16 +255,25 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     const boundaryEdges = [];
     for(const [key, count] of edges.entries()) {
         if (count === 1) {
-            const [x, y, z] = key.split('_').map(Number);
-            boundaryEdges.push(new THREE.Vector3(x / 2, y / 2, z / 2));
+            const [vA, vB] = key.split('|').map(str => {
+                const [x, y, z] = str.split('_').map(Number);
+                return new THREE.Vector3(x, y, z);
+            });
+            boundaryEdges.push(vA, vB);
         }
     }
-    
+
     // Boundary vertexlerini bul ve sırala
-    const boundaryVertices = Array.from(groupVertices.values()).filter(v => 
-        boundaryEdges.some(edgeCenter => v.distanceTo(edgeCenter) < tolerance * 2)
-    );
-    
+    const boundaryVertices = [];
+    const uniqueBoundaryVertices = new Set();
+    boundaryEdges.forEach(v => {
+        const key = `${v.x.toFixed(6)}_${v.y.toFixed(6)}_${v.z.toFixed(6)}`;
+        if (!uniqueBoundaryVertices.has(key)) {
+            uniqueBoundaryVertices.add(key);
+            boundaryVertices.push(v);
+        }
+    });
+
     if (boundaryVertices.length < 3) {
       console.warn('Dış sınır oluşturulamadı, yüzey birleştirme atlandı.');
       return;
@@ -291,7 +301,9 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
       const y = pos2d.getY(i);
       const z = pos2d.getZ(i);
       
-      const v3d = right.clone().multiplyScalar(x).addScaledVector(up, y).addScaledVector(normal, z);
+      const v3d = right.clone().multiplyScalar(x).addScaledVector(up, y); // Z bileşeni artık normal eksen üzerinde
+      v3d.addScaledVector(normal, plane.distanceToPoint(v3d)); // Düzleme geri yansıtma
+      
       const newVertexKey = `${v3d.x.toFixed(6)}_${v3d.y.toFixed(6)}_${v3d.z.toFixed(6)}`;
 
       let newVertexIndex = vertexToNewIndex.get(newVertexKey);
