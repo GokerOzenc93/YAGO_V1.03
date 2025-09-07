@@ -450,46 +450,42 @@ export const performBooleanSubtract = (
   try {
     // Kesişen her bir şekli işle
     let allOperationsSuccessful = true;
-    intersectingShapes.forEach((targetShape, index) => {
-      if (!allOperationsSuccessful) return;
+    for (const targetShape of intersectingShapes) {
+      if (!allOperationsSuccessful) break;
 
-      console.log(`🎯 Çıkarma işlemi ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
+      console.log(`🎯 Çıkarma işlemi: ${targetShape.type} (${targetShape.id})`);
       
-      // Fırçaları oluştur
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
       console.log('🎯 CSG çıkarma işlemi uygulanıyor...');
-      
-      // A - B (çıkarma)
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
       console.log('resultMesh vertex count:', resultMesh.geometry?.attributes?.position?.count || 0);
 
-      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-        console.error('❌ CSG çıkarma işlemi başarısız oldu veya boş geometri döndü. İşlem iptal edildi.');
+      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count < 3) {
+        console.error('❌ CSG çıkarma işlemi başarısız oldu veya boş/geçersiz geometri döndü. İşlem iptal edildi.');
         allOperationsSuccessful = false;
-        return;
+        continue;
       }
       
       resultMesh.updateMatrixWorld(true);
       
       console.log('✅ CSG çıkarma işlemi tamamlandı, sonuç yerel alana dönüştürülüyor...');
       
-      // Sonuç geometrisini hedef şeklin YEREL alanına geri dönüştür
       const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
 
       if (newGeom.index) newGeom = newGeom.toNonIndexed();
       console.log('after transform - newGeom vertex count:', newGeom.attributes?.position?.count || 0);
-
-      // 🎯 GELİŞTİRİLMİŞ CSG TEMİZLEME - Gelişmiş geometri temizleme
-      console.log('🎯 Temizleme öncesi vertex count:', newGeom.attributes?.position?.count || 0);
+      
       const safeTolerance = 1e-4;
+
+      console.log('🎯 Temizleme öncesi vertex count:', newGeom.attributes?.position?.count || 0);
       const cleaned = cleanCSGGeometry(newGeom, safeTolerance);
       
-      if (cleaned && cleaned.attributes && cleaned.attributes.position.count > 3) {
+      if (cleaned && cleaned.attributes && cleaned.attributes.position.count >= 3) {
         newGeom = cleaned;
         console.log('cleaned vertex count:', newGeom.attributes.position.count);
       } else {
@@ -498,10 +494,9 @@ export const performBooleanSubtract = (
       
       console.log('after cleanCSGGeometry - vertex count:', newGeom.attributes?.position?.count || 0);
       
-      // Yüzeyleri birleştir
       const mergedGeom = mergeCoplanarFaces(newGeom, safeTolerance);
       
-      if (mergedGeom && mergedGeom.attributes && mergedGeom.attributes.position.count > 3) {
+      if (mergedGeom && mergedGeom.attributes && mergedGeom.attributes.position.count >= 3) {
         newGeom = mergedGeom;
         console.log('merged vertex count:', newGeom.attributes.position.count);
       } else {
@@ -510,12 +505,11 @@ export const performBooleanSubtract = (
 
       console.log('after mergeCoplanarFaces - vertex count:', newGeom.attributes?.position?.count || 0);
       
-      // Eski geometriyi dispose etmeden önce yeni geometriyi doğrula
       const newCount = newGeom.attributes?.position?.count || 0;
       if (newCount < 3) {
         console.error('❌ Yeni geometri yetersiz (tri < 1). Hedef güncelleme iptal ediliyor.');
         allOperationsSuccessful = false;
-        return;
+        continue;
       }
       
       try {  
@@ -524,7 +518,6 @@ export const performBooleanSubtract = (
         console.warn('Eski geometri temizlenemedi:', e);
       }
       
-      // Hedef şekli güncelle
       updateShape(targetShape.id, {
         geometry: newGeom,
         parameters: {
@@ -536,14 +529,12 @@ export const performBooleanSubtract = (
       });
       
       console.log(`✅ Hedef şekil ${targetShape.id}, CSG sonucuyla güncellendi.`);
-    });
-    
-    // Eğer tüm operasyonlar başarılıysa, orijinal şekli sil
+    }
+
     if (allOperationsSuccessful) {
       deleteShape(selectedShape.id);
       console.log(`🗑️ Çıkarılan şekil silindi: ${selectedShape.id}`);
       console.log(`✅ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
-      console.log(`📊 Özet: ${intersectingShapes.length} şekil CSG ile düzenlendi, 1 şekil silindi.`);
       return true;
     } else {
       console.error('❌ ===== BOOLEAN ÇIKARMA İŞLEMİ İPTAL EDİLDİ (CSG) =====');
@@ -568,7 +559,6 @@ export const performBooleanUnion = (
   console.log('🎯 ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞLATILDI (CSG) =====');
   console.log(`🎯 Birleştirme işlemi için seçilen şekil: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Kesişen şekilleri bul
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -581,96 +571,105 @@ export const performBooleanUnion = (
   const evaluator = new Evaluator();
   
   try {
-    // Birleştirme için, ilk kesişen şekil ile birleştir
+    let allOperationsSuccessful = true;
     const targetShape = intersectingShapes[0];
-    
-    console.log(`🎯 Birleştirme hedefi: ${targetShape.type} (${targetShape.id})`);
-    
-    // Fırçaları oluştur
-    const selectedBrush = createBrushFromShape(selectedShape);
-    const targetBrush = createBrushFromShape(targetShape);
-    
-    console.log('🎯 CSG birleştirme işlemi uygulanıyor...');
-    
-    // A + B (birleştirme)
-    const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
-    
-    console.log('resultMesh vertex count:', resultMesh.geometry?.attributes?.position?.count || 0);
 
-    if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-      console.error('❌ CSG birleştirme işlemi başarısız oldu veya boş geometri döndü. İşlem iptal edildi.');
-      return false;
-    }
-    
-    resultMesh.updateMatrixWorld(true);
-    
-    console.log('✅ CSG birleştirme işlemi tamamlandı, sonuç yerel alana dönüştürülüyor...');
-    
-    // Sonuç geometrisini hedef şeklin YEREL alanına geri dönüştür
-    const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
-    let newGeom = resultMesh.geometry.clone();
-    newGeom.applyMatrix4(invTarget);
-    
-    if (newGeom.index) newGeom = newGeom.toNonIndexed();
-    console.log('after transform - newGeom vertex count:', newGeom.attributes?.position?.count || 0);
+    for (const otherShape of intersectingShapes) {
+      if (!allOperationsSuccessful) break;
 
-    // 🎯 GELİŞTİRİLMİŞ CSG TEMİZLEME - Gelişmiş geometri temizleme
-    console.log('🎯 Birleştirme sonucuna gelişmiş CSG temizleme uygulanıyor...');
-    const safeTolerance = 1e-4;
-    const cleaned = cleanCSGGeometry(newGeom, safeTolerance);
+      console.log(`🎯 Birleştirme işlemi: ${targetShape.type} (${targetShape.id}) ile ${otherShape.type} (${otherShape.id})`);
+      
+      const targetBrush = createBrushFromShape(targetShape);
+      const otherBrush = createBrushFromShape(otherShape);
+      
+      console.log('🎯 CSG birleştirme işlemi uygulanıyor...');
+      const resultMesh = evaluator.evaluate(targetBrush, otherBrush, ADDITION);
 
-    if (cleaned && cleaned.attributes && cleaned.attributes.position.count > 3) {
-      newGeom = cleaned;
-      console.log('cleaned vertex count:', newGeom.attributes.position.count);
-    } else {
-      console.warn('cleaning returned empty or tiny geometry, skipping cleaned result.');
-    }
-    
-    console.log('after cleanCSGGeometry - vertex count:', newGeom.attributes?.position?.count || 0);
+      console.log('resultMesh vertex count:', resultMesh.geometry?.attributes?.position?.count || 0);
 
-    const mergedGeom = mergeCoplanarFaces(newGeom, safeTolerance); // Yüzeyleri birleştir
-    
-    if (mergedGeom && mergedGeom.attributes && mergedGeom.attributes.position.count > 3) {
-      newGeom = mergedGeom;
-      console.log('merged vertex count:', newGeom.attributes.position.count);
-    } else {
-      console.warn('mergeCoplanarFaces returned empty or tiny geometry, using cleaned/newGeom instead.');
-    }
-
-    console.log('after mergeCoplanarFaces - vertex count:', newGeom.attributes?.position?.count || 0);
-    
-    // Eski geometriyi dispose etmeden önce yeni geometriyi doğrula
-    const newCount = newGeom.attributes?.position?.count || 0;
-    if (newCount < 3) {
-      console.error('❌ Yeni geometri yetersiz (tri < 1). Hedef güncelleme iptal ediliyor.');
-      return false;
-    }
-
-    try {  
-      targetShape.geometry.dispose();  
-    } catch (e) {  
-      console.warn('Eski geometri temizlenemedi:', e);
-    }
-    
-    // Hedef şekli güncelle
-    updateShape(targetShape.id, {
-      geometry: newGeom,
-      parameters: {
-        ...targetShape.parameters,
-        booleanOperation: 'union',
-        unionedShapeId: selectedShape.id,
-        lastModified: Date.now()
+      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count < 3) {
+        console.error('❌ CSG birleştirme işlemi başarısız oldu veya boş/geçersiz geometri döndü. İşlem iptal edildi.');
+        allOperationsSuccessful = false;
+        continue;
       }
-    });
-    
-    console.log(`✅ Hedef şekil ${targetShape.id}, birleştirme geometrisiyle güncellendi.`);
-    
-    // Seçilen şekli sil (artık birleştirildiği için)
-    deleteShape(selectedShape.id);
-    console.log(`🗑️ Birleştirilen şekil silindi: ${selectedShape.id}`);
-    
-    console.log(`✅ ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
-    return true;
+      
+      resultMesh.updateMatrixWorld(true);
+      
+      console.log('✅ CSG birleştirme işlemi tamamlandı, sonuç yerel alana dönüştürülüyor...');
+      
+      const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+      let newGeom = resultMesh.geometry.clone();
+      newGeom.applyMatrix4(invTarget);
+      
+      if (newGeom.index) newGeom = newGeom.toNonIndexed();
+      console.log('after transform - newGeom vertex count:', newGeom.attributes?.position?.count || 0);
+
+      const safeTolerance = 1e-4;
+
+      console.log('🎯 Temizleme öncesi vertex count:', newGeom.attributes?.position?.count || 0);
+      const cleaned = cleanCSGGeometry(newGeom, safeTolerance);
+
+      if (cleaned && cleaned.attributes && cleaned.attributes.position.count >= 3) {
+        newGeom = cleaned;
+        console.log('cleaned vertex count:', newGeom.attributes.position.count);
+      } else {
+        console.warn('cleaning returned empty or tiny geometry, skipping cleaned result.');
+      }
+      
+      console.log('after cleanCSGGeometry - vertex count:', newGeom.attributes?.position?.count || 0);
+
+      const mergedGeom = mergeCoplanarFaces(newGeom, safeTolerance);
+      
+      if (mergedGeom && mergedGeom.attributes && mergedGeom.attributes.position.count >= 3) {
+        newGeom = mergedGeom;
+        console.log('merged vertex count:', newGeom.attributes.position.count);
+      } else {
+        console.warn('mergeCoplanarFaces returned empty or tiny geometry, using cleaned/newGeom instead.');
+      }
+
+      console.log('after mergeCoplanarFaces - vertex count:', newGeom.attributes?.position?.count || 0);
+      
+      const newCount = newGeom.attributes?.position?.count || 0;
+      if (newCount < 3) {
+        console.error('❌ Yeni geometri yetersiz (tri < 1). Hedef güncelleme iptal ediliyor.');
+        allOperationsSuccessful = false;
+        continue;
+      }
+
+      try {  
+        targetShape.geometry.dispose();  
+      } catch (e) {  
+        console.warn('Eski geometri temizlenemedi:', e);
+      }
+      
+      updateShape(targetShape.id, {
+        geometry: newGeom,
+        parameters: {
+          ...targetShape.parameters,
+          booleanOperation: 'union',
+          unionedShapeId: otherShape.id,
+          lastModified: Date.now()
+        }
+      });
+      
+      console.log(`✅ Hedef şekil ${targetShape.id}, birleştirme geometrisiyle güncellendi.`);
+      
+      if (targetShape.id !== otherShape.id) {
+        deleteShape(otherShape.id);
+        console.log(`🗑️ Birleştirilen şekil silindi: ${otherShape.id}`);
+      }
+    }
+
+    if (allOperationsSuccessful) {
+      deleteShape(selectedShape.id);
+      console.log(`🗑️ Birleştirilen seçilen şekil silindi: ${selectedShape.id}`);
+      console.log(`✅ ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
+      return true;
+    } else {
+      console.error('❌ ===== BOOLEAN BİRLEŞTİRME İŞLEMİ İPTAL EDİLDİ (CSG) =====');
+      console.warn('Bazı operasyonlar başarısız oldu; seçilen şekil silinmedi.');
+      return false;
+    }
     
   } catch (error) {
     console.error('❌ ===== BOOLEAN BİRLEŞTİRME İŞLEMİ BAŞARISIZ OLDU (CSG) =====');
