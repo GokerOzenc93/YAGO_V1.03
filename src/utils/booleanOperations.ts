@@ -132,15 +132,21 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
   const faceNormals = [];
   const faceCenters = [];
+  const vertexToTriangles = new Map();
+  const indexToVertex = new Map();
+
+  for (let i = 0; i < geometry.attributes.position.count; i++) {
+    indexToVertex.set(i, new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, i));
+  }
 
   for (let i = 0; i < triangleCount; i++) {
-    const i0 = indices[i * 3] * 3;
-    const i1 = indices[i * 3 + 1] * 3;
-    const i2 = indices[i * 3 + 2] * 3;
+    const i0 = indices[i * 3];
+    const i1 = indices[i * 3 + 1];
+    const i2 = indices[i * 3 + 2];
 
-    const v0 = new THREE.Vector3(positions[i0], positions[i0 + 1], positions[i0 + 2]);
-    const v1 = new THREE.Vector3(positions[i1], positions[i1 + 1], positions[i1 + 2]);
-    const v2 = new THREE.Vector3(positions[i2], positions[i2 + 1], positions[i2 + 2]);
+    const v0 = indexToVertex.get(i0);
+    const v1 = indexToVertex.get(i1);
+    const v2 = indexToVertex.get(i2);
 
     const edge1 = new THREE.Vector3().subVectors(v1, v0);
     const edge2 = new THREE.Vector3().subVectors(v2, v0);
@@ -149,6 +155,14 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
     faceNormals.push(normal);
     faceCenters.push(center);
+    
+    // Her bir vertex'in hangi üçgenlerde yer aldığını kaydet
+    [i0, i1, i2].forEach(vertexIndex => {
+      if (!vertexToTriangles.has(vertexIndex)) {
+        vertexToTriangles.set(vertexIndex, []);
+      }
+      vertexToTriangles.get(vertexIndex).push(i);
+    });
   }
 
   const coplanarGroups = [];
@@ -202,14 +216,18 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
   for (let i = 0; i < triangleCount; i++) {
     if (allGroupedFaces.has(i)) continue;
 
-    const i0 = indices[i * 3] * 3;
-    const i1 = indices[i * 3 + 1] * 3;
-    const i2 = indices[i * 3 + 2] * 3;
+    const i0 = indices[i * 3];
+    const i1 = indices[i * 3 + 1];
+    const i2 = indices[i * 3 + 2];
+
+    const v0 = indexToVertex.get(i0);
+    const v1 = indexToVertex.get(i1);
+    const v2 = indexToVertex.get(i2);
 
     newPositions.push(
-      positions[i0], positions[i0 + 1], positions[i0 + 2],
-      positions[i1], positions[i1 + 1], positions[i1 + 2],
-      positions[i2], positions[i2 + 1], positions[i2 + 2]
+      v0.x, v0.y, v0.z,
+      v1.x, v1.y, v1.z,
+      v2.x, v2.y, v2.z
     );
 
     newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
@@ -223,8 +241,8 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
 
     group.forEach(faceIndex => {
       for (let v = 0; v < 3; v++) {
-        const idx = indices[faceIndex * 3 + v] * 3;
-        const vertex = new THREE.Vector3(positions[idx], positions[idx + 1], positions[idx + 2]);
+        const idx = indices[faceIndex * 3 + v];
+        const vertex = indexToVertex.get(idx);
         const key = `${vertex.x.toFixed(6)}_${vertex.y.toFixed(6)}_${vertex.z.toFixed(6)}`;
         
         if (!vertexSet.has(key)) {
