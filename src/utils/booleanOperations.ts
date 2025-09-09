@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { performAnalyticSubtract } from './analyticBoolean';
 
 /**
  * Temizleme işlemi için bir geometriyi BufferGeometryUtils.mergeVertices ile işler.
@@ -280,7 +281,6 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     }
 
     const normal = faceNormals[group[0]];
-    // Düzlemin orijinden mesafesini hesapla (düzlem denklemi için)
     const planeDist = normal.dot(boundaryVertices[0]);
     const up = new THREE.Vector3(0, 1, 0);
     if (Math.abs(up.dot(normal)) > 0.9) up.set(1, 0, 0);
@@ -296,15 +296,12 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
     const geometry2d = new THREE.ShapeGeometry(newShape);
     
     const pos2d = geometry2d.attributes.position;
-    // 2D geometri index'ini yeni 3D index'ine haritalamak için bir map oluştur
     const oldIndexToNewIndex = new Map<number, number>();
     
     for (let i = 0; i < pos2d.count; i++) {
       const x = pos2d.getX(i);
       const y = pos2d.getY(i);
       
-      // DÜZELTME: 3D vertex'i doğru şekilde yeniden oluştur.
-      // 2D koordinatları (x, y) kullanarak ve eksik olan normal bileşenini ekleyerek 3D'ye geri dön.
       const v3d = new THREE.Vector3()
         .addScaledVector(right, x)
         .addScaledVector(up, y)
@@ -321,8 +318,6 @@ function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
       oldIndexToNewIndex.set(i, newVertexIndex);
     }
     
-    // DÜZELTME: Yeni oluşturulan index haritasını kullanarak face'leri oluştur.
-    // Bu, hatalı vertex key'leri ile arama yapmayı engeller.
     for(let i = 0; i < geometry2d.index.count; i++) {
         const oldIndex = geometry2d.index.getX(i);
         const newIndex = oldIndexToNewIndex.get(oldIndex);
@@ -435,6 +430,76 @@ const createBrushFromShape = (shape) => {
   return brush;
 };
 
+
+/**
+ * Sonucu tahmin ederek ve yeniden oluşturarak boolean çıkarma işlemi yapar.
+ * Bu yöntem, standart CSG'nin neden olduğu geometri sorunlarını önler.
+ * Şimdilik en iyi sonucu eksenlere paralel (dönme uygulanmamış) kutularda verir.
+ */
+export const performAnalyticSubtractAndUpdate = (
+  selectedShape,
+  allShapes,
+  updateShape,
+  deleteShape
+) => {
+  console.log('🎯 ===== ANALİTİK ÇIKARMA İŞLEMİ BAŞLATILDI =====');
+  const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
+
+  if (intersectingShapes.length === 0) {
+    console.log('❌ Analitik çıkarma için kesişen şekil bulunamadı.');
+    return false;
+  }
+
+  let allOperationsSuccessful = true;
+  for (const targetShape of intersectingShapes) {
+    console.log(`🎯 Analitik Çıkarma: ${targetShape.type} (${targetShape.id}) <— ${selectedShape.type} (${selectedShape.id})`);
+
+    // Analitik fonksiyon, dünya koordinatlarında temiz bir geometri oluşturur.
+    const newGeomWorld = performAnalyticSubtract(targetShape, selectedShape);
+
+    if (!newGeomWorld || newGeomWorld.attributes.position.count < 3) {
+      console.error('❌ Analitik çıkarma başarısız oldu veya boş geometri döndü. Standart CSG denenebilir.');
+      allOperationsSuccessful = false;
+      continue;
+    }
+
+    // Sonucu, hedef şeklin yerel koordinat sistemine geri dönüştür.
+    const targetBrush = createBrushFromShape(targetShape);
+    const invTargetMatrix = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+    const newGeomLocal = newGeomWorld.clone().applyMatrix4(invTargetMatrix);
+    newGeomLocal.computeBoundingBox();
+    newGeomLocal.computeBoundingSphere();
+    
+    try {
+      targetShape.geometry.dispose();
+    } catch (e) {
+      console.warn('Eski geometri temizlenemedi:', e);
+    }
+    
+    updateShape(targetShape.id, {
+      geometry: newGeomLocal,
+      parameters: {
+        ...targetShape.parameters,
+        booleanOperation: 'analytic_subtract',
+        subtractedShapeId: selectedShape.id,
+        lastModified: Date.now(),
+      }
+    });
+    console.log(`✅ Hedef şekil ${targetShape.id}, analitik sonuçla güncellendi.`);
+  }
+
+  if (allOperationsSuccessful) {
+    deleteShape(selectedShape.id);
+    console.log(`🗑️ Çıkarılan şekil silindi: ${selectedShape.id}`);
+    console.log(`✅ ===== ANALİTİK ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI =====`);
+    return true;
+  } else {
+    console.error('❌ ===== ANALİTİK ÇIKARMA İŞLEMİ İPTAL EDİLDİ =====');
+    return false;
+  }
+};
+
+
 // Perform boolean subtract operation with three-bvh-csg
 export const performBooleanSubtract = (
   selectedShape,
@@ -445,6 +510,14 @@ export const performBooleanSubtract = (
   console.log('🎯 ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞLATILDI (CSG) =====');
   console.log(`🎯 Çıkarma işlemi için seçilen şekil: ${selectedShape.type} (${selectedShape.id})`);
   
+  // ÖNCELİKLE ANALİTİK YÖNTEMİ DENE
+  const analyticSuccess = performAnalyticSubtractAndUpdate(selectedShape, allShapes, updateShape, deleteShape);
+  if (analyticSuccess) {
+      return true; // Analitik yöntem başarılı olduysa devam etme
+  }
+
+  console.warn("⚠️ Analitik çıkarma başarısız oldu, standart CSG yöntemine geçiliyor...");
+
   // Kesişen şekilleri bul
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
@@ -687,3 +760,4 @@ export const performBooleanUnion = (
     return false;
   }
 };
+
