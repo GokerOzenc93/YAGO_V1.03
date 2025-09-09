@@ -81,25 +81,8 @@ export function performAnalyticSubtract(targetShape: any, subtractShape: any): T
     
     console.log("✅ AABB'ler kesişiyor, çıkarma işlemi devam ediyor.");
     
-    // Kesişen bölgeyi hesapla
-    const intersectionAABB: AABB = {
-        min: new THREE.Vector3(
-            Math.max(targetAABB.min.x, subtractAABB.min.x),
-            Math.max(targetAABB.min.y, subtractAABB.min.y),
-            Math.max(targetAABB.min.z, subtractAABB.min.z)
-        ),
-        max: new THREE.Vector3(
-            Math.min(targetAABB.max.x, subtractAABB.max.x),
-            Math.min(targetAABB.max.y, subtractAABB.max.y),
-            Math.min(targetAABB.max.z, subtractAABB.max.z)
-        )
-    };
-    
-    console.log("Kesişen bölge AABB:", intersectionAABB);
-    
-    // Basit yaklaşım: Target geometriyi döndür (gerçek çıkarma işlemi burada yapılacak)
-    // Bu kısım daha karmaşık geometri işlemleri gerektirir
-    console.log("🔄 Basit yaklaşım: Orijinal geometri döndürülüyor");
-    
-    return targetShape.geometry.clone();
+    // Analitik çıkarma sadece basit durumlar için çalışır
+    // Karmaşık geometriler için null döndür ki CSG kullanılsın
+    console.log("⚠️ Analitik çıkarma henüz tam olarak implement edilmedi, CSG'ye geçiliyor");
+    return null;
 }
