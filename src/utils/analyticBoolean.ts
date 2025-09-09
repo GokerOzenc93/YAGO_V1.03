@@ -17,8 +17,25 @@ function getAABBFromShape(shape: any): AABB {
     geometry.computeBoundingBox();
     const bbox = geometry.boundingBox.clone();
     
-    // Şeklin dünya matrisini uygula
-    bbox.applyMatrix4(shape.matrixWorld);
+    // Şeklin transform bilgilerinden dünya matrisini oluştur
+    const matrix = new THREE.Matrix4();
+    
+    // Position, rotation ve scale bilgilerini kullanarak matrix oluştur
+    const position = shape.position || new THREE.Vector3(0, 0, 0);
+    const rotation = shape.rotation || shape.quaternion || new THREE.Euler(0, 0, 0);
+    const scale = shape.scale || new THREE.Vector3(1, 1, 1);
+    
+    // Matrix'i compose et
+    if (shape.quaternion) {
+        matrix.compose(position, shape.quaternion, scale);
+    } else {
+        matrix.makeRotationFromEuler(rotation);
+        matrix.scale(scale);
+        matrix.setPosition(position);
+    }
+    
+    // Oluşturulan matrisi bounding box'a uygula
+    bbox.applyMatrix4(matrix);
     
     return {
         min: bbox.min,
