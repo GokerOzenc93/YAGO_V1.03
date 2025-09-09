@@ -1,7 +1,98 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { performAnalyticSubtract } from './analyticBoolean';
+
+// ===== ANALYTIC BOOLEAN OPERATIONS =====
+
+// Eksenlere hizalı bir sınırlayıcı kutuyu temsil eder (Axis-Aligned Bounding Box)
+interface AABB { 
+  min: THREE.Vector3; 
+  max: THREE.Vector3; 
+}
+
+/**
+ * Bir şeklin dünya koordinatlarındaki AABB'sini alır.
+ * @param shape Shape nesnesi
+ * @returns {AABB} Şeklin AABB'si
+ */
+function getAABBFromShape(shape: any): AABB {
+    const geometry = shape.geometry;
+    geometry.computeBoundingBox();
+    const bbox = geometry.boundingBox.clone();
+    
+    // Şeklin transform bilgilerinden dünya matrisini oluştur
+    const matrix = new THREE.Matrix4();
+    
+    // Position, rotation ve scale bilgilerini kullanarak matrix oluştur
+    const position = new THREE.Vector3(...(shape.position || [0, 0, 0]));
+    const scale = new THREE.Vector3(...(shape.scale || [1, 1, 1]));
+    
+    let quaternion: THREE.Quaternion;
+    if (shape.quaternion) {
+        quaternion = shape.quaternion;
+    } else if (shape.rotation) {
+        quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(...shape.rotation));
+    } else {
+        quaternion = new THREE.Quaternion();
+    }
+    
+    // Matrix'i compose et
+    matrix.compose(position, quaternion, scale);
+    
+    // Oluşturulan matrisi bounding box'a uygula
+    bbox.applyMatrix4(matrix);
+    
+    return {
+        min: bbox.min,
+        max: bbox.max
+    };
+}
+
+/**
+ * İki AABB'nin kesişip kesişmediğini kontrol eder.
+ * @param aabb1 - İlk AABB.
+ * @param aabb2 - İkinci AABB.
+ * @returns {boolean} Kesişiyorsa true, aksi halde false.
+ */
+function aabbIntersects(aabb1: AABB, aabb2: AABB): boolean {
+    return (
+        aabb1.min.x <= aabb2.max.x && aabb1.max.x >= aabb2.min.x &&
+        aabb1.min.y <= aabb2.max.y && aabb1.max.y >= aabb2.min.y &&
+        aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z
+    );
+}
+
+/**
+ * Analitik çıkarma işlemi gerçekleştirir (AABB yaklaşımı).
+ * @param targetShape - İçinden çıkarma yapılacak şekil.
+ * @param subtractShape - Çıkarılacak şekil.
+ * @returns {THREE.BufferGeometry | null} Sonuç geometri veya başarısız olursa null.
+ */
+function performAnalyticSubtract(targetShape: any, subtractShape: any): THREE.BufferGeometry | null {
+    console.log("🎯 Analitik Çıkarma İşlemi Başlatıldı (AABB Yaklaşımı)");
+    
+    // Şekillerin dünya koordinatlarındaki AABB'lerini al.
+    const targetAABB = getAABBFromShape(targetShape);
+    const subtractAABB = getAABBFromShape(subtractShape);
+    
+    console.log("Target AABB:", targetAABB);
+    console.log("Subtract AABB:", subtractAABB);
+    
+    // AABB'lerin kesişip kesişmediğini kontrol et.
+    if (!aabbIntersects(targetAABB, subtractAABB)) {
+        console.log("⚠️ AABB'ler kesişmiyor, çıkarma işlemi yapılmayacak.");
+        return targetShape.geometry.clone();
+    }
+    
+    console.log("✅ AABB'ler kesişiyor, çıkarma işlemi devam ediyor.");
+    
+    // Analitik çıkarma sadece basit durumlar için çalışır
+    // Karmaşık geometriler için null döndür ki CSG kullanılsın
+    console.log("⚠️ Analitik çıkarma henüz tam olarak implement edilmedi, CSG'ye geçiliyor");
+    return null;
+}
+
+// ===== END ANALYTIC BOOLEAN OPERATIONS =====
 
 /**
  * Temizleme işlemi için bir geometriyi BufferGeometryUtils.mergeVertices ile işler.
