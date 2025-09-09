@@ -23,8 +23,20 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   const originalVertexCount = geom.attributes.position.count;
   const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
 
+  // --- YENİ: Birleştirmeden önce gereksiz öznitelikleri kaldır ---
+  // Bu, birleştirmenin yalnızca köşe pozisyonlarına göre yapılmasını sağlar.
+  const geomClone = geom.clone();
+  geomClone.deleteAttribute('normal');
+  geomClone.deleteAttribute('uv');
+  geomClone.deleteAttribute('color');
+  console.log('🎯 Temiz birleştirme için normal, uv ve renk öznitelikleri kaldırıldı.');
+
   // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
-  let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
+  let nonIndexed = geomClone.index ? geomClone.toNonIndexed() : geomClone;
+  if (geomClone !== nonIndexed) {
+      geomClone.dispose();
+  }
+
 
   // 2.1) Validate geometry after conversion
   if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
