@@ -580,6 +580,7 @@ const createBrushFromShape = (shape) => {
     console.error('❌ ===== ANALİTİK ÇIKARMA İŞLEMİ İPTAL EDİLDİ =====');
     return false;
   }
+*/
 };
 
 
