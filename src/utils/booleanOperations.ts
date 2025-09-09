@@ -525,14 +525,6 @@ const createBrushFromShape = (shape) => {
 /**
  * Sonucu tahmin ederek ve yeniden oluşturarak boolean çıkarma işlemi yapar.
  * Bu yöntem, standart CSG'nin neden olduğu geometri sorunlarını önler.
- * Şimdilik en iyi sonucu eksenlere paralel (dönme uygulanmamış) kutularda verir.
- */
-export const performAnalyticSubtractAndUpdate = (
-  selectedShape,
-  allShapes,
-  updateShape,
-  deleteShape
-) => {
   console.log('🎯 ===== ANALİTİK ÇIKARMA İŞLEMİ BAŞLATILDI =====');
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
 
