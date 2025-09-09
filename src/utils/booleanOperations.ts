@@ -3,151 +3,102 @@ import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
- * Clean up CSG-generated geometry:
- * - applyMatrix4 should be done *before* calling this
- * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
- * rebuilds indexed geometry, merges vertices, computes normals/bounds
- *
- * @param {THREE.BufferGeometry} geom - geometry already in target-local space
- * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
- * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
- */
-export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increased for better welding
-  // 1) Ensure positions exist
-  if (!geom.attributes.position) {
-    console.warn('cleanCSGGeometry: geometry has no position attribute');
-    return geom;
-  }
+ * A more robust method to clean and weld vertices using quantization.
+ * This function replaces the previous implementation.
+ * @param {THREE.BufferGeometry} geom - The geometry to clean.
+ * @param {number} tolerance - The quantization tolerance.
+ * @returns {THREE.BufferGeometry} The cleaned and rebuilt geometry.
+ */
+export function cleanCSGGeometry(geom, tolerance = 1e-4) { // Using a smaller default tolerance for precision
+    if (!geom.attributes.position) {
+        console.warn('cleanCSGGeometry: geometry has no position attribute.');
+        return geom;
+    }
 
-  console.log(`🎯 Starting CSG geometry cleanup with tolerance: ${tolerance}`);
-  const originalVertexCount = geom.attributes.position.count;
-  const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
+    console.log(`🎯 Starting ROBUST CSG geometry cleanup with tolerance: ${tolerance}`);
+    const originalVertexCount = geom.attributes.position.count;
+    const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
 
-  // --- YENİ: Birleştirmeden önce gereksiz öznitelikleri kaldır ---
-  // Bu, birleştirmenin yalnızca köşe pozisyonlarına göre yapılmasını sağlar.
-  const geomClone = geom.clone();
-  geomClone.deleteAttribute('normal');
-  geomClone.deleteAttribute('uv');
-  geomClone.deleteAttribute('color');
-  console.log('🎯 Temiz birleştirme için normal, uv ve renk öznitelikleri kaldırıldı.');
+    // --- Öznitelikleri kaldırarak sadece pozisyona odaklan ---
+    const geomClone = geom.clone();
+    geomClone.deleteAttribute('normal');
+    geomClone.deleteAttribute('uv');
+    geomClone.deleteAttribute('color');
+    console.log('🎯 Removed normal, uv, and color attributes for clean merging.');
 
-  // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
-  let nonIndexed = geomClone.index ? geomClone.toNonIndexed() : geomClone;
-  if (geomClone !== nonIndexed) {
-      geomClone.dispose();
-  }
+    // --- Geometriyi non-indexed hale getirerek üçgenleri garantile ---
+    const nonIndexed = geomClone.index ? geomClone.toNonIndexed() : geomClone;
+    if (geomClone !== nonIndexed) {
+        geomClone.dispose();
+    }
+    
+    if (!nonIndexed || !nonIndexed.attributes.position || !nonIndexed.attributes.position.array) {
+        console.error("cleanCSGGeometry: Geometry is invalid after preparation.");
+        return new THREE.BufferGeometry();
+    }
 
+    // --- Vertex'leri quantize et ve hash tablosu ile tekilleştir ---
+    const pos = nonIndexed.attributes.position.array;
+    const map = new Map();
+    const newVerts = [];
+    const newIndices = [];
+    let degenerateCount = 0;
 
-  // 2.1) Validate geometry after conversion
-  if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
-    console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
-    return new THREE.BufferGeometry();
-  }
+    const triCount = pos.length / 9;
+    for (let i = 0; i < triCount; i++) {
+        const triVtxIndices = [];
+        for (let j = 0; j < 3; j++) {
+            const offset = i * 9 + j * 3;
+            const x = Math.round(pos[offset] / tolerance) * tolerance;
+            const y = Math.round(pos[offset + 1] / tolerance) * tolerance;
+            const z = Math.round(pos[offset + 2] / tolerance) * tolerance;
+            const key = `${x},${y},${z}`;
 
-  const posAttr = nonIndexed.attributes.position;
-  
-  // 2.2) Validate position attribute array
-  if (!posAttr.array || posAttr.array.length === 0) {
-    console.warn('cleanCSGGeometry: position attribute has no array or empty array');
-    return new THREE.BufferGeometry();
-  }
-  
-  const posArray = posAttr.array;
-  const triCount = posArray.length / 9; // 3 verts * 3 components
+            if (!map.has(key)) {
+                map.set(key, newVerts.length / 3);
+                newVerts.push(x, y, z);
+            }
+            triVtxIndices.push(map.get(key));
+        }
 
-  // 3) Spatial hash to weld vertices with given tolerance
-  const vertexMap = new Map(); // key -> newIndex
-  const uniqueVerts = []; // flattened xyz
-  const newIndices = []; // triangles (indices into uniqueVerts)
-  let nextIndex = 0;
+        // Dejenere üçgenleri (aynı indekse sahip köşeleri olan) atla
+        if (triVtxIndices[0] === triVtxIndices[1] || triVtxIndices[1] === triVtxIndices[2] || triVtxIndices[0] === triVtxIndices[2]) {
+            degenerateCount++;
+            continue;
+        }
 
-  const hash = (x, y, z) =>
-    `${Math.round(x / tolerance)}_${Math.round(y / tolerance)}_${Math.round(z / tolerance)}`;
+        newIndices.push(...triVtxIndices);
+    }
+    
+    nonIndexed.dispose();
 
-  let degenerateCount = 0;
+    console.log(`🎯 Removed ${degenerateCount} degenerate triangles during quantization.`);
 
-  for (let tri = 0; tri < triCount; tri++) {
-    const triIndices = [];
-    for (let v = 0; v < 3; v++) {
-      const i = tri * 9 + v * 3;
-      const x = posArray[i];
-      const y = posArray[i + 1];
-      const z = posArray[i + 2];
-      const key = hash(x, y, z);
+    // --- Yeni, temiz geometriyi oluştur ---
+    const newGeo = new THREE.BufferGeometry();
+    newGeo.setAttribute('position', new THREE.Float32BufferAttribute(newVerts, 3));
+    newGeo.setIndex(newIndices);
 
-      let idx;
-      if (vertexMap.has(key)) {
-        idx = vertexMap.get(key);
-      } else {
-        idx = nextIndex++;
-        vertexMap.set(key, idx);
-        uniqueVerts.push(x, y, z);
-      }
-      triIndices.push(idx);
-    }
+    // --- Son adımlar ---
+    newGeo.computeVertexNormals();
+    newGeo.computeBoundingBox();
+    newGeo.computeBoundingSphere();
 
-    // remove degenerate triangles (two or three indices equal)
-    if (
-      triIndices[0] === triIndices[1] ||
-      triIndices[1] === triIndices[2] ||
-      triIndices[0] === triIndices[2]
-    ) {
-      degenerateCount++;
-      continue;
-    }
+    const finalVertexCount = newGeo.attributes.position.count;
+    const finalTriangleCount = newGeo.index ? newGeo.index.count / 3 : 0;
 
-    newIndices.push(triIndices[0], triIndices[1], triIndices[2]);
-  }
+    console.log(`🎯 CSG cleanup complete:`, {
+        originalVertices: originalVertexCount,
+        finalVertices: finalVertexCount,
+        originalTriangles: originalTriangleCount.toFixed(0),
+        finalTriangles: finalTriangleCount.toFixed(0),
+        degenerateRemoved: degenerateCount,
+        vertexReduction: `${originalVertexCount > 0 ? (((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1) : 0}%`
+    });
 
-  console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
-
-  // 4) Build new indexed BufferGeometry
-  const cleaned = new THREE.BufferGeometry();
-  const posBuffer = new Float32Array(uniqueVerts);
-  cleaned.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
-  cleaned.setIndex(newIndices);
-
-  // 5) Merge vertices with BufferGeometryUtils as extra safety
-  let merged;
-  try {
-    merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
-  } catch (err) {
-    console.warn('BufferGeometryUtils.mergeVertices failed, using cleaned geometry:', err);
-    merged = cleaned;
-  }
-
-  // 6) Remove isolated vertices - Recompute indices validity
-  if (!merged.index || merged.index.count < 3) {
-    console.warn('Invalid index after merge, converting to non-indexed and re-merging');
-    const nonIdx = merged.toNonIndexed();
-    merged.dispose();
-    merged = nonIdx;
-    try {
-      merged = BufferGeometryUtils.mergeVertices(merged, tolerance);
-    } catch (err) {
-      console.warn('Second merge attempt failed, using non-indexed geometry:', err);
-    }
-  }
-
-  // 7) Recompute normals and bounds
-  merged.computeVertexNormals();
-  merged.computeBoundingBox();
-  merged.computeBoundingSphere();
-
-  const finalVertexCount = merged.attributes.position.count;
-  const finalTriangleCount = merged.index ? merged.index.count / 3 : finalVertexCount / 3;
-
-  console.log(`🎯 CSG cleanup complete:`, {
-    originalVertices: originalVertexCount,
-    finalVertices: finalVertexCount,
-    originalTriangles: originalTriangleCount.toFixed(0),
-    finalTriangles: finalTriangleCount.toFixed(0),
-    degenerateRemoved: degenerateCount,
-    vertexReduction: `${(((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1)}%`
-  });
-
-  return merged;
+    return newGeo;
 }
+
 
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
@@ -213,7 +164,14 @@ export const findIntersectingShapes = (
 
 // Create brush from shape with proper transforms
 const createBrushFromShape = (shape) => {
-  const brush = new Brush(shape.geometry.clone());
+  const originalGeom = shape.geometry.clone();
+
+  // --- YENİ: CSG öncesi ön temizleme ---
+  console.log(`✨ Pre-cleaning geometry for brush (Shape ID: ${shape.id})`);
+  const preCleanedGeom = cleanCSGGeometry(originalGeom, 1e-4); // Use a fine tolerance for pre-cleaning
+  originalGeom.dispose(); // Dispose of the clone
+
+  const brush = new Brush(preCleanedGeom);
   
   // Apply transforms
   brush.position.fromArray(shape.position || [0, 0, 0]);
