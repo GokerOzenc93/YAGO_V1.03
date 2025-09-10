@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MeshoptSimplifier } from 'meshoptimizer';
+import { MeshoptDecoder } from 'meshoptimizer/meshopt_decoder.module.js';
 import { GeometryFactory } from '../lib/geometryFactory';
 
 /**
@@ -49,10 +49,10 @@ export function repairCSGGeometryWithMeshoptimizer(geom: THREE.BufferGeometry, t
 
   try {
     // 3) Optimize vertex cache for better performance
-    const optimizedIndices = MeshoptSimplifier.optimizeVertexCache(indices, vertexCount);
+    const optimizedIndices = MeshoptDecoder.optimizeVertexCache(indices, vertexCount);
     
     // 4) Remove duplicate vertices with high precision
-    const [remappedIndices, uniqueVertexCount] = MeshoptSimplifier.optimizeVertexFetch(
+    const [remappedIndices, uniqueVertexCount] = MeshoptDecoder.optimizeVertexFetch(
       optimizedIndices,
       positions,
       vertexCount
@@ -71,7 +71,7 @@ export function repairCSGGeometryWithMeshoptimizer(geom: THREE.BufferGeometry, t
     
     // 6) Simplify geometry to remove broken triangles (gentle simplification)
     const targetTriangleCount = Math.floor(remappedIndices.length / 3 * 0.98); // Keep 98% of triangles
-    const simplifiedIndices = MeshoptSimplifier.simplify(
+    const simplifiedIndices = MeshoptDecoder.simplify(
       remappedIndices,
       newPositions,
       uniqueVertexCount,

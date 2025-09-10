@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshoptSimplifier } from 'meshoptimizer';
+import { MeshoptDecoder } from 'meshoptimizer/meshopt_decoder.module.js';
 import { isOpenCascadeInitialized, initializeOpenCascade } from './opencascadeCore';
 import { 
   createOCBox, 
@@ -37,7 +37,7 @@ export class GeometryFactory {
       
       // Initialize meshoptimizer
       try {
-        await MeshoptSimplifier.ready;
+        await MeshoptDecoder.ready;
         this.meshoptimizerReady = true;
         console.log('✅ Meshoptimizer initialized successfully');
       } catch (error) {
