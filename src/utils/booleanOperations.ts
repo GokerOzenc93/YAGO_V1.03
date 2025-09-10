@@ -1,9 +1,117 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-// SimplifyModifier'ı bir "iyileştirme" aracı olarak kullanmak için tekrar içe aktarıyoruz.
-import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+import { MeshoptSimplifier } from 'meshoptimizer';
 
+/**
+ * Advanced geometry repair using meshoptimizer
+ * Scans all surfaces and fixes post-CSG artifacts
+ */
+export function repairCSGGeometryWithMeshoptimizer(geom: THREE.BufferGeometry, tolerance = 1e-3): THREE.BufferGeometry {
+  console.log('🔧 Starting advanced meshoptimizer-based geometry repair...');
+  
+  if (!geom.attributes.position) {
+    console.warn('repairCSGGeometry: geometry has no position attribute');
+    return geom;
+  }
+
+  const originalVertexCount = geom.attributes.position.count;
+  const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
+
+  console.log(`🔧 Input geometry: ${originalVertexCount} vertices, ${originalTriangleCount.toFixed(0)} triangles`);
+
+  // 1) Convert to non-indexed for processing
+  let workingGeom = geom.index ? geom.toNonIndexed() : geom.clone();
+  
+  if (!workingGeom.attributes.position) {
+    console.warn('Failed to create working geometry');
+    return geom;
+  }
+
+  // 2) Extract vertex and index data for meshoptimizer
+  const positions = workingGeom.attributes.position.array as Float32Array;
+  const vertexCount = positions.length / 3;
+  
+  // Create indices array (0, 1, 2, 3, 4, 5, ...)
+  const indices = new Uint32Array(vertexCount);
+  for (let i = 0; i < vertexCount; i++) {
+    indices[i] = i;
+  }
+
+  console.log(`🔧 Processing ${vertexCount} vertices with meshoptimizer...`);
+
+  try {
+    // 3) Optimize vertex cache for better performance
+    const optimizedIndices = MeshoptSimplifier.optimizeVertexCache(indices, vertexCount);
+    
+    // 4) Remove duplicate vertices with high precision
+    const [remappedIndices, uniqueVertexCount] = MeshoptSimplifier.optimizeVertexFetch(
+      optimizedIndices,
+      positions,
+      vertexCount
+    );
+    
+    console.log(`🔧 Vertex deduplication: ${vertexCount} → ${uniqueVertexCount} vertices`);
+    
+    // 5) Create new optimized positions array
+    const newPositions = new Float32Array(uniqueVertexCount * 3);
+    for (let i = 0; i < uniqueVertexCount; i++) {
+      const srcIndex = i * 3;
+      newPositions[srcIndex] = positions[srcIndex];
+      newPositions[srcIndex + 1] = positions[srcIndex + 1];
+      newPositions[srcIndex + 2] = positions[srcIndex + 2];
+    }
+    
+    // 6) Simplify geometry to remove broken triangles (gentle simplification)
+    const targetTriangleCount = Math.floor(remappedIndices.length / 3 * 0.98); // Keep 98% of triangles
+    const simplifiedIndices = MeshoptSimplifier.simplify(
+      remappedIndices,
+      newPositions,
+      uniqueVertexCount,
+      targetTriangleCount,
+      0.01 // Very low error threshold to preserve shape
+    );
+    
+    console.log(`🔧 Triangle optimization: ${(remappedIndices.length / 3).toFixed(0)} → ${(simplifiedIndices.length / 3).toFixed(0)} triangles`);
+    
+    // 7) Build final optimized geometry
+    const finalGeometry = new THREE.BufferGeometry();
+    finalGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+    finalGeometry.setIndex(Array.from(simplifiedIndices));
+    
+    // 8) Final cleanup with BufferGeometryUtils
+    let mergedGeometry;
+    try {
+      mergedGeometry = BufferGeometryUtils.mergeVertices(finalGeometry, tolerance);
+    } catch (err) {
+      console.warn('BufferGeometryUtils.mergeVertices failed, using unmerged geometry:', err);
+      mergedGeometry = finalGeometry;
+    }
+    
+    // 9) Compute normals and bounds
+    mergedGeometry.computeVertexNormals();
+    mergedGeometry.computeBoundingBox();
+    mergedGeometry.computeBoundingSphere();
+    
+    const finalVertexCount = mergedGeometry.attributes.position.count;
+    const finalTriangleCount = mergedGeometry.index ? mergedGeometry.index.count / 3 : finalVertexCount / 3;
+    
+    console.log(`🔧 ✅ Meshoptimizer repair complete:`, {
+      originalVertices: originalVertexCount,
+      finalVertices: finalVertexCount,
+      originalTriangles: originalTriangleCount.toFixed(0),
+      finalTriangles: finalTriangleCount.toFixed(0),
+      vertexReduction: `${(((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1)}%`,
+      triangleReduction: `${(((originalTriangleCount - finalTriangleCount) / originalTriangleCount) * 100).toFixed(1)}%`
+    });
+    
+    return mergedGeometry;
+    
+  } catch (error) {
+    console.error('❌ Meshoptimizer repair failed, falling back to basic cleanup:', error);
+    return cleanCSGGeometry(geom, tolerance);
+  }
+}
 
 /**
  * Clean up CSG-generated geometry:
@@ -118,35 +226,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   }
   
   // YENİ ADIM 7) Yüzeyleri Pürüzsüzleştirme ve İyileştirme 🧚‍♀️
-  let finalGeom = merged; // Başlangıç olarak birleştirilmiş geometriyi al
-  const triangleCount = finalGeom.index ? finalGeom.index.count / 3 : finalGeom.attributes.position.count / 3;
-
-  if (triangleCount > 20) { 
-    console.log(`✨ Applying gentle simplification to smooth ${triangleCount.toFixed(0)} triangles...`);
-    try {
-        const modifier = new SimplifyModifier();
-        // GÜNCELLENDİ: Sadece en küçük, sorunlu üçgenleri hedeflemek için çok hassas bir azaltma oranı (%5).
-        const targetCount = Math.floor(triangleCount * 0.95); 
-        const simplified = modifier.modify(finalGeom, targetCount);
-
-        // Basitleştirmenin başarılı olup olmadığını ve geometriyi boşaltmadığını kontrol et
-        if (simplified && simplified.attributes.position.count > 0) {
-            console.log(`✅ Geometry smoothed successfully to ${targetCount} triangles.`);
-            finalGeom = simplified; // Başarılıysa basitleştirilmiş geometriyi kullan
-        } else {
-            console.warn('⚠️ Smoothing resulted in an empty geometry. Using pre-simplified version.');
-        }
-    } catch (error) {
-        console.error('❌ Error during smoothing. Using pre-simplified version.', error);
-    }
-  } else {
-      console.log('🎯 Geometry has too few triangles to smooth, skipping.');
-  }
-
-  // 8) Son geometri üzerinde normalleri ve sınırları yeniden hesapla
-  finalGeom.computeVertexNormals();
-  finalGeom.computeBoundingBox();
-  finalGeom.computeBoundingSphere();
+  const finalGeom = merged;
 
   const finalVertexCount = finalGeom.attributes.position.count;
   const finalTriangleCount = finalGeom.index ? finalGeom.index.count / 3 : finalVertexCount / 3;
@@ -293,11 +373,11 @@ export const performBooleanSubtract = (
       newGeom.applyMatrix4(invTarget);
       
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      // GÜNCELLENDİ: Maksimum detay koruması için çok hassas tolerans.
-      newGeom = cleanCSGGeometry(newGeom, 0.001); 
+      // 🔧 Use advanced meshoptimizer-based repair
+      newGeom = repairCSGGeometryWithMeshoptimizer(newGeom, 0.001); 
       
       if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
-          console.error(`❌ CSG cleanup resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
+          console.error(`❌ Meshoptimizer repair resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
           return;
       }
       
@@ -382,11 +462,11 @@ export const performBooleanUnion = (
     newGeom.applyMatrix4(invTarget);
     
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    // GÜNCELLENDİ: Maksimum detay koruması için çok hassas tolerans.
-    newGeom = cleanCSGGeometry(newGeom, 0.001);
+    // 🔧 Use advanced meshoptimizer-based repair
+    newGeom = repairCSGGeometryWithMeshoptimizer(newGeom, 0.001);
 
     if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
-        console.error(`❌ CSG cleanup resulted in an empty geometry for union operation. Aborting update.`);
+        console.error(`❌ Meshoptimizer repair resulted in an empty geometry for union operation. Aborting update.`);
         return false;
     }
     
