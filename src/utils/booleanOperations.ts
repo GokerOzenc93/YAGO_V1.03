@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+// YENİ: Yüzey basitleştirme için SimplifyModifier'ı içe aktarıyoruz.
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+
 
 /**
  * Clean up CSG-generated geometry:
@@ -13,7 +16,6 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
  * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
  */
 export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increased for better welding
-  // 1) Ensure positions exist
   if (!geom.attributes.position) {
     console.warn('cleanCSGGeometry: geometry has no position attribute');
     return geom;
@@ -23,10 +25,8 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   const originalVertexCount = geom.attributes.position.count;
   const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
 
-  // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
   let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
 
-  // 2.1) Validate geometry after conversion
   if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
     console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
     return new THREE.BufferGeometry();
@@ -34,19 +34,17 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 
   const posAttr = nonIndexed.attributes.position;
   
-  // 2.2) Validate position attribute array
   if (!posAttr.array || posAttr.array.length === 0) {
     console.warn('cleanCSGGeometry: position attribute has no array or empty array');
     return new THREE.BufferGeometry();
   }
   
   const posArray = posAttr.array;
-  const triCount = posArray.length / 9; // 3 verts * 3 components
+  const triCount = posArray.length / 9;
 
-  // 3) Spatial hash to weld vertices with given tolerance
-  const vertexMap = new Map(); // key -> newIndex
-  const uniqueVerts = []; // flattened xyz
-  const newIndices = []; // triangles (indices into uniqueVerts)
+  const vertexMap = new Map();
+  const uniqueVerts = [];
+  const newIndices = [];
   let nextIndex = 0;
 
   const hash = (x, y, z) =>
@@ -74,7 +72,6 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
       triIndices.push(idx);
     }
 
-    // remove degenerate triangles (two or three indices equal)
     if (
       triIndices[0] === triIndices[1] ||
       triIndices[1] === triIndices[2] ||
@@ -89,13 +86,11 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 
   console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
 
-  // 4) Build new indexed BufferGeometry
   const cleaned = new THREE.BufferGeometry();
   const posBuffer = new Float32Array(uniqueVerts);
   cleaned.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
   cleaned.setIndex(newIndices);
 
-  // 5) Merge vertices with BufferGeometryUtils as extra safety
   let merged;
   try {
     merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
@@ -104,7 +99,6 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     merged = cleaned;
   }
 
-  // 6) Remove isolated vertices - Recompute indices validity
   if (!merged.index || merged.index.count < 3) {
     console.warn('Invalid index after merge, converting to non-indexed and re-merging');
     const nonIdx = merged.toNonIndexed();
@@ -117,13 +111,26 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
 
-  // 7) Recompute normals and bounds
-  merged.computeVertexNormals();
-  merged.computeBoundingBox();
-  merged.computeBoundingSphere();
+  // YENİ ADIM: Geometriyi SimplifyModifier ile basitleştiriyoruz.
+  // Bu, görsel kaliteyi çok etkilemeden poligon sayısını azaltır.
+  // %20'lik bir azaltma oranı (0.8) iyi bir başlangıç noktasıdır.
+  // Bu oranı projenizin ihtiyacına göre artırıp azaltabilirsiniz.
+  console.log('🎯 Applying SimplifyModifier to reduce polygon count...');
+  const modifier = new SimplifyModifier();
+  const originalTriangleCountForSimplify = merged.index ? merged.index.count / 3 : merged.attributes.position.count / 3;
+  const targetTriangleCount = Math.floor(originalTriangleCountForSimplify * 0.9); // %10 azalt
+  
+  const simplified = modifier.modify(merged, targetTriangleCount);
+  console.log(`🎯 Simplification complete. Triangle count reduced from ${Math.floor(originalTriangleCountForSimplify)} to ${targetTriangleCount}`);
 
-  const finalVertexCount = merged.attributes.position.count;
-  const finalTriangleCount = merged.index ? merged.index.count / 3 : finalVertexCount / 3;
+
+  // Son olarak, basitleştirilmiş geometri üzerinde normal ve bound'ları hesaplıyoruz.
+  simplified.computeVertexNormals();
+  simplified.computeBoundingBox();
+  simplified.computeBoundingSphere();
+
+  const finalVertexCount = simplified.attributes.position.count;
+  const finalTriangleCount = simplified.index ? simplified.index.count / 3 : finalVertexCount / 3;
 
   console.log(`🎯 CSG cleanup complete:`, {
     originalVertices: originalVertexCount,
@@ -134,7 +141,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     vertexReduction: `${(((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1)}%`
   });
 
-  return merged;
+  return simplified; // Temizlenmiş ve basitleştirilmiş geometriyi döndür
 }
 
 // Dummy data and types to make the code runnable without external files
@@ -234,7 +241,6 @@ export const performBooleanSubtract = (
   console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for subtraction: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -247,17 +253,14 @@ export const performBooleanSubtract = (
   const evaluator = new Evaluator();
   
   try {
-    // Process each intersecting shape
     intersectingShapes.forEach((targetShape, index) => {
       console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
-      // Create brushes
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
       console.log('🎯 Performing CSG subtraction...');
       
-      // A - B (subtraction)
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
       if (!resultMesh || !resultMesh.geometry) {
@@ -269,23 +272,19 @@ export const performBooleanSubtract = (
       
       console.log('✅ CSG subtraction completed, transforming result to local space...');
       
-      // Transform result geometry back into target's LOCAL space
       const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
       
-      // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+      newGeom = cleanCSGGeometry(newGeom, 0.05);
       
-      // Dispose old geometry
       try { 
         targetShape.geometry.dispose(); 
       } catch (e) { 
         console.warn('Could not dispose old geometry:', e);
       }
       
-      // Update the target shape
       updateShape(targetShape.id, {
         geometry: newGeom,
         parameters: {
@@ -299,7 +298,6 @@ export const performBooleanSubtract = (
       console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
     });
     
-    // Delete the selected shape (the one being subtracted)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
     
@@ -325,7 +323,6 @@ export const performBooleanUnion = (
   console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for union: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -338,18 +335,15 @@ export const performBooleanUnion = (
   const evaluator = new Evaluator();
   
   try {
-    // For union, merge with the first intersecting shape
     const targetShape = intersectingShapes[0];
     
     console.log(`🎯 Union target: ${targetShape.type} (${targetShape.id})`);
     
-    // Create brushes
     const selectedBrush = createBrushFromShape(selectedShape);
     const targetBrush = createBrushFromShape(targetShape);
     
     console.log('🎯 Performing CSG union...');
     
-    // A + B (union)
     const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
     if (!resultMesh || !resultMesh.geometry) {
@@ -361,23 +355,19 @@ export const performBooleanUnion = (
     
     console.log('✅ CSG union completed, transforming result to local space...');
     
-    // Transform result geometry back into target's LOCAL space
     const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
-    // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+    newGeom = cleanCSGGeometry(newGeom, 0.05);
     
-    // Dispose old geometry
     try { 
       targetShape.geometry.dispose(); 
     } catch (e) { 
       console.warn('Could not dispose old geometry:', e);
     }
     
-    // Update the target shape
     updateShape(targetShape.id, {
       geometry: newGeom,
       parameters: {
@@ -390,7 +380,6 @@ export const performBooleanUnion = (
     
     console.log(`✅ Target shape ${targetShape.id} updated with union geometry`);
     
-    // Delete the selected shape (it's now merged)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Merged shape deleted: ${selectedShape.id}`);
     
