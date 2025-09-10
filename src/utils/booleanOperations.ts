@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-// SimplifyModifier'ı güvenli bir şekilde kullanmak için tekrar içe aktarıyoruz.
+// SimplifyModifier'ı güvenli ve daha etkili bir şekilde kullanmak için tekrar içe aktarıyoruz.
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
 
@@ -117,16 +117,17 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
   
-  // YENİ ADIM 7) Geometriyi Güvenli Bir Şekilde Basitleştirme (Simplify)
+  // YENİ ADIM 7) Geometriyi Güvenli ve Etkili Bir Şekilde Basitleştirme (Simplify) 🧚‍♀️
   let finalGeom = merged; // Başlangıç olarak birleştirilmiş geometriyi al
   const triangleCount = finalGeom.index ? finalGeom.index.count / 3 : finalGeom.attributes.position.count / 3;
 
-  if (triangleCount > 50) { // Sadece yeterince karmaşık geometrileri basitleştir
-    console.log(`🎯 Attempting to simplify geometry with ${triangleCount.toFixed(0)} triangles...`);
+  // GÜNCELLENDİ: Daha fazla nesnenin temizlenmesi için eşik düşürüldü.
+  if (triangleCount > 20) { 
+    console.log(`✨ Attempting to simplify geometry with ${triangleCount.toFixed(0)} triangles...`);
     try {
         const modifier = new SimplifyModifier();
-        // Detayları korumak için %10 gibi hassas bir azaltma oranı
-        const targetCount = Math.floor(triangleCount * 0.9); 
+        // GÜNCELLENDİ: Yüzeyleri tek parça haline getirmek için daha cesur bir azaltma oranı (%30).
+        const targetCount = Math.floor(triangleCount * 0.7); 
         const simplified = modifier.modify(finalGeom, targetCount);
 
         // Basitleştirmenin başarılı olup olmadığını ve geometriyi boşaltmadığını kontrol et
@@ -293,7 +294,8 @@ export const performBooleanSubtract = (
       newGeom.applyMatrix4(invTarget);
       
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05);
+      // GÜNCELLENDİ: Daha hassas birleştirme için tolerans düşürüldü.
+      newGeom = cleanCSGGeometry(newGeom, 0.01); 
       
       if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
           console.error(`❌ CSG cleanup resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
@@ -381,7 +383,8 @@ export const performBooleanUnion = (
     newGeom.applyMatrix4(invTarget);
     
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.05);
+    // GÜNCELLENDİ: Daha hassas birleştirme için tolerans düşürüldü.
+    newGeom = cleanCSGGeometry(newGeom, 0.01);
 
     if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
         console.error(`❌ CSG cleanup resulted in an empty geometry for union operation. Aborting update.`);
