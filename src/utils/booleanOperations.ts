@@ -1,9 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-// YENİ: Yüzey basitleştirme için SimplifyModifier'ı içe aktarıyoruz.
-import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
-
+// SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
 
 /**
  * Clean up CSG-generated geometry:
@@ -16,6 +14,7 @@ import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.
  * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
  */
 export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increased for better welding
+  // 1) Ensure positions exist
   if (!geom.attributes.position) {
     console.warn('cleanCSGGeometry: geometry has no position attribute');
     return geom;
@@ -25,8 +24,10 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   const originalVertexCount = geom.attributes.position.count;
   const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
 
+  // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
   let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
 
+  // 2.1) Validate geometry after conversion
   if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
     console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
     return new THREE.BufferGeometry();
@@ -34,17 +35,19 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 
   const posAttr = nonIndexed.attributes.position;
   
+  // 2.2) Validate position attribute array
   if (!posAttr.array || posAttr.array.length === 0) {
     console.warn('cleanCSGGeometry: position attribute has no array or empty array');
     return new THREE.BufferGeometry();
   }
   
   const posArray = posAttr.array;
-  const triCount = posArray.length / 9;
+  const triCount = posArray.length / 9; // 3 verts * 3 components
 
-  const vertexMap = new Map();
-  const uniqueVerts = [];
-  const newIndices = [];
+  // 3) Spatial hash to weld vertices with given tolerance
+  const vertexMap = new Map(); // key -> newIndex
+  const uniqueVerts = []; // flattened xyz
+  const newIndices = []; // triangles (indices into uniqueVerts)
   let nextIndex = 0;
 
   const hash = (x, y, z) =>
@@ -72,6 +75,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
       triIndices.push(idx);
     }
 
+    // remove degenerate triangles (two or three indices equal)
     if (
       triIndices[0] === triIndices[1] ||
       triIndices[1] === triIndices[2] ||
@@ -86,11 +90,13 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 
   console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
 
+  // 4) Build new indexed BufferGeometry
   const cleaned = new THREE.BufferGeometry();
   const posBuffer = new Float32Array(uniqueVerts);
   cleaned.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
   cleaned.setIndex(newIndices);
 
+  // 5) Merge vertices with BufferGeometryUtils as extra safety
   let merged;
   try {
     merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
@@ -99,6 +105,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     merged = cleaned;
   }
 
+  // 6) Remove isolated vertices - Recompute indices validity
   if (!merged.index || merged.index.count < 3) {
     console.warn('Invalid index after merge, converting to non-indexed and re-merging');
     const nonIdx = merged.toNonIndexed();
@@ -111,26 +118,13 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
 
-  // YENİ ADIM: Geometriyi SimplifyModifier ile basitleştiriyoruz.
-  // Bu, görsel kaliteyi çok etkilemeden poligon sayısını azaltır.
-  // %20'lik bir azaltma oranı (0.8) iyi bir başlangıç noktasıdır.
-  // Bu oranı projenizin ihtiyacına göre artırıp azaltabilirsiniz.
-  console.log('🎯 Applying SimplifyModifier to reduce polygon count...');
-  const modifier = new SimplifyModifier();
-  const originalTriangleCountForSimplify = merged.index ? merged.index.count / 3 : merged.attributes.position.count / 3;
-  const targetTriangleCount = Math.floor(originalTriangleCountForSimplify * 0.9); // %10 azalt
-  
-  const simplified = modifier.modify(merged, targetTriangleCount);
-  console.log(`🎯 Simplification complete. Triangle count reduced from ${Math.floor(originalTriangleCountForSimplify)} to ${targetTriangleCount}`);
+  // 7) Recompute normals and bounds
+  merged.computeVertexNormals();
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
 
-
-  // Son olarak, basitleştirilmiş geometri üzerinde normal ve bound'ları hesaplıyoruz.
-  simplified.computeVertexNormals();
-  simplified.computeBoundingBox();
-  simplified.computeBoundingSphere();
-
-  const finalVertexCount = simplified.attributes.position.count;
-  const finalTriangleCount = simplified.index ? simplified.index.count / 3 : finalVertexCount / 3;
+  const finalVertexCount = merged.attributes.position.count;
+  const finalTriangleCount = merged.index ? merged.index.count / 3 : finalVertexCount / 3;
 
   console.log(`🎯 CSG cleanup complete:`, {
     originalVertices: originalVertexCount,
@@ -141,7 +135,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     vertexReduction: `${(((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1)}%`
   });
 
-  return simplified; // Temizlenmiş ve basitleştirilmiş geometriyi döndür
+  return merged;
 }
 
 // Dummy data and types to make the code runnable without external files
@@ -157,12 +151,11 @@ const getShapeBounds = (shape) => {
 
   const pos = new THREE.Vector3(...(shape.position || [0, 0, 0]));
   const scale = new THREE.Vector3(...(shape.scale || [1, 1, 1]));
-  // shape.rotation olabilir; eğer yoksa 0,0,0 al
   const rot = shape.rotation ? new THREE.Euler(...shape.rotation) : new THREE.Euler(0, 0, 0);
   const quat = new THREE.Quaternion().setFromEuler(rot);
 
   const m = new THREE.Matrix4().compose(pos, quat, scale);
-  bbox.applyMatrix4(m); // bbox'ı world/shape-space'e dönüştür
+  bbox.applyMatrix4(m); 
 
   return bbox;
 };
@@ -210,7 +203,6 @@ export const findIntersectingShapes = (
 const createBrushFromShape = (shape) => {
   const brush = new Brush(shape.geometry.clone());
   
-  // Apply transforms
   brush.position.fromArray(shape.position || [0, 0, 0]);
   brush.scale.fromArray(shape.scale || [1, 1, 1]);
   
@@ -219,7 +211,6 @@ const createBrushFromShape = (shape) => {
     brush.quaternion.setFromEuler(euler);
   }
   
-  // CRITICAL: Update matrix world
   brush.updateMatrixWorld(true);
   
   console.log(`🎯 Brush created:`, {
@@ -263,8 +254,8 @@ export const performBooleanSubtract = (
       
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
-      if (!resultMesh || !resultMesh.geometry) {
-        console.error('❌ CSG subtraction operation failed - no result mesh');
+      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+        console.error('❌ CSG subtraction operation failed or resulted in an empty mesh. Aborting for this shape.');
         return;
       }
       
@@ -278,6 +269,12 @@ export const performBooleanSubtract = (
       
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
       newGeom = cleanCSGGeometry(newGeom, 0.05);
+      
+      // YENİ GÜVENLİK KONTROLÜ: Temizlenmiş geometrinin geçerli olup olmadığını kontrol et.
+      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
+          console.error(`❌ CSG cleanup resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
+          return;
+      }
       
       try { 
         targetShape.geometry.dispose(); 
@@ -346,8 +343,8 @@ export const performBooleanUnion = (
     
     const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
-    if (!resultMesh || !resultMesh.geometry) {
-      console.error('❌ CSG union operation failed - no result mesh');
+    if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+      console.error('❌ CSG union operation failed or resulted in an empty mesh. Aborting.');
       return false;
     }
     
@@ -361,6 +358,12 @@ export const performBooleanUnion = (
     
     console.log('🎯 Applying robust CSG cleanup to union result...');
     newGeom = cleanCSGGeometry(newGeom, 0.05);
+
+    // YENİ GÜVENLİK KONTROLÜ: Temizlenmiş geometrinin geçerli olup olmadığını kontrol et.
+    if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
+        console.error(`❌ CSG cleanup resulted in an empty geometry for union operation. Aborting update.`);
+        return false;
+    }
     
     try { 
       targetShape.geometry.dispose(); 
