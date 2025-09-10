@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-// SimplifyModifier'ı güvenli ve daha etkili bir şekilde kullanmak için tekrar içe aktarıyoruz.
+// SimplifyModifier'ı bir "iyileştirme" aracı olarak kullanmak için tekrar içe aktarıyoruz.
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
 
@@ -117,31 +117,30 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
   
-  // YENİ ADIM 7) Geometriyi Güvenli ve Etkili Bir Şekilde Basitleştirme (Simplify) 🧚‍♀️
+  // YENİ ADIM 7) Yüzeyleri Pürüzsüzleştirme ve İyileştirme 🧚‍♀️
   let finalGeom = merged; // Başlangıç olarak birleştirilmiş geometriyi al
   const triangleCount = finalGeom.index ? finalGeom.index.count / 3 : finalGeom.attributes.position.count / 3;
 
-  // GÜNCELLENDİ: Daha fazla nesnenin temizlenmesi için eşik düşürüldü.
   if (triangleCount > 20) { 
-    console.log(`✨ Attempting to simplify geometry with ${triangleCount.toFixed(0)} triangles...`);
+    console.log(`✨ Applying gentle simplification to smooth ${triangleCount.toFixed(0)} triangles...`);
     try {
         const modifier = new SimplifyModifier();
-        // GÜNCELLENDİ: Yüzeyleri tek parça haline getirmek için daha cesur bir azaltma oranı (%30).
-        const targetCount = Math.floor(triangleCount * 0.7); 
+        // GÜNCELLENDİ: Sadece en küçük, sorunlu üçgenleri hedeflemek için çok hassas bir azaltma oranı (%5).
+        const targetCount = Math.floor(triangleCount * 0.95); 
         const simplified = modifier.modify(finalGeom, targetCount);
 
         // Basitleştirmenin başarılı olup olmadığını ve geometriyi boşaltmadığını kontrol et
         if (simplified && simplified.attributes.position.count > 0) {
-            console.log(`✅ Geometry simplified successfully to ${targetCount} triangles.`);
+            console.log(`✅ Geometry smoothed successfully to ${targetCount} triangles.`);
             finalGeom = simplified; // Başarılıysa basitleştirilmiş geometriyi kullan
         } else {
-            console.warn('⚠️ Simplification resulted in an empty geometry. Using pre-simplified version.');
+            console.warn('⚠️ Smoothing resulted in an empty geometry. Using pre-simplified version.');
         }
     } catch (error) {
-        console.error('❌ Error during simplification. Using pre-simplified version.', error);
+        console.error('❌ Error during smoothing. Using pre-simplified version.', error);
     }
   } else {
-      console.log('🎯 Geometry has too few triangles to simplify, skipping.');
+      console.log('🎯 Geometry has too few triangles to smooth, skipping.');
   }
 
   // 8) Son geometri üzerinde normalleri ve sınırları yeniden hesapla
@@ -294,8 +293,8 @@ export const performBooleanSubtract = (
       newGeom.applyMatrix4(invTarget);
       
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      // GÜNCELLENDİ: Daha hassas birleştirme için tolerans düşürüldü.
-      newGeom = cleanCSGGeometry(newGeom, 0.01); 
+      // GÜNCELLENDİ: Maksimum detay koruması için çok hassas tolerans.
+      newGeom = cleanCSGGeometry(newGeom, 0.001); 
       
       if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
           console.error(`❌ CSG cleanup resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
@@ -383,8 +382,8 @@ export const performBooleanUnion = (
     newGeom.applyMatrix4(invTarget);
     
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    // GÜNCELLENDİ: Daha hassas birleştirme için tolerans düşürüldü.
-    newGeom = cleanCSGGeometry(newGeom, 0.01);
+    // GÜNCELLENDİ: Maksimum detay koruması için çok hassas tolerans.
+    newGeom = cleanCSGGeometry(newGeom, 0.001);
 
     if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
         console.error(`❌ CSG cleanup resulted in an empty geometry for union operation. Aborting update.`);
