@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import * as MeshoptDecoder from 'meshoptimizer/meshopt_decoder.module.js';
+import MeshoptDecoder from 'meshoptimizer/meshopt_decoder.module.js';
 import { GeometryFactory } from '../lib/geometryFactory';
 
 /**
