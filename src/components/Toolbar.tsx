@@ -700,7 +700,7 @@ const Toolbar: React.FC = () => {
 
         {/* Boolean Operations */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
-          {booleanTools.map((tool) => (
+          {booleanTools.slice(0, 2).map((tool) => (
             <button
               key={tool.id}
               className={`p-1 rounded transition-all ${
@@ -725,6 +725,26 @@ const Toolbar: React.FC = () => {
               {tool.icon}
             </button>
           ))}
+          
+          {/* Repair Geometry Button */}
+          <button
+            className={`p-1 rounded transition-all ${
+              !selectedShapeId
+                ? 'opacity-50 cursor-not-allowed text-gray-500'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            onClick={() => {
+              if (selectedShapeId) {
+                const { repairSelectedShapeGeometry } = useAppStore.getState();
+                repairSelectedShapeGeometry();
+                console.log('🔧 Geometry repair initiated for selected shape');
+              }
+            }}
+            disabled={!selectedShapeId}
+            title="Repair Geometry - Clean broken vertices and fix mesh issues (RG)"
+          >
+            <Settings size={12} />
+          </button>
         </div>
 
         {/* Separator */}

@@ -647,6 +647,51 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ selectedShapeId: null });
     }
   },
+  
+  repairSelectedShapeGeometry: () => {
+    const { selectedShapeId, shapes, updateShape } = get();
+    if (!selectedShapeId) {
+      console.warn('🔧 No shape selected for geometry repair');
+      return;
+    }
+    
+    const selectedShape = shapes.find(s => s.id === selectedShapeId);
+    if (!selectedShape) {
+      console.warn('🔧 Selected shape not found for geometry repair');
+      return;
+    }
+    
+    console.log('🔧 ===== GEOMETRY REPAIR STARTED =====');
+    console.log(`🔧 Repairing geometry for shape: ${selectedShape.type} (${selectedShape.id})`);
+    
+    try {
+      // Apply advanced geometry cleaning
+      const repairedGeometry = cleanCSGGeometry(selectedShape.geometry.clone(), 0.05);
+      
+      // Dispose old geometry
+      try { 
+        selectedShape.geometry.dispose(); 
+      } catch (e) { 
+        console.warn('🔧 Old geometry dispose failed:', e); 
+      }
+      
+      // Update shape with repaired geometry
+      updateShape(selectedShape.id, {
+        geometry: repairedGeometry,
+        parameters: {
+          ...selectedShape.parameters,
+          geometryRepaired: true,
+          lastRepaired: Date.now(),
+        }
+      });
+      
+      console.log('🔧 ✅ Geometry repair completed successfully');
+      console.log('🔧 ===== GEOMETRY REPAIR FINISHED =====');
+    } catch (error) {
+      console.error('🔧 ❌ Geometry repair failed:', error);
+      console.log('🔧 ===== GEOMETRY REPAIR FAILED =====');
+    }
+  },
     
   selectedShapeId: null,
   selectShape: (id) => {
