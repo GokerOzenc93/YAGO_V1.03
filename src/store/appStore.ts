@@ -819,12 +819,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     // If selecting a shape while in SELECT mode, auto-switch to last transform tool
     if (id && activeTool === Tool.SELECT) {
       set({ 
-          facesRemoved: removedFaceCount,
-          facesKept: keptFaceCount,
         selectedShapeId: id,
-      console.log(`🔧 ✅ Face repair completed successfully!`);
-      console.log(`🔧 📊 Summary: ${removedFaceCount} broken faces removed, ${keptFaceCount} clean faces preserved`);
-      console.log(`🔧 🎯 Result: Single unified surface with clean geometry`);
+        activeTool: lastTransformTool,
       });
       console.log(`🎯 Auto-switched from SELECT to ${lastTransformTool} mode`);
     } else {
