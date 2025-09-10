@@ -154,6 +154,7 @@ const Toolbar: React.FC = () => {
   const booleanTools = [
     { id: Tool.BOOLEAN_UNION, icon: <Plus size={12} />, label: 'Union', shortcut: 'U' },
     { id: Tool.BOOLEAN_SUBTRACT, icon: <Minus size={12} />, label: 'Subtract', shortcut: 'S' },
+    { id: 'REPAIR_GEOMETRY', icon: <Settings size={12} />, label: 'Repair Geometry', shortcut: 'RG' },
   ];
 
   const transformTools = [
