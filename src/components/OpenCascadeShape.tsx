@@ -235,6 +235,41 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
+    // Face Repair mode - handle broken face selection
+    if (isFaceRepairMode && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      const hits = detectFaceAtMouse(
+        e.nativeEvent,
+        camera,
+        meshRef.current!,
+        gl.domElement
+      );
+
+      if (hits.length === 0) {
+        console.warn('🔧 No face detected for repair');
+        return;
+      }
+
+      const hit = hits[0];
+      if (hit.faceIndex === undefined) {
+        console.warn('🔧 No face index for repair');
+        return;
+      }
+
+      // Toggle face selection
+      if (selectedBrokenFaces.includes(hit.faceIndex)) {
+        removeBrokenFace(hit.faceIndex);
+        console.log(`🔧 Removed broken face ${hit.faceIndex} from selection`);
+      } else {
+        addBrokenFace(hit.faceIndex);
+        console.log(`🔧 Added broken face ${hit.faceIndex} to selection`);
+      }
+      
+      // Highlight selected face
+      highlightFace(scene, hit, shape, 0xff0000, 0.8); // Red highlight for broken faces
+      return;
+    }
+    
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();

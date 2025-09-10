@@ -801,6 +801,46 @@ const Scene: React.FC = () => {
           document.body
         )}
 
+      {/* Face Repair Mode Indicator */}
+      {useAppStore.getState().isFaceRepairMode &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed top-32 right-4 bg-red-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Face Repair Mode</span>
+            </div>
+            <div className="text-xs text-red-200 mt-1">
+              Click on broken faces to select them
+            </div>
+            <div className="text-xs text-red-200 mt-1">
+              Selected: {useAppStore.getState().selectedBrokenFaces.length} faces
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => {
+                  const { repairSelectedFaces } = useAppStore.getState();
+                  repairSelectedFaces();
+                }}
+                className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
+                disabled={useAppStore.getState().selectedBrokenFaces.length === 0}
+              >
+                Apply Repair
+              </button>
+              <button
+                onClick={() => {
+                  const { setIsFaceRepairMode, setSelectedBrokenFaces } = useAppStore.getState();
+                  setIsFaceRepairMode(false);
+                  setSelectedBrokenFaces([]);
+                }}
+                className="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
