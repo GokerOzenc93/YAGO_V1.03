@@ -666,8 +666,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     console.log(`🔧 Repairing geometry for shape: ${selectedShape.type} (${selectedShape.id})`);
     
     try {
-      // Apply advanced geometry cleaning
-      const repairedGeometry = cleanCSGGeometry(selectedShape.geometry.clone(), 0.05);
+      // Clone the original geometry
+      const originalGeometry = selectedShape.geometry.clone();
+      
+      // Apply advanced geometry cleaning with proper tolerance
+      const repairedGeometry = cleanCSGGeometry(originalGeometry, 0.01);
+      
+      // Ensure the geometry is properly computed
+      repairedGeometry.computeVertexNormals();
+      repairedGeometry.computeBoundingBox();
+      repairedGeometry.computeBoundingSphere();
       
       // Dispose old geometry
       try { 
@@ -686,7 +694,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       });
       
-      console.log('🔧 ✅ Geometry repair completed successfully');
+      console.log('🔧 ✅ Geometry repair completed successfully - vertices cleaned and normals recomputed');
       console.log('🔧 ===== GEOMETRY REPAIR FINISHED =====');
     } catch (error) {
       console.error('🔧 ❌ Geometry repair failed:', error);
