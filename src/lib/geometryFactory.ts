@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshoptDecoder } from 'meshoptimizer/meshopt_decoder.module.js';
+import MeshoptDecoder from 'meshoptimizer/meshopt_decoder.module.js';
 import { isOpenCascadeInitialized, initializeOpenCascade } from './opencascadeCore';
 import { 
   createOCBox, 
