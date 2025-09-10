@@ -811,11 +811,16 @@ const Scene: React.FC = () => {
               <span className="text-sm font-medium">Face Repair Mode</span>
             </div>
             <div className="text-xs text-red-200 mt-1">
-              Click on broken faces to select them
+              Click on multiple broken faces to select them
             </div>
             <div className="text-xs text-red-200 mt-1">
               Selected: {useAppStore.getState().selectedBrokenFaces.length} faces
             </div>
+            {useAppStore.getState().selectedBrokenFaces.length > 0 && (
+              <div className="text-xs text-red-300 mt-1 font-mono">
+                Faces: [{useAppStore.getState().selectedBrokenFaces.join(', ')}]
+              </div>
+            )}
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => {

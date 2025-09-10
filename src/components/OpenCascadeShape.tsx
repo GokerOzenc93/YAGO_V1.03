@@ -265,8 +265,21 @@ const OpenCascadeShape: React.FC<Props> = ({
         console.log(`🔧 Added broken face ${hit.faceIndex} to selection`);
       }
       
-      // Highlight selected face
-      highlightFace(scene, hit, shape, 0xff0000, 0.8); // Red highlight for broken faces
+      // Clear previous highlights and highlight all selected faces
+      clearFaceHighlight(scene);
+      
+      // Highlight all selected faces
+      selectedBrokenFaces.forEach(faceIndex => {
+        // Create a fake hit for highlighting
+        const fakeHit = { ...hit, faceIndex };
+        highlightFace(scene, fakeHit, shape, 0xff0000, 0.8); // Red highlight for broken faces
+      });
+      
+      // Also highlight the newly selected face if it was just added
+      if (selectedBrokenFaces.includes(hit.faceIndex)) {
+        highlightFace(scene, hit, shape, 0xff0000, 0.8);
+      }
+      
       return;
     }
     

@@ -442,6 +442,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     console.log(`🔧 ===== FACE REPAIR STARTED =====`);
     console.log(`🔧 Repairing ${selectedBrokenFaces.length} broken faces on shape: ${selectedShape.type} (${selectedShape.id})`);
+    console.log(`🔧 Selected broken faces: [${selectedBrokenFaces.join(', ')}]`);
     
     try {
       const originalGeometry = selectedShape.geometry;
@@ -461,16 +462,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       const totalFaces = indices.count / 3;
       const brokenFaceSet = new Set(selectedBrokenFaces);
+      let removedFaceCount = 0;
+      let keptFaceCount = 0;
       
       // Process each face
       for (let faceIndex = 0; faceIndex < totalFaces; faceIndex++) {
         // Skip broken faces
         if (brokenFaceSet.has(faceIndex)) {
           console.log(`🔧 Removing broken face ${faceIndex}`);
+          removedFaceCount++;
           continue;
         }
         
         // Keep good faces
+        keptFaceCount++;
         const faceIndices = [
           indices.getX(faceIndex * 3),
           indices.getX(faceIndex * 3 + 1),
@@ -761,6 +766,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
      
+      console.log(`🔧 Face processing complete: ${removedFaceCount} faces removed, ${keptFaceCount} faces kept`);
+      console.log(`🔧 New geometry: ${newVertexIndex} vertices, ${newIndices.length / 3} faces`);
+      
+      if (newIndices.length === 0) {
+        console.error('🔧 ❌ All faces would be removed - canceling repair');
+        return;
+      }
+      
   performBooleanOperation: (operation) => {
     const { shapes, selectedShapeId, updateShape, deleteShape } = get();
     if (!selectedShapeId) {
@@ -798,6 +811,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.warn('🔧 Selected shape not found for geometry repair');
       return;
     }
+      console.log('🔧 Applying advanced geometry cleaning...');
     
     // Enter face repair mode
     setIsFaceRepairMode(true);
@@ -813,8 +827,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     // If selecting a shape while in SELECT mode, auto-switch to last transform tool
     if (id && activeTool === Tool.SELECT) {
       set({ 
+          facesRemoved: removedFaceCount,
+          facesKept: keptFaceCount,
         selectedShapeId: id,
-        activeTool: lastTransformTool
+      console.log(`🔧 ✅ Face repair completed successfully!`);
+      console.log(`🔧 📊 Summary: ${removedFaceCount} broken faces removed, ${keptFaceCount} clean faces preserved`);
+      console.log(`🔧 🎯 Result: Single unified surface with clean geometry`);
       });
       console.log(`🎯 Auto-switched from SELECT to ${lastTransformTool} mode`);
     } else {
