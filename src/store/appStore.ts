@@ -765,15 +765,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       shapes: state.shapes.filter((shape) => shape.id !== id),
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
-     
-      console.log(`🔧 Face processing complete: ${removedFaceCount} faces removed, ${keptFaceCount} faces kept`);
-      console.log(`🔧 New geometry: ${newVertexIndex} vertices, ${newIndices.length / 3} faces`);
-      
-      if (newIndices.length === 0) {
-        console.error('🔧 ❌ All faces would be removed - canceling repair');
-        return;
-      }
-      
+
   performBooleanOperation: (operation) => {
     const { shapes, selectedShapeId, updateShape, deleteShape } = get();
     if (!selectedShapeId) {
