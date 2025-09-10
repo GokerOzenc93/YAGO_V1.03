@@ -43,10 +43,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
-    isFaceRepairMode,
-    selectedBrokenFaces,
-    addBrokenFace,
-    removeBrokenFace,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -235,54 +231,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Face Repair mode - handle broken face selection
-    if (isFaceRepairMode && e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      const hits = detectFaceAtMouse(
-        e.nativeEvent,
-        camera,
-        meshRef.current!,
-        gl.domElement
-      );
-
-      if (hits.length === 0) {
-        console.warn('🔧 No face detected for repair');
-        return;
-      }
-
-      const hit = hits[0];
-      if (hit.faceIndex === undefined) {
-        console.warn('🔧 No face index for repair');
-        return;
-      }
-
-      // Toggle face selection
-      if (selectedBrokenFaces.includes(hit.faceIndex)) {
-        removeBrokenFace(hit.faceIndex);
-        console.log(`🔧 Removed broken face ${hit.faceIndex} from selection`);
-      } else {
-        addBrokenFace(hit.faceIndex);
-        console.log(`🔧 Added broken face ${hit.faceIndex} to selection`);
-      }
-      
-      // Clear previous highlights and highlight all selected faces
-      clearFaceHighlight(scene);
-      
-      // Highlight all selected faces
-      selectedBrokenFaces.forEach(faceIndex => {
-        // Create a fake hit for highlighting
-        const fakeHit = { ...hit, faceIndex };
-        highlightFace(scene, fakeHit, shape, 0xff0000, 0.8); // Red highlight for broken faces
-      });
-      
-      // Also highlight the newly selected face if it was just added
-      if (selectedBrokenFaces.includes(hit.faceIndex)) {
-        highlightFace(scene, hit, shape, 0xff0000, 0.8);
-      }
-      
-      return;
-    }
-    
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
