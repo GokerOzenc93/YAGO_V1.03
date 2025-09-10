@@ -277,6 +277,14 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Face repair mode
+  isFaceRepairMode: boolean;
+  setIsFaceRepairMode: (enabled: boolean) => void;
+  selectedBrokenFaces: number[];
+  setSelectedBrokenFaces: (faces: number[]) => void;
+  addBrokenFace: (faceIndex: number) => void;
+  removeBrokenFace: (faceIndex: number) => void;
+  repairSelectedFaces: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -399,6 +407,135 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+  
+  // Face repair mode
+  isFaceRepairMode: false,
+  setIsFaceRepairMode: (enabled) => set({ isFaceRepairMode: enabled }),
+  
+  selectedBrokenFaces: [],
+  setSelectedBrokenFaces: (faces) => set({ selectedBrokenFaces: faces }),
+  
+  addBrokenFace: (faceIndex) =>
+    set((state) => ({
+      selectedBrokenFaces: state.selectedBrokenFaces.includes(faceIndex)
+        ? state.selectedBrokenFaces
+        : [...state.selectedBrokenFaces, faceIndex],
+    })),
+    
+  removeBrokenFace: (faceIndex) =>
+    set((state) => ({
+      selectedBrokenFaces: state.selectedBrokenFaces.filter(f => f !== faceIndex),
+    })),
+    
+  repairSelectedFaces: () => {
+    const { selectedShapeId, shapes, updateShape, selectedBrokenFaces, setIsFaceRepairMode, setSelectedBrokenFaces } = get();
+    if (!selectedShapeId || selectedBrokenFaces.length === 0) {
+      console.warn('🔧 No shape or faces selected for repair');
+      return;
+    }
+    
+    const selectedShape = shapes.find(s => s.id === selectedShapeId);
+    if (!selectedShape) {
+      console.warn('🔧 Selected shape not found for face repair');
+      return;
+    }
+    
+    console.log(`🔧 ===== FACE REPAIR STARTED =====`);
+    console.log(`🔧 Repairing ${selectedBrokenFaces.length} broken faces on shape: ${selectedShape.type} (${selectedShape.id})`);
+    
+    try {
+      const originalGeometry = selectedShape.geometry;
+      const positions = originalGeometry.attributes.position;
+      const indices = originalGeometry.index;
+      
+      if (!positions || !indices) {
+        console.warn('🔧 Geometry missing position or index attributes');
+        return;
+      }
+      
+      // Create new geometry without broken faces
+      const newPositions: number[] = [];
+      const newIndices: number[] = [];
+      const vertexMap = new Map<number, number>();
+      let newVertexIndex = 0;
+      
+      const totalFaces = indices.count / 3;
+      const brokenFaceSet = new Set(selectedBrokenFaces);
+      
+      // Process each face
+      for (let faceIndex = 0; faceIndex < totalFaces; faceIndex++) {
+        // Skip broken faces
+        if (brokenFaceSet.has(faceIndex)) {
+          console.log(`🔧 Removing broken face ${faceIndex}`);
+          continue;
+        }
+        
+        // Keep good faces
+        const faceIndices = [
+          indices.getX(faceIndex * 3),
+          indices.getX(faceIndex * 3 + 1),
+          indices.getX(faceIndex * 3 + 2)
+        ];
+        
+        const newFaceIndices: number[] = [];
+        
+        // Process each vertex of the face
+        for (const oldVertexIndex of faceIndices) {
+          if (!vertexMap.has(oldVertexIndex)) {
+            // Add new vertex
+            vertexMap.set(oldVertexIndex, newVertexIndex);
+            
+            newPositions.push(
+              positions.getX(oldVertexIndex),
+              positions.getY(oldVertexIndex),
+              positions.getZ(oldVertexIndex)
+            );
+            
+            newVertexIndex++;
+          }
+          
+          newFaceIndices.push(vertexMap.get(oldVertexIndex)!);
+        }
+        
+        newIndices.push(...newFaceIndices);
+      }
+      
+      // Create new geometry
+      const repairedGeometry = new THREE.BufferGeometry();
+      repairedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+      repairedGeometry.setIndex(newIndices);
+      
+      // Apply advanced cleaning
+      const cleanedGeometry = cleanCSGGeometry(repairedGeometry, 0.01);
+      
+      // Dispose old geometry
+      try { 
+        originalGeometry.dispose(); 
+      } catch (e) { 
+        console.warn('🔧 Old geometry dispose failed:', e); 
+      }
+      
+      // Update shape
+      updateShape(selectedShape.id, {
+        geometry: cleanedGeometry,
+        parameters: {
+          ...selectedShape.parameters,
+          facesRepaired: selectedBrokenFaces.length,
+          lastFaceRepair: Date.now(),
+        }
+      });
+      
+      // Exit repair mode
+      setIsFaceRepairMode(false);
+      setSelectedBrokenFaces([]);
+      
+      console.log(`🔧 ✅ Face repair completed - ${selectedBrokenFaces.length} broken faces removed`);
+      console.log('🔧 ===== FACE REPAIR FINISHED =====');
+    } catch (error) {
+      console.error('🔧 ❌ Face repair failed:', error);
+      console.log('🔧 ===== FACE REPAIR FAILED =====');
+    }
+  },
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -650,7 +787,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   repairSelectedShapeGeometry: () => {
-    const { selectedShapeId, shapes, updateShape } = get();
+    const { selectedShapeId, shapes, updateShape, setIsFaceRepairMode, setSelectedBrokenFaces } = get();
     if (!selectedShapeId) {
       console.warn('🔧 No shape selected for geometry repair');
       return;
@@ -662,44 +799,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     
-    console.log('🔧 ===== GEOMETRY REPAIR STARTED =====');
-    console.log(`🔧 Repairing geometry for shape: ${selectedShape.type} (${selectedShape.id})`);
-    
-    try {
-      // Clone the original geometry
-      const originalGeometry = selectedShape.geometry.clone();
-      
-      // Apply advanced geometry cleaning with proper tolerance
-      const repairedGeometry = cleanCSGGeometry(originalGeometry, 0.01);
-      
-      // Ensure the geometry is properly computed
-      repairedGeometry.computeVertexNormals();
-      repairedGeometry.computeBoundingBox();
-      repairedGeometry.computeBoundingSphere();
-      
-      // Dispose old geometry
-      try { 
-        selectedShape.geometry.dispose(); 
-      } catch (e) { 
-        console.warn('🔧 Old geometry dispose failed:', e); 
-      }
-      
-      // Update shape with repaired geometry
-      updateShape(selectedShape.id, {
-        geometry: repairedGeometry,
-        parameters: {
-          ...selectedShape.parameters,
-          geometryRepaired: true,
-          lastRepaired: Date.now(),
-        }
-      });
-      
-      console.log('🔧 ✅ Geometry repair completed successfully - vertices cleaned and normals recomputed');
-      console.log('🔧 ===== GEOMETRY REPAIR FINISHED =====');
-    } catch (error) {
-      console.error('🔧 ❌ Geometry repair failed:', error);
-      console.log('🔧 ===== GEOMETRY REPAIR FAILED =====');
-    }
+    // Enter face repair mode
+    setIsFaceRepairMode(true);
+    setSelectedBrokenFaces([]);
+    console.log('🔧 ===== FACE REPAIR MODE ACTIVATED =====');
+    console.log('🔧 Click on broken faces to select them, then press "Apply Repair" to fix');
   },
     
   selectedShapeId: null,

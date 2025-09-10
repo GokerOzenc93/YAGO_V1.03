@@ -43,6 +43,10 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
+    isFaceRepairMode,
+    selectedBrokenFaces,
+    addBrokenFace,
+    removeBrokenFace,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
