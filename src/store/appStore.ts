@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
+import { cleanCSGGeometry } from '../utils/booleanOperations';
 import { GeometryFactory } from '../lib/geometryFactory';
 
 // Helper function to get shape bounds
