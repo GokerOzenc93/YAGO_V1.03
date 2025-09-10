@@ -3,17 +3,222 @@ import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
+ * Merges co-planar faces of a BufferGeometry by identifying contiguous regions
+ * of faces that lie on the same plane and re-triangulating them.
+ *
+ * @param {THREE.BufferGeometry} geometry - The input geometry (must be indexed).
+ * @param {number} toleranceNormal - The dot product tolerance for comparing face normals (lower is stricter).
+ * @param {number} toleranceDist - The tolerance for checking if a vertex lies on a plane.
+ * @returns {THREE.BufferGeometry} A new BufferGeometry with co-planar faces merged.
+ */
+function mergeCoplanarFaces(geometry, toleranceNormal = 0.999, toleranceDist = 0.01) {
+    if (!geometry.index || !geometry.attributes.position) {
+        console.warn('mergeCoplanarFaces requires indexed geometry with position attributes.');
+        return geometry;
+    }
+
+    const posAttr = geometry.attributes.position;
+    const indexAttr = geometry.index;
+    const triCount = indexAttr.count / 3;
+
+    const faceData = Array.from({ length: triCount }, (_, i) => {
+        const i1 = indexAttr.getX(i * 3);
+        const i2 = indexAttr.getX(i * 3 + 1);
+        const i3 = indexAttr.getX(i * 3 + 2);
+
+        const v1 = new THREE.Vector3().fromBufferAttribute(posAttr, i1);
+        const v2 = new THREE.Vector3().fromBufferAttribute(posAttr, i2);
+        const v3 = new THREE.Vector3().fromBufferAttribute(posAttr, i3);
+
+        const plane = new THREE.Plane().setFromCoplanarPoints(v1, v2, v3);
+        return { plane, vertices: [v1, v2, v3] };
+    });
+
+    const adj = new Map(Array.from({ length: triCount }, (_, i) => [i, []]));
+    const edgeMap = new Map();
+
+    for (let i = 0; i < triCount; i++) {
+        for (let j = 0; j < 3; j++) {
+            const i1 = indexAttr.getX(i * 3 + j);
+            const i2 = indexAttr.getX(i * 3 + ((j + 1) % 3));
+            const key = i1 < i2 ? `${i1}_${i2}` : `${i2}_${i1}`;
+            if (!edgeMap.has(key)) edgeMap.set(key, []);
+            edgeMap.get(key).push(i);
+        }
+    }
+
+    edgeMap.forEach(faces => {
+        if (faces.length === 2) {
+            adj.get(faces[0])?.push(faces[1]);
+            adj.get(faces[1])?.push(faces[0]);
+        }
+    });
+
+    const visited = new Set();
+    const finalVertices = [];
+    const finalIndices = [];
+    let vertexOffset = 0;
+
+    for (let i = 0; i < triCount; i++) {
+        if (visited.has(i)) continue;
+
+        const region = [];
+        const queue = [i];
+        visited.add(i);
+        const basePlane = faceData[i].plane;
+
+        while (queue.length > 0) {
+            const faceIdx = queue.shift();
+            region.push(faceIdx);
+
+            adj.get(faceIdx)?.forEach(neighborIdx => {
+                if (!visited.has(neighborIdx)) {
+                    const neighborPlane = faceData[neighborIdx].plane;
+                    if (Math.abs(neighborPlane.normal.dot(basePlane.normal)) > toleranceNormal &&
+                        Math.abs(neighborPlane.constant - basePlane.constant) < toleranceDist) {
+                        visited.add(neighborIdx);
+                        queue.push(neighborIdx);
+                    }
+                }
+            });
+        }
+
+        const regionEdgeMap = new Map();
+        const regionVertexMap = new Map();
+        region.forEach(faceIdx => {
+            for (let j = 0; j < 3; j++) {
+                const i1 = indexAttr.getX(faceIdx * 3 + j);
+                const i2 = indexAttr.getX(faceIdx * 3 + ((j + 1) % 3));
+                const key = i1 < i2 ? `${i1}_${i2}` : `${i2}_${i1}`;
+                regionEdgeMap.set(key, (regionEdgeMap.get(key) || 0) + 1);
+                
+                if (!regionVertexMap.has(i1)) regionVertexMap.set(i1, new THREE.Vector3().fromBufferAttribute(posAttr, i1));
+            }
+        });
+        
+        const boundaryEdges = [];
+        regionEdgeMap.forEach((count, key) => {
+            if (count === 1) {
+                boundaryEdges.push(key.split('_').map(Number));
+            }
+        });
+
+        if (boundaryEdges.length < 3) {
+            // Not a simple polygon, fallback to original triangles for this region
+            region.forEach(faceIdx => {
+                 for(let j=0; j<3; j++) {
+                    const idx = indexAttr.getX(faceIdx * 3 + j);
+                    const v = regionVertexMap.get(idx);
+                    finalVertices.push(v.x, v.y, v.z);
+                 }
+                 finalIndices.push(vertexOffset, vertexOffset + 1, vertexOffset + 2);
+                 vertexOffset += 3;
+            });
+            continue;
+        }
+
+        const boundaryChains = [];
+        let currentChain = [...boundaryEdges.shift()];
+        while(boundaryEdges.length > 0) {
+            let found = false;
+            for(let k=0; k < boundaryEdges.length; k++) {
+                const edge = boundaryEdges[k];
+                if(edge[0] === currentChain[currentChain.length - 1]) {
+                    currentChain.push(edge[1]);
+                    boundaryEdges.splice(k, 1);
+                    found = true;
+                    break;
+                }
+                if(edge[1] === currentChain[currentChain.length - 1]) {
+                    currentChain.push(edge[0]);
+                    boundaryEdges.splice(k, 1);
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) {
+                boundaryChains.push(currentChain);
+                if (boundaryEdges.length > 0) {
+                    currentChain = [...boundaryEdges.shift()];
+                }
+            }
+        }
+        boundaryChains.push(currentChain);
+
+        try {
+            const normal = basePlane.normal;
+            const basisU = new THREE.Vector3();
+            const basisV = new THREE.Vector3();
+            if (Math.abs(normal.x) > Math.abs(normal.z)) {
+                basisU.set(-normal.y, normal.x, 0).normalize();
+            } else {
+                basisU.set(0, -normal.z, normal.y).normalize();
+            }
+            basisV.crossVectors(normal, basisU);
+            
+            const shapes = boundaryChains.map(chain => {
+                const shapePoints = chain.map(idx => {
+                    const v3d = regionVertexMap.get(idx);
+                    return new THREE.Vector2(v3d.dot(basisU), v3d.dot(basisV));
+                });
+                return new THREE.Shape(shapePoints);
+            });
+            
+            const shape = shapes.shift();
+            if (shape) {
+                shape.holes = shapes;
+                const triangulatedGeom = new THREE.ShapeGeometry(shape);
+                const tempMesh = new THREE.Mesh(triangulatedGeom);
+                const matrix = new THREE.Matrix4().makeBasis(basisU, basisV, normal).setPosition(new THREE.Vector3(0,0,0).projectOnPlane(basePlane));
+                tempMesh.geometry.applyMatrix4(matrix);
+
+                const pos = tempMesh.geometry.attributes.position;
+                const localIndex = tempMesh.geometry.index;
+
+                for (let k = 0; k < pos.count; k++) {
+                    const v = new THREE.Vector3().fromBufferAttribute(pos, k);
+                    finalVertices.push(v.x, v.y, v.z);
+                }
+                for (let k = 0; k < localIndex.count; k++) {
+                    finalIndices.push(vertexOffset + localIndex.getX(k));
+                }
+                vertexOffset += pos.count;
+            }
+        } catch (e) {
+             console.warn("Triangulation failed, falling back for region:", e);
+             // Fallback
+             region.forEach(faceIdx => {
+                for(let j=0; j<3; j++) {
+                   const idx = indexAttr.getX(faceIdx * 3 + j);
+                   const v = regionVertexMap.get(idx);
+                   finalVertices.push(v.x, v.y, v.z);
+                }
+                finalIndices.push(vertexOffset, vertexOffset + 1, vertexOffset + 2);
+                vertexOffset += 3;
+           });
+        }
+    }
+
+    const mergedGeom = new THREE.BufferGeometry();
+    mergedGeom.setAttribute('position', new THREE.Float32BufferAttribute(finalVertices, 3));
+    mergedGeom.setIndex(finalIndices);
+    mergedGeom.computeVertexNormals();
+    return mergedGeom;
+}
+
+
+/**
  * Clean up CSG-generated geometry:
  * - applyMatrix4 should be done *before* calling this
  * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
  * rebuilds indexed geometry, merges vertices, computes normals/bounds
+  * - NEW: Merges co-planar faces for a cleaner result.
  *
  * @param {THREE.BufferGeometry} geom - geometry already in target-local space
  * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
  * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
  */
-export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increased for better welding
-  // 1) Ensure positions exist
+export function cleanCSGGeometry(geom, tolerance = 1e-2) {
   if (!geom.attributes.position) {
     console.warn('cleanCSGGeometry: geometry has no position attribute');
     return geom;
@@ -23,42 +228,34 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   const originalVertexCount = geom.attributes.position.count;
   const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
 
-  // --- YENİ: Birleştirmeden önce gereksiz öznitelikleri kaldır ---
-  // Bu, birleştirmenin yalnızca köşe pozisyonlarına göre yapılmasını sağlar.
   const geomClone = geom.clone();
   geomClone.deleteAttribute('normal');
   geomClone.deleteAttribute('uv');
   geomClone.deleteAttribute('color');
-  console.log('🎯 Temiz birleştirme için normal, uv ve renk öznitelikleri kaldırıldı.');
+  console.log('🎯 Removed normal, uv, and color attributes for clean merging.');
 
-  // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
   let nonIndexed = geomClone.index ? geomClone.toNonIndexed() : geomClone;
   if (geomClone !== nonIndexed) {
       geomClone.dispose();
   }
 
-
-  // 2.1) Validate geometry after conversion
   if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
     console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
     return new THREE.BufferGeometry();
   }
 
   const posAttr = nonIndexed.attributes.position;
-  
-  // 2.2) Validate position attribute array
   if (!posAttr.array || posAttr.array.length === 0) {
     console.warn('cleanCSGGeometry: position attribute has no array or empty array');
     return new THREE.BufferGeometry();
   }
   
   const posArray = posAttr.array;
-  const triCount = posArray.length / 9; // 3 verts * 3 components
+  const triCount = posArray.length / 9;
 
-  // 3) Spatial hash to weld vertices with given tolerance
-  const vertexMap = new Map(); // key -> newIndex
-  const uniqueVerts = []; // flattened xyz
-  const newIndices = []; // triangles (indices into uniqueVerts)
+  const vertexMap = new Map();
+  const uniqueVerts = [];
+  const newIndices = [];
   let nextIndex = 0;
 
   const hash = (x, y, z) =>
@@ -86,7 +283,6 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
       triIndices.push(idx);
     }
 
-    // remove degenerate triangles (two or three indices equal)
     if (
       triIndices[0] === triIndices[1] ||
       triIndices[1] === triIndices[2] ||
@@ -95,19 +291,14 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
       degenerateCount++;
       continue;
     }
-
-    newIndices.push(triIndices[0], triIndices[1], triIndices[2]);
+    newIndices.push(...triIndices);
   }
-
   console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
 
-  // 4) Build new indexed BufferGeometry
   const cleaned = new THREE.BufferGeometry();
-  const posBuffer = new Float32Array(uniqueVerts);
-  cleaned.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
+  cleaned.setAttribute('position', new THREE.BufferAttribute(new Float32Array(uniqueVerts), 3));
   cleaned.setIndex(newIndices);
 
-  // 5) Merge vertices with BufferGeometryUtils as extra safety
   let merged;
   try {
     merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
@@ -115,27 +306,31 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     console.warn('BufferGeometryUtils.mergeVertices failed, using cleaned geometry:', err);
     merged = cleaned;
   }
+  
+  // --- YENİ: Yüzey birleştirme adımı ---
+  console.log('✨ Applying advanced co-planar face merging...');
+  let finalGeometry;
+  try {
+      finalGeometry = mergeCoplanarFaces(merged);
+      console.log('✅ Co-planar face merging completed.');
+  } catch (e) {
+      console.error("❌ Co-planar face merging failed, using vertex-merged geometry.", e);
+      finalGeometry = merged;
+  }
+  
+  // Re-run merge vertices as a final cleanup step on the new geometry
+  try {
+    finalGeometry = BufferGeometryUtils.mergeVertices(finalGeometry, tolerance);
+  } catch (err) {
+    console.warn('Final mergeVertices pass failed:', err);
+  }
 
-  // 6) Remove isolated vertices - Recompute indices validity
-  if (!merged.index || merged.index.count < 3) {
-    console.warn('Invalid index after merge, converting to non-indexed and re-merging');
-    const nonIdx = merged.toNonIndexed();
-    merged.dispose();
-    merged = nonIdx;
-    try {
-      merged = BufferGeometryUtils.mergeVertices(merged, tolerance);
-    } catch (err) {
-      console.warn('Second merge attempt failed, using non-indexed geometry:', err);
-    }
-  }
+  finalGeometry.computeVertexNormals();
+  finalGeometry.computeBoundingBox();
+  finalGeometry.computeBoundingSphere();
 
-  // 7) Recompute normals and bounds
-  merged.computeVertexNormals();
-  merged.computeBoundingBox();
-  merged.computeBoundingSphere();
-
-  const finalVertexCount = merged.attributes.position.count;
-  const finalTriangleCount = merged.index ? merged.index.count / 3 : finalVertexCount / 3;
+  const finalVertexCount = finalGeometry.attributes.position.count;
+  const finalTriangleCount = finalGeometry.index ? finalGeometry.index.count / 3 : finalVertexCount / 3;
 
   console.log(`🎯 CSG cleanup complete:`, {
     originalVertices: originalVertexCount,
@@ -146,7 +341,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     vertexReduction: `${(((originalVertexCount - finalVertexCount) / originalVertexCount) * 100).toFixed(1)}%`
   });
 
-  return merged;
+  return finalGeometry;
 }
 
 // Dummy data and types to make the code runnable without external files
@@ -415,4 +610,3 @@ export const performBooleanUnion = (
     return false;
   }
 };
-
