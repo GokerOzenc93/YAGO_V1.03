@@ -53,6 +53,27 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
+    if (!shape.geometry) {
+      console.warn(`Shape ${shape.id} has no geometry, creating fallback`);
+      // Create fallback geometry based on shape type
+      switch (shape.type) {
+        case 'box':
+          return new THREE.BoxGeometry(
+            shape.parameters.width || 500,
+            shape.parameters.height || 500,
+            shape.parameters.depth || 500
+          );
+        case 'cylinder':
+          return new THREE.CylinderGeometry(
+            shape.parameters.radius || 250,
+            shape.parameters.radius || 250,
+            shape.parameters.height || 500,
+            32
+          );
+        default:
+          return new THREE.BoxGeometry(500, 500, 500);
+      }
+    }
     return shape.geometry;
   }, [shape.geometry]);
 

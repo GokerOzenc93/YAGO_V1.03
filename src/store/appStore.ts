@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 import { GeometryFactory } from '../lib/geometryFactory';
+import { GeometryFactory } from '../lib/geometryFactory';
 
 export enum Tool {
   MOVE = 'Move',
@@ -230,10 +231,29 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   shapes: [],
-  addShape: (shape) => set((state) => ({ shapes: [...state.shapes, shape] })),
+  addShape: (shape) => set((state) => {
+    // Ensure shape has geometry
+    const shapeWithGeometry = {
+      ...shape,
+      geometry: shape.geometry || GeometryFactory.createFromShape(shape)
+    };
+    
+    console.log(`Adding shape: ${shape.type} (ID: ${shape.id})`, {
+      position: shape.position,
+      hasGeometry: !!shapeWithGeometry.geometry,
+      parameters: shape.parameters
+    });
+    
+    return { shapes: [...state.shapes, shapeWithGeometry] };
+  }),
   updateShape: (id, updates) => set((state) => ({
     shapes: state.shapes.map(shape => 
-      shape.id === id ? { ...shape, ...updates } : shape
+      shape.id === id ? { 
+        ...shape, 
+        ...updates,
+        // Ensure geometry exists after update
+        geometry: updates.geometry || shape.geometry || GeometryFactory.createFromShape({ ...shape, ...updates })
+      } : shape
     )
   })),
   deleteShape: (id) => set((state) => ({
