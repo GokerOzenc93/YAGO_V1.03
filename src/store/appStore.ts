@@ -1,3 +1,4 @@
+import React from 'react';
 import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
