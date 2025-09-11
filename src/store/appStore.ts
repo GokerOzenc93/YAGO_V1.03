@@ -116,9 +116,6 @@ export enum Tool {
   DIMENSION = 'Dimension',
   PAN = 'Pan',
   ZOOM = 'Zoom',
-  BOOLEAN_UNION = 'Union',
-  BOOLEAN_SUBTRACT = 'Subtract',
-  BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
 }
 
@@ -208,7 +205,10 @@ interface AppState {
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
-  performBooleanOperation: (operation: 'union' | 'subtract') => void;
+  // Trim tool state
+  trimKnifeShapeId: string | null;
+  setTrimKnifeShape: (id: string | null) => void;
+  performTrimOperation: (targetShapeId: string, clickPoint: THREE.Vector3) => void;
   // OpenCascade integration
   isOpenCascadeInitialized: boolean;
   setOpenCascadeInitialized: (initialized: boolean) => void;
@@ -587,30 +587,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     shapes: state.shapes.filter(shape => shape.id !== id)
   })),
   
-  performBooleanOperation: (operation) => {
-    const { shapes, selectedShapeId, updateShape, deleteShape } = get();
+  // Trim tool implementation
+  trimKnifeShapeId: null,
+  setTrimKnifeShape: (id) => set({ trimKnifeShapeId: id }),
+  
+  performTrimOperation: (targetShapeId, clickPoint) => {
+    const { shapes, trimKnifeShapeId, updateShape } = get();
     
-    if (!selectedShapeId) {
-      console.warn('No shape selected for boolean operation');
+    if (!trimKnifeShapeId) {
+      console.warn('No knife shape selected for trim operation');
       return;
     }
     
-    const selectedShape = shapes.find(s => s.id === selectedShapeId);
-    if (!selectedShape) {
-      console.warn('Selected shape not found');
+    const knifeShape = shapes.find(s => s.id === trimKnifeShapeId);
+    const targetShape = shapes.find(s => s.id === targetShapeId);
+    
+    if (!knifeShape || !targetShape) {
+      console.warn('Knife or target shape not found');
       return;
     }
     
-    let success = false;
-    if (operation === 'subtract') {
-      success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
-    } else if (operation === 'union') {
-      success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
-    }
+    console.log(`🔪 Trim operation: Using ${knifeShape.type} (${knifeShape.id}) to trim ${targetShape.type} (${targetShape.id}) at point [${clickPoint.x.toFixed(1)}, ${clickPoint.y.toFixed(1)}, ${clickPoint.z.toFixed(1)}]`);
     
-    if (success) {
-      set({ selectedShapeId: null });
-    }
+    // TODO: Implement actual trimming logic here
+    // For now, just log the operation
+    console.log('✂️ Trimming operation completed (placeholder)');
   },
     
   selectedShapeId: null,

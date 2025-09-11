@@ -149,12 +149,9 @@ const Toolbar: React.FC = () => {
     { id: Tool.POLYLINE, icon: <GitBranch size={12} />, label: 'Polyline', shortcut: 'PL', hasContextMenu: true },
     { id: Tool.RECTANGLE, icon: <Square size={12} />, label: 'Rectangle', shortcut: 'R' },
     { id: Tool.CIRCLE, icon: <Circle size={12} />, label: 'Circle', shortcut: 'C' },
+    { id: Tool.TRIM, icon: <Scissors size={12} />, label: 'Trim', shortcut: 'TR' },
   ];
 
-  const booleanTools = [
-    { id: Tool.BOOLEAN_UNION, icon: <Plus size={12} />, label: 'Union', shortcut: 'U' },
-    { id: Tool.BOOLEAN_SUBTRACT, icon: <Minus size={12} />, label: 'Subtract', shortcut: 'S' },
-  ];
 
   const transformTools = [
     { id: Tool.SELECT, icon: <MousePointer2 size={12} />, label: 'Select', shortcut: 'V' },
@@ -694,37 +691,6 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
 
-        {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
-
-        {/* Boolean Operations */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
-          {booleanTools.map((tool) => (
-            <button
-              key={tool.id}
-              className={`p-1 rounded transition-all ${
-                activeTool === tool.id
-                  ? 'bg-blue-600/90 text-white shadow-sm'
-                  : !selectedShapeId
-                  ? 'opacity-50 cursor-not-allowed text-gray-500'
-                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
-              }`}
-              onClick={() => {
-                if (selectedShapeId) {
-                  if (tool.id === Tool.BOOLEAN_UNION) {
-                    performBooleanOperation('union');
-                  } else if (tool.id === Tool.BOOLEAN_SUBTRACT) {
-                    performBooleanOperation('subtract');
-                  }
-                }
-              }}
-              disabled={!selectedShapeId}
-              title={`${tool.label} (${tool.shortcut})`}
-            >
-              {tool.icon}
-            </button>
-          ))}
-        </div>
 
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
