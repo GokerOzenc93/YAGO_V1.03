@@ -276,9 +276,6 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
-  // 🎯 NEW: Clipping plane system
-  useClippingPlanes: boolean;
-  setUseClippingPlanes: (enabled: boolean) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -401,13 +398,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
-  
-  // 🎯 NEW: Clipping plane system - enabled by default
-  useClippingPlanes: true,
-  setUseClippingPlanes: (enabled) => {
-    set({ useClippingPlanes: enabled });
-    console.log(`🎯 Clipping planes ${enabled ? 'enabled' : 'disabled'}`);
-  },
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -646,28 +636,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     
-    // 🎯 NEW: Use clipping planes instead of boolean operations
-    const { useClippingPlanes } = get();
+    let success = false;
+    if (operation === 'subtract') {
+      success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
+    } else if (operation === 'union') {
+      success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
+    }
     
-    if (useClippingPlanes) {
-      console.log(`🎯 Using clipping planes for ${operation} operation instead of boolean geometry modification`);
-      console.log('🎯 Shapes will be visually clipped at render time without modifying geometry');
-      
-      // The actual clipping is handled in OpenCascadeShape component
-      // No geometry modification needed - just visual clipping
+    if (success) {
       set({ selectedShapeId: null });
-    } else {
-      // Fallback to traditional boolean operations if clipping planes are disabled
-      let success = false;
-      if (operation === 'subtract') {
-        success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
-      } else if (operation === 'union') {
-        success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
-      }
-      
-      if (success) {
-        set({ selectedShapeId: null });
-      }
     }
   },
     

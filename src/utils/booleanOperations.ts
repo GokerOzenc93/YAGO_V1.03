@@ -278,7 +278,7 @@ const createBrushFromShape = (shape) => {
 };
 
 // Perform boolean subtract operation with three-bvh-csg
-export const performBooleanSubtract = async (
+export const performBooleanSubtract = (
   selectedShape,
   allShapes,
   updateShape,
@@ -299,8 +299,7 @@ export const performBooleanSubtract = async (
   const evaluator = new Evaluator();
   
   try {
-    for (let index = 0; index < intersectingShapes.length; index++) {
-      const targetShape = intersectingShapes[index];
+    intersectingShapes.forEach((targetShape, index) => {
       console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
       const selectedBrush = createBrushFromShape(selectedShape);
@@ -354,7 +353,7 @@ export const performBooleanSubtract = async (
       });
       
       console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
-    }
+    });
     
     deleteShape(selectedShape.id);
     console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
@@ -372,7 +371,7 @@ export const performBooleanSubtract = async (
 };
 
 // Perform boolean union operation with three-bvh-csg
-export const performBooleanUnion = async (
+export const performBooleanUnion = (
   selectedShape,
   allShapes,
   updateShape,
