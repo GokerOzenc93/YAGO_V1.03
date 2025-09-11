@@ -399,6 +399,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
   
+  // Face selection for boolean operations
+  selectedFaceIndex: null,
+  setSelectedFaceIndex: (index) => set({ selectedFaceIndex: index }),
+  
   // Snap settings - all enabled by default
   snapSettings: {
     [SnapType.ENDPOINT]: true,

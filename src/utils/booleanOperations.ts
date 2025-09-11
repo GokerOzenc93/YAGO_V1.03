@@ -251,6 +251,105 @@ export const findIntersectingShapes = (
   return intersectingShapes;
 };
 
+// Helper function to get face normal from geometry
+const getFaceNormal = (geometry, faceIndex) => {
+  try {
+    const pos = geometry.attributes.position;
+    const index = geometry.index;
+    
+    if (!pos || faceIndex === undefined) return null;
+    
+    let a, b, c;
+    if (index) {
+      a = index.getX(faceIndex * 3);
+      b = index.getX(faceIndex * 3 + 1);
+      c = index.getX(faceIndex * 3 + 2);
+    } else {
+      a = faceIndex * 3;
+      b = faceIndex * 3 + 1;
+      c = faceIndex * 3 + 2;
+    }
+    
+    const vA = new THREE.Vector3().fromBufferAttribute(pos, a);
+    const vB = new THREE.Vector3().fromBufferAttribute(pos, b);
+    const vC = new THREE.Vector3().fromBufferAttribute(pos, c);
+    
+    const cb = new THREE.Vector3().subVectors(vC, vB);
+    const ab = new THREE.Vector3().subVectors(vA, vB);
+    
+    return cb.cross(ab).normalize();
+  } catch (error) {
+    console.warn('Error getting face normal:', error);
+    return null;
+  }
+};
+
+// Helper function to get face center from geometry
+const getFaceCenter = (geometry, faceIndex) => {
+  try {
+    const pos = geometry.attributes.position;
+    const index = geometry.index;
+    
+    if (!pos || faceIndex === undefined) return null;
+    
+    let a, b, c;
+    if (index) {
+      a = index.getX(faceIndex * 3);
+      b = index.getX(faceIndex * 3 + 1);
+      c = index.getX(faceIndex * 3 + 2);
+    } else {
+      a = faceIndex * 3;
+      b = faceIndex * 3 + 1;
+      c = faceIndex * 3 + 2;
+    }
+    
+    const vA = new THREE.Vector3().fromBufferAttribute(pos, a);
+    const vB = new THREE.Vector3().fromBufferAttribute(pos, b);
+    const vC = new THREE.Vector3().fromBufferAttribute(pos, c);
+    
+    return new THREE.Vector3()
+      .addVectors(vA, vB)
+      .add(vC)
+      .divideScalar(3);
+  } catch (error) {
+    console.warn('Error getting face center:', error);
+    return null;
+  }
+};
+
+// Helper function to clip shape with plane
+const clipShapeWithPlane = (shape, plane) => {
+  try {
+    // Create a clipped version of the shape using the plane
+    const clippedGeometry = shape.geometry.clone();
+    
+    // Apply shape transforms to get world space geometry
+    const matrix = new THREE.Matrix4();
+    const quaternion = shape.quaternion || new THREE.Quaternion().setFromEuler(new THREE.Euler(...shape.rotation));
+    matrix.compose(
+      new THREE.Vector3(...shape.position),
+      quaternion,
+      new THREE.Vector3(...shape.scale)
+    );
+    
+    clippedGeometry.applyMatrix4(matrix);
+    
+    // Create a new shape with clipped geometry
+    const clippedShape = {
+      ...shape,
+      geometry: clippedGeometry,
+      position: [0, 0, 0], // Already transformed
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1]
+    };
+    
+    return clippedShape;
+  } catch (error) {
+    console.warn('Error clipping shape with plane:', error);
+    return shape; // Fallback to original shape
+  }
+};
+
 // Create brush from shape with proper transforms
 const createBrushFromShape = (shape) => {
   const brush = new Brush(shape.geometry.clone());
@@ -493,5 +592,3 @@ export const performBooleanUnion = async (
     return false;
   }
 };
-
-
