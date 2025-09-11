@@ -33,5 +33,6 @@ export const SHAPE_COLORS = {
   polygon2d: '#ea580c',
   polyline3d: '#0891b2',
   polygon3d: '#c2410c',
+  surface: '#10b981',
   REFERENCE_CUBE: '#6b7280'
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store/appStore';
-import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler } from 'lucide-react';
+import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler, Triangle } from 'lucide-react';
 import * as THREE from 'three';
 
 const Toolbar: React.FC = () => {
@@ -20,7 +20,11 @@ const Toolbar: React.FC = () => {
     setViewMode, // 🎯 NEW: Set view mode
     cycleViewMode, // 🎯 NEW: Cycle through view modes
     orthoMode, // 🎯 NEW: Get current ortho mode
-    toggleOrthoMode // 🎯 NEW: Toggle ortho mode
+    toggleOrthoMode, // 🎯 NEW: Toggle ortho mode
+    isVertexSelectionMode,
+    selectedShapeForVertexEdit,
+    setVertexSelectionMode,
+    setSelectedShapeForVertexEdit
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -524,6 +528,34 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
+        {/* Face Selection Tool */}
+        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+          <button
+            onClick={() => {
+              if (selectedShapeId) {
+                setVertexSelectionMode(!isVertexSelectionMode);
+                setSelectedShapeForVertexEdit(isVertexSelectionMode ? null : selectedShapeId);
+                console.log(`🎯 Face selection mode: ${!isVertexSelectionMode ? 'ON' : 'OFF'}`);
+              } else {
+                console.log('🎯 Select a shape first to enter face selection mode');
+              }
+            }}
+            className={`p-1 rounded transition-all ${
+              isVertexSelectionMode && selectedShapeForVertexEdit
+                ? 'bg-yellow-600/90 text-white shadow-sm'
+                : !selectedShapeId
+                ? 'opacity-50 cursor-not-allowed text-gray-500'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            disabled={!selectedShapeId}
+            title="Face Selection Mode - Select triangular faces to merge (Ctrl+Shift+V)"
+          >
+            <Triangle size={12} />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
         {/* Edit buttons */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
