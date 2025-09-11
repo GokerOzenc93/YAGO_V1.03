@@ -53,27 +53,6 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
-    if (!shape.geometry) {
-      console.warn(`Shape ${shape.id} has no geometry, creating fallback`);
-      // Create fallback geometry based on shape type
-      switch (shape.type) {
-        case 'box':
-          return new THREE.BoxGeometry(
-            shape.parameters.width || 500,
-            shape.parameters.height || 500,
-            shape.parameters.depth || 500
-          );
-        case 'cylinder':
-          return new THREE.CylinderGeometry(
-            shape.parameters.radius || 250,
-            shape.parameters.radius || 250,
-            shape.parameters.height || 500,
-            32
-          );
-        default:
-          return new THREE.BoxGeometry(500, 500, 500);
-      }
-    }
     return shape.geometry;
   }, [shape.geometry]);
 
@@ -349,16 +328,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // Normal görünürlük ayarları
+    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
     if (isBeingEdited) {
-      return 0.8; // Edit edilen şekiller daha belirgin
+      return 0.1; // Edit edilen şekiller çok az görünür
     }
     
-    if (isSelected) {
-      return 0.7; // Seçili şekiller yarı şeffaf
-    }
-    
-    return 0.6; // Normal şekiller görünür
+    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
@@ -430,7 +405,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true}
+        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>

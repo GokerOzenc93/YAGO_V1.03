@@ -1,19 +1,19 @@
 import * as THREE from 'three';
 import { CompletedShape } from './types';
 import { Shape } from '../../types/shapes';
-import { createPolylineGeometry } from './geometryCreator';
+import { GeometryFactory } from '../../lib/geometryFactory';
 import { calculatePolylineCenter } from './utils';
 
-export const convertTo3DShape = (
+export const convertTo3DShape = async (
   shape: CompletedShape,
   addShape: (shape: Shape) => void,
   selectShape: (id: string) => void,
   gridSize: number = 50
-): Shape | null => {
+): Promise<Shape | null> => {
   console.log(`Converting ${shape.type} to selectable 2D shape with ID: ${shape.id}`);
 
   const height = 18; // 18mm height for 2D shapes
-  let geometry: THREE.BufferGeometry;
+  let geometry: THREE.BufferGeometry | null = null;
   let position: [number, number, number];
   let shapeType: string;
 
@@ -21,7 +21,7 @@ export const convertTo3DShape = (
     case 'rectangle': {
       const width = Math.abs(shape.points[2].x - shape.points[0].x);
       const depth = Math.abs(shape.points[2].z - shape.points[0].z);
-      geometry = new THREE.BoxGeometry(width, height, depth);
+      geometry = await GeometryFactory.createBox(width, height, depth);
       position = [
         shape.points[0].x + width / 2,
         height / 2,
@@ -32,14 +32,14 @@ export const convertTo3DShape = (
     }
     case 'circle': {
       const radius = shape.points[0].distanceTo(shape.points[1]);
-      geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+      geometry = await GeometryFactory.createCylinder(radius, height);
       position = [shape.points[0].x, height / 2, shape.points[0].z];
       shapeType = 'circle2d';
       break;
     }
     case 'polyline':
     case 'polygon': {
-      geometry = createPolylineGeometry(shape.points, height, gridSize);
+      geometry = await GeometryFactory.createPolyline(shape.points, height);
       const center = calculatePolylineCenter(shape.points);
       position = [center.x, height / 2, center.z]; // Position at proper height
       shapeType = shape.type === 'polygon' ? 'polygon2d' : 'polyline2d';
@@ -47,6 +47,11 @@ export const convertTo3DShape = (
     }
     default:
       return null;
+  }
+
+  if (!geometry) {
+    console.error('Failed to create geometry for shape');
+    return null;
   }
 
   const newShape: Shape = {
@@ -76,17 +81,17 @@ export const convertTo3DShape = (
   addShape(newShape);
   selectShape(newShape.id);
 
-  console.log(`2D shape converted to selectable shape with 18mm height: [${position.join(', ')}]`);
+  console.log(`2D shape converted using ${GeometryFactory.getCurrentMode()}: [${position.join(', ')}]`);
   return newShape;
 };
 
-export const extrudeShape = (
+export const extrudeShape = async (
   shape: CompletedShape,
   addShape: (shape: Shape) => void,
   height: number = 500,
   gridSize: number = 50
-): Shape | null => {
-  let geometry: THREE.BufferGeometry;
+): Promise<Shape | null> => {
+  let geometry: THREE.BufferGeometry | null = null;
   let position: [number, number, number];
   let shapeType: string;
 
@@ -96,7 +101,7 @@ export const extrudeShape = (
     case 'rectangle': {
       const width = Math.abs(shape.points[2].x - shape.points[0].x);
       const depth = Math.abs(shape.points[2].z - shape.points[0].z);
-      geometry = new THREE.BoxGeometry(width, height, depth);
+      geometry = await GeometryFactory.createBox(width, height, depth);
       position = [
         shape.points[0].x + width / 2,
         height / 2,
@@ -108,7 +113,7 @@ export const extrudeShape = (
     }
     case 'circle': {
       const radius = shape.points[0].distanceTo(shape.points[1]);
-      geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+      geometry = await GeometryFactory.createCylinder(radius, height);
       position = [shape.points[0].x, height / 2, shape.points[0].z];
       shapeType = 'cylinder';
       console.log(`Circle extruded: radius ${radius}mm, height ${height}mm`);
@@ -117,7 +122,7 @@ export const extrudeShape = (
     case 'polyline':
     case 'polygon': {
       // Create centered geometry
-      geometry = createPolylineGeometry(shape.points, height, gridSize);
+      geometry = await GeometryFactory.createPolyline(shape.points, height);
       
       // Calculate the center of the original polyline points for positioning
       const center = calculatePolylineCenter(shape.points);
@@ -130,6 +135,11 @@ export const extrudeShape = (
     default:
       console.warn(`Cannot extrude shape type: ${shape.type}`);
       return null;
+  }
+
+  if (!geometry) {
+    console.error('Failed to create extruded geometry');
+    return null;
   }
 
   const newShape: Shape = {
@@ -155,6 +165,6 @@ export const extrudeShape = (
   };
 
   addShape(newShape);
-  console.log(`3D shape created with ID: ${newShape.id}`);
+  console.log(`3D shape created using ${GeometryFactory.getCurrentMode()}: ${newShape.id}`);
   return newShape;
 };

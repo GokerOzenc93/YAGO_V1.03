@@ -193,37 +193,11 @@ const Scene: React.FC = () => {
         return;
       }
       
-      // Add some default shapes for testing if scene is empty
-      if (e.key.toLowerCase() === 'b' && shapes.length === 0) {
-        const testBox = {
-          id: Math.random().toString(36).substr(2, 9),
-          type: 'box',
-          position: [0, 250, 0] as [number, number, number],
-          rotation: [0, 0, 0] as [number, number, number],
-          scale: [1, 1, 1] as [number, number, number],
-          geometry: new THREE.BoxGeometry(500, 500, 500),
-          parameters: { width: 500, height: 500, depth: 500 }
-        };
-        
-        const testCylinder = {
-          id: Math.random().toString(36).substr(2, 9),
-          type: 'cylinder',
-          position: [750, 250, 0] as [number, number, number],
-          rotation: [0, 0, 0] as [number, number, number],
-          scale: [1, 1, 1] as [number, number, number],
-          geometry: new THREE.CylinderGeometry(250, 250, 500, 32),
-          parameters: { radius: 250, height: 500 }
-        };
-        
-        addShape(testBox);
-        addShape(testCylinder);
-        console.log('Added test shapes - press B to add more');
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [shapes.length, addShape]);
+  }, []);
 
   const [measurementOverlay, setMeasurementOverlay] =
     useState(null);
