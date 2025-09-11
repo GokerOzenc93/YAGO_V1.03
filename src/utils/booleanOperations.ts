@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GeometryFactory } from '../lib/geometryFactory';
+import { getCurrentHighlight } from './faceSelection';
 // SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
 
 /**
@@ -140,6 +141,94 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 
   return merged;
 }
+};
+
+/**
+ * Highlighted surface'i geometriye yüzey olarak ekle
+ */
+const addSurfaceToGeometry = (
+  geometry: THREE.BufferGeometry,
+  surfaceVertices: THREE.Vector3[],
+  worldMatrix: THREE.Matrix4
+): THREE.BufferGeometry => {
+  console.log(`🎯 Adding surface with ${surfaceVertices.length} vertices to geometry`);
+  
+  // Mevcut geometri verilerini al
+  const existingPositions = geometry.attributes.position.array;
+  const existingIndices = geometry.index ? geometry.index.array : null;
+  
+  // Surface vertices'leri local space'e dönüştür
+  const invMatrix = new THREE.Matrix4().copy(worldMatrix).invert();
+  const localSurfaceVertices = surfaceVertices.map(v => v.clone().applyMatrix4(invMatrix));
+  
+  // Yeni vertex array oluştur
+  const newPositions = new Float32Array(existingPositions.length + localSurfaceVertices.length * 3);
+  newPositions.set(existingPositions);
+  
+  // Surface vertices'leri ekle
+  const startIndex = existingPositions.length / 3;
+  localSurfaceVertices.forEach((vertex, i) => {
+    const offset = existingPositions.length + i * 3;
+    newPositions[offset] = vertex.x;
+    newPositions[offset + 1] = vertex.y;
+    newPositions[offset + 2] = vertex.z;
+  });
+  
+  // Surface için triangulation yap
+  const surfaceIndices: number[] = [];
+  if (localSurfaceVertices.length >= 3) {
+    // Basit fan triangulation
+    for (let i = 1; i < localSurfaceVertices.length - 1; i++) {
+      surfaceIndices.push(
+        startIndex,
+        startIndex + i,
+        startIndex + i + 1
+      );
+    }
+  }
+  
+  // Yeni index array oluştur
+  let newIndices: Uint32Array | Uint16Array;
+  const totalIndices = (existingIndices ? existingIndices.length : 0) + surfaceIndices.length;
+  
+  if (totalIndices > 65535) {
+    newIndices = new Uint32Array(totalIndices);
+  } else {
+    newIndices = new Uint16Array(totalIndices);
+  }
+  
+  // Mevcut indices'leri kopyala
+  if (existingIndices) {
+    newIndices.set(existingIndices);
+    // Surface indices'leri ekle
+    for (let i = 0; i < surfaceIndices.length; i++) {
+      newIndices[existingIndices.length + i] = surfaceIndices[i];
+    }
+  } else {
+    // Non-indexed geometry için indices oluştur
+    const vertexCount = existingPositions.length / 3;
+    for (let i = 0; i < vertexCount; i++) {
+      newIndices[i] = i;
+    }
+    // Surface indices'leri ekle
+    for (let i = 0; i < surfaceIndices.length; i++) {
+      newIndices[vertexCount + i] = surfaceIndices[i];
+    }
+  }
+  
+  // Yeni geometri oluştur
+  const newGeometry = new THREE.BufferGeometry();
+  newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+  newGeometry.setIndex(Array.from(newIndices));
+  
+  // Normal'ları yeniden hesapla
+  newGeometry.computeVertexNormals();
+  newGeometry.computeBoundingBox();
+  newGeometry.computeBoundingSphere();
+  
+  console.log(`✅ Surface added: ${surfaceIndices.length / 3} triangles added to geometry`);
+  
+  return newGeometry;
 
 /**
  * Reconstruct geometry from world vertices with proper surface generation
@@ -377,6 +466,24 @@ export const performBooleanSubtract = async (
 ) => {
   console.log('🎯 ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞLADI (CSG) =====');
   
+  // Highlighted surface bilgilerini al
+  const currentHighlight = getCurrentHighlight();
+  let highlightedSurfaceVertices = null;
+  
+  if (currentHighlight) {
+    // Highlighted mesh'in geometrisinden vertex'leri al
+    const highlightGeometry = currentHighlight.mesh.geometry;
+    const positions = highlightGeometry.attributes.position;
+    highlightedSurfaceVertices = [];
+    
+    for (let i = 0; i < positions.count; i++) {
+      const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
+      highlightedSurfaceVertices.push(vertex);
+    }
+    
+    console.log(`🎯 Highlighted surface captured: ${highlightedSurfaceVertices.length} vertices`);
+  }
+  
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -430,6 +537,12 @@ export const performBooleanSubtract = async (
               continue;
             }
             
+             // Highlighted surface'i yeni geometriye yüzey olarak ekle
+             if (highlightedSurfaceVertices && highlightedSurfaceVertices.length > 0) {
+               newGeom = addSurfaceToGeometry(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
+               console.log('🎯 Highlighted surface added as face to new geometry');
+             }
+             
             try { 
               targetShape.geometry.dispose(); 
             } catch (e) { 
@@ -480,6 +593,12 @@ export const performBooleanSubtract = async (
           continue;
       }
       
+       // Highlighted surface'i yeni geometriye yüzey olarak ekle
+       if (highlightedSurfaceVertices && highlightedSurfaceVertices.length > 0) {
+         newGeom = addSurfaceToGeometry(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
+         console.log('🎯 Highlighted surface added as face to new geometry');
+       }
+       
       try { 
         targetShape.geometry.dispose(); 
       } catch (e) { 
