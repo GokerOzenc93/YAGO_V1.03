@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
+// DEĞİŞİKLİK: Yeni "kesişim" mantığı için INTERSECTION operasyonunu içe aktarıyoruz.
+import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GeometryFactory } from '../lib/geometryFactory';
 // SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
@@ -274,12 +275,15 @@ export const performBooleanSubtract = async (
   updateShape,
   deleteShape
 ) => {
-  console.log('🎯 ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞLADI (CSG) =====');
+  // YENİ YORUM: Bu fonksiyonun mantığı, "kalıp çıkarma" (imprint) olarak değiştirildi.
+  // Standart çıkarma (A - B) yerine, iki nesnenin kesişimini (A ∩ B) alarak
+  // sadece "içeride kalan parçayı" sahnede bırakır.
+  console.log('🎯 ===== BOOLEAN KESİŞİM (IMPRINT) İŞLEMİ BAŞLADI (CSG) =====');
   
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
-    console.log('❌ Çıkarma işlemi için kesişen şekil bulunamadı');
+    console.log('❌ Kesişim işlemi için kesişen şekil bulunamadı');
     return false;
   }
   
@@ -287,15 +291,17 @@ export const performBooleanSubtract = async (
   
   try {
     for (const targetShape of intersectingShapes) {
-      console.log(`🎯 Çıkarma işlemi uygulanıyor: ${targetShape.type} (${targetShape.id})`);
+      console.log(`🎯 Kesişim işlemi uygulanıyor: ${targetShape.type} (${targetShape.id})`);
       
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
-      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
+      // DEĞİŞİKLİK: Operasyon SUBTRACTION'dan INTERSECTION'a çevrildi.
+      console.log('🎯 Performing CSG intersection...');
+      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, INTERSECTION);
       
       if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-        console.error('❌ CSG çıkarma işlemi boş bir geometriyle sonuçlandı. Bu şekil atlanıyor.');
+        console.error('❌ CSG kesişim işlemi boş bir geometriyle sonuçlandı. Bu şekil atlanıyor.');
         continue;
       }
       
@@ -303,18 +309,14 @@ export const performBooleanSubtract = async (
       
       let newGeom;
       
-      // ÖNERİ UYGULANDI: Mobilya paneli gibi 'box' tipi nesneler için her zaman yeniden yapılandır.
-      if (targetShape.type === 'box') {
-          newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
-      } else {
-          // 'box' olmayan karmaşık şekiller için gelişmiş temizliği kullan.
-          const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
-          newGeom = resultMesh.geometry.clone();
-          newGeom.applyMatrix4(invTarget);
-          newGeom = cleanCSGGeometry(newGeom, 0.01); // Hassas temizlik için daha düşük tolerans
-      }
+      // Kesişim sonucu her zaman karmaşık bir mesh olacağından, daima temizleme uygula.
+      // Parametrik yeniden yapılandırma (reconstruct) burada uygun değildir.
+      const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+      newGeom = resultMesh.geometry.clone();
+      newGeom.applyMatrix4(invTarget);
+      newGeom = cleanCSGGeometry(newGeom, 0.01); // Hassas temizlik için daha düşük tolerans
       
-      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
+      if (!newGeom || !newGeom.attributes.position || !newGeom.attributes.position.count === 0) {
           console.error(`❌ Geometri işleme sonrası boş bir sonuç döndü: ${targetShape.id}. Güncelleme iptal edildi.`);
           continue;
       }
@@ -329,7 +331,7 @@ export const performBooleanSubtract = async (
         geometry: newGeom,
         parameters: {
           ...targetShape.parameters,
-          booleanOperation: 'subtract',
+          booleanOperation: 'intersect_imprint', // Operasyonun adını güncelleyelim
           subtractedShapeId: selectedShape.id,
           lastModified: Date.now(),
         }
@@ -338,14 +340,15 @@ export const performBooleanSubtract = async (
       console.log(`✅ Hedef şekil ${targetShape.id} güncellendi.`);
     }
     
+    // İşlemi yapan 'seçili' nesne de artık görevini tamamladığı için silinir.
     deleteShape(selectedShape.id);
-    console.log(`🗑️ Çıkarılan şekil silindi: ${selectedShape.id}`);
+    console.log(`🗑️ Kesişim için kullanılan şekil silindi: ${selectedShape.id}`);
     
-    console.log(`✅ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
+    console.log(`✅ ===== BOOLEAN KESİŞİM (IMPRINT) İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
     return true;
     
   } catch (error) {
-    console.error('❌ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARISIZ OLDU (CSG) =====', error);
+    console.error('❌ ===== BOOLEAN KESİŞİM (IMPRINT) İŞLEMİ BAŞARISIZ OLDU (CSG) =====', error);
     return false;
   }
 };
@@ -430,4 +433,5 @@ export const performBooleanUnion = async (
     return false;
   }
 };
+
 
