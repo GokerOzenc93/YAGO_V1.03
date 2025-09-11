@@ -16,7 +16,7 @@ import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
-import VertexSelector from './VertexSelector';
+import FaceSelector from './VertexSelector';
 import SurfaceCreator from './SurfaceCreator';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
@@ -561,16 +561,16 @@ const Scene: React.FC = () => {
   const [sceneRef, setSceneRef] = useState(null);
 
   // Vertex selection state
-  const [selectedVertices, setSelectedVertices] = useState<THREE.Vector3[]>([]);
+  const [selectedFaces, setSelectedFaces] = useState<number[]>([]);
 
-  // Handle vertex selection completion
-  const handleVerticesSelected = (vertices: THREE.Vector3[]) => {
-    setSelectedVertices(vertices);
+  // Handle face selection completion
+  const handleFacesSelected = (faces: number[]) => {
+    setSelectedFaces(faces);
   };
 
   // Handle surface creation
   const handleSurfaceCreated = (geometry: THREE.BufferGeometry) => {
-    console.log('🎯 Surface created from selected vertices');
+    console.log('🎯 Surface created from selected faces');
     // Here you could update the shape's geometry or create a new shape
     // For now, just log the success
   };
@@ -579,20 +579,20 @@ const Scene: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 'v' && e.ctrlKey && e.shiftKey) {
-        // Ctrl+Shift+V to toggle vertex selection mode
+        // Ctrl+Shift+V to toggle face selection mode
         if (selectedShapeId) {
           setVertexSelectionMode(!isVertexSelectionMode);
           setSelectedShapeForVertexEdit(isVertexSelectionMode ? null : selectedShapeId);
-          console.log(`🎯 Vertex selection mode: ${!isVertexSelectionMode ? 'ON' : 'OFF'}`);
+          console.log(`🎯 Face selection mode: ${!isVertexSelectionMode ? 'ON' : 'OFF'}`);
         } else {
-          console.log('🎯 Select a shape first to enter vertex selection mode');
+          console.log('🎯 Select a shape first to enter face selection mode');
         }
       }
       
       if (e.key === 'Escape' && isVertexSelectionMode) {
         setVertexSelectionMode(false);
         setSelectedShapeForVertexEdit(null);
-        console.log('🎯 Vertex selection mode disabled');
+        console.log('🎯 Face selection mode disabled');
       }
     };
 
@@ -762,12 +762,12 @@ const Scene: React.FC = () => {
                 onFaceSelect={handleFaceSelect}
               />
               
-              {/* Vertex Selector for selected shape */}
+              {/* Face Selector for selected shape */}
               {isVertexEditTarget && (
-                <VertexSelector
+                <FaceSelector
                   shape={shape}
                   isActive={isVertexSelectionMode}
-                  onVerticesSelected={handleVerticesSelected}
+                  onFacesSelected={handleFacesSelected}
                 />
               )}
             </group>
@@ -775,9 +775,10 @@ const Scene: React.FC = () => {
         })}
 
         {/* Surface Creator */}
-        {selectedVertices.length > 0 && (
+        {selectedFaces.length > 0 && (
           <SurfaceCreator
-            vertices={selectedVertices}
+            faces={selectedFaces}
+            shape={shapes.find(s => s.id === selectedShapeForVertexEdit)}
             onSurfaceCreated={handleSurfaceCreated}
           />
         )}
@@ -858,13 +859,13 @@ const Scene: React.FC = () => {
           <div className="fixed top-32 left-4 bg-yellow-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Vertex Selection Mode</span>
+              <span className="text-sm font-medium">Face Selection Mode</span>
             </div>
             <div className="text-xs text-yellow-200 mt-1">
-              Click vertices to select • Enter to create surface • Esc to exit
+              Click triangles to select • Enter to merge faces • Esc to exit
             </div>
             <div className="text-xs text-yellow-200">
-              Selected: {selectedVertices.length} vertices
+              Selected: {selectedFaces.length} faces
             </div>
           </div>,
           document.body

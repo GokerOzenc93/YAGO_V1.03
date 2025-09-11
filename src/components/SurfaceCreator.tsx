@@ -3,27 +3,28 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface SurfaceCreatorProps {
-  vertices: THREE.Vector3[];
+  faces: number[];
+  shape: any;
   onSurfaceCreated: (geometry: THREE.BufferGeometry) => void;
 }
 
-const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ vertices, onSurfaceCreated }) => {
+const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ faces, shape, onSurfaceCreated }) => {
   const { scene } = useThree();
 
   useEffect(() => {
-    if (vertices.length < 3) return;
+    if (faces.length < 1) return;
 
-    console.log(`🎯 Creating surface from ${vertices.length} vertices`);
+    console.log(`🎯 Creating unified surface from ${faces.length} faces`);
 
     try {
-      // Create a surface from selected vertices using Delaunay triangulation
-      const geometry = createSurfaceFromVertices(vertices);
+      // Create unified surface from selected faces
+      const geometry = createUnifiedSurfaceFromFaces(faces, shape);
       
       // Create preview mesh
       const material = new THREE.MeshBasicMaterial({ 
         color: 0x00ff00, 
         transparent: true, 
-        opacity: 0.7,
+        opacity: 0.8,
         side: THREE.DoubleSide,
         wireframe: false
       });
@@ -34,7 +35,7 @@ const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ vertices, onSurfaceCrea
       // Call callback
       onSurfaceCreated(geometry);
       
-      console.log('✅ Surface created successfully');
+      console.log('✅ Unified surface created successfully');
       
       // Remove preview after 3 seconds
       setTimeout(() => {
@@ -44,70 +45,78 @@ const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ vertices, onSurfaceCrea
       }, 3000);
       
     } catch (error) {
-      console.error('❌ Failed to create surface:', error);
+      console.error('❌ Failed to create unified surface:', error);
     }
-  }, [vertices, scene, onSurfaceCreated]);
+  }, [faces, shape, scene, onSurfaceCreated]);
 
   return null;
 };
 
-// Create surface geometry from vertices
-const createSurfaceFromVertices = (vertices: THREE.Vector3[]): THREE.BufferGeometry => {
-  if (vertices.length < 3) {
-    throw new Error('Need at least 3 vertices to create a surface');
+// Create unified surface geometry from selected faces
+const createUnifiedSurfaceFromFaces = (faceIndices: number[], shape: any): THREE.BufferGeometry => {
+  if (faceIndices.length < 1) {
+    throw new Error('Need at least 1 face to create a surface');
   }
 
-  // Calculate centroid
-  const centroid = new THREE.Vector3();
-  vertices.forEach(v => centroid.add(v));
-  centroid.divideScalar(vertices.length);
+  const originalGeometry = shape.geometry as THREE.BufferGeometry;
+  const position = originalGeometry.attributes.position;
+  const index = originalGeometry.index;
 
-  // Calculate normal using first 3 vertices
-  const v1 = new THREE.Vector3().subVectors(vertices[1], vertices[0]);
-  const v2 = new THREE.Vector3().subVectors(vertices[2], vertices[0]);
-  const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+  if (!position || !index) {
+    throw new Error('Geometry must have position attribute and index');
+  }
 
-  // Create local coordinate system
-  const up = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-  const tangent = new THREE.Vector3().crossVectors(up, normal).normalize();
-  const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+  // Create transform matrix for shape
+  const matrix = new THREE.Matrix4();
+  const quaternion = shape.quaternion || new THREE.Quaternion().setFromEuler(new THREE.Euler(...shape.rotation));
+  matrix.compose(
+    new THREE.Vector3(...shape.position),
+    quaternion,
+    new THREE.Vector3(...shape.scale)
+  );
 
-  // Project vertices to 2D plane
-  const vertices2D: THREE.Vector2[] = vertices.map(vertex => {
-    const relative = vertex.clone().sub(centroid);
-    const x = relative.dot(tangent);
-    const y = relative.dot(bitangent);
-    return new THREE.Vector2(x, y);
+  // Collect all vertices from selected faces
+  const vertices: THREE.Vector3[] = [];
+  const faceVertices: THREE.Vector3[][] = [];
+
+  faceIndices.forEach(faceIndex => {
+    const a = index.getX(faceIndex * 3);
+    const b = index.getX(faceIndex * 3 + 1);
+    const c = index.getX(faceIndex * 3 + 2);
+
+    const va = new THREE.Vector3().fromBufferAttribute(position, a).applyMatrix4(matrix);
+    const vb = new THREE.Vector3().fromBufferAttribute(position, b).applyMatrix4(matrix);
+    const vc = new THREE.Vector3().fromBufferAttribute(position, c).applyMatrix4(matrix);
+
+    faceVertices.push([va, vb, vc]);
+    vertices.push(va, vb, vc);
   });
 
-  // Simple triangulation - fan triangulation from centroid
-  const triangles: number[] = [];
-  for (let i = 0; i < vertices2D.length; i++) {
-    const next = (i + 1) % vertices2D.length;
-    // Create triangle: centroid, current vertex, next vertex
-    triangles.push(vertices.length, i, next); // centroid index is vertices.length
-  }
-
-  // Create geometry
-  const geometry = new THREE.BufferGeometry();
+  // Create new geometry with all face vertices
+  const newGeometry = new THREE.BufferGeometry();
   
-  // Add centroid to vertices list for geometry creation
-  const allVertices = [...vertices, centroid];
-  const positions = new Float32Array(allVertices.length * 3);
-  
-  allVertices.forEach((vertex, i) => {
+  const positions = new Float32Array(vertices.length * 3);
+  vertices.forEach((vertex, i) => {
     positions[i * 3] = vertex.x;
     positions[i * 3 + 1] = vertex.y;
     positions[i * 3 + 2] = vertex.z;
   });
 
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setIndex(triangles);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
+  // Create indices for triangles
+  const indices: number[] = [];
+  for (let i = 0; i < vertices.length; i += 3) {
+    indices.push(i, i + 1, i + 2);
+  }
 
-  return geometry;
+  newGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  newGeometry.setIndex(indices);
+  newGeometry.computeVertexNormals();
+  newGeometry.computeBoundingBox();
+  newGeometry.computeBoundingSphere();
+
+  console.log(`🎯 Unified surface created with ${faceIndices.length} faces (${vertices.length} vertices, ${indices.length / 3} triangles)`);
+
+  return newGeometry;
 };
 
 export default SurfaceCreator;
