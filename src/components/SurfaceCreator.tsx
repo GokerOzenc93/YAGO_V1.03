@@ -17,6 +17,11 @@ const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ faces, shape, onSurface
     console.log(`🎯 Creating unified surface from ${faces.length} faces`);
 
     try {
+    if (!shape.geometry) {
+      console.error('❌ Shape geometry is undefined');
+      return;
+    }
+
       // Create unified surface from selected faces
       const geometry = createUnifiedSurfaceFromFaces(faces, shape);
       

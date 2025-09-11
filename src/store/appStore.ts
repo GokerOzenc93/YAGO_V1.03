@@ -633,6 +633,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       shapes: state.shapes.filter((shape) => shape.id !== id),
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
+      selectedShapeForVertexEdit: state.selectedShapeForVertexEdit === id ? null : state.selectedShapeForVertexEdit,
     })),
      
   performBooleanOperation: (operation) => {

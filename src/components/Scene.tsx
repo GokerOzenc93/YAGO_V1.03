@@ -574,6 +574,13 @@ const Scene: React.FC = () => {
     // For now, just log the success
   };
 
+  // Clear selected faces when vertex selection mode is disabled or shape is invalid
+  useEffect(() => {
+    if (!isVertexSelectionMode || !selectedShapeForVertexEdit) {
+      setSelectedFaces([]);
+    }
+  }, [isVertexSelectionMode, selectedShapeForVertexEdit]);
+
   // Handle vertex selection mode toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
