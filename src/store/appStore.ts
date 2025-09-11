@@ -435,6 +435,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
     
   snapTolerance: 25, // Default snap tolerance in pixels
+  setSnapTolerance: (tolerance) => set({ snapTolerance: tolerance }),
   
   // Point to Point Move state
   // Auto snap management
@@ -575,56 +576,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ shapes: newShapes });
   },
   
-  shapes: [
-    {
-      id: '1',
-      type: 'box',
-      position: [-200, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(500, 500, 500),
-      parameters: {
-        width: 500,
-        height: 500,
-        depth: 500,
-      },
-    },
-    {
-      id: '2',
-      type: 'box',
-      position: [100, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(300, 300, 300),
-      parameters: {
-        width: 300,
-        height: 300,
-        depth: 300,
-      },
-    },
-  ],
+  shapes: [],
+  addShape: (shape) => set((state) => ({ shapes: [...state.shapes, shape] })),
+  updateShape: (id, updates) => set((state) => ({
+    shapes: state.shapes.map(shape => 
+      shape.id === id ? { ...shape, ...updates } : shape
+    )
+  })),
+  deleteShape: (id) => set((state) => ({
+    shapes: state.shapes.filter(shape => shape.id !== id)
+  })),
   
-  addShape: (shape) => 
-    set((state) => ({ 
-      shapes: [...state.shapes, shape],
-      selectedShapeId: shape.id,
-    })),
-    
-  updateShape: (id, updates) =>
-    set((state) => ({
-      shapes: state.shapes.map((shape) =>
-        shape.id === id ? { ...shape, ...updates } : shape
-      ),
-    })),
-    
-  deleteShape: (id) =>
-    set((state) => ({
-      shapes: state.shapes.filter((shape) => shape.id !== id),
-      selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
-    })),
-     
   performBooleanOperation: (operation) => {
     const { shapes, selectedShapeId, updateShape, deleteShape } = get();
+    
     if (!selectedShapeId) {
       console.warn('No shape selected for boolean operation');
       return;
