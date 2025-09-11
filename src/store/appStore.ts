@@ -662,12 +662,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     // For subtract operation, enter face selection mode
     if (operation === 'subtract') {
+      // Find intersecting shapes (these will be the target shapes to select face from)
+      const intersectingShapes = shapes.filter(shape => {
+        if (shape.id === selectedShapeId) return false;
+        
+        // Simple bounding box intersection check
+        const shape1Bounds = getShapeBounds(selectedShape);
+        const shape2Bounds = getShapeBounds(shape);
+        
+        return boundsIntersect(shape1Bounds, shape2Bounds);
+      });
+      
+      if (intersectingShapes.length === 0) {
+        console.log('❌ No intersecting shapes found for face selection');
+        return;
+      }
+      
+      // Use the first intersecting shape as the target for face selection
+      const targetShape = intersectingShapes[0];
+      
       set({ 
         isFaceSelectionMode: true,
-        selectedFaceShapeId: selectedShapeId, // Çıkarılacak nesnenin yüzeyini seç
+        selectedFaceShapeId: targetShape.id, // Geriye kalacak nesnenin yüzeyini seç
         selectedFaceIndex: null
       });
-      console.log('🎯 Face selection mode activated. Click on the SUBTRACTING shape face to select cutting plane, then press Enter to execute.');
+      console.log(`🎯 Face selection mode activated. Click on the TARGET shape (${targetShape.type}) face to select cutting plane, then press Enter to execute.`);
       return;
     }
     

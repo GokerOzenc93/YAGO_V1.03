@@ -571,53 +571,29 @@ const Scene: React.FC = () => {
   const executeFaceBasedBooleanSubtract = async () => {
     if (!selectedFaceShapeId || selectedFaceIndex === null) return;
     
-    const subtractingShape = shapes.find(s => s.id === selectedFaceShapeId);
+    const targetShape = shapes.find(s => s.id === selectedFaceShapeId);
+    if (!targetShape) return;
+    
+    const subtractingShape = shapes.find(s => s.id === selectedShapeId);
     if (!subtractingShape) return;
     
-    // Çıkarılacak nesnenin yüzeyinden kesişen nesneleri bul
-    const intersectingShapes = shapes.filter(shape => {
-      if (shape.id === selectedFaceShapeId) return false;
-      
-      // Basit bounding box intersection kontrolü
-      const shape1Bounds = getShapeBounds(subtractingShape);
-      const shape2Bounds = getShapeBounds(shape);
-      
-      return boundsIntersect(shape1Bounds, shape2Bounds);
-    });
-    
-    if (intersectingShapes.length === 0) {
-      console.log('❌ No intersecting shapes found for face-based subtraction');
-      exitFaceSelectionMode();
-      return;
-    }
-    
-    console.log(`🎯 Executing face-based boolean subtract: ${subtractingShape.type} will cut ${intersectingShapes.length} intersecting shapes using face ${selectedFaceIndex}`);
+    console.log(`🎯 Executing face-based boolean subtract: ${subtractingShape.type} will be subtracted from ${targetShape.type} using face ${selectedFaceIndex} as cutting plane`);
     
     try {
-      // Her kesişen nesne için çıkarma işlemi yap
-      let overallSuccess = true;
+      console.log(`🎯 Subtracting ${subtractingShape.type} from ${targetShape.type} using face ${selectedFaceIndex}`);
       
-      for (const targetShape of intersectingShapes) {
-        console.log(`🎯 Subtracting from target shape: ${targetShape.type} (${targetShape.id})`);
-        
-        const success = await performBooleanSubtract(
-          subtractingShape, 
-          [targetShape], // Sadece bu hedef nesne
-          updateShape, 
-          deleteShape, 
-          selectedFaceIndex
-        );
-        
-        if (!success) {
-          overallSuccess = false;
-          console.log(`❌ Failed to subtract from shape ${targetShape.id}`);
-        }
-      }
+      const success = await performBooleanSubtract(
+        subtractingShape, 
+        [targetShape], // Target shape to subtract from
+        updateShape, 
+        deleteShape, 
+        selectedFaceIndex
+      );
       
-      if (overallSuccess) {
-        console.log('✅ Face-based boolean subtract completed successfully for all intersecting shapes');
+      if (success) {
+        console.log('✅ Face-based boolean subtract completed successfully');
       } else {
-        console.log('⚠️ Some face-based boolean subtract operations failed');
+        console.log('❌ Face-based boolean subtract failed');
       }
     } catch (error) {
       console.error('❌ Error during face-based boolean subtract:', error);
