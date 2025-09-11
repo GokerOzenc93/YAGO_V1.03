@@ -278,7 +278,7 @@ const createBrushFromShape = (shape) => {
 };
 
 // Perform boolean subtract operation with three-bvh-csg
-export const performBooleanSubtract = (
+export const performBooleanSubtract = async (
   selectedShape,
   allShapes,
   updateShape,
@@ -299,7 +299,7 @@ export const performBooleanSubtract = (
   const evaluator = new Evaluator();
   
   try {
-    intersectingShapes.forEach((targetShape, index) => {
+    for (const [index, targetShape] of intersectingShapes.entries()) {
       console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
       const selectedBrush = createBrushFromShape(selectedShape);
@@ -311,7 +311,7 @@ export const performBooleanSubtract = (
       
       if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
         console.error('❌ CSG subtraction operation failed or resulted in an empty mesh. Aborting for this shape.');
-        return;
+        continue;
       }
       
       resultMesh.updateMatrixWorld(true);
@@ -332,7 +332,7 @@ export const performBooleanSubtract = (
           newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
         } catch (error) {
           console.error('❌ Geometry reconstruction failed:', error);
-          return;
+          continue;
         }
       }
       
@@ -353,7 +353,7 @@ export const performBooleanSubtract = (
       });
       
       console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
-    });
+    }
     
     deleteShape(selectedShape.id);
     console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
@@ -371,7 +371,7 @@ export const performBooleanSubtract = (
 };
 
 // Perform boolean union operation with three-bvh-csg
-export const performBooleanUnion = (
+export const performBooleanUnion = async (
   selectedShape,
   allShapes,
   updateShape,

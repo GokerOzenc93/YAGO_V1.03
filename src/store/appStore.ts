@@ -623,7 +623,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
      
-  performBooleanOperation: (operation) => {
+  performBooleanOperation: async (operation) => {
     const { shapes, selectedShapeId, updateShape, deleteShape } = get();
     if (!selectedShapeId) {
       console.warn('No shape selected for boolean operation');
@@ -638,9 +638,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     let success = false;
     if (operation === 'subtract') {
-      success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
+      success = await performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
     } else if (operation === 'union') {
-      success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
+      success = await performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
     }
     
     if (success) {
