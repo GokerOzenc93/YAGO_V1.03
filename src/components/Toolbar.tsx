@@ -20,7 +20,11 @@ const Toolbar: React.FC = () => {
     setViewMode, // 🎯 NEW: Set view mode
     cycleViewMode, // 🎯 NEW: Cycle through view modes
     orthoMode, // 🎯 NEW: Get current ortho mode
-    toggleOrthoMode // 🎯 NEW: Toggle ortho mode
+    toggleOrthoMode, // 🎯 NEW: Toggle ortho mode
+    isVertexSelectionMode,
+    selectedShapeForVertexEdit,
+    setVertexSelectionMode,
+    setSelectedShapeForVertexEdit
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
