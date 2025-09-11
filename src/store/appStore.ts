@@ -432,7 +432,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       case ModificationType.FILLET: {
+        // TODO: Implement fillet operation
       }
+    }
+
+    set({ shapes: newShapes });
+  },
+
     }
   }
   // Trim tool implementation
