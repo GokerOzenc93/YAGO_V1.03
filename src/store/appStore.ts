@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
+import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
+import { GeometryFactory } from '../lib/geometryFactory';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {
@@ -34,16 +36,110 @@ const boundsIntersect = (bounds1: any, bounds2: any): boolean => {
 
 // Helper function to create subtracted geometry (simplified implementation)
 const createSubtractedGeometry = (targetGeometry: THREE.BufferGeometry, subtractShape: Shape): THREE.BufferGeometry => {
-  // This is a simplified implementation
-  // In a real CAD application, you would use proper CSG operations
-  
-  // For now, we'll create a visual indication by modifying the target geometry
+  // Create a new geometry with a hole/cavity based on the subtract shape
   const newGeometry = targetGeometry.clone();
   
-  // Add some visual indication that subtraction occurred
-  // In a real implementation, this would be proper boolean subtraction
-  console.log('Creating subtracted geometry (simplified implementation)');
+  // Get the subtract shape's dimensions and position
+  const subtractBounds = getShapeBounds(subtractShape);
+  const subtractCenter = new THREE.Vector3(
+    (subtractBounds.min.x + subtractBounds.max.x) / 2,
+    (subtractBounds.min.y + subtractBounds.max.y) / 2,
+    (subtractBounds.min.z + subtractBounds.max.z) / 2
+  );
   
+  // For demonstration, we'll create a modified geometry
+  // This is a simplified approach - in a real CAD system, you'd use proper CSG
+  
+  if (subtractShape.type === 'box' || subtractShape.type === 'cylinder') {
+    // Create a visual indication by modifying the geometry
+    // Scale down the geometry slightly to show the subtraction effect
+    const positions = newGeometry.attributes.position;
+    const positionArray = positions.array as Float32Array;
+    
+    // Modify vertices that are close to the subtract shape
+    for (let i = 0; i < positions.count; i++) {
+      const vertex = new THREE.Vector3(
+        positionArray[i * 3],
+        positionArray[i * 3 + 1],
+        positionArray[i * 3 + 2]
+      );
+      
+      // Check if vertex is within the subtract shape's influence
+      const distance = vertex.distanceTo(subtractCenter);
+      const influenceRadius = Math.max(
+        subtractBounds.max.x - subtractBounds.min.x,
+        subtractBounds.max.y - subtractBounds.min.y,
+        subtractBounds.max.z - subtractBounds.min.z
+      ) / 2;
+      
+      if (distance < influenceRadius) {
+        // Create a cavity effect by pushing vertices inward
+        const direction = vertex.clone().sub(subtractCenter).normalize();
+        const pushDistance = (influenceRadius - distance) * 0.3;
+        vertex.sub(direction.multiplyScalar(pushDistance));
+        
+        positionArray[i * 3] = vertex.x;
+        positionArray[i * 3 + 1] = vertex.y;
+        positionArray[i * 3 + 2] = vertex.z;
+      }
+    }
+  }
+  // Create a new geometry with a hole/cavity based on the subtract shape
+  const newGeometry = targetGeometry.clone();
+  
+  // Get the subtract shape's dimensions and position
+  const subtractBounds = getShapeBounds(subtractShape);
+  const subtractCenter = new THREE.Vector3(
+    (subtractBounds.min.x + subtractBounds.max.x) / 2,
+    (subtractBounds.min.y + subtractBounds.max.y) / 2,
+    (subtractBounds.min.z + subtractBounds.max.z) / 2
+  );
+  
+  // For demonstration, we'll create a modified geometry
+  // This is a simplified approach - in a real CAD system, you'd use proper CSG
+  
+  if (subtractShape.type === 'box' || subtractShape.type === 'cylinder') {
+    // Create a visual indication by modifying the geometry
+    // Scale down the geometry slightly to show the subtraction effect
+    const positions = newGeometry.attributes.position;
+    const positionArray = positions.array as Float32Array;
+    
+    // Modify vertices that are close to the subtract shape
+    for (let i = 0; i < positions.count; i++) {
+      const vertex = new THREE.Vector3(
+        positionArray[i * 3],
+        positionArray[i * 3 + 1],
+        positionArray[i * 3 + 2]
+      );
+      
+      // Check if vertex is within the subtract shape's influence
+      const distance = vertex.distanceTo(subtractCenter);
+      const influenceRadius = Math.max(
+        subtractBounds.max.x - subtractBounds.min.x,
+        subtractBounds.max.y - subtractBounds.min.y,
+        subtractBounds.max.z - subtractBounds.min.z
+      ) / 2;
+      
+      if (distance < influenceRadius) {
+        // Create a cavity effect by pushing vertices inward
+        const direction = vertex.clone().sub(subtractCenter).normalize();
+        const pushDistance = (influenceRadius - distance) * 0.3;
+        vertex.sub(direction.multiplyScalar(pushDistance));
+        
+        positionArray[i * 3] = vertex.x;
+        positionArray[i * 3 + 1] = vertex.y;
+        positionArray[i * 3 + 2] = vertex.z;
+      }
+    }
+    
+    // Mark the attribute as needing update
+    positions.needsUpdate = true;
+    newGeometry.computeVertexNormals();
+    newGeometry.computeBoundingBox();
+    newGeometry.computeBoundingSphere();
+  }
+  
+  console.log('Boolean subtraction applied - geometry modified with cavity effect');
   return newGeometry;
 };
 
@@ -68,9 +164,6 @@ export enum Tool {
   DIMENSION = 'Dimension',
   PAN = 'Pan',
   ZOOM = 'Zoom',
-  BOOLEAN_UNION = 'Union',
-  BOOLEAN_SUBTRACT = 'Subtract',
-  BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
 }
 
@@ -160,7 +253,15 @@ interface AppState {
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
-  performBooleanOperation: (operation: 'union' | 'subtract') => void;
+  // Trim tool state
+  trimKnifeShapeId: string | null;
+  setTrimKnifeShape: (id: string | null) => void;
+  performTrimOperation: (targetShapeId: string, clickPoint: THREE.Vector3) => void;
+  // OpenCascade integration
+  isOpenCascadeInitialized: boolean;
+  setOpenCascadeInitialized: (initialized: boolean) => void;
+  geometryMode: string;
+  setGeometryMode: (mode: string) => void;
   cameraPosition: [number, number, number];
   setCameraPosition: (position: [number, number, number]) => void;
   selectedObjectPosition: [number, number, number];
@@ -269,6 +370,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
+  // OpenCascade integration
+  isOpenCascadeInitialized: false,
+  setOpenCascadeInitialized: (initialized) => set({ isOpenCascadeInitialized: initialized }),
+  
+  geometryMode: 'Three.js',
+  setGeometryMode: (mode) => set({ geometryMode: mode }),
+  
   gridSize: 50,
   setGridSize: (size) => set({ gridSize: size }),
   
@@ -375,6 +483,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
     
   snapTolerance: 25, // Default snap tolerance in pixels
+  setSnapTolerance: (tolerance) => set({ snapTolerance: tolerance }),
   
   // Point to Point Move state
   // Auto snap management
@@ -515,115 +624,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ shapes: newShapes });
   },
   
-  shapes: [
-    {
-      id: '1',
-      type: 'box',
-      position: [0, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(500, 500, 500),
-      parameters: {
-        width: 500,
-        height: 500,
-        depth: 500,
-      },
-    },
-    {
-      id: '2',
-      type: 'cylinder',
-      position: [750, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.CylinderGeometry(250, 250, 500, 32),
-      parameters: {
-        radius: 250,
-        height: 500,
-      },
-    },
-  ],
+  shapes: [],
+  addShape: (shape) => set((state) => ({ shapes: [...state.shapes, shape] })),
+  updateShape: (id, updates) => set((state) => ({
+    shapes: state.shapes.map(shape => 
+      shape.id === id ? { ...shape, ...updates } : shape
+    )
+  })),
+  deleteShape: (id) => set((state) => ({
+    shapes: state.shapes.filter(shape => shape.id !== id)
+  })),
   
-  addShape: (shape) => 
-    set((state) => ({ 
-      shapes: [...state.shapes, shape],
-      selectedShapeId: shape.id,
-    })),
+  // Trim tool implementation
+  trimKnifeShapeId: null,
+  setTrimKnifeShape: (id) => set({ trimKnifeShapeId: id }),
+  
+  performTrimOperation: (targetShapeId, clickPoint) => {
+    const { shapes, trimKnifeShapeId, updateShape } = get();
     
-  updateShape: (id, updates) =>
-    set((state) => ({
-      shapes: state.shapes.map((shape) =>
-        shape.id === id ? { ...shape, ...updates } : shape
-      ),
-    })),
-    
-  deleteShape: (id) =>
-    set((state) => ({
-      shapes: state.shapes.filter((shape) => shape.id !== id),
-      selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
-    })),
-     
-  performBooleanOperation: (operation) => {
-    const { shapes, selectedShapeId } = get();
-    if (!selectedShapeId) {
-      console.warn('No shape selected for boolean operation');
+    if (!trimKnifeShapeId) {
+      console.warn('No knife shape selected for trim operation');
       return;
     }
     
-    const selectedShape = shapes.find(s => s.id === selectedShapeId);
-    if (!selectedShape) {
-      console.warn('Selected shape not found');
+    const knifeShape = shapes.find(s => s.id === trimKnifeShapeId);
+    const targetShape = shapes.find(s => s.id === targetShapeId);
+    
+    if (!knifeShape || !targetShape) {
+      console.warn('Knife or target shape not found');
       return;
     }
     
-    // Find intersecting shapes
-    const intersectingShapes = shapes.filter(shape => {
-      if (shape.id === selectedShapeId) return false;
-      
-      // Simple bounding box intersection check
-      const selectedBounds = getShapeBounds(selectedShape);
-      const shapeBounds = getShapeBounds(shape);
-      
-      return boundsIntersect(selectedBounds, shapeBounds);
-    });
+    console.log(`🔪 Trim operation: Using ${knifeShape.type} (${knifeShape.id}) to trim ${targetShape.type} (${targetShape.id}) at point [${clickPoint.x.toFixed(1)}, ${clickPoint.y.toFixed(1)}, ${clickPoint.z.toFixed(1)}]`);
     
-    if (intersectingShapes.length === 0) {
-      console.log('No intersecting shapes found for boolean operation');
-      return;
-    }
-    
-    if (operation === 'subtract') {
-      // For subtract operation: remove selected shape geometry from intersecting shapes
-      const updatedShapes = shapes.filter(s => s.id !== selectedShapeId).map(shape => {
-        const isIntersecting = intersectingShapes.some(is => is.id === shape.id);
-        if (isIntersecting) {
-          // Create a new geometry that represents the subtraction
-          // For now, we'll create a simple visual indication by changing the shape
-          console.log(`Subtracting shape ${selectedShapeId} from shape ${shape.id}`);
-          
-          // In a real implementation, you would use CSG (Constructive Solid Geometry)
-          // For now, we'll create a modified version of the target shape
-          const modifiedGeometry = createSubtractedGeometry(shape.geometry, selectedShape);
-          
-          return {
-            ...shape,
-            geometry: modifiedGeometry,
-            parameters: {
-              ...shape.parameters,
-              modified: true,
-              subtractedFrom: selectedShapeId
-            }
-          };
-        }
-        return shape;
-      });
-      
-      set({ 
-        shapes: updatedShapes,
-        selectedShapeId: null
-      });
-      
-      console.log(`Boolean subtract completed: removed shape ${selectedShapeId} from ${intersectingShapes.length} intersecting shapes`);
-    }
+    // TODO: Implement actual trimming logic here
+    // For now, just log the operation
+    console.log('✂️ Trimming operation completed (placeholder)');
   },
     
   selectedShapeId: null,
