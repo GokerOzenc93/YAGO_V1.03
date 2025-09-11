@@ -571,6 +571,10 @@ const Scene: React.FC = () => {
   const executeFaceBasedBooleanSubtract = async () => {
     if (!selectedFaceShapeId || selectedFaceIndex === null) return;
     
+    // Get the current selected shape ID from the store
+    const selectedShapeId = useAppStore.getState().selectedShapeId;
+    if (!selectedShapeId) return;
+    
     const targetShape = shapes.find(s => s.id === selectedFaceShapeId);
     if (!targetShape) return;
     
