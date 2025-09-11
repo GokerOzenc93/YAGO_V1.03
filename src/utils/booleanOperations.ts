@@ -207,18 +207,10 @@ const createBrushFromShape = (shape) => {
   brush.scale.fromArray(shape.scale || [1, 1, 1]);
   
   if (shape.rotation) {
-    const euler = new THREE.Euler(...shape.rotation);
-    brush.quaternion.setFromEuler(euler);
+    brush.rotation.fromArray(shape.rotation);
   }
   
   brush.updateMatrixWorld(true);
-  
-  console.log(`🎯 Brush created:`, {
-    position: brush.position.toArray().map(v => v.toFixed(1)),
-    scale: brush.scale.toArray().map(v => v.toFixed(1)),
-    rotation: shape.rotation?.map(v => (v * 180 / Math.PI).toFixed(1)) || [0, 0, 0]
-  });
-  
   return brush;
 };
 
@@ -239,13 +231,13 @@ export const performBooleanSubtract = (
     return false;
   }
   
-  console.log(`🎯 Processing subtraction with ${intersectingShapes.length} intersecting shapes using CSG`);
+  console.log(`🎯 Processing subtraction from ${intersectingShapes.length} intersecting shapes using CSG`);
   
   const evaluator = new Evaluator();
   
   try {
     intersectingShapes.forEach((targetShape, index) => {
-      console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
+      console.log(`🎯 Subtracting from target ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
@@ -255,7 +247,7 @@ export const performBooleanSubtract = (
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
       if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-        console.error('❌ CSG subtraction operation failed or resulted in an empty mesh. Aborting for this shape.');
+        console.error(`❌ CSG subtraction operation failed or resulted in an empty mesh for target ${targetShape.id}. Skipping.`);
         return;
       }
       
@@ -269,10 +261,10 @@ export const performBooleanSubtract = (
       
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
       newGeom = cleanCSGGeometry(newGeom, 0.05);
-      
+
       // YENİ GÜVENLİK KONTROLÜ: Temizlenmiş geometrinin geçerli olup olmadığını kontrol et.
       if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
-          console.error(`❌ CSG cleanup resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
+          console.error(`❌ CSG cleanup resulted in an empty geometry for target ${targetShape.id}. Skipping update.`);
           return;
       }
       
@@ -288,7 +280,7 @@ export const performBooleanSubtract = (
           ...targetShape.parameters,
           booleanOperation: 'subtract',
           subtractedShapeId: selectedShape.id,
-          lastModified: Date.now(),
+          lastModified: Date.now()
         }
       });
       
