@@ -664,10 +664,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (operation === 'subtract') {
       set({ 
         isFaceSelectionMode: true,
-        selectedFaceShapeId: selectedShapeId,
+        selectedFaceShapeId: selectedShapeId, // Çıkarılacak nesnenin yüzeyini seç
         selectedFaceIndex: null
       });
-      console.log('🎯 Face selection mode activated. Click on a face to select cutting plane, then press Enter to execute.');
+      console.log('🎯 Face selection mode activated. Click on the SUBTRACTING shape face to select cutting plane, then press Enter to execute.');
       return;
     }
     
