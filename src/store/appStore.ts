@@ -277,6 +277,18 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Face selection for boolean operations
+  selectedFaceIndex: number | null;
+  setSelectedFaceIndex: (index: number | null) => void;
+  isFaceSelectionMode: boolean;
+  setIsFaceSelectionMode: (enabled: boolean) => void;
+  selectedFaceShapeId: string | null;
+  setSelectedFaceShapeId: (id: string | null) => void;
+  // Face selection for boolean operations
+  selectedFaceIndex: number | null;
+  setSelectedFaceIndex: (index: number | null) => void;
+  isFaceSelectionMode: boolean;
+  setIsFaceSelectionMode: (enabled: boolean) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -403,6 +415,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Face selection for boolean operations
   selectedFaceIndex: null,
   setSelectedFaceIndex: (index) => set({ selectedFaceIndex: index }),
+  
+  // Face selection mode for boolean operations
+  isFaceSelectionMode: false,
+  setIsFaceSelectionMode: (enabled) => set({ isFaceSelectionMode: enabled }),
+  
+  selectedFaceShapeId: null,
+  setSelectedFaceShapeId: (id) => set({ selectedFaceShapeId: id }),
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -641,10 +660,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     
-    let success = false;
+    // For subtract operation, enter face selection mode
     if (operation === 'subtract') {
-      success = await performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
-    } else if (operation === 'union') {
+      set({ 
+        isFaceSelectionMode: true,
+        selectedFaceShapeId: selectedShapeId,
+        selectedFaceIndex: null
+      });
+      console.log('🎯 Face selection mode activated. Click on a face to select cutting plane, then press Enter to execute.');
+      return;
+    }
+    
+    let success = false;
+    if (operation === 'union') {
       success = await performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
     }
     

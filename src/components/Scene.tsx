@@ -20,6 +20,7 @@ import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
+import { performBooleanSubtract } from '../utils/booleanOperations';
 
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
@@ -183,6 +184,13 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode, // 🎯 NEW: Get current view mode
+    isFaceSelectionMode,
+    setIsFaceSelectionMode,
+    selectedFaceShapeId,
+    setSelectedFaceShapeId,
+    selectedFaceIndex,
+    setSelectedFaceIndex,
+    deleteShape,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -223,6 +231,18 @@ const Scene: React.FC = () => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         selectShape(null);
+      // Handle Enter key for face selection mode
+      if (event.key === 'Enter' && isFaceSelectionMode && selectedFaceShapeId && selectedFaceIndex !== null) {
+        executeFaceBasedBooleanSubtract();
+        return;
+      }
+      
+      // Handle Escape key for face selection mode
+      if (event.key === 'Escape' && isFaceSelectionMode) {
+        exitFaceSelectionMode();
+        return;
+      }
+      
         // Reset Point to Point Move when pressing Escape
         useAppStore.getState().resetPointToPointMove();
         // Exit edit mode when pressing Escape
@@ -363,7 +383,7 @@ const Scene: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cameraType, isAddPanelMode]);
+  }, [pendingExtrudeShape, extrudeHeight, handleExtrudeSubmit, handleExtrudeCancel, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
 
   const handleShapeContextMenuRequest = (event, shape) => {
     // Mouse pozisyonunu al
@@ -549,6 +569,51 @@ const Scene: React.FC = () => {
   const editedShape = editingShapeId
     ? shapes.find((s) => s.id === editingShapeId)
     : null;
+
+  // Execute face-based boolean subtract
+  const executeFaceBasedBooleanSubtract = async () => {
+    if (!selectedFaceShapeId || selectedFaceIndex === null) return;
+    
+    const selectedShape = shapes.find(s => s.id === selectedFaceShapeId);
+    if (!selectedShape) return;
+    
+    console.log(`🎯 Executing face-based boolean subtract with face ${selectedFaceIndex}`);
+    
+    try {
+      const success = await performBooleanSubtract(
+        selectedShape, 
+        shapes, 
+        updateShape, 
+        deleteShape, 
+        selectedFaceIndex
+      );
+      
+      if (success) {
+        console.log('✅ Face-based boolean subtract completed successfully');
+      } else {
+        console.log('❌ Face-based boolean subtract failed');
+      }
+    } catch (error) {
+      console.error('❌ Error during face-based boolean subtract:', error);
+    }
+    
+    // Exit face selection mode
+    exitFaceSelectionMode();
+  };
+  
+  // Exit face selection mode
+  const exitFaceSelectionMode = () => {
+    setIsFaceSelectionMode(false);
+    setSelectedFaceShapeId(null);
+    setSelectedFaceIndex(null);
+    
+    // Clear face highlight
+    if (sceneRef) {
+      clearFaceHighlight(sceneRef);
+    }
+    
+    console.log('🎯 Face selection mode deactivated');
+  };
 
   // Scene referansını al
   const [sceneRef, setSceneRef] = useState(null);
@@ -786,17 +851,27 @@ const Scene: React.FC = () => {
         )}
 
       {/* Face Edit Mode Indicator */}
-      {isFaceEditMode &&
+      {(isFaceEditMode || isFaceSelectionMode) &&
         typeof document !== 'undefined' &&
         createPortal(
           <div className="fixed top-32 right-4 bg-orange-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Face Edit Mode</span>
+              <span className="text-sm font-medium">
+                {isFaceSelectionMode ? 'Face Selection Mode' : 'Face Edit Mode'}
+              </span>
             </div>
             <div className="text-xs text-orange-200 mt-1">
-              Click on faces to select them
+              {isFaceSelectionMode 
+                ? 'Click on face to select cutting plane, then press Enter' 
+                : 'Click on faces to select them'
+              }
             </div>
+            {isFaceSelectionMode && (
+              <div className="text-xs text-orange-300 mt-1 font-mono">
+                Enter: Execute | Esc: Cancel
+              </div>
+            )}
           </div>,
           document.body
         )}

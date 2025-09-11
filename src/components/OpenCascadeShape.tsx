@@ -43,6 +43,10 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
+    isFaceSelectionMode,
+    selectedFaceShapeId,
+    selectedFaceIndex,
+    setSelectedFaceIndex,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -231,8 +235,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Boolean operation mode - handle face selection for subtraction
-    if (isSelected && e.nativeEvent.button === 0 && (activeTool === 'Union' || activeTool === 'Subtract')) {
+    // Face selection mode for boolean subtract
+    if (isFaceSelectionMode && selectedFaceShapeId === shape.id && e.nativeEvent.button === 0) {
       e.stopPropagation();
       const hits = detectFaceAtMouse(
         e.nativeEvent,
@@ -242,7 +246,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
 
       if (hits.length === 0) {
-        console.warn('🎯 No face detected for boolean operation');
+        console.warn('🎯 No face detected for face selection');
         return;
       }
 
@@ -269,9 +273,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
 
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
-      if (highlight && onFaceSelect) {
+      if (highlight) {
         setSelectedFaceIndex(hit.faceIndex);
-        console.log(`🎯 Face ${hit.faceIndex} selected for boolean operation`);
+        console.log(`🎯 Face ${hit.faceIndex} selected as cutting plane. Press Enter to execute boolean subtract.`);
       }
       return;
     }
@@ -285,8 +289,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Boolean operation mode - prevent context menu
-    if (isSelected && (activeTool === 'Union' || activeTool === 'Subtract')) {
+    // Face selection mode - prevent context menu
+    if (isFaceSelectionMode && selectedFaceShapeId === shape.id) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;
