@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { MeshoptSimplifier } from 'meshoptimizer';
 import { isOpenCascadeInitialized, initializeOpenCascade } from './opencascadeCore';
 import { 
   createOCBox, 
@@ -17,7 +16,6 @@ import {
 export class GeometryFactory {
   private static useOpenCascade = false;
   private static initializationPromise: Promise<void> | null = null;
-  private static meshoptimizerReady = false;
 
   /**
    * Initialize the geometry factory
@@ -34,17 +32,6 @@ export class GeometryFactory {
   private static async tryInitializeOpenCascade(): Promise<void> {
     try {
       console.log('🎯 Attempting to initialize OpenCascade.js...');
-      
-      // Initialize meshoptimizer
-      try {
-        await MeshoptSimplifier.ready;
-        this.meshoptimizerReady = true;
-        console.log('✅ Meshoptimizer initialized successfully');
-      } catch (error) {
-        console.warn('⚠️ Meshoptimizer initialization failed:', error);
-        this.meshoptimizerReady = false;
-      }
-      
       await initializeOpenCascade();
       this.useOpenCascade = true;
       console.log('✅ GeometryFactory: OpenCascade.js mode enabled');
@@ -256,12 +243,5 @@ export class GeometryFactory {
    */
   static getCurrentMode(): string {
     return this.isUsingOpenCascade() ? 'OpenCascade.js' : 'Three.js';
-  }
-
-  /**
-   * Check if meshoptimizer is ready
-   */
-  static isMeshoptimizerReady(): boolean {
-    return this.meshoptimizerReady;
   }
 }

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MeshoptSimplifier } from 'meshoptimizer';
-import { GeometryFactory } from '../lib/geometryFactory';
 
 /**
  * Advanced geometry repair using meshoptimizer
@@ -10,12 +9,6 @@ import { GeometryFactory } from '../lib/geometryFactory';
  */
 export function repairCSGGeometryWithMeshoptimizer(geom: THREE.BufferGeometry, tolerance = 1e-3): THREE.BufferGeometry {
   console.log('🔧 Starting advanced meshoptimizer-based geometry repair...');
-  
-  // Check if meshoptimizer is ready
-  if (!GeometryFactory.isMeshoptimizerReady()) {
-    console.warn('⚠️ Meshoptimizer not ready, falling back to basic cleanup');
-    return cleanCSGGeometry(geom, tolerance);
-  }
   
   if (!geom.attributes.position) {
     console.warn('repairCSGGeometry: geometry has no position attribute');
