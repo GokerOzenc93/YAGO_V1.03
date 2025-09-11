@@ -273,7 +273,8 @@ export const performBooleanSubtract = async (
   selectedShape,
   allShapes,
   updateShape,
-  deleteShape
+  deleteShape,
+  selectedFaceIndex = null
 ) => {
   console.log('🎯 ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞLADI (CSG) =====');
   
@@ -289,6 +290,69 @@ export const performBooleanSubtract = async (
   try {
     for (const targetShape of intersectingShapes) {
       console.log(`🎯 Çıkarma işlemi uygulanıyor: ${targetShape.type} (${targetShape.id})`);
+      
+      // Eğer face seçimi varsa, sadece o yüzeyden itibaren kes
+      if (selectedFaceIndex !== null) {
+        console.log(`🎯 Face-based subtraction: Face ${selectedFaceIndex} selected`);
+        
+        // Face normal'ını ve pozisyonunu al
+        const faceNormal = getFaceNormal(targetShape.geometry, selectedFaceIndex);
+        const faceCenter = getFaceCenter(targetShape.geometry, selectedFaceIndex);
+        
+        if (faceNormal && faceCenter) {
+          // Seçili yüzeyden itibaren kesme düzlemi oluştur
+          const cuttingPlane = new THREE.Plane(faceNormal, -faceNormal.dot(faceCenter));
+          
+          // Çıkarılacak nesneyi kesme düzlemiyle sınırla
+          const clippedSubtractShape = clipShapeWithPlane(selectedShape, cuttingPlane);
+          
+          if (clippedSubtractShape) {
+            const selectedBrush = createBrushFromShape(clippedSubtractShape);
+            const targetBrush = createBrushFromShape(targetShape);
+            
+            console.log('🎯 Performing face-based CSG subtraction...');
+            const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
+            
+            if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+              console.error('❌ Face-based CSG çıkarma işlemi boş bir geometriyle sonuçlandı.');
+              continue;
+            }
+            
+            resultMesh.updateMatrixWorld(true);
+            
+            let newGeom;
+            const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+            newGeom = resultMesh.geometry.clone();
+            newGeom.applyMatrix4(invTarget);
+            newGeom = cleanCSGGeometry(newGeom, 0.01);
+            
+            if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
+              console.error(`❌ Face-based geometri işleme sonrası boş bir sonuç döndü: ${targetShape.id}`);
+              continue;
+            }
+            
+            try { 
+              targetShape.geometry.dispose(); 
+            } catch (e) { 
+              console.warn('Eski geometri dispose edilemedi:', e);
+            }
+            
+            updateShape(targetShape.id, {
+              geometry: newGeom,
+              parameters: {
+                ...targetShape.parameters,
+                booleanOperation: 'face-subtract',
+                subtractedShapeId: selectedShape.id,
+                selectedFaceIndex: selectedFaceIndex,
+                lastModified: Date.now(),
+              }
+            });
+            
+            console.log(`✅ Face-based subtraction completed for shape ${targetShape.id}`);
+            continue;
+          }
+        }
+      }
       
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
