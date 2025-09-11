@@ -225,8 +225,6 @@ const Scene: React.FC = () => {
         selectShape(null);
         // Reset Point to Point Move when pressing Escape
         useAppStore.getState().resetPointToPointMove();
-        // Reset trim knife shape when pressing Escape
-        useAppStore.getState().setTrimKnifeShape(null);
         // Exit edit mode when pressing Escape
         if (isEditMode) {
           exitEditMode();

@@ -43,9 +43,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
-    trimKnifeShapeId,
-    setTrimKnifeShape,
-    performTrimOperation,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -234,30 +231,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Handle trim tool
-    if (activeTool === Tool.TRIM) {
-      e.stopPropagation();
-      
-      if (!trimKnifeShapeId) {
-        // First click: select knife shape
-        setTrimKnifeShape(shape.id);
-        console.log(`🔪 Knife shape selected: ${shape.type} (${shape.id})`);
-        return;
-      }
-      
-      if (trimKnifeShapeId === shape.id) {
-        // Clicking on knife shape again: deselect
-        setTrimKnifeShape(null);
-        console.log('🔪 Knife shape deselected');
-        return;
-      }
-      
-      // Second click: perform trim operation
-      const intersectionPoint = e.point || new THREE.Vector3(0, 0, 0);
-      performTrimOperation(shape.id, intersectionPoint);
-      return;
-    }
-    
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -340,7 +313,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {
-    if (trimKnifeShapeId === shape.id) return '#ff6b35'; // Orange for knife shape
     if (isBeingEdited) return '#ff6b35'; // Orange for being edited
     if (isSelected) return '#60a5fa'; // Blue for selected
     if (isEditMode && !isBeingEdited) return '#6b7280'; // Gray for other objects in edit mode
@@ -356,8 +328,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 FULL VISIBILITY: Şekiller tamamen görünür
-    return 1.0; // Tüm şekiller tam görünür
+    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
+    if (isBeingEdited) {
+      return 0.1; // Edit edilen şekiller çok az görünür
+    }
+    
+    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
@@ -410,7 +386,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
     return {
       color: getShapeColor(),
-      transparent: false, // 👈 Şeffaflık kapalı - tam görünür
+      transparent: true, // 👈 Şeffaflık aktif
       opacity: opacityValue,
       visible: true, // 👈 2D şekiller için görünür (gizmo etkileşimi için)
     };
