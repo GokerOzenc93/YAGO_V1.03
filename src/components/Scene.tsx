@@ -16,6 +16,8 @@ import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
+import VertexSelector from './VertexSelector';
+import SurfaceCreator from './SurfaceCreator';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -183,6 +185,10 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode, // 🎯 NEW: Get current view mode
+    isVertexSelectionMode,
+    setVertexSelectionMode,
+    selectedShapeForVertexEdit,
+    setSelectedShapeForVertexEdit,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -553,6 +559,46 @@ const Scene: React.FC = () => {
   // Scene referansını al
   const [sceneRef, setSceneRef] = useState(null);
 
+  // Vertex selection state
+  const [selectedVertices, setSelectedVertices] = useState<THREE.Vector3[]>([]);
+
+  // Handle vertex selection completion
+  const handleVerticesSelected = (vertices: THREE.Vector3[]) => {
+    setSelectedVertices(vertices);
+  };
+
+  // Handle surface creation
+  const handleSurfaceCreated = (geometry: THREE.BufferGeometry) => {
+    console.log('🎯 Surface created from selected vertices');
+    // Here you could update the shape's geometry or create a new shape
+    // For now, just log the success
+  };
+
+  // Handle vertex selection mode toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'v' && e.ctrlKey && e.shiftKey) {
+        // Ctrl+Shift+V to toggle vertex selection mode
+        if (selectedShapeId) {
+          setVertexSelectionMode(!isVertexSelectionMode);
+          setSelectedShapeForVertexEdit(isVertexSelectionMode ? null : selectedShapeId);
+          console.log(`🎯 Vertex selection mode: ${!isVertexSelectionMode ? 'ON' : 'OFF'}`);
+        } else {
+          console.log('🎯 Select a shape first to enter vertex selection mode');
+        }
+      }
+      
+      if (e.key === 'Escape' && isVertexSelectionMode) {
+        setVertexSelectionMode(false);
+        setSelectedShapeForVertexEdit(null);
+        console.log('🎯 Vertex selection mode disabled');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVertexSelectionMode, selectedShapeId, setVertexSelectionMode, setSelectedShapeForVertexEdit]);
+
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
@@ -700,21 +746,40 @@ const Scene: React.FC = () => {
         {/* 🎯 PERSISTENT PANELS - Render shapes with their persistent panels */}
         {visibleShapes.map((shape) => {
           const isCurrentlyEditing = editingShapeId === shape.id;
+          const isVertexEditTarget = selectedShapeForVertexEdit === shape.id;
 
           return (
-            <OpenCascadeShape
-              key={shape.id}
-              shape={shape}
-              onContextMenuRequest={handleShapeContextMenuRequest}
-              isEditMode={isEditMode}
-              isBeingEdited={isCurrentlyEditing}
-              // Face Edit Mode props
-              isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
-              selectedFaceIndex={selectedFaceIndex}
-              onFaceSelect={handleFaceSelect}
-            />
+            <group key={shape.id}>
+              <OpenCascadeShape
+                shape={shape}
+                onContextMenuRequest={handleShapeContextMenuRequest}
+                isEditMode={isEditMode}
+                isBeingEdited={isCurrentlyEditing}
+                // Face Edit Mode props
+                isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
+                selectedFaceIndex={selectedFaceIndex}
+                onFaceSelect={handleFaceSelect}
+              />
+              
+              {/* Vertex Selector for selected shape */}
+              {isVertexEditTarget && (
+                <VertexSelector
+                  shape={shape}
+                  isActive={isVertexSelectionMode}
+                  onVerticesSelected={handleVerticesSelected}
+                />
+              )}
+            </group>
           );
         })}
+
+        {/* Surface Creator */}
+        {selectedVertices.length > 0 && (
+          <SurfaceCreator
+            vertices={selectedVertices}
+            onSurfaceCreated={handleSurfaceCreated}
+          />
+        )}
 
         {/* Dimensions Manager - Ölçülendirme sistemi */}
         <DimensionsManager
@@ -786,6 +851,24 @@ const Scene: React.FC = () => {
         )}
 
       {/* Face Edit Mode Indicator */}
+      {isVertexSelectionMode &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed top-32 left-4 bg-yellow-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Vertex Selection Mode</span>
+            </div>
+            <div className="text-xs text-yellow-200 mt-1">
+              Click vertices to select • Enter to create surface • Esc to exit
+            </div>
+            <div className="text-xs text-yellow-200">
+              Selected: {selectedVertices.length} vertices
+            </div>
+          </div>,
+          document.body
+        )}
+
       {isFaceEditMode &&
         typeof document !== 'undefined' &&
         createPortal(

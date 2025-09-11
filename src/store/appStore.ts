@@ -276,6 +276,11 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Vertex selection mode
+  isVertexSelectionMode: boolean;
+  setVertexSelectionMode: (enabled: boolean) => void;
+  selectedShapeForVertexEdit: string | null;
+  setSelectedShapeForVertexEdit: (id: string | null) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -398,6 +403,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+  
+  // Vertex selection mode
+  isVertexSelectionMode: false,
+  setVertexSelectionMode: (enabled) => set({ isVertexSelectionMode: enabled }),
+  
+  selectedShapeForVertexEdit: null,
+  setSelectedShapeForVertexEdit: (id) => set({ selectedShapeForVertexEdit: id }),
   
   // Snap settings - all enabled by default
   snapSettings: {

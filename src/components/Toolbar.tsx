@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store/appStore';
-import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler } from 'lucide-react';
+import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler, Vertices } from 'lucide-react';
 import * as THREE from 'three';
 
 const Toolbar: React.FC = () => {
@@ -21,6 +21,11 @@ const Toolbar: React.FC = () => {
     cycleViewMode, // 🎯 NEW: Cycle through view modes
     orthoMode, // 🎯 NEW: Get current ortho mode
     toggleOrthoMode // 🎯 NEW: Toggle ortho mode
+    isVertexSelectionMode,
+    setVertexSelectionMode,
+    selectedShapeForVertexEdit,
+    setSelectedShapeForVertexEdit,
+    selectedShapeId,
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -61,6 +66,17 @@ const Toolbar: React.FC = () => {
   // 🎯 NEW: Handle ortho mode toggle
   const handleOrthoModeToggle = () => {
     toggleOrthoMode();
+  };
+
+  // Handle vertex selection mode toggle
+  const handleVertexSelectionToggle = () => {
+    if (selectedShapeId) {
+      setVertexSelectionMode(!isVertexSelectionMode);
+      setSelectedShapeForVertexEdit(isVertexSelectionMode ? null : selectedShapeId);
+      console.log(`🎯 Vertex selection mode: ${!isVertexSelectionMode ? 'ON' : 'OFF'}`);
+    } else {
+      console.log('🎯 Select a shape first to enter vertex selection mode');
+    }
   };
 
   // Handle transform tool selection
@@ -433,6 +449,25 @@ const Toolbar: React.FC = () => {
             <Grid size={10} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-gray-400'} />
             <span className="text-xs font-medium">
               Ortho
+            </span>
+          </button>
+
+          {/* Vertex Selection Mode Toggle */}
+          <button
+            onClick={handleVertexSelectionToggle}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+              isVertexSelectionMode
+                ? 'bg-yellow-600/90 text-white shadow-sm'
+                : selectedShapeId
+                ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-200'
+                : 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
+            }`}
+            title={`Vertex Selection Mode: ${isVertexSelectionMode ? 'ON' : 'OFF'} - Select vertices to create surfaces`}
+            disabled={!selectedShapeId}
+          >
+            <Vertices size={10} className={isVertexSelectionMode ? 'text-white' : selectedShapeId ? 'text-gray-400' : 'text-gray-500'} />
+            <span className="text-xs font-medium">
+              Vertex
             </span>
           </button>
 
