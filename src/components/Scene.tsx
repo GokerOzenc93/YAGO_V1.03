@@ -781,7 +781,7 @@ const Scene: React.FC = () => {
         })}
 
         {/* Surface Creator */}
-        {selectedFaces.length > 0 && (
+        {selectedFaces.length > 0 && selectedShapeForVertexEdit && shapes.find(s => s.id === selectedShapeForVertexEdit) && (
           <SurfaceCreator
             faces={selectedFaces}
             shape={shapes.find(s => s.id === selectedShapeForVertexEdit)}
