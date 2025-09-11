@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { GeometryFactory } from '../lib/geometryFactory';
 // SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
 
 /**
@@ -139,60 +138,6 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   return merged;
 }
 
-/**
- * Reconstruct geometry from world vertices with proper surface generation
- * Creates new clean geometry based on bounding box and shape type
- */
-const reconstructGeometryFromBounds = async (
-  originalShape: any,
-  resultGeometry: THREE.BufferGeometry,
-  targetBrush: any
-): Promise<THREE.BufferGeometry> => {
-  console.log('🎯 Starting geometry reconstruction from bounds...');
-  
-  // Get the result geometry bounds in world space
-  resultGeometry.computeBoundingBox();
-  const bbox = resultGeometry.boundingBox;
-  
-  if (!bbox) {
-    console.warn('No bounding box available for reconstruction');
-    return resultGeometry;
-  }
-  
-  // Calculate dimensions from bounding box
-  const width = Math.abs(bbox.max.x - bbox.min.x);
-  const height = Math.abs(bbox.max.y - bbox.min.y);
-  const depth = Math.abs(bbox.max.z - bbox.min.z);
-  
-  console.log(`🎯 Reconstructing geometry with dimensions: ${width.toFixed(1)} x ${height.toFixed(1)} x ${depth.toFixed(1)}`);
-  
-  let newGeometry: THREE.BufferGeometry;
-  
-  // Determine shape type and create appropriate geometry
-  if (originalShape.type === 'box' || !originalShape.type) {
-    // Create new box geometry with calculated dimensions
-    newGeometry = await GeometryFactory.createBox(width, height, depth);
-  } else if (originalShape.type === 'cylinder') {
-    // For cylinder, use average of width/depth as radius
-    const radius = Math.max(width, depth) / 2;
-    newGeometry = await GeometryFactory.createCylinder(radius, height);
-  } else {
-    // For other shapes, default to box
-    newGeometry = await GeometryFactory.createBox(width, height, depth);
-  }
-  
-  // Center the new geometry at the result's center
-  const center = bbox.getCenter(new THREE.Vector3());
-  newGeometry.translate(center.x, center.y, center.z);
-  
-  // Transform back to local space
-  const invMatrix = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
-  newGeometry.applyMatrix4(invMatrix);
-  
-  console.log('✅ Geometry reconstruction completed with clean surfaces');
-  return newGeometry;
-};
-
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
 const Vector3 = THREE.Vector3;
@@ -325,15 +270,10 @@ export const performBooleanSubtract = (
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
       newGeom = cleanCSGGeometry(newGeom, 0.05);
       
-      // 🎯 NEW: Reconstruct geometry with proper surfaces if cleanup failed or resulted in poor quality
-      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count < 12) {
-        console.log('🎯 CSG result has poor quality, reconstructing geometry from bounds...');
-        try {
-          newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
-        } catch (error) {
-          console.error('❌ Geometry reconstruction failed:', error);
+      // YENİ GÜVENLİK KONTROLÜ: Temizlenmiş geometrinin geçerli olup olmadığını kontrol et.
+      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
+          console.error(`❌ CSG cleanup resulted in an empty geometry for target shape ${targetShape.id}. Aborting update.`);
           return;
-        }
       }
       
       try { 
@@ -419,15 +359,10 @@ export const performBooleanUnion = (
     console.log('🎯 Applying robust CSG cleanup to union result...');
     newGeom = cleanCSGGeometry(newGeom, 0.05);
 
-    // 🎯 NEW: Reconstruct geometry with proper surfaces if cleanup failed or resulted in poor quality
-    if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count < 12) {
-      console.log('🎯 CSG result has poor quality, reconstructing geometry from bounds...');
-      try {
-        newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
-      } catch (error) {
-        console.error('❌ Geometry reconstruction failed:', error);
+    // YENİ GÜVENLİK KONTROLÜ: Temizlenmiş geometrinin geçerli olup olmadığını kontrol et.
+    if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
+        console.error(`❌ CSG cleanup resulted in an empty geometry for union operation. Aborting update.`);
         return false;
-      }
     }
     
     try { 
