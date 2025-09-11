@@ -380,7 +380,7 @@ const Scene: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pendingExtrudeShape, extrudeHeight, handleExtrudeSubmit, handleExtrudeCancel, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
+  }, [cameraType, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
 
   const handleShapeContextMenuRequest = (event, shape) => {
     // Mouse pozisyonunu al
