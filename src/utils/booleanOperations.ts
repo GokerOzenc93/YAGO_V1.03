@@ -275,15 +275,12 @@ export const performBooleanSubtract = async (
   updateShape,
   deleteShape
 ) => {
-  // YENİ YORUM: Bu fonksiyonun mantığı, "kalıp çıkarma" (imprint) olarak değiştirildi.
-  // Standart çıkarma (A - B) yerine, iki nesnenin kesişimini (A ∩ B) alarak
-  // sadece "içeride kalan parçayı" sahnede bırakır.
-  console.log('🎯 ===== BOOLEAN KESİŞİM (IMPRINT) İŞLEMİ BAŞLADI (CSG) =====');
+  console.log('🎯 ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞLADI (CSG) =====');
   
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
-    console.log('❌ Kesişim işlemi için kesişen şekil bulunamadı');
+    console.log('❌ Çıkarma işlemi için kesişen şekil bulunamadı');
     return false;
   }
   
@@ -291,17 +288,17 @@ export const performBooleanSubtract = async (
   
   try {
     for (const targetShape of intersectingShapes) {
-      console.log(`🎯 Kesişim işlemi uygulanıyor: ${targetShape.type} (${targetShape.id})`);
+      console.log(`🎯 Çıkarma işlemi uygulanıyor: ${targetShape.type} (${targetShape.id})`);
       
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
-      // DEĞİŞİKLİK: Operasyon SUBTRACTION'dan INTERSECTION'a çevrildi.
-      console.log('🎯 Performing CSG intersection...');
-      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, INTERSECTION);
+      // Standart çıkarma işlemi: targetShape - selectedShape
+      console.log('🎯 Performing CSG subtraction...');
+      const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
       if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-        console.error('❌ CSG kesişim işlemi boş bir geometriyle sonuçlandı. Bu şekil atlanıyor.');
+        console.error('❌ CSG çıkarma işlemi boş bir geometriyle sonuçlandı. Bu şekil atlanıyor.');
         continue;
       }
       
@@ -309,12 +306,11 @@ export const performBooleanSubtract = async (
       
       let newGeom;
       
-      // Kesişim sonucu her zaman karmaşık bir mesh olacağından, daima temizleme uygula.
-      // Parametrik yeniden yapılandırma (reconstruct) burada uygun değildir.
+      // Çıkarma sonucu karmaşık geometri olacağından temizleme uygula
       const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
       newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
-      newGeom = cleanCSGGeometry(newGeom, 0.01); // Hassas temizlik için daha düşük tolerans
+      newGeom = cleanCSGGeometry(newGeom, 0.01);
       
       if (!newGeom || !newGeom.attributes.position || !newGeom.attributes.position.count === 0) {
           console.error(`❌ Geometri işleme sonrası boş bir sonuç döndü: ${targetShape.id}. Güncelleme iptal edildi.`);
@@ -331,7 +327,7 @@ export const performBooleanSubtract = async (
         geometry: newGeom,
         parameters: {
           ...targetShape.parameters,
-          booleanOperation: 'intersect_imprint', // Operasyonun adını güncelleyelim
+          booleanOperation: 'subtract',
           subtractedShapeId: selectedShape.id,
           lastModified: Date.now(),
         }
@@ -340,15 +336,15 @@ export const performBooleanSubtract = async (
       console.log(`✅ Hedef şekil ${targetShape.id} güncellendi.`);
     }
     
-    // İşlemi yapan 'seçili' nesne de artık görevini tamamladığı için silinir.
+    // Çıkarma işlemi yapan seçili nesne silinir
     deleteShape(selectedShape.id);
-    console.log(`🗑️ Kesişim için kullanılan şekil silindi: ${selectedShape.id}`);
+    console.log(`🗑️ Çıkarma için kullanılan şekil silindi: ${selectedShape.id}`);
     
-    console.log(`✅ ===== BOOLEAN KESİŞİM (IMPRINT) İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
+    console.log(`✅ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARIYLA TAMAMLANDI (CSG) =====`);
     return true;
     
   } catch (error) {
-    console.error('❌ ===== BOOLEAN KESİŞİM (IMPRINT) İŞLEMİ BAŞARISIZ OLDU (CSG) =====', error);
+    console.error('❌ ===== BOOLEAN ÇIKARMA İŞLEMİ BAŞARISIZ OLDU (CSG) =====', error);
     return false;
   }
 };
