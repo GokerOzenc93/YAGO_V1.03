@@ -356,12 +356,16 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
+    // 🎯 NORMAL GÖRÜNÜRLÜK: Şekiller görünür olsun
     if (isBeingEdited) {
-      return 0.1; // Edit edilen şekiller çok az görünür
+      return 0.3; // Edit edilen şekiller biraz şeffaf
     }
     
-    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
+    if (trimKnifeShapeId === shape.id) {
+      return 0.7; // Bıçak şekli daha belirgin
+    }
+    
+    return 0.8; // Normal şekiller görünür
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
