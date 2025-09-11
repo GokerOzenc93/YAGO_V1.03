@@ -170,6 +170,7 @@ const Scene: React.FC = () => {
     shapes,
     gridSize,
     selectShape,
+    selectedShapeId,
     cameraType,
     activeTool,
     setActiveTool,
