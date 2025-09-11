@@ -278,7 +278,7 @@ const createBrushFromShape = (shape) => {
 };
 
 // Perform boolean subtract operation with three-bvh-csg
-export const performBooleanSubtract = (
+export const performBooleanSubtract = async (
   selectedShape,
   allShapes,
   updateShape,
@@ -371,7 +371,7 @@ export const performBooleanSubtract = (
 };
 
 // Perform boolean union operation with three-bvh-csg
-export const performBooleanUnion = (
+export const performBooleanUnion = async (
   selectedShape,
   allShapes,
   updateShape,
