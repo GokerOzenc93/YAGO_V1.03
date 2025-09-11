@@ -889,7 +889,7 @@ const Scene: React.FC = () => {
             </div>
             <div className="text-xs text-orange-200 mt-1">
               {isFaceSelectionMode 
-                ? 'Click on face to select cutting plane, then press Enter' 
+                ? 'Click on SUBTRACTING shape face to select cutting plane, then press Enter' 
                 : 'Click on faces to select them'
               }
             </div>
