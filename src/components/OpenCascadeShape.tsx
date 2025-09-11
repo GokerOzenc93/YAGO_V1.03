@@ -43,6 +43,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
+    shapes, // Get all shapes for clipping plane calculation
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -61,6 +62,94 @@ const OpenCascadeShape: React.FC<Props> = ({
     return new THREE.EdgesGeometry(shapeGeometry);
   }, [shapeGeometry]);
 
+  // 🎯 NEW: Calculate clipping planes for intersecting shapes
+  const clippingPlanes = useMemo(() => {
+    const planes: THREE.Plane[] = [];
+    
+    // Get current shape's world bounding box
+    const currentBounds = new THREE.Box3();
+    const tempMatrix = new THREE.Matrix4();
+    const quaternion = shape.quaternion || new THREE.Quaternion().setFromEuler(new THREE.Euler(...shape.rotation));
+    
+    tempMatrix.compose(
+      new THREE.Vector3(...shape.position),
+      quaternion,
+      new THREE.Vector3(...shape.scale)
+    );
+    
+    const tempGeometry = shape.geometry.clone();
+    tempGeometry.applyMatrix4(tempMatrix);
+    currentBounds.setFromBufferAttribute(tempGeometry.attributes.position);
+    tempGeometry.dispose();
+    
+    // Check intersections with other shapes
+    shapes.forEach(otherShape => {
+      if (otherShape.id === shape.id) return;
+      
+      // Get other shape's world bounding box
+      const otherBounds = new THREE.Box3();
+      const otherMatrix = new THREE.Matrix4();
+      const otherQuaternion = otherShape.quaternion || new THREE.Quaternion().setFromEuler(new THREE.Euler(...otherShape.rotation));
+      
+      otherMatrix.compose(
+        new THREE.Vector3(...otherShape.position),
+        otherQuaternion,
+        new THREE.Vector3(...otherShape.scale)
+      );
+      
+      const otherTempGeometry = otherShape.geometry.clone();
+      otherTempGeometry.applyMatrix4(otherMatrix);
+      otherBounds.setFromBufferAttribute(otherTempGeometry.attributes.position);
+      otherTempGeometry.dispose();
+      
+      // Check if bounding boxes intersect
+      if (currentBounds.intersectsBox(otherBounds)) {
+        console.log(`🎯 Clipping plane created: ${shape.id} intersects with ${otherShape.id}`);
+        
+        // Create clipping planes based on the intersecting shape's faces
+        const otherCenter = otherBounds.getCenter(new THREE.Vector3());
+        const currentCenter = currentBounds.getCenter(new THREE.Vector3());
+        
+        // Create planes to clip the current shape where it intersects with the other
+        // Right face of other shape
+        if (currentCenter.x > otherCenter.x) {
+          const plane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), -otherBounds.max.x);
+          planes.push(plane);
+        }
+        // Left face of other shape
+        if (currentCenter.x < otherCenter.x) {
+          const plane = new THREE.Plane(new THREE.Vector3(1, 0, 0), otherBounds.min.x);
+          planes.push(plane);
+        }
+        // Top face of other shape
+        if (currentCenter.y > otherCenter.y) {
+          const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), -otherBounds.max.y);
+          planes.push(plane);
+        }
+        // Bottom face of other shape
+        if (currentCenter.y < otherCenter.y) {
+          const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), otherBounds.min.y);
+          planes.push(plane);
+        }
+        // Front face of other shape
+        if (currentCenter.z > otherCenter.z) {
+          const plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), -otherBounds.max.z);
+          planes.push(plane);
+        }
+        // Back face of other shape
+        if (currentCenter.z < otherCenter.z) {
+          const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), otherBounds.min.z);
+          planes.push(plane);
+        }
+      }
+    });
+    
+    if (planes.length > 0) {
+      console.log(`🎯 Shape ${shape.id} has ${planes.length} clipping planes`);
+    }
+    
+    return planes;
+  }, [shape, shapes]);
   // Debug: Log shape information when selected
   useEffect(() => {
     if (isSelected && meshRef.current) {
@@ -389,6 +478,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       transparent: true, // 👈 Şeffaflık aktif
       opacity: opacityValue,
       visible: true, // 👈 2D şekiller için görünür (gizmo etkileşimi için)
+      clippingPlanes: clippingPlanes, // 🎯 NEW: Apply clipping planes
     };
   };
 

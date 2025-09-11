@@ -587,6 +587,7 @@ const Scene: React.FC = () => {
           stencil: true,
           depth: true,
           precision: 'highp',
+          localClippingEnabled: true, // 🎯 NEW: Enable local clipping planes
         }}
         camera={{
           near: 1,

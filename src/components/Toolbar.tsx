@@ -719,7 +719,7 @@ const Toolbar: React.FC = () => {
                 }
               }}
               disabled={!selectedShapeId}
-              title={`${tool.label} (${tool.shortcut})`}
+              title={`${tool.label} - Uses clipping planes for visual intersection (${tool.shortcut})`}
             >
               {tool.icon}
             </button>
