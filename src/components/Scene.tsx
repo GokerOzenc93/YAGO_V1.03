@@ -873,6 +873,11 @@ const Scene: React.FC = () => {
             <div className="text-xs text-yellow-200">
               Selected: {selectedFaces.length} faces
             </div>
+            {selectedFaces.length > 0 && (
+              <div className="text-xs text-green-200 mt-1">
+                Press Enter to create selectable surface
+              </div>
+            )}
           </div>,
           document.body
         )}

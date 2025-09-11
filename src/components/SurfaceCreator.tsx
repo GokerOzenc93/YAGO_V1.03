@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useAppStore } from '../store/appStore';
 
 interface SurfaceCreatorProps {
   faces: number[];
@@ -10,6 +11,7 @@ interface SurfaceCreatorProps {
 
 const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ faces, shape, onSurfaceCreated }) => {
   const { scene } = useThree();
+  const { addShape, selectShape } = useAppStore();
 
   useEffect(() => {
     if (faces.length < 1) return;
@@ -42,12 +44,41 @@ const SurfaceCreator: React.FC<SurfaceCreatorProps> = ({ faces, shape, onSurface
       
       console.log('✅ Unified surface created successfully');
       
-      // Remove preview after 3 seconds
+      // Create selectable shape from the surface after 2 seconds
       setTimeout(() => {
+        // Calculate surface center for positioning
+        geometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        if (geometry.boundingBox) {
+          geometry.boundingBox.getCenter(center);
+        }
+        
+        // Create a new selectable shape from the surface
+        const newShape = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'surface',
+          position: [center.x, center.y, center.z] as [number, number, number],
+          rotation: [0, 0, 0] as [number, number, number],
+          scale: [1, 1, 1] as [number, number, number],
+          geometry: geometry.clone(),
+          parameters: {
+            faceCount: faces.length,
+            sourceShapeId: shape.id,
+            createdFromFaces: true,
+          },
+        };
+        
+        // Add the new shape to the scene
+        addShape(newShape);
+        selectShape(newShape.id);
+        
+        console.log(`🎯 Surface converted to selectable shape: ${newShape.id}`);
+        
+        // Remove preview mesh
         scene.remove(mesh);
         mesh.geometry.dispose();
         (mesh.material as THREE.Material).dispose();
-      }, 3000);
+      }, 2000);
       
     } catch (error) {
       console.error('❌ Failed to create unified surface:', error);
