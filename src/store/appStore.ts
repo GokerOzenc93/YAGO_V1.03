@@ -432,6 +432,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       case ModificationType.FILLET: {
+      }
+    }
+  }
   // Trim tool implementation
   trimKnifeShapeId: null,
   setTrimKnifeShape: (id) => set({ trimKnifeShapeId: id }),
