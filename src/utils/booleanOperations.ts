@@ -141,7 +141,6 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 
   return merged;
 }
-};
 
 /**
  * Highlighted surface'i geometriye yüzey olarak ekle
@@ -229,6 +228,7 @@ const addSurfaceToGeometry = (
   console.log(`✅ Surface added: ${surfaceIndices.length / 3} triangles added to geometry`);
   
   return newGeometry;
+};
 
 /**
  * Reconstruct geometry from world vertices with proper surface generation
@@ -588,7 +588,7 @@ export const performBooleanSubtract = async (
       newGeom.applyMatrix4(invTarget);
       newGeom = cleanCSGGeometry(newGeom, 0.01);
       
-      if (!newGeom || !newGeom.attributes.position || !newGeom.attributes.position.count === 0) {
+      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count === 0) {
           console.error(`❌ Geometri işleme sonrası boş bir sonuç döndü: ${targetShape.id}. Güncelleme iptal edildi.`);
           continue;
       }
