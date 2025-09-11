@@ -110,6 +110,7 @@ interface AppState {
   updateShape: (id: string, updates: Partial<Shape>) => void;
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
+  selectShape: (id: string | null) => void;
   // Trim tool state
   trimKnifeShapeId: string | null;
   setTrimKnifeShape: (id: string | null) => void;
@@ -226,6 +227,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ lastTransformTool: tool });
     }
   },
+  
+  shapes: [],
+  addShape: (shape) => set((state) => ({ shapes: [...state.shapes, shape] })),
+  updateShape: (id, updates) => set((state) => ({
+    shapes: state.shapes.map(shape => 
+      shape.id === id ? { ...shape, ...updates } : shape
+    )
+  })),
+  deleteShape: (id) => set((state) => ({
+    shapes: state.shapes.filter(shape => shape.id !== id)
+  })),
   
   // OpenCascade integration
   isOpenCascadeInitialized: false,
@@ -433,14 +445,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       case ModificationType.FILLET: {
         // TODO: Implement fillet operation
+        break;
       }
     }
 
     set({ shapes: newShapes });
   },
 
-    }
-  }
   // Trim tool implementation
   trimKnifeShapeId: null,
   setTrimKnifeShape: (id) => set({ trimKnifeShapeId: id }),
