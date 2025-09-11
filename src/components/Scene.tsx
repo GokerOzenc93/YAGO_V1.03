@@ -220,9 +220,6 @@ const Scene: React.FC = () => {
   // 🔴 NEW: Panel Edit Mode State
   const [isFaceEditMode, setIsFaceEditMode] = useState(false);
 
-  // Face selection state
-  const [selectedFaceIndex, setSelectedFaceIndex] = useState(null);
-
   // Disable rotation when drawing polylines OR when panel mode is active
   const isDrawingPolyline = activeTool === 'Polyline';
   const isAddPanelMode = false; // Panel mode removed, always false
