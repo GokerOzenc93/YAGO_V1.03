@@ -226,20 +226,20 @@ const Scene: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        selectShape(null);
       // Handle Enter key for face selection mode
-      if (event.key === 'Enter' && isFaceSelectionMode && selectedFaceShapeId && selectedFaceIndex !== null) {
+      if (e.key === 'Enter' && isFaceSelectionMode && selectedFaceShapeId && selectedFaceIndex !== null) {
         executeFaceBasedBooleanSubtract();
         return;
       }
       
       // Handle Escape key for face selection mode
-      if (event.key === 'Escape' && isFaceSelectionMode) {
+      if (e.key === 'Escape' && isFaceSelectionMode) {
         exitFaceSelectionMode();
         return;
       }
       
+      if (e.key === 'Escape') {
+        selectShape(null);
         // Reset Point to Point Move when pressing Escape
         useAppStore.getState().resetPointToPointMove();
         // Exit edit mode when pressing Escape
@@ -250,7 +250,7 @@ const Scene: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectShape, isEditMode]);
+  }, [selectShape, isEditMode, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
 
   useEffect(() => {
     const handleDoubleClick = (e) => {
