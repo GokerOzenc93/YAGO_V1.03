@@ -1,93 +1,7 @@
 import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
-import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
 import { GeometryFactory } from '../lib/geometryFactory';
-
-// Helper function to get shape bounds
-const getShapeBounds = (shape: Shape) => {
-  const geometry = shape.geometry;
-  geometry.computeBoundingBox();
-  const bbox = geometry.boundingBox!;
-  
-  // Apply shape transformations
-  const min = new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
-  const max = new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
-  
-  // Apply scale
-  min.multiply(new THREE.Vector3(...shape.scale));
-  max.multiply(new THREE.Vector3(...shape.scale));
-  
-  // Apply position
-  min.add(new THREE.Vector3(...shape.position));
-  max.add(new THREE.Vector3(...shape.position));
-  
-  return { min, max };
-};
-
-// Helper function to check if two bounding boxes intersect
-const boundsIntersect = (bounds1: any, bounds2: any): boolean => {
-  return (
-    bounds1.min.x <= bounds2.max.x && bounds1.max.x >= bounds2.min.x &&
-    bounds1.min.y <= bounds2.max.y && bounds1.max.y >= bounds2.min.y &&
-    bounds1.min.z <= bounds2.max.z && bounds1.max.z >= bounds2.min.z
-  );
-};
-
-// Helper function to create subtracted geometry (simplified implementation)
-const createSubtractedGeometry = (targetGeometry: THREE.BufferGeometry, subtractShape: Shape): THREE.BufferGeometry => {
-  // Create a new geometry with a hole/cavity based on the subtract shape
-  const newGeometry = targetGeometry.clone();
-  
-  // Get the subtract shape's dimensions and position
-  const subtractBounds = getShapeBounds(subtractShape);
-  const subtractCenter = new THREE.Vector3(
-    (subtractBounds.min.x + subtractBounds.max.x) / 2,
-    (subtractBounds.min.y + subtractBounds.max.y) / 2,
-    (subtractBounds.min.z + subtractBounds.max.z) / 2
-  );
-  
-  // For demonstration, we'll create a modified geometry
-  // This is a simplified approach - in a real CAD system, you'd use proper CSG
-  
-  if (subtractShape.type === 'box' || subtractShape.type === 'cylinder') {
-    // Create a visual indication by modifying the geometry
-    // Scale down the geometry slightly to show the subtraction effect
-    const positions = newGeometry.attributes.position;
-    const positionArray = positions.array as Float32Array;
-    
-    // Modify vertices that are close to the subtract shape
-    for (let i = 0; i < positions.count; i++) {
-      const vertex = new THREE.Vector3(
-        positionArray[i * 3],
-        positionArray[i * 3 + 1],
-        positionArray[i * 3 + 2]
-      );
-      
-      // Check if vertex is within the subtract shape's influence
-      const distance = vertex.distanceTo(subtractCenter);
-      const influenceRadius = Math.max(
-        subtractBounds.max.x - subtractBounds.min.x,
-        subtractBounds.max.y - subtractBounds.min.y,
-        subtractBounds.max.z - subtractBounds.min.z
-      ) / 2;
-      
-      if (distance < influenceRadius) {
-        // Create a cavity effect by pushing vertices inward
-        const direction = vertex.clone().sub(subtractCenter).normalize();
-        const pushDistance = (influenceRadius - distance) * 0.3;
-        vertex.sub(direction.multiplyScalar(pushDistance));
-        
-        positionArray[i * 3] = vertex.x;
-        positionArray[i * 3 + 1] = vertex.y;
-        positionArray[i * 3 + 2] = vertex.z;
-      }
-    }
-  }
-  
-  console.log('Boolean subtraction applied - geometry modified with cavity effect');
-  return newGeometry;
-};
 
 export enum Tool {
   MOVE = 'Move',
@@ -108,8 +22,6 @@ export enum Tool {
   TRIM = 'Trim',
   EXTEND = 'Extend',
   DIMENSION = 'Dimension',
-  PAN = 'Pan',
-  ZOOM = 'Zoom',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
 }
 
@@ -198,7 +110,6 @@ interface AppState {
   updateShape: (id: string, updates: Partial<Shape>) => void;
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
-  selectShape: (id: string | null) => void;
   // Trim tool state
   trimKnifeShapeId: string | null;
   setTrimKnifeShape: (id: string | null) => void;
@@ -521,66 +432,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       case ModificationType.FILLET: {
-        if (!params.fillet || shape.type !== 'box') return;
-        const { radius } = params.fillet;
-        const { width, height, depth } = shape.parameters;
-
-        // Create new geometry with rounded corners
-        const geometry = new THREE.BoxGeometry(
-          width - radius * 2,
-          height - radius * 2,
-          depth - radius * 2
-        );
-
-        newShapes[shapes.indexOf(shape)] = {
-          ...shape,
-          geometry,
-          parameters: {
-            ...shape.parameters,
-            radius,
-          },
-        };
-        break;
-      }
-
-      case ModificationType.CHAMFER: {
-        if (!params.chamfer || shape.type !== 'box') return;
-        const { distance } = params.chamfer;
-        const { width, height, depth } = shape.parameters;
-
-        // Create new geometry with chamfered edges
-        const geometry = new THREE.BoxGeometry(
-          width - distance * 2,
-          height - distance * 2,
-          depth - distance * 2
-        );
-
-        newShapes[shapes.indexOf(shape)] = {
-          ...shape,
-          geometry,
-          parameters: {
-            ...shape.parameters,
-            chamfer: distance,
-          },
-        };
-        break;
-      }
-    }
-
-    set({ shapes: newShapes });
-  },
-  
-  shapes: [],
-  addShape: (shape) => set((state) => ({ shapes: [...state.shapes, shape] })),
-  updateShape: (id, updates) => set((state) => ({
-    shapes: state.shapes.map(shape => 
-      shape.id === id ? { ...shape, ...updates } : shape
-    )
-  })),
-  deleteShape: (id) => set((state) => ({
-    shapes: state.shapes.filter(shape => shape.id !== id)
-  })),
-  
   // Trim tool implementation
   trimKnifeShapeId: null,
   setTrimKnifeShape: (id) => set({ trimKnifeShapeId: id }),
