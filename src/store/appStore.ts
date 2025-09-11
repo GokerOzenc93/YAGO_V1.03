@@ -120,6 +120,7 @@ export enum Tool {
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
+  FACE_SELECT_MODE = 'Face Select Mode',
 }
 
 export enum CameraType {
