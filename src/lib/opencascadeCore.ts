@@ -1,5 +1,3 @@
-import initOpenCascade from 'opencascade.js';
-
 let ocInstance: any = null;
 let isInitialized = false;
 let initPromise: Promise<any> | null = null;
@@ -16,25 +14,13 @@ export const initializeOpenCascade = async (): Promise<any> => {
     return initPromise;
   }
 
-  console.log('🎯 Initializing OpenCascade.js...');
+  console.log('🎯 OpenCascade.js not available, using Three.js fallback...');
   
-  initPromise = initOpenCascade({
-    locateFile: (path: string) => {
-      if (path.endsWith('.wasm')) {
-        return '/opencascade.wasm.wasm?init';
-      }
-      return path;
-    }
-  }).then((oc) => {
-    ocInstance = oc;
-    isInitialized = true;
-    console.log('✅ OpenCascade.js initialized successfully');
-    return oc;
-  }).catch((error) => {
-    console.error('❌ OpenCascade.js initialization failed:', error);
+  initPromise = Promise.resolve(null).then(() => {
     ocInstance = null;
     isInitialized = false;
-    throw error;
+    console.log('⚠️ OpenCascade.js not available, using Three.js fallback');
+    return null;
   });
 
   return initPromise;
@@ -45,7 +31,8 @@ export const initializeOpenCascade = async (): Promise<any> => {
  */
 export const getOpenCascade = (): any => {
   if (!ocInstance) {
-    throw new Error('OpenCascade.js not initialized. Call initializeOpenCascade() first.');
+    console.warn('OpenCascade.js not available, using Three.js fallback');
+    return null;
   }
   return ocInstance;
 };
@@ -54,7 +41,7 @@ export const getOpenCascade = (): any => {
  * Check if OpenCascade is initialized
  */
 export const isOpenCascadeInitialized = (): boolean => {
-  return isInitialized && ocInstance !== null;
+  return false; // Always return false since we're not using OpenCascade
 };
 
 /**
@@ -66,6 +53,6 @@ export const disposeOpenCascade = (): void => {
     ocInstance = null;
     isInitialized = false;
     initPromise = null;
-    console.log('🎯 OpenCascade.js disposed');
+    console.log('🎯 OpenCascade.js fallback disposed');
   }
 };

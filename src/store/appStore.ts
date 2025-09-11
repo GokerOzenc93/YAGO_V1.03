@@ -576,7 +576,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   shapes: [
-    // OpenCascade shapes will be added dynamically
+    {
+      id: '1',
+      type: 'box',
+      position: [-200, 250, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      geometry: new THREE.BoxGeometry(500, 500, 500),
+      parameters: {
+        width: 500,
+        height: 500,
+        depth: 500,
+      },
+    },
+    {
+      id: '2',
+      type: 'box',
+      position: [100, 250, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      geometry: new THREE.BoxGeometry(300, 300, 300),
+      parameters: {
+        width: 300,
+        height: 300,
+        depth: 300,
+      },
+    },
   ],
   
   addShape: (shape) => 
