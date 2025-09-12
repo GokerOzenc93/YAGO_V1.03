@@ -328,16 +328,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // Normal görünürlük ayarları
+    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
     if (isBeingEdited) {
-      return 0.8; // Edit edilen şekiller daha belirgin
+      return 0.1; // Edit edilen şekiller çok az görünür
     }
     
-    if (isSelected) {
-      return 0.7; // Seçili şekiller yarı şeffaf
-    }
-    
-    return 0.6; // Normal şekiller görünür
+    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
@@ -409,7 +405,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true}
+        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
