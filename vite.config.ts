@@ -6,6 +6,6 @@ import solid from 'vite-plugin-solid';
 export default defineConfig({
   plugins: [react(), solid()],
   optimizeDeps: {
-    exclude: ['lucide-react', 'solid-js'],
+    exclude: ['lucide-react'],
   },
 });
