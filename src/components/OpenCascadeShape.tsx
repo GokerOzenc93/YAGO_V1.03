@@ -235,8 +235,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Face selection mode for boolean subtract
-    if (isFaceSelectionMode && selectedFaceShapeId === shape.id && e.nativeEvent.button === 0) {
+    // Boolean face selection mode (for subtract operations)
+    if (isFaceSelectionMode && selectedFaceShapeId === shape.id && e.nativeEvent.button === 0 && !isEditMode) {
       e.stopPropagation();
       const hits = detectFaceAtMouse(
         e.nativeEvent,
@@ -280,6 +280,35 @@ const OpenCascadeShape: React.FC<Props> = ({
       return;
     }
     
+    // Edit mode face selection (separate from boolean operations)
+    if (isEditMode && isFaceEditMode && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      const hits = detectFaceAtMouse(
+        e.nativeEvent,
+        camera,
+        meshRef.current!,
+        gl.domElement
+      );
+
+      if (hits.length === 0) {
+        console.warn('🎯 Edit mode: No face detected');
+        return;
+      }
+
+      const hit = hits[0];
+      if (hit.faceIndex === undefined) {
+        console.warn('🎯 Edit mode: No face index');
+        return;
+      }
+
+      const highlight = highlightFace(scene, hit, shape, 0x00ff00, 0.4); // Green highlight for edit mode
+      if (highlight && onFaceSelect) {
+        onFaceSelect(hit.faceIndex);
+        console.log(`🎯 Edit mode: Face ${hit.faceIndex} selected`);
+      }
+      return;
+    }
+    
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -290,7 +319,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   const handleContextMenu = (e: any) => {
     // Face selection mode - prevent context menu
-    if (isFaceSelectionMode && selectedFaceShapeId === shape.id) {
+    if ((isFaceSelectionMode && selectedFaceShapeId === shape.id) || (isEditMode && isFaceEditMode)) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;
@@ -309,7 +338,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
-    if (!isFaceEditMode) {
+    if (!isFaceEditMode && isEditMode) {
       clearFaceHighlight(scene);
     }
   }, [isFaceEditMode, scene]);
