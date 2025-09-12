@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Puzzle,
   MousePointer,
+  Layers,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
