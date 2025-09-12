@@ -69,6 +69,13 @@ export enum OrthoMode {
   ON = 'on'
 }
 
+export interface TrimWithKnifeState {
+  isActive: boolean;
+  isSelectingKnife: boolean;
+  knifeShapeId: string | null;
+  targetShapeIds: string[];
+}
+
 export interface SnapSettings {
   [SnapType.ENDPOINT]: boolean;
   [SnapType.MIDPOINT]: boolean;
@@ -177,6 +184,11 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Trim with Knife state
+  trimWithKnifeState: TrimWithKnifeState;
+  setTrimWithKnifeState: (state: Partial<TrimWithKnifeState>) => void;
+  performTrimOperation: (targetShapeId: string) => void;
+  resetTrimWithKnife: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -292,6 +304,47 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+  
+  // Trim with Knife state
+  trimWithKnifeState: {
+    isActive: false,
+    isSelectingKnife: false,
+    knifeShapeId: null,
+    targetShapeIds: [],
+  },
+  
+  setTrimWithKnifeState: (updates) =>
+    set((state) => ({
+      trimWithKnifeState: {
+        ...state.trimWithKnifeState,
+        ...updates,
+      },
+    })),
+    
+  performTrimOperation: (targetShapeId) => {
+    const { trimWithKnifeState, shapes } = get();
+    if (!trimWithKnifeState.knifeShapeId) return;
+    
+    console.log(`🔪 Trimming shape ${targetShapeId} with knife ${trimWithKnifeState.knifeShapeId}`);
+    
+    // Add to target shapes list
+    set((state) => ({
+      trimWithKnifeState: {
+        ...state.trimWithKnifeState,
+        targetShapeIds: [...state.trimWithKnifeState.targetShapeIds, targetShapeId],
+      },
+    }));
+  },
+  
+  resetTrimWithKnife: () =>
+    set({
+      trimWithKnifeState: {
+        isActive: false,
+        isSelectingKnife: false,
+        knifeShapeId: null,
+        targetShapeIds: [],
+      },
+    }),
   
   // Snap settings - all enabled by default
   snapSettings: {
