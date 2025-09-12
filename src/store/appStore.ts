@@ -27,6 +27,7 @@ export enum Tool {
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
+  TRIM_WITH_KNIFE = 'Trim with Knife',
 }
 
 export enum CameraType {
@@ -292,6 +293,58 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+  
+  // Trim with Knife state
+  trimWithKnifeState: {
+    isActive: false,
+    knifeShapeId: null,
+    isSelectingKnife: false,
+  },
+  
+  setTrimWithKnifeState: (updates) =>
+    set((state) => ({
+      trimWithKnifeState: {
+        ...state.trimWithKnifeState,
+        ...updates,
+      },
+    })),
+    
+  resetTrimWithKnife: () =>
+    set({
+      trimWithKnifeState: {
+        isActive: false,
+        knifeShapeId: null,
+        isSelectingKnife: false,
+      },
+    }),
+    
+  performTrimOperation: (targetShapeId) => {
+    const { shapes, trimWithKnifeState, updateShape } = get();
+    const knifeShape = shapes.find(s => s.id === trimWithKnifeState.knifeShapeId);
+    const targetShape = shapes.find(s => s.id === targetShapeId);
+    
+    if (!knifeShape || !targetShape) {
+      console.warn('Knife or target shape not found for trim operation');
+      return;
+    }
+    
+    console.log(`🔪 Performing trim operation: Target ${targetShapeId} with Knife ${knifeShape.id}`);
+    
+    // TODO: Implement actual geometry trimming logic here
+    // For now, just log the operation
+    console.log('Trim operation would be performed here with CSG operations');
+    
+    // Example: Change target shape color to indicate it was trimmed
+    // In a real implementation, this would create new geometry
+    updateShape(targetShapeId, {
+      // Mark as trimmed for visual feedback
+      parameters: {
+        ...targetShape.parameters,
+        trimmed: true,
+        trimmedBy: knifeShape.id
+      }
+    });
+  },
   
   // Snap settings - all enabled by default
   snapSettings: {
