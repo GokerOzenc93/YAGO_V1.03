@@ -61,6 +61,14 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
       const x = posArray[i];
       const y = posArray[i + 1];
       const z = posArray[i + 2];
+      
+      // Filter out NaN values to prevent geometry corruption
+      if (isNaN(x) || isNaN(y) || isNaN(z)) {
+        console.warn(`🎯 Skipping triangle ${tri} vertex ${v} due to NaN values: (${x}, ${y}, ${z})`);
+        degenerateCount++;
+        break; // Skip this entire triangle
+      }
+      
       const key = hash(x, y, z);
 
       let idx;
@@ -72,6 +80,11 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
         uniqueVerts.push(x, y, z);
       }
       triIndices.push(idx);
+    }
+
+    // Skip triangle if it had NaN values
+    if (triIndices.length < 3) {
+      continue;
     }
 
     // remove degenerate triangles (two or three indices equal)
@@ -87,7 +100,21 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     newIndices.push(triIndices[0], triIndices[1], triIndices[2]);
   }
 
+  // Additional safety check: ensure uniqueVerts contains only valid numbers
+  for (let i = 0; i < uniqueVerts.length; i++) {
+    if (isNaN(uniqueVerts[i])) {
+      console.warn(`🎯 Replacing NaN value at uniqueVerts[${i}] with 0`);
+      uniqueVerts[i] = 0;
+    }
+  }
+
   console.log(`🎯 Removed ${degenerateCount} degenerate triangles`);
+
+  // Validate that we have valid geometry data
+  if (uniqueVerts.length === 0 || newIndices.length === 0) {
+    console.warn('🎯 No valid geometry data after cleanup, returning empty geometry');
+    return new THREE.BufferGeometry();
+  }
 
   // 4) Build new indexed BufferGeometry
   const cleaned = new THREE.BufferGeometry();
