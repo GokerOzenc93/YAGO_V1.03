@@ -20,7 +20,6 @@ import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
-import { performBooleanSubtract } from '../utils/booleanOperations';
 
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
@@ -184,13 +183,6 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode, // 🎯 NEW: Get current view mode
-    isFaceSelectionMode,
-    setIsFaceSelectionMode,
-    selectedFaceShapeId,
-    setSelectedFaceShapeId,
-    selectedFaceIndex,
-    setSelectedFaceIndex,
-    deleteShape,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -220,24 +212,15 @@ const Scene: React.FC = () => {
   // 🔴 NEW: Panel Edit Mode State
   const [isFaceEditMode, setIsFaceEditMode] = useState(false);
 
+  // Face selection state
+  const [selectedFaceIndex, setSelectedFaceIndex] = useState(null);
+
   // Disable rotation when drawing polylines OR when panel mode is active
   const isDrawingPolyline = activeTool === 'Polyline';
   const isAddPanelMode = false; // Panel mode removed, always false
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Handle Enter key for face selection mode
-      if (e.key === 'Enter' && isFaceSelectionMode && selectedFaceShapeId && selectedFaceIndex !== null) {
-        executeFaceBasedBooleanSubtract();
-        return;
-      }
-      
-      // Handle Escape key for face selection mode
-      if (e.key === 'Escape' && isFaceSelectionMode) {
-        exitFaceSelectionMode();
-        return;
-      }
-      
       if (e.key === 'Escape') {
         selectShape(null);
         // Reset Point to Point Move when pressing Escape
@@ -250,7 +233,7 @@ const Scene: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectShape, isEditMode, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
+  }, [selectShape, isEditMode]);
 
   useEffect(() => {
     const handleDoubleClick = (e) => {
@@ -380,7 +363,7 @@ const Scene: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cameraType, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
+  }, [cameraType, isAddPanelMode]);
 
   const handleShapeContextMenuRequest = (event, shape) => {
     // Mouse pozisyonunu al
@@ -566,60 +549,6 @@ const Scene: React.FC = () => {
   const editedShape = editingShapeId
     ? shapes.find((s) => s.id === editingShapeId)
     : null;
-
-  // Execute face-based boolean subtract
-  const executeFaceBasedBooleanSubtract = async () => {
-    if (!selectedFaceShapeId || selectedFaceIndex === null) return;
-    
-    // Get the current selected shape ID from the store
-    const selectedShapeId = useAppStore.getState().selectedShapeId;
-    if (!selectedShapeId) return;
-    
-    const targetShape = shapes.find(s => s.id === selectedFaceShapeId);
-    if (!targetShape) return;
-    
-    const subtractingShape = shapes.find(s => s.id === selectedShapeId);
-    if (!subtractingShape) return;
-    
-    console.log(`🎯 Executing face-based boolean subtract: ${subtractingShape.type} will be subtracted from ${targetShape.type} using face ${selectedFaceIndex} as cutting plane`);
-    
-    try {
-      console.log(`🎯 Subtracting ${subtractingShape.type} from ${targetShape.type} using face ${selectedFaceIndex}`);
-      
-      const success = await performBooleanSubtract(
-        subtractingShape, 
-        [targetShape], // Target shape to subtract from
-        updateShape, 
-        deleteShape, 
-        selectedFaceIndex
-      );
-      
-      if (success) {
-        console.log('✅ Face-based boolean subtract completed successfully');
-      } else {
-        console.log('❌ Face-based boolean subtract failed');
-      }
-    } catch (error) {
-      console.error('❌ Error during face-based boolean subtract:', error);
-    }
-    
-    // Exit face selection mode
-    exitFaceSelectionMode();
-  };
-  
-  // Exit face selection mode
-  const exitFaceSelectionMode = () => {
-    setIsFaceSelectionMode(false);
-    setSelectedFaceShapeId(null);
-    setSelectedFaceIndex(null);
-    
-    // Clear face highlight
-    if (sceneRef) {
-      clearFaceHighlight(sceneRef);
-    }
-    
-    console.log('🎯 Face selection mode deactivated');
-  };
 
   // Scene referansını al
   const [sceneRef, setSceneRef] = useState(null);
@@ -857,61 +786,16 @@ const Scene: React.FC = () => {
         )}
 
       {/* Face Edit Mode Indicator */}
-      {activeTool === Tool.SMART_SURFACE_REPAIR &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed top-32 right-4 bg-green-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Akıllı Yüzey Onarımı</span>
-            </div>
-            <div className="text-xs text-green-200 mt-1">
-              Ana yüzeye tıklayın - parçalı alanlar otomatik onarılacak
-            </div>
-            <div className="text-xs text-green-300 mt-1 font-mono">
-              Esc: İptal
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Face Edit Mode Indicator */}
-      {isFaceSelectionMode && !isEditMode &&
+      {isFaceEditMode &&
         typeof document !== 'undefined' &&
         createPortal(
           <div className="fixed top-32 right-4 bg-orange-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">
-                Face Selection Mode
-              </span>
+              <span className="text-sm font-medium">Face Edit Mode</span>
             </div>
             <div className="text-xs text-orange-200 mt-1">
-              Click on SUBTRACTING shape face to select cutting plane, then press Enter
-            </div>
-            <div className="text-xs text-orange-300 mt-1 font-mono">
-              Enter: Execute | Esc: Cancel
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Edit Mode Face Selection Indicator */}
-      {isEditMode && isFaceEditMode &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed top-32 right-4 bg-green-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">
-                Edit Mode - Face Selection
-              </span>
-            </div>
-            <div className="text-xs text-green-200 mt-1">
-              Click on faces to select them for editing
-            </div>
-            <div className="text-xs text-green-300 mt-1 font-mono">
-              Esc: Exit Face Selection
+              Click on faces to select them
             </div>
           </div>,
           document.body

@@ -424,8 +424,8 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
     mesh.matrixWorld.decompose(pvec, q, svec);
     const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
-    const planeEps = PLANE_EPS * Math.max(1, scaleMag) * 5; // 🎯 Increased plane tolerance for full surface
-    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // 🎯 More permissive angle tolerance
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag);
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG));
 
     let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
     const seedW = triToWelded[seedTri];
@@ -461,7 +461,6 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
         }
     }
 
-    console.log(`🎯 Full surface region grown: ${region.length} triangles found`);
     // boundary edges (welded) with count==1
     const edgeCount = new Map<string, number>();
     for (const t of region) {
@@ -537,17 +536,13 @@ const buildFaceOverlayFromHit = (
     const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
     const bitangent = new THREE.Vector3().crossVectors(n, tangent).normalize();
 
-    // 🎯 Calculate surface center from ALL boundary vertices for full coverage
+    // Yüzeyin gerçek merkezini hesapla (world space'de)
     const surfaceCenter = new THREE.Vector3();
     let totalVertices = 0;
-    
-    // Use all boundary loops for complete surface coverage
-    for (const loop of res.boundaryLoops) {
-        for (const wid of loop) {
-            const p = res.weldedToWorld.get(wid)!;
-            surfaceCenter.add(p);
-            totalVertices++;
-        }
+    for (const wid of res.boundaryLoops[0]) {
+        const p = res.weldedToWorld.get(wid)!;
+        surfaceCenter.add(p);
+        totalVertices++;
     }
     surfaceCenter.divideScalar(totalVertices);
 
@@ -555,8 +550,8 @@ const buildFaceOverlayFromHit = (
         const arr: THREE.Vector2[] = [];
         for (const wid of loop) {
             const p = res.weldedToWorld.get(wid)!;
-            // 🎯 Full surface coverage - no scaling down
-            const relative = p.clone().sub(surfaceCenter); // Full scale for complete coverage
+            // Yüzey merkezine göre relative koordinatlar
+            const relative = p.clone().sub(surfaceCenter);
             const x = relative.dot(tangent);
             const y = relative.dot(bitangent);
             arr.push(new THREE.Vector2(x, y));
@@ -568,7 +563,7 @@ const buildFaceOverlayFromHit = (
     const holes = loops2D.slice(1);
     const triangles = THREE.ShapeUtils.triangulateShape(outer, holes);
 
-    // 🎯 3D reconstruction: full surface area
+    // 3D reconstruction: yüzey merkezini origin olarak kullan
     const to3D = (v: THREE.Vector2) => surfaceCenter.clone()
     .addScaledVector(tangent, v.x)
     .addScaledVector(bitangent, v.y);
@@ -576,8 +571,8 @@ const buildFaceOverlayFromHit = (
     const verts: number[] = [];
     const all2D = outer.concat(...holes);
     for (const v2 of all2D) {
-        // 🎯 Position slightly above surface for visibility
-        const p3 = to3D(v2).addScaledVector(n, 0.05); // Minimal offset for clean appearance
+        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset)
+        const p3 = to3D(v2).addScaledVector(n, 0.5);
         verts.push(p3.x, p3.y, p3.z);
     }
 
@@ -589,20 +584,10 @@ const buildFaceOverlayFromHit = (
     g.setIndex(indices);
     g.computeVertexNormals();
 
-    // 🎯 Optimized material for full surface highlighting
-    const mat = new THREE.MeshBasicMaterial({ 
-        color, 
-        opacity: Math.min(opacity * 0.6, 0.4), // Balanced transparency for full surface
-        transparent: true, 
-        depthWrite: false, 
-        side: THREE.FrontSide,
-        depthTest: true
-    });
+    const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
     const overlay = new THREE.Mesh(g, mat);
     overlay.renderOrder = 999;
     scene.add(overlay);
-    
-    console.log(`🎯 Full surface overlay created: ${triangles.length} triangles, ${res.boundaryLoops.length} boundary loops`);
     return overlay;
 };
 /** ===== End Robust Planar Region Selection ===== **/

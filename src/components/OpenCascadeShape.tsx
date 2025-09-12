@@ -43,10 +43,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
-    isFaceSelectionMode,
-    selectedFaceShapeId,
-    selectedFaceIndex,
-    setSelectedFaceIndex,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -235,8 +231,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Boolean face selection mode (for subtract operations)
-    if (isFaceSelectionMode && selectedFaceShapeId === shape.id && e.nativeEvent.button === 0 && !isEditMode) {
+    // Face Edit mode - handle face selection
+    if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       const hits = detectFaceAtMouse(
         e.nativeEvent,
@@ -246,7 +242,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
 
       if (hits.length === 0) {
-        console.warn('🎯 No face detected for face selection');
+        console.warn('🎯 No face detected');
         return;
       }
 
@@ -273,38 +269,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
 
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
-      if (highlight) {
-        setSelectedFaceIndex(hit.faceIndex);
-        console.log(`🎯 Face ${hit.faceIndex} selected as cutting plane. Press Enter to execute boolean subtract.`);
-      }
-      return;
-    }
-    
-    // Edit mode face selection (separate from boolean operations)
-    if (isEditMode && isFaceEditMode && e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      const hits = detectFaceAtMouse(
-        e.nativeEvent,
-        camera,
-        meshRef.current!,
-        gl.domElement
-      );
-
-      if (hits.length === 0) {
-        console.warn('🎯 Edit mode: No face detected');
-        return;
-      }
-
-      const hit = hits[0];
-      if (hit.faceIndex === undefined) {
-        console.warn('🎯 Edit mode: No face index');
-        return;
-      }
-
-      const highlight = highlightFace(scene, hit, shape, 0x00ff00, 0.4); // Green highlight for edit mode
       if (highlight && onFaceSelect) {
         onFaceSelect(hit.faceIndex);
-        console.log(`🎯 Edit mode: Face ${hit.faceIndex} selected`);
+        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
       }
       return;
     }
@@ -318,8 +285,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Face selection mode - prevent context menu
-    if ((isFaceSelectionMode && selectedFaceShapeId === shape.id) || (isEditMode && isFaceEditMode)) {
+    // Face Edit mode - prevent context menu
+    if (isFaceEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;
@@ -338,7 +305,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
-    if (!isFaceEditMode && isEditMode) {
+    if (!isFaceEditMode) {
       clearFaceHighlight(scene);
     }
   }, [isFaceEditMode, scene]);
@@ -361,13 +328,12 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 EDIT MODE: Tamamen şeffaf - sadece çizgiler görünür
-    if (isEditMode) {
-      return 0.0; // Edit modunda tamamen şeffaf
+    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
+    if (isBeingEdited) {
+      return 0.1; // Edit edilen şekiller çok az görünür
     }
     
-    // 🎯 ANA SAHNE: Normal modda da şeffaf
-    return 0.1; // Ana sahnede de şeffaf
+    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
@@ -418,15 +384,6 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getMaterialProps = () => {
     const opacityValue = getOpacity(); // 👈 Dinamik opacity
 
-    // 🎯 EDIT MODE: Beyaz renk ve tamamen şeffaf
-    if (isEditMode) {
-      return {
-        color: '#ffffff', // Beyaz renk
-        transparent: true,
-        opacity: 0.0, // Tamamen şeffaf
-        visible: true,
-      };
-    }
     return {
       color: getShapeColor(),
       transparent: true, // 👈 Şeffaflık aktif
@@ -448,7 +405,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={!isEditMode} // 👈 Edit modunda mesh görünmez, sadece çizgiler görünür
+        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>

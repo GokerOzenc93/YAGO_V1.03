@@ -1,99 +1,6 @@
 import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
-import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
-import { GeometryFactory } from '../lib/geometryFactory';
-
-// Helper function to get shape bounds
-const getShapeBounds = (shape: Shape) => {
-  const geometry = shape.geometry;
-  geometry.computeBoundingBox();
-  const bbox = geometry.boundingBox!;
-  
-  // Apply shape transformations
-  const min = new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
-  const max = new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
-  
-  // Apply scale
-  min.multiply(new THREE.Vector3(...shape.scale));
-  max.multiply(new THREE.Vector3(...shape.scale));
-  
-  // Apply position
-  min.add(new THREE.Vector3(...shape.position));
-  max.add(new THREE.Vector3(...shape.position));
-  
-  return { min, max };
-};
-
-// Helper function to check if two bounding boxes intersect
-const boundsIntersect = (bounds1: any, bounds2: any): boolean => {
-  return (
-    bounds1.min.x <= bounds2.max.x && bounds1.max.x >= bounds2.min.x &&
-    bounds1.min.y <= bounds2.max.y && bounds1.max.y >= bounds2.min.y &&
-    bounds1.min.z <= bounds2.max.z && bounds1.max.z >= bounds2.min.z
-  );
-};
-
-// Helper function to create subtracted geometry (simplified implementation)
-const createSubtractedGeometry = (targetGeometry: THREE.BufferGeometry, subtractShape: Shape): THREE.BufferGeometry => {
-  // Create a new geometry with a hole/cavity based on the subtract shape
-  const newGeometry = targetGeometry.clone();
-  
-  // Get the subtract shape's dimensions and position
-  const subtractBounds = getShapeBounds(subtractShape);
-  const subtractCenter = new THREE.Vector3(
-    (subtractBounds.min.x + subtractBounds.max.x) / 2,
-    (subtractBounds.min.y + subtractBounds.max.y) / 2,
-    (subtractBounds.min.z + subtractBounds.max.z) / 2
-  );
-  
-  // For demonstration, we'll create a modified geometry
-  // This is a simplified approach - in a real CAD system, you'd use proper CSG
-  
-  if (subtractShape.type === 'box' || subtractShape.type === 'cylinder') {
-    // Create a visual indication by modifying the geometry
-    // Scale down the geometry slightly to show the subtraction effect
-    const positions = newGeometry.attributes.position;
-    const positionArray = positions.array as Float32Array;
-    
-    // Modify vertices that are close to the subtract shape
-    for (let i = 0; i < positions.count; i++) {
-      const vertex = new THREE.Vector3(
-        positionArray[i * 3],
-        positionArray[i * 3 + 1],
-        positionArray[i * 3 + 2]
-      );
-      
-      // Check if vertex is within the subtract shape's influence
-      const distance = vertex.distanceTo(subtractCenter);
-      const influenceRadius = Math.max(
-        subtractBounds.max.x - subtractBounds.min.x,
-        subtractBounds.max.y - subtractBounds.min.y,
-        subtractBounds.max.z - subtractBounds.min.z
-      ) / 2;
-      
-      if (distance < influenceRadius) {
-        // Create a cavity effect by pushing vertices inward
-        const direction = vertex.clone().sub(subtractCenter).normalize();
-        const pushDistance = (influenceRadius - distance) * 0.3;
-        vertex.sub(direction.multiplyScalar(pushDistance));
-        
-        positionArray[i * 3] = vertex.x;
-        positionArray[i * 3 + 1] = vertex.y;
-        positionArray[i * 3 + 2] = vertex.z;
-      }
-    }
-    
-    // Mark the attribute as needing update
-    positions.needsUpdate = true;
-    newGeometry.computeVertexNormals();
-    newGeometry.computeBoundingBox();
-    newGeometry.computeBoundingSphere();
-  }
-  
-  console.log('Boolean subtraction applied - geometry modified with cavity effect');
-  return newGeometry;
-};
 
 export enum Tool {
   MOVE = 'Move',
@@ -120,8 +27,6 @@ export enum Tool {
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
-  FACE_SELECT_MODE = 'Face Select Mode',
-  SMART_SURFACE_REPAIR = 'Smart Surface Repair',
 }
 
 export enum CameraType {
@@ -210,12 +115,6 @@ interface AppState {
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
-  performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  // OpenCascade integration
-  isOpenCascadeInitialized: boolean;
-  setOpenCascadeInitialized: (initialized: boolean) => void;
-  geometryMode: string;
-  setGeometryMode: (mode: string) => void;
   cameraPosition: [number, number, number];
   setCameraPosition: (position: [number, number, number]) => void;
   selectedObjectPosition: [number, number, number];
@@ -278,18 +177,6 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
-  // Face selection for boolean operations
-  selectedFaceIndex: number | null;
-  setSelectedFaceIndex: (index: number | null) => void;
-  isFaceSelectionMode: boolean;
-  setIsFaceSelectionMode: (enabled: boolean) => void;
-  selectedFaceShapeId: string | null;
-  setSelectedFaceShapeId: (id: string | null) => void;
-  // Face selection for boolean operations
-  selectedFaceIndex: number | null;
-  setSelectedFaceIndex: (index: number | null) => void;
-  isFaceSelectionMode: boolean;
-  setIsFaceSelectionMode: (enabled: boolean) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -335,13 +222,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ lastTransformTool: tool });
     }
   },
-  
-  // OpenCascade integration
-  isOpenCascadeInitialized: false,
-  setOpenCascadeInitialized: (initialized) => set({ isOpenCascadeInitialized: initialized }),
-  
-  geometryMode: 'Three.js',
-  setGeometryMode: (mode) => set({ geometryMode: mode }),
   
   gridSize: 50,
   setGridSize: (size) => set({ gridSize: size }),
@@ -412,17 +292,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
-  
-  // Face selection for boolean operations
-  selectedFaceIndex: null,
-  setSelectedFaceIndex: (index) => set({ selectedFaceIndex: index }),
-  
-  // Face selection mode for boolean operations
-  isFaceSelectionMode: false,
-  setIsFaceSelectionMode: (enabled) => set({ isFaceSelectionMode: enabled }),
-  
-  selectedFaceShapeId: null,
-  setSelectedFaceShapeId: (id) => set({ selectedFaceShapeId: id }),
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -604,7 +473,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     {
       id: '1',
       type: 'box',
-      position: [-200, 250, 0],
+      position: [0, 250, 0],
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       geometry: new THREE.BoxGeometry(500, 500, 500),
@@ -616,15 +485,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
     {
       id: '2',
-      type: 'box',
-      position: [100, 250, 0],
+      type: 'cylinder',
+      position: [750, 250, 0],
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(300, 300, 300),
+      geometry: new THREE.CylinderGeometry(250, 250, 500, 32),
       parameters: {
-        width: 300,
-        height: 300,
-        depth: 300,
+        radius: 250,
+        height: 500,
       },
     },
   ],
@@ -647,59 +515,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       shapes: state.shapes.filter((shape) => shape.id !== id),
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
-     
-  performBooleanOperation: async (operation) => {
-    const { shapes, selectedShapeId, updateShape, deleteShape } = get();
-    if (!selectedShapeId) {
-      console.warn('No shape selected for boolean operation');
-      return;
-    }
-    
-    const selectedShape = shapes.find(s => s.id === selectedShapeId);
-    if (!selectedShape) {
-      console.warn('Selected shape not found');
-      return;
-    }
-    
-    // For subtract operation, enter face selection mode
-    if (operation === 'subtract') {
-      // Find intersecting shapes (these will be the target shapes to select face from)
-      const intersectingShapes = shapes.filter(shape => {
-        if (shape.id === selectedShapeId) return false;
-        
-        // Simple bounding box intersection check
-        const shape1Bounds = getShapeBounds(selectedShape);
-        const shape2Bounds = getShapeBounds(shape);
-        
-        return boundsIntersect(shape1Bounds, shape2Bounds);
-      });
-      
-      if (intersectingShapes.length === 0) {
-        console.log('❌ No intersecting shapes found for face selection');
-        return;
-      }
-      
-      // Use the first intersecting shape as the target for face selection
-      const targetShape = intersectingShapes[0];
-      
-      set({ 
-        isFaceSelectionMode: true,
-        selectedFaceShapeId: targetShape.id, // Geriye kalacak nesnenin yüzeyini seç
-        selectedFaceIndex: null
-      });
-      console.log(`🎯 Face selection mode activated. Click on the TARGET shape (${targetShape.type}) face to select cutting plane, then press Enter to execute.`);
-      return;
-    }
-    
-    let success = false;
-    if (operation === 'union') {
-      success = await performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
-    }
-    
-    if (success) {
-      set({ selectedShapeId: null });
-    }
-  },
     
   selectedShapeId: null,
   selectShape: (id) => {
