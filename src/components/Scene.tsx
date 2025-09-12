@@ -857,37 +857,24 @@ const Scene: React.FC = () => {
         )}
 
       {/* Face Edit Mode Indicator */}
-      {(isFaceEditMode || isFaceSelectionMode || isSmartSurfaceRepairMode) &&
+      {(isFaceEditMode || isFaceSelectionMode) &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={`fixed top-32 right-4 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40 ${
-            isSmartSurfaceRepairMode ? 'bg-green-600/90' : 'bg-orange-600/90'
-          }`}>
+          <div className="fixed top-32 right-4 bg-orange-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${
-                isSmartSurfaceRepairMode ? 'bg-green-400' : 'bg-orange-400'
-              }`}></div>
+              <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">
-                {isSmartSurfaceRepairMode 
-                  ? 'Smart Surface Repair Mode' 
-                  : isFaceSelectionMode 
-                  ? 'Face Selection Mode' 
-                  : 'Face Edit Mode'
-                }
+                {isFaceSelectionMode ? 'Face Selection Mode' : 'Face Edit Mode'}
               </span>
             </div>
             <div className="text-xs text-orange-200 mt-1">
-              {isSmartSurfaceRepairMode
-                ? 'Click on reference face to repair fragmented surfaces, then press Enter'
-                : isFaceSelectionMode 
+              {isFaceSelectionMode 
                 ? 'Click on SUBTRACTING shape face to select cutting plane, then press Enter' 
                 : 'Click on faces to select them'
               }
             </div>
-            {(isFaceSelectionMode || isSmartSurfaceRepairMode) && (
-              <div className={`text-xs mt-1 font-mono ${
-                isSmartSurfaceRepairMode ? 'text-green-300' : 'text-orange-300'
-              }`}>
+            {isFaceSelectionMode && (
+              <div className="text-xs text-orange-300 mt-1 font-mono">
                 Enter: Execute | Esc: Cancel
               </div>
             )}
