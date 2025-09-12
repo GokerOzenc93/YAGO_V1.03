@@ -7,6 +7,173 @@ import { getCurrentHighlight } from './faceSelection';
 // SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
 
 /**
+ * Yüzeyleri dünya düğüm noktalarına göre genişlet
+ */
+const stretchSurfacesToWorldNodes = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+  console.log('🎯 Stretching surfaces to world nodes...');
+  
+  const stretchedGeometry = geometry.clone();
+  const positions = stretchedGeometry.attributes.position;
+  const posArray = positions.array as Float32Array;
+  const vertexCount = positions.count;
+  
+  // Dünya düğüm noktaları (grid noktaları)
+  const worldNodes = [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(500, 0, 0),
+    new THREE.Vector3(-500, 0, 0),
+    new THREE.Vector3(0, 0, 500),
+    new THREE.Vector3(0, 0, -500),
+    new THREE.Vector3(500, 0, 500),
+    new THREE.Vector3(-500, 0, 500),
+    new THREE.Vector3(500, 0, -500),
+    new THREE.Vector3(-500, 0, -500),
+    new THREE.Vector3(0, 500, 0),
+    new THREE.Vector3(0, -500, 0),
+  ];
+  
+  // Her vertex için en yakın dünya düğümüne doğru genişletme
+  for (let i = 0; i < vertexCount; i++) {
+    const vertex = new THREE.Vector3(
+      posArray[i * 3],
+      posArray[i * 3 + 1],
+      posArray[i * 3 + 2]
+    );
+    
+    // En yakın dünya düğümünü bul
+    let closestNode = worldNodes[0];
+    let minDistance = vertex.distanceTo(closestNode);
+    
+    for (const node of worldNodes) {
+      const distance = vertex.distanceTo(node);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestNode = node;
+      }
+    }
+    
+    // Vertex'i dünya düğümüne doğru %20 genişlet
+    const direction = new THREE.Vector3().subVectors(closestNode, vertex).normalize();
+    const stretchAmount = 50; // 50mm genişletme
+    const stretchedVertex = vertex.clone().add(direction.multiplyScalar(stretchAmount));
+    
+    // Yeni pozisyonu uygula
+    posArray[i * 3] = stretchedVertex.x;
+    posArray[i * 3 + 1] = stretchedVertex.y;
+    posArray[i * 3 + 2] = stretchedVertex.z;
+  }
+  
+  // Attribute'u güncelle
+  positions.needsUpdate = true;
+  
+  // Normal'ları yeniden hesapla
+  stretchedGeometry.computeVertexNormals();
+  stretchedGeometry.computeBoundingBox();
+  stretchedGeometry.computeBoundingSphere();
+  
+  console.log('✅ Surface stretching completed');
+  return stretchedGeometry;
+};
+
+/**
+ * Yüzeylere yeni face'ler ekle (triangulation ile)
+ */
+const addNewFacesToSurfaces = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+  console.log('🎯 Adding new faces to surfaces...');
+  
+  const enhancedGeometry = geometry.clone();
+  const positions = enhancedGeometry.attributes.position;
+  const posArray = positions.array as Float32Array;
+  const vertexCount = positions.count;
+  
+  // Mevcut vertex'leri al
+  const vertices: THREE.Vector3[] = [];
+  for (let i = 0; i < vertexCount; i++) {
+    vertices.push(new THREE.Vector3(
+      posArray[i * 3],
+      posArray[i * 3 + 1],
+      posArray[i * 3 + 2]
+    ));
+  }
+  
+  // Yeni vertex'ler ve face'ler ekle
+  const newVertices: THREE.Vector3[] = [...vertices];
+  const newIndices: number[] = [];
+  
+  // Mevcut index'leri koru
+  if (enhancedGeometry.index) {
+    const indexArray = enhancedGeometry.index.array;
+    for (let i = 0; i < indexArray.length; i++) {
+      newIndices.push(indexArray[i]);
+    }
+  } else {
+    // Non-indexed geometry için index oluştur
+    for (let i = 0; i < vertexCount; i++) {
+      newIndices.push(i);
+    }
+  }
+  
+  // Yüzey kenarlarında yeni vertex'ler ve face'ler oluştur
+  const edgeVertices: THREE.Vector3[] = [];
+  
+  // Her 3 vertex'lik üçgen için kenar vertex'leri ekle
+  for (let i = 0; i < newIndices.length; i += 3) {
+    const v1 = vertices[newIndices[i]];
+    const v2 = vertices[newIndices[i + 1]];
+    const v3 = vertices[newIndices[i + 2]];
+    
+    // Kenar orta noktaları
+    const edge1 = new THREE.Vector3().addVectors(v1, v2).multiplyScalar(0.5);
+    const edge2 = new THREE.Vector3().addVectors(v2, v3).multiplyScalar(0.5);
+    const edge3 = new THREE.Vector3().addVectors(v3, v1).multiplyScalar(0.5);
+    
+    // Yüzey merkezi
+    const center = new THREE.Vector3().addVectors(v1, v2).add(v3).multiplyScalar(1/3);
+    
+    // Yeni vertex'leri ekle
+    const startIndex = newVertices.length;
+    newVertices.push(edge1, edge2, edge3, center);
+    
+    // Yeni face'ler oluştur (subdivide)
+    const originalIndices = [newIndices[i], newIndices[i + 1], newIndices[i + 2]];
+    const edgeIndices = [startIndex, startIndex + 1, startIndex + 2];
+    const centerIndex = startIndex + 3;
+    
+    // Orijinal üçgeni 4 küçük üçgene böl
+    newIndices.push(
+      // Köşe üçgenleri
+      originalIndices[0], edgeIndices[0], edgeIndices[2],
+      originalIndices[1], edgeIndices[1], edgeIndices[0],
+      originalIndices[2], edgeIndices[2], edgeIndices[1],
+      // Merkez üçgen
+      edgeIndices[0], edgeIndices[1], edgeIndices[2]
+    );
+  }
+  
+  // Yeni geometri oluştur
+  const newGeometry = new THREE.BufferGeometry();
+  
+  // Vertex pozisyonlarını ayarla
+  const newPositions = new Float32Array(newVertices.length * 3);
+  for (let i = 0; i < newVertices.length; i++) {
+    newPositions[i * 3] = newVertices[i].x;
+    newPositions[i * 3 + 1] = newVertices[i].y;
+    newPositions[i * 3 + 2] = newVertices[i].z;
+  }
+  
+  newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+  newGeometry.setIndex(newIndices);
+  
+  // Normal'ları hesapla
+  newGeometry.computeVertexNormals();
+  newGeometry.computeBoundingBox();
+  newGeometry.computeBoundingSphere();
+  
+  console.log(`✅ Added new faces: ${newVertices.length - vertices.length} new vertices, ${(newIndices.length - indexArray.length) / 3} new faces`);
+  return newGeometry;
+};
+
+/**
  * Clean up CSG-generated geometry:
  * - applyMatrix4 should be done *before* calling this
  * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
@@ -532,6 +699,10 @@ export const performBooleanSubtract = async (
                console.log('🎯 Geometry cleaned up using highlighted surface as reference');
              }
              
+             // Yüzeyleri dünya düğümlerine göre genişlet ve yeni face'ler ekle
+             newGeom = stretchSurfacesToWorldNodes(newGeom);
+             newGeom = addNewFacesToSurfaces(newGeom);
+             
             try { 
               targetShape.geometry.dispose(); 
             } catch (e) { 
@@ -587,6 +758,10 @@ export const performBooleanSubtract = async (
          newGeom = cleanupGeometryUsingReference(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
          console.log('🎯 Geometry cleaned up using highlighted surface as reference');
        }
+       
+       // Yüzeyleri dünya düğümlerine göre genişlet ve yeni face'ler ekle
+       newGeom = stretchSurfacesToWorldNodes(newGeom);
+       newGeom = addNewFacesToSurfaces(newGeom);
        
       try { 
         targetShape.geometry.dispose(); 
