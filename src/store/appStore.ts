@@ -284,6 +284,10 @@ interface AppState {
   setIsFaceSelectionMode: (enabled: boolean) => void;
   selectedFaceShapeId: string | null;
   setSelectedFaceShapeId: (id: string | null) => void;
+  // Smart Surface Repair
+  isSmartSurfaceRepairMode: boolean;
+  setIsSmartSurfaceRepairMode: (enabled: boolean) => void;
+  performSmartSurfaceRepair: (shapeId: string, referenceFaceIndex: number) => void;
   // Face selection for boolean operations
   selectedFaceIndex: number | null;
   setSelectedFaceIndex: (index: number | null) => void;
