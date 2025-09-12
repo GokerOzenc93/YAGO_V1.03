@@ -145,110 +145,78 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 /**
  * Highlighted surface'i geometriye yüzey olarak ekle
  */
-const addSurfaceToGeometry = (
+const cleanupGeometryUsingReference = (
   geometry: THREE.BufferGeometry,
-  surfaceVertices: THREE.Vector3[],
+  referenceVertices: THREE.Vector3[],
   worldMatrix: THREE.Matrix4
 ): THREE.BufferGeometry => {
-  console.log(`🎯 Adding surface with ${surfaceVertices.length} vertices to geometry`);
+  console.log(`🎯 Cleaning up geometry using ${referenceVertices.length} reference vertices`);
   
-  // Mevcut geometri verilerini al
-  const existingPositions = geometry.attributes.position.array;
-  const existingIndices = geometry.index ? geometry.index.array : null;
-  
-  // Surface vertices'leri local space'e dönüştür
-  const invMatrix = new THREE.Matrix4().copy(worldMatrix).invert();
-  const localSurfaceVertices = surfaceVertices.map(v => v.clone().applyMatrix4(invMatrix));
-  
-  // 🎯 Use ALL surface vertices for complete surface coverage
-  // No filtering - we want the entire highlighted surface area
-  const filteredVertices = localSurfaceVertices;
-  
-  if (filteredVertices.length < 3) {
-    console.log('🎯 Not enough vertices for surface creation, skipping surface addition');
+  // Referans yüzeyin düzlemini hesapla
+  if (referenceVertices.length < 3) {
+    console.log('🎯 Not enough reference vertices for cleanup, returning original geometry');
     return geometry;
   }
   
-  console.log(`🎯 Using ${filteredVertices.length} vertices for complete surface coverage (no filtering applied)`);
+  // Referans vertices'leri local space'e dönüştür
+  const invMatrix = new THREE.Matrix4().copy(worldMatrix).invert();
+  const localReferenceVertices = referenceVertices.map(v => v.clone().applyMatrix4(invMatrix));
   
-  // Yeni vertex array oluştur
-  const newPositions = new Float32Array(existingPositions.length + filteredVertices.length * 3);
-  newPositions.set(existingPositions);
+  // Referans düzlemini hesapla
+  const refPoint1 = localReferenceVertices[0];
+  const refPoint2 = localReferenceVertices[1];
+  const refPoint3 = localReferenceVertices[2];
   
-  // Surface vertices'leri ekle
-  const startIndex = existingPositions.length / 3;
-  filteredVertices.forEach((vertex, i) => {
-    const offset = existingPositions.length + i * 3;
-    newPositions[offset] = vertex.x;
-    newPositions[offset + 1] = vertex.y;
-    newPositions[offset + 2] = vertex.z;
-  });
+  const v1 = new THREE.Vector3().subVectors(refPoint2, refPoint1);
+  const v2 = new THREE.Vector3().subVectors(refPoint3, refPoint1);
+  const referenceNormal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+  const referencePlane = new THREE.Plane().setFromNormalAndCoplanarPoint(referenceNormal, refPoint1);
   
-  // 🎯 Advanced triangulation for complete surface
-  const surfaceIndices: number[] = [];
-  if (filteredVertices.length >= 3) {
-    // 🎯 Improved triangulation for complex surfaces
-    if (filteredVertices.length === 3) {
-      // Simple triangle
-      surfaceIndices.push(startIndex, startIndex + 1, startIndex + 2);
-    } else if (filteredVertices.length === 4) {
-      // Quad - split into two triangles
-      surfaceIndices.push(startIndex, startIndex + 1, startIndex + 2);
-      surfaceIndices.push(startIndex, startIndex + 2, startIndex + 3);
-    } else {
-      // Complex polygon - fan triangulation from center
-      for (let i = 1; i < filteredVertices.length - 1; i++) {
-        surfaceIndices.push(
-          startIndex,
-          startIndex + i,
-          startIndex + i + 1
-        );
-      }
+  console.log(`🎯 Reference plane calculated with normal: [${referenceNormal.x.toFixed(3)}, ${referenceNormal.y.toFixed(3)}, ${referenceNormal.z.toFixed(3)}]`);
+  
+  // Mevcut geometrinin vertex'lerini analiz et
+  const positions = geometry.attributes.position;
+  const posArray = positions.array as Float32Array;
+  const vertexCount = positions.count;
+  
+  // Referans düzleme yakın vertex'leri bul ve düzle
+  const PLANE_TOLERANCE = 5.0; // 5mm tolerans
+  let cleanedVertexCount = 0;
+  
+  for (let i = 0; i < vertexCount; i++) {
+    const vertex = new THREE.Vector3(
+      posArray[i * 3],
+      posArray[i * 3 + 1],
+      posArray[i * 3 + 2]
+    );
+    
+    // Vertex'in referans düzleme olan mesafesini hesapla
+    const distanceToPlane = Math.abs(referencePlane.distanceToPoint(vertex));
+    
+    // Eğer vertex referans düzleme yakınsa, düzleme projekte et
+    if (distanceToPlane < PLANE_TOLERANCE) {
+      const projectedVertex = referencePlane.projectPoint(vertex, new THREE.Vector3());
+      
+      // Vertex'i güncelle
+      posArray[i * 3] = projectedVertex.x;
+      posArray[i * 3 + 1] = projectedVertex.y;
+      posArray[i * 3 + 2] = projectedVertex.z;
+      
+      cleanedVertexCount++;
     }
   }
   
-  // Yeni index array oluştur
-  let newIndices: Uint32Array | Uint16Array;
-  const totalIndices = (existingIndices ? existingIndices.length : 0) + surfaceIndices.length;
+  // Position attribute'u güncelle
+  positions.needsUpdate = true;
   
-  if (totalIndices > 65535) {
-    newIndices = new Uint32Array(totalIndices);
-  } else {
-    newIndices = new Uint16Array(totalIndices);
-  }
+  // Geometriyi yeniden hesapla
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
   
-  // Mevcut indices'leri kopyala
-  if (existingIndices) {
-    newIndices.set(existingIndices);
-    // Surface indices'leri ekle
-    for (let i = 0; i < surfaceIndices.length; i++) {
-      newIndices[existingIndices.length + i] = surfaceIndices[i];
-    }
-  } else {
-    // Non-indexed geometry için indices oluştur
-    const vertexCount = existingPositions.length / 3;
-    for (let i = 0; i < vertexCount; i++) {
-      newIndices[i] = i;
-    }
-    // Surface indices'leri ekle
-    for (let i = 0; i < surfaceIndices.length; i++) {
-      newIndices[vertexCount + i] = surfaceIndices[i];
-    }
-  }
+  console.log(`✅ Vertex cleanup completed: ${cleanedVertexCount} vertices projected to reference plane`);
   
-  // Yeni geometri oluştur
-  const newGeometry = new THREE.BufferGeometry();
-  newGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
-  newGeometry.setIndex(Array.from(newIndices));
-  
-  // Normal'ları yeniden hesapla
-  newGeometry.computeVertexNormals();
-  newGeometry.computeBoundingBox();
-  newGeometry.computeBoundingSphere();
-  
-  console.log(`✅ Complete surface added: ${surfaceIndices.length / 3} triangles added to geometry (${filteredVertices.length} vertices - full coverage)`);
-  
-  return newGeometry;
+  return geometry;
 };
 
 /**
@@ -558,10 +526,10 @@ export const performBooleanSubtract = async (
               continue;
             }
             
-             // Highlighted surface'i yeni geometriye yüzey olarak ekle
+             // Highlighted surface'i referans olarak kullanarak vertex temizliği yap
              if (highlightedSurfaceVertices && highlightedSurfaceVertices.length > 0) {
-               newGeom = addSurfaceToGeometry(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
-               console.log('🎯 Highlighted surface added as face to new geometry');
+               newGeom = cleanupGeometryUsingReference(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
+               console.log('🎯 Geometry cleaned up using highlighted surface as reference');
              }
              
             try { 
@@ -614,10 +582,10 @@ export const performBooleanSubtract = async (
           continue;
       }
       
-       // Highlighted surface'i yeni geometriye yüzey olarak ekle
+       // Highlighted surface'i referans olarak kullanarak vertex temizliği yap
        if (highlightedSurfaceVertices && highlightedSurfaceVertices.length > 0) {
-         newGeom = addSurfaceToGeometry(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
-         console.log('🎯 Highlighted surface added as face to new geometry');
+         newGeom = cleanupGeometryUsingReference(newGeom, highlightedSurfaceVertices, targetBrush.matrixWorld);
+         console.log('🎯 Geometry cleaned up using highlighted surface as reference');
        }
        
       try { 
