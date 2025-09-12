@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
-import { groupPlanarFaces, findPlanarGroupByTriangle, createPlanarGroupHighlight, PlanarGroup } from './planarFaceGrouping';
 (THREE.Mesh as any).prototype.raycast = acceleratedRaycast;
 
 // --- Shape Interface and Flood-Fill Face Utility Functions ---
@@ -28,11 +27,9 @@ export interface FaceHighlight {
     mesh: THREE.Mesh;
     faceIndex: number;
     shapeId: string;
-    planarGroup?: PlanarGroup;
 }
 
 let currentHighlight: FaceHighlight | null = null;
-let cachedPlanarGroups: Map<string, PlanarGroup[]> = new Map();
 
 /**
  * BufferGeometry'den face vertices'lerini al
@@ -315,19 +312,6 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
 };
 
 /**
- * Clear cached planar groups (call when geometry changes)
- */
-export const clearPlanarGroupsCache = (meshId?: string) => {
-    if (meshId) {
-        cachedPlanarGroups.delete(meshId);
-        console.log(`🗑️ Cleared planar groups cache for mesh: ${meshId}`);
-    } else {
-        cachedPlanarGroups.clear();
-        console.log('🗑️ Cleared all planar groups cache');
-    }
-};
-
-/**
  * Yüzey highlight'ı ekle (Flood-Fill tabanlı)
  */
 
@@ -341,9 +325,9 @@ type RegionResult = {
     weldedToWorld: Map<number, THREE.Vector3>;
 };
 
-const QUANT_EPS = 1e-3;  // increased weld tolerance for better vertex merging
-const ANGLE_DEG = 2;     // tighter angle tolerance for better coplanarity
-const PLANE_EPS = 1e-2;  // 10mm plane tolerance for robust coplanar detection
+const QUANT_EPS = 1e-4;  // weld tolerance in world units
+const ANGLE_DEG = 4;     // dihedral angle tolerance
+const PLANE_EPS = 5e-3;  // increased plane epsilon for better coplanar detection (5mm tolerance)
 
 const posKey = (v: THREE.Vector3, eps: number) => {
     const kx = Math.round(v.x / eps);
@@ -434,20 +418,14 @@ const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferA
 
 const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
-        mesh, QUANT_EPS * (() => { 
-            const s = new THREE.Vector3(); 
-            const p = new THREE.Vector3(); 
-            const q = new THREE.Quaternion(); 
-            mesh.matrixWorld.decompose(p,q,s); 
-            return Math.max(Math.abs(s.x), Math.abs(s.y), Math.abs(s.z)); // use max scale instead of average
-        })()
+        mesh, QUANT_EPS * (() => { const s = new THREE.Vector3(); const p = new THREE.Vector3(); const q = new THREE.Quaternion(); mesh.matrixWorld.decompose(p,q,s); return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; })()
     );
 
     const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
     mesh.matrixWorld.decompose(pvec, q, svec);
-    const scaleMag = Math.max(Math.abs(svec.x), Math.abs(svec.y), Math.abs(svec.z));
-    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 3); // 3x scale factor for robust tolerance
-    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG)); // use original tight angle tolerance
+    const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 2); // increased scale factor for better tolerance
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // increased angle tolerance to 8 degrees
 
     let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
     const seedW = triToWelded[seedTri];
@@ -459,39 +437,22 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const queue: number[] = [seedTri];
     visited.add(seedTri);
 
-    // ROBUST COPLANAR DETECTION - Multi-stage validation
-    const isTriangleCoplanar = (triIndex: number): boolean => {
-        const wids = triToWelded[triIndex];
-        const pa = weldedIdToWorld.get(wids[0])!;
-        const pb = weldedIdToWorld.get(wids[1])!;
-        const pc = weldedIdToWorld.get(wids[2])!;
+    // Enhanced coplanar detection with vertex analysis
+    const analyzeCoplanarVertices = (triangleIndices: number[]): boolean => {
+        // Get all unique vertices from the triangle
+        const vertices = triangleIndices.map(idx => weldedIdToWorld.get(triToWelded[idx][0])!);
         
-        // Stage 1: All vertices must be within plane tolerance
-        const distA = Math.abs(plane.distanceToPoint(pa));
-        const distB = Math.abs(plane.distanceToPoint(pb));
-        const distC = Math.abs(plane.distanceToPoint(pc));
-        
-        // Calculate adaptive tolerance based on triangle size
-        const triangleSize = Math.max(pa.distanceTo(pb), pb.distanceTo(pc), pc.distanceTo(pa));
-        const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.02); // 2% of triangle size
-        
-        // Stage 2: Strict vertex coplanarity check
-        if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
-            return false;
+        // Check if all vertices lie on the same plane within tolerance
+        let coplanarCount = 0;
+        for (const vertex of vertices) {
+            const distanceToPlane = Math.abs(plane.distanceToPoint(vertex));
+            if (distanceToPlane <= planeEps * 1.5) { // increased tolerance for vertex coplanarity
+                coplanarCount++;
+            }
         }
         
-        // Stage 3: Triangle normal alignment check
-        const triNormal = triNormalWorld(mesh, triIndex, index, posAttr);
-        const normalAlignment = Math.max(
-            triNormal.dot(avgNormal),
-            triNormal.dot(avgNormal.clone().negate())
-        );
-        
-        // Stage 4: Triangle center coplanarity
-        const triCenter = new THREE.Vector3().add(pa).add(pb).add(pc).divideScalar(3);
-        const centerDist = Math.abs(plane.distanceToPoint(triCenter));
-        
-        return normalAlignment >= angleCos && centerDist <= adaptiveTolerance * 0.5;
+        // If majority of vertices are coplanar, consider the triangle coplanar
+        return coplanarCount >= vertices.length * 0.7; // 70% threshold
     };
     while (queue.length) {
         const t = queue.shift()!;
@@ -499,31 +460,46 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
         const neighs = neighbors.get(t) || [];
         for (const nt of neighs) {
             if (visited.has(nt)) continue;
-            
-            // MULTI-STAGE COPLANARITY VALIDATION
             const n = triNormalWorld(mesh, nt, index, posAttr);
             
-            // Stage 1: Bidirectional normal alignment
+            // Enhanced normal check with bidirectional tolerance
             const normalDot = Math.max(n.dot(avgNormal), n.dot(avgNormal.clone().negate()));
             if (normalDot < angleCos) continue;
+
+            const wids = triToWelded[nt];
+            const pa = weldedIdToWorld.get(wids[0])!;
+            const pb = weldedIdToWorld.get(wids[1])!;
+            const pc = weldedIdToWorld.get(wids[2])!;
             
-            // Stage 2: Comprehensive coplanarity check
-            if (!isTriangleCoplanar(nt)) {
-                continue;
+            // Enhanced coplanarity check with adaptive tolerance
+            const distA = Math.abs(plane.distanceToPoint(pa));
+            const distB = Math.abs(plane.distanceToPoint(pb));
+            const distC = Math.abs(plane.distanceToPoint(pc));
+            
+            // Use adaptive tolerance based on triangle size
+            const triangleSize = Math.max(
+                pa.distanceTo(pb),
+                pb.distanceTo(pc),
+                pc.distanceTo(pa)
+            );
+            const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.01); // 1% of triangle size
+            
+            if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
+                // Additional check: analyze coplanar vertices in the region
+                if (!analyzeCoplanarVertices([t, nt])) {
+                    continue;
+                }
             }
 
             visited.add(nt);
             queue.push(nt);
             
-            // PROGRESSIVE PLANE REFINEMENT
-            // Weight by normal alignment quality
-            const weight = normalDot * normalDot; // quadratic weighting for better alignment
-            avgNormal.lerp(n, weight * 0.1).normalize(); // gentle lerp for stability
+            // Weighted normal averaging for better plane estimation
+            const weight = 1.0 / (1.0 + Math.min(distA, distB, distC)); // weight by coplanarity
+            avgNormal.add(n.multiplyScalar(weight)).normalize();
             plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
         }
     }
-    
-    console.log(`🎯 Advanced coplanar region grown: ${region.length} triangles with robust multi-stage validation`);
 
     // boundary edges (welded) with count==1
     const edgeCount = new Map<string, number>();
@@ -595,11 +571,6 @@ const buildFaceOverlayFromHit = (
     const res = growRegion(mesh, seedTri);
     if (res.boundaryLoops.length === 0) return null;
 
-    // Calculate scale magnitude from mesh matrix
-    const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
-    mesh.matrixWorld.decompose(pvec, q, svec);
-    const scaleMag = Math.max(Math.abs(svec.x), Math.abs(svec.y), Math.abs(svec.z));
-
     const n = res.normal.clone().normalize();
     const up = Math.abs(n.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
     const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
@@ -640,9 +611,8 @@ const buildFaceOverlayFromHit = (
     const verts: number[] = [];
     const all2D = outer.concat(...holes);
     for (const v2 of all2D) {
-        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset) - scale aware
-        const offsetDistance = Math.max(0.5, scaleMag * 0.001); // scale-aware offset
-        const p3 = to3D(v2).addScaledVector(n, offsetDistance);
+        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset)
+        const p3 = to3D(v2).addScaledVector(n, 0.5);
         verts.push(p3.x, p3.y, p3.z);
     }
 
@@ -654,16 +624,7 @@ const buildFaceOverlayFromHit = (
     g.setIndex(indices);
     g.computeVertexNormals();
 
-    const mat = new THREE.MeshBasicMaterial({ 
-        color, 
-        opacity: Math.min(opacity + 0.1, 0.8), // slightly more visible
-        transparent: true, 
-        depthWrite: false, 
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -1,
-        polygonOffsetUnits: -1
-    });
+    const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
     const overlay = new THREE.Mesh(g, mat);
     overlay.renderOrder = 999;
     scene.add(overlay);
@@ -688,177 +649,21 @@ export const highlightFace = (
     color: number = 0xff6b35,
     opacity: number = 0.6
 ): FaceHighlight | null => {
-    console.log(`🎯 highlightFace: Starting face highlight for face ${hit.faceIndex}`);
-    
     clearFaceHighlight(scene);
-    
-    if (!hit.face || hit.faceIndex === undefined) {
-        console.warn('🎯 highlightFace: Invalid hit - no face or faceIndex');
-        return null;
-    }
-    
+    if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;
-    
-    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) {
-        console.warn('🎯 highlightFace: Mesh geometry has no position attribute');
-        return null;
-    }
+    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
 
-    console.log(`🎯 FACE HIGHLIGHT - Starting highlight creation for face ${hit.faceIndex}`);
+    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
-    try {
-        // Build BVH for faster raycasting if not already built
-        const geom = (mesh.geometry as any);
-        if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
-            console.log('🔧 Building BVH acceleration structure for face highlighting');
-            geom.computeBoundsTree();
-        }
-        
-        // Get or create planar groups for this mesh
-        const meshId = shape.id;
-        let planarGroups = cachedPlanarGroups.get(meshId);
-        
-        if (!planarGroups) {
-            console.log('🔧 Computing planar groups for mesh...');
-            planarGroups = groupPlanarFaces(mesh.geometry as THREE.BufferGeometry, mesh.matrixWorld);
-            cachedPlanarGroups.set(meshId, planarGroups);
-            console.log(`📊 Cached ${planarGroups.length} planar groups for mesh ${meshId}`);
-        }
-        
-        // Find the planar group containing the clicked triangle
-        const planarGroup = findPlanarGroupByTriangle(planarGroups, hit.faceIndex);
-        
-        if (!planarGroup) {
-            console.warn(`❌ No planar group found for triangle ${hit.faceIndex}, using fallback highlight`);
-            // Fallback: Create simple triangle highlight
-            return createSimpleFaceHighlight(scene, hit, shape, color, opacity);
-        }
-        
-        console.log(`✅ Found planar group: ${planarGroup.id} with ${planarGroup.triangles.length} triangles, area: ${planarGroup.area.toFixed(1)}`);
-        
-        // Create highlight mesh from planar group
-        const overlay = createPlanarGroupHighlight(planarGroup, color, opacity);
-        if (!overlay) {
-            console.warn('🎯 Failed to create planar group highlight, using fallback');
-            return createSimpleFaceHighlight(scene, hit, shape, color, opacity);
-        }
-        
-        scene.add(overlay);
-        
-        console.log(`✅ FACE HIGHLIGHT COMPLETE - Planar surface highlighted successfully`);
-        
-        currentHighlight = { 
-            mesh: overlay, 
-            faceIndex: hit.faceIndex, 
-            shapeId: shape.id,
-            planarGroup 
-        };
-        return currentHighlight;
-        
-    } catch (error) {
-        console.error('🎯 highlightFace: Error in planar face grouping, using fallback:', error);
-        return createSimpleFaceHighlight(scene, hit, shape, color, opacity);
-    }
-};
+    // Build a SINGLE overlay mesh for the entire planar region
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
+    if (!overlay) return null;
 
-/**
- * Create simple face highlight as fallback
- */
-const createSimpleFaceHighlight = (
-    scene: THREE.Scene,
-    hit: THREE.Intersection,
-    shape: Shape,
-    color: number,
-    opacity: number
-): FaceHighlight | null => {
-    console.log('🎯 Creating simple face highlight as fallback');
+    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
     
-    const mesh = hit.object as THREE.Mesh;
-    const geometry = mesh.geometry as THREE.BufferGeometry;
-    
-    // Get triangle vertices
-    const vertices = getTriangleVertices(geometry, hit.faceIndex!, mesh.matrixWorld);
-    if (vertices.length !== 3) {
-        console.warn('🎯 Invalid triangle vertices for simple highlight');
-        return null;
-    }
-    
-    // Create simple triangle geometry
-    const highlightGeometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(9); // 3 vertices * 3 components
-    
-    vertices.forEach((vertex, i) => {
-        positions[i * 3] = vertex.x;
-        positions[i * 3 + 1] = vertex.y;
-        positions[i * 3 + 2] = vertex.z;
-    });
-    
-    highlightGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    highlightGeometry.setIndex([0, 1, 2]);
-    highlightGeometry.computeVertexNormals();
-    
-    // Create material
-    const material = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        polygonOffset: true,
-        polygonOffsetFactor: -1,
-        polygonOffsetUnits: -1
-    });
-    
-    const overlay = new THREE.Mesh(highlightGeometry, material);
-    overlay.renderOrder = 999;
-    scene.add(overlay);
-    
-    currentHighlight = { 
-        mesh: overlay, 
-        faceIndex: hit.faceIndex!, 
-        shapeId: shape.id
-    };
-    
-    console.log('✅ Simple face highlight created successfully');
+    currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     return currentHighlight;
-};
-
-/**
- * Get triangle vertices from geometry
- */
-const getTriangleVertices = (
-    geometry: THREE.BufferGeometry, 
-    triangleIndex: number,
-    worldMatrix: THREE.Matrix4
-): THREE.Vector3[] => {
-    const position = geometry.attributes.position;
-    const index = geometry.index;
-    
-    const vertices: THREE.Vector3[] = [];
-    
-    try {
-        if (index) {
-            // Indexed geometry
-            for (let i = 0; i < 3; i++) {
-                const vertexIndex = index.getX(triangleIndex * 3 + i);
-                const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
-                vertex.applyMatrix4(worldMatrix);
-                vertices.push(vertex);
-            }
-        } else {
-            // Non-indexed geometry
-            for (let i = 0; i < 3; i++) {
-                const vertex = new THREE.Vector3().fromBufferAttribute(position, triangleIndex * 3 + i);
-                vertex.applyMatrix4(worldMatrix);
-                vertices.push(vertex);
-            }
-        }
-    } catch (error) {
-        console.warn('Error getting triangle vertices:', error);
-        return null;
-    }
-    
-    return vertices;
 };
 
 
@@ -871,8 +676,6 @@ export const detectFaceAtMouse = (
     mesh: THREE.Mesh,
     canvas: HTMLCanvasElement
 ): THREE.Intersection[] => {
-    console.log('🎯 detectFaceAtMouse: Starting face detection...');
-    
     const rect = canvas.getBoundingClientRect();
     const mouse = new THREE.Vector2();
     
@@ -880,36 +683,26 @@ export const detectFaceAtMouse = (
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
-    console.log(`🎯 detectFaceAtMouse: Mouse normalized coords: [${mouse.x.toFixed(3)}, ${mouse.y.toFixed(3)}]`);
-    
     // Raycaster oluştur
     const raycaster = new THREE.Raycaster();
     
     // Build BVH lazily for faster and robust raycasting
     const geom = (mesh.geometry as any);
     if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
-        console.log('🎯 detectFaceAtMouse: Building BVH tree for faster raycasting...');
         geom.computeBoundsTree();
     }
-    
     raycaster.setFromCamera(mouse, camera);
-    
-    console.log(`🎯 detectFaceAtMouse: Raycaster origin: [${raycaster.ray.origin.x.toFixed(1)}, ${raycaster.ray.origin.y.toFixed(1)}, ${raycaster.ray.origin.z.toFixed(1)}]`);
-    console.log(`🎯 detectFaceAtMouse: Raycaster direction: [${raycaster.ray.direction.x.toFixed(3)}, ${raycaster.ray.direction.y.toFixed(3)}, ${raycaster.ray.direction.z.toFixed(3)}]`);
     
     // Intersection test
     const intersects = raycaster.intersectObject(mesh, false);
     
     if (intersects.length > 0) {
-        console.log('🎯 detectFaceAtMouse: Faces detected:', {
+        console.log('🎯 Face detected:', {
             count: intersects.length,
             firstFaceIndex: intersects[0].faceIndex,
-            distance: intersects[0].distance.toFixed(2),
-            point: intersects[0].point.toArray().map(v => v.toFixed(1))
+            distance: intersects[0].distance.toFixed(2)
         });
         return intersects;
-    } else {
-        console.log('🎯 detectFaceAtMouse: No intersections found');
     }
     
     return [];
