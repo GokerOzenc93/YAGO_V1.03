@@ -286,9 +286,20 @@ export const groupPlanarFaces = (
 ): PlanarGroup[] => {
   console.log('🎯 Starting advanced planar face grouping...');
   
+  // Validate input geometry
+  if (!geometry || !geometry.attributes || !geometry.attributes.position) {
+    console.error('🎯 groupPlanarFaces: Invalid geometry - no position attribute');
+    return [];
+  }
+  
   const triangleCount = geometry.index ? 
     geometry.index.count / 3 : 
     geometry.attributes.position.count / 3;
+  
+  if (triangleCount === 0) {
+    console.warn('🎯 groupPlanarFaces: No triangles found in geometry');
+    return [];
+  }
   
   console.log(`📊 Processing ${triangleCount} triangles`);
   
@@ -299,8 +310,27 @@ export const groupPlanarFaces = (
   for (let i = 0; i < triangleCount; i++) {
     if (processedTriangles.has(i)) continue;
     
-    const vertices = getTriangleVertices(geometry, i, worldMatrix);
+    let vertices;
+    try {
+      vertices = getTriangleVertices(geometry, i, worldMatrix);
+    } catch (error) {
+      console.warn(`🎯 groupPlanarFaces: Error getting vertices for triangle ${i}:`, error);
+      continue;
+    }
+    
+    if (vertices.length !== 3) {
+      console.warn(`🎯 groupPlanarFaces: Invalid vertex count for triangle ${i}: ${vertices.length}`);
+      continue;
+    }
+    
     const normal = getFaceNormal(vertices[0], vertices[1], vertices[2]);
+    
+    // Validate normal
+    if (normal.length() === 0 || isNaN(normal.x) || isNaN(normal.y) || isNaN(normal.z)) {
+      console.warn(`🎯 groupPlanarFaces: Invalid normal for triangle ${i}`);
+      continue;
+    }
+    
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, vertices[0]);
     
     // Find all coplanar triangles
@@ -310,8 +340,24 @@ export const groupPlanarFaces = (
     for (let j = i + 1; j < triangleCount; j++) {
       if (processedTriangles.has(j)) continue;
       
-      const otherVertices = getTriangleVertices(geometry, j, worldMatrix);
+      let otherVertices;
+      try {
+        otherVertices = getTriangleVertices(geometry, j, worldMatrix);
+      } catch (error) {
+        console.warn(`🎯 groupPlanarFaces: Error getting vertices for triangle ${j}:`, error);
+        continue;
+      }
+      
+      if (otherVertices.length !== 3) {
+        continue;
+      }
+      
       const otherNormal = getFaceNormal(otherVertices[0], otherVertices[1], otherVertices[2]);
+      
+      // Validate other normal
+      if (otherNormal.length() === 0 || isNaN(otherNormal.x) || isNaN(otherNormal.y) || isNaN(otherNormal.z)) {
+        continue;
+      }
       
       // Check if coplanar
       if (areNormalsCoplanar(normal, otherNormal) && 
@@ -324,14 +370,31 @@ export const groupPlanarFaces = (
     console.log(`🔍 Found ${coplanarTriangles.length} coplanar triangles for group ${groups.length + 1}`);
     
     // Create polygon from coplanar triangles
-    const polygon = createPolygonFromTriangles(coplanarTriangles, geometry, worldMatrix, normal);
+    let polygon;
+    try {
+      polygon = createPolygonFromTriangles(coplanarTriangles, geometry, worldMatrix, normal);
+    } catch (error) {
+      console.warn(`🎯 groupPlanarFaces: Error creating polygon for group ${groups.length + 1}:`, error);
+      polygon = [];
+    }
     
     // Collect all vertices for bounding box
     const allVertices: THREE.Vector3[] = [];
     coplanarTriangles.forEach(triangleIndex => {
-      const triangleVertices = getTriangleVertices(geometry, triangleIndex, worldMatrix);
-      allVertices.push(...triangleVertices);
+      try {
+        const triangleVertices = getTriangleVertices(geometry, triangleIndex, worldMatrix);
+        if (triangleVertices.length === 3) {
+          allVertices.push(...triangleVertices);
+        }
+      } catch (error) {
+        console.warn(`🎯 groupPlanarFaces: Error getting vertices for bounding box, triangle ${triangleIndex}:`, error);
+      }
     });
+    
+    if (allVertices.length === 0) {
+      console.warn(`🎯 groupPlanarFaces: No valid vertices for group ${groups.length + 1}, skipping`);
+      continue;
+    }
     
     // Calculate bounding box
     const boundingBox = new THREE.Box3().setFromPoints(allVertices);
@@ -342,6 +405,7 @@ export const groupPlanarFaces = (
       for (let k = 0; k < ring.length - 1; k++) {
         const curr = ring[k];
         const next = ring[k + 1];
+        if (!curr || !next) continue;
         ringArea += curr.x * next.y - next.x * curr.y;
       }
       return total + Math.abs(ringArea) / 2;

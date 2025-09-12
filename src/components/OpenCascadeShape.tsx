@@ -234,6 +234,9 @@ const OpenCascadeShape: React.FC<Props> = ({
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
+      
+      console.log('🎯 Face Edit Mode: Click detected, detecting faces...');
+      
       const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -242,9 +245,11 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
 
       if (hits.length === 0) {
-        console.warn('🎯 No face detected');
+        console.warn('🎯 Face Edit Mode: No face detected at click position');
         return;
       }
+      
+      console.log(`🎯 Face Edit Mode: ${hits.length} faces detected`);
 
       const { clientX, clientY } = e.nativeEvent;
       let cycle = faceCycleRef.current;
@@ -264,14 +269,20 @@ const OpenCascadeShape: React.FC<Props> = ({
 
       const hit = cycle.hits[cycle.index];
       if (hit.faceIndex === undefined) {
-        console.warn('🎯 No face index');
+        console.warn('🎯 Face Edit Mode: No face index in hit result');
         return;
       }
 
+      console.log(`🎯 Face Edit Mode: Highlighting face ${hit.faceIndex}`);
+      
+      // Use shape parameter correctly for face highlighting
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
+      
       if (highlight && onFaceSelect) {
         onFaceSelect(hit.faceIndex);
-        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
+        console.log(`🎯 Face Edit Mode: Face ${hit.faceIndex} selected and highlighted successfully`);
+      } else {
+        console.warn('🎯 Face Edit Mode: Failed to create highlight or onFaceSelect not available');
       }
       return;
     }

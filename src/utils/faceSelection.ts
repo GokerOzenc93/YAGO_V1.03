@@ -688,10 +688,21 @@ export const highlightFace = (
     color: number = 0xff6b35,
     opacity: number = 0.6
 ): FaceHighlight | null => {
+    console.log(`🎯 highlightFace: Starting face highlight for face ${hit.faceIndex}`);
+    
     clearFaceHighlight(scene);
-    if (!hit.face || hit.faceIndex === undefined) return null;
+    
+    if (!hit.face || hit.faceIndex === undefined) {
+        console.warn('🎯 highlightFace: Invalid hit - no face or faceIndex');
+        return null;
+    }
+    
     const mesh = hit.object as THREE.Mesh;
-    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
+    
+    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) {
+        console.warn('🎯 highlightFace: Mesh geometry has no position attribute');
+        return null;
+    }
 
     console.log(`🎯 PLANAR FACE GROUPING - Starting advanced coplanar analysis for face ${hit.faceIndex}`);
     
@@ -708,9 +719,14 @@ export const highlightFace = (
     
     if (!planarGroups) {
         console.log('🔧 Computing planar groups for mesh...');
-        planarGroups = groupPlanarFaces(mesh.geometry as THREE.BufferGeometry, mesh.matrixWorld);
-        cachedPlanarGroups.set(meshId, planarGroups);
-        console.log(`📊 Cached ${planarGroups.length} planar groups for mesh ${meshId}`);
+        try {
+            planarGroups = groupPlanarFaces(mesh.geometry as THREE.BufferGeometry, mesh.matrixWorld);
+            cachedPlanarGroups.set(meshId, planarGroups);
+            console.log(`📊 Cached ${planarGroups.length} planar groups for mesh ${meshId}`);
+        } catch (error) {
+            console.error('🎯 highlightFace: Error computing planar groups:', error);
+            return null;
+        }
     }
     
     // Find the planar group containing the clicked triangle
@@ -724,8 +740,15 @@ export const highlightFace = (
     console.log(`✅ Found planar group: ${planarGroup.id} with ${planarGroup.triangles.length} triangles, area: ${planarGroup.area.toFixed(1)}`);
     
     // Create highlight mesh from planar group
-    const overlay = createPlanarGroupHighlight(planarGroup, color, opacity);
-    scene.add(overlay);
+    let overlay;
+    try {
+        overlay = createPlanarGroupHighlight(planarGroup, color, opacity);
+        scene.add(overlay);
+    } catch (error) {
+        console.error('🎯 highlightFace: Error creating planar group highlight:', error);
+        return null;
+    }
+    
     if (!overlay) return null;
 
     console.log(`✅ PLANAR FACE GROUPING COMPLETE - Advanced coplanar surface selected`);
@@ -749,6 +772,8 @@ export const detectFaceAtMouse = (
     mesh: THREE.Mesh,
     canvas: HTMLCanvasElement
 ): THREE.Intersection[] => {
+    console.log('🎯 detectFaceAtMouse: Starting face detection...');
+    
     const rect = canvas.getBoundingClientRect();
     const mouse = new THREE.Vector2();
     
@@ -756,26 +781,36 @@ export const detectFaceAtMouse = (
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
+    console.log(`🎯 detectFaceAtMouse: Mouse normalized coords: [${mouse.x.toFixed(3)}, ${mouse.y.toFixed(3)}]`);
+    
     // Raycaster oluştur
     const raycaster = new THREE.Raycaster();
     
     // Build BVH lazily for faster and robust raycasting
     const geom = (mesh.geometry as any);
     if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+        console.log('🎯 detectFaceAtMouse: Building BVH tree for faster raycasting...');
         geom.computeBoundsTree();
     }
+    
     raycaster.setFromCamera(mouse, camera);
+    
+    console.log(`🎯 detectFaceAtMouse: Raycaster origin: [${raycaster.ray.origin.x.toFixed(1)}, ${raycaster.ray.origin.y.toFixed(1)}, ${raycaster.ray.origin.z.toFixed(1)}]`);
+    console.log(`🎯 detectFaceAtMouse: Raycaster direction: [${raycaster.ray.direction.x.toFixed(3)}, ${raycaster.ray.direction.y.toFixed(3)}, ${raycaster.ray.direction.z.toFixed(3)}]`);
     
     // Intersection test
     const intersects = raycaster.intersectObject(mesh, false);
     
     if (intersects.length > 0) {
-        console.log('🎯 Face detected:', {
+        console.log('🎯 detectFaceAtMouse: Faces detected:', {
             count: intersects.length,
             firstFaceIndex: intersects[0].faceIndex,
-            distance: intersects[0].distance.toFixed(2)
+            distance: intersects[0].distance.toFixed(2),
+            point: intersects[0].point.toArray().map(v => v.toFixed(1))
         });
         return intersects;
+    } else {
+        console.log('🎯 detectFaceAtMouse: No intersections found');
     }
     
     return [];
