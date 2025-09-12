@@ -327,7 +327,7 @@ type RegionResult = {
 
 const QUANT_EPS = 1e-4;  // weld tolerance in world units
 const ANGLE_DEG = 4;     // dihedral angle tolerance
-const PLANE_EPS = 2e-4;  // base plane epsilon (scaled with object size)
+const PLANE_EPS = 5e-3;  // increased plane epsilon for better coplanar detection (5mm tolerance)
 
 const posKey = (v: THREE.Vector3, eps: number) => {
     const kx = Math.round(v.x / eps);
@@ -424,8 +424,8 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
     mesh.matrixWorld.decompose(pvec, q, svec);
     const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
-    const planeEps = PLANE_EPS * Math.max(1, scaleMag);
-    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG));
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 2); // increased scale factor for better tolerance
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // increased angle tolerance to 8 degrees
 
     let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
     const seedW = triToWelded[seedTri];
@@ -437,6 +437,23 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const queue: number[] = [seedTri];
     visited.add(seedTri);
 
+    // Enhanced coplanar detection with vertex analysis
+    const analyzeCoplanarVertices = (triangleIndices: number[]): boolean => {
+        // Get all unique vertices from the triangle
+        const vertices = triangleIndices.map(idx => weldedIdToWorld.get(triToWelded[idx][0])!);
+        
+        // Check if all vertices lie on the same plane within tolerance
+        let coplanarCount = 0;
+        for (const vertex of vertices) {
+            const distanceToPlane = Math.abs(plane.distanceToPoint(vertex));
+            if (distanceToPlane <= planeEps * 1.5) { // increased tolerance for vertex coplanarity
+                coplanarCount++;
+            }
+        }
+        
+        // If majority of vertices are coplanar, consider the triangle coplanar
+        return coplanarCount >= vertices.length * 0.7; // 70% threshold
+    };
     while (queue.length) {
         const t = queue.shift()!;
         region.push(t);
@@ -444,19 +461,42 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
         for (const nt of neighs) {
             if (visited.has(nt)) continue;
             const n = triNormalWorld(mesh, nt, index, posAttr);
-            if (n.dot(avgNormal) < angleCos) continue;
+            
+            // Enhanced normal check with bidirectional tolerance
+            const normalDot = Math.max(n.dot(avgNormal), n.dot(avgNormal.clone().negate()));
+            if (normalDot < angleCos) continue;
 
             const wids = triToWelded[nt];
             const pa = weldedIdToWorld.get(wids[0])!;
             const pb = weldedIdToWorld.get(wids[1])!;
             const pc = weldedIdToWorld.get(wids[2])!;
-            if (Math.abs(plane.distanceToPoint(pa)) > planeEps) continue;
-            if (Math.abs(plane.distanceToPoint(pb)) > planeEps) continue;
-            if (Math.abs(plane.distanceToPoint(pc)) > planeEps) continue;
+            
+            // Enhanced coplanarity check with adaptive tolerance
+            const distA = Math.abs(plane.distanceToPoint(pa));
+            const distB = Math.abs(plane.distanceToPoint(pb));
+            const distC = Math.abs(plane.distanceToPoint(pc));
+            
+            // Use adaptive tolerance based on triangle size
+            const triangleSize = Math.max(
+                pa.distanceTo(pb),
+                pb.distanceTo(pc),
+                pc.distanceTo(pa)
+            );
+            const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.01); // 1% of triangle size
+            
+            if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
+                // Additional check: analyze coplanar vertices in the region
+                if (!analyzeCoplanarVertices([t, nt])) {
+                    continue;
+                }
+            }
 
             visited.add(nt);
             queue.push(nt);
-            avgNormal.add(n).normalize();
+            
+            // Weighted normal averaging for better plane estimation
+            const weight = 1.0 / (1.0 + Math.min(distA, distB, distC)); // weight by coplanarity
+            avgNormal.add(n.multiplyScalar(weight)).normalize();
             plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
         }
     }
@@ -614,10 +654,14 @@ export const highlightFace = (
     const mesh = hit.object as THREE.Mesh;
     if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
 
+    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
+    
     // Build a SINGLE overlay mesh for the entire planar region
     const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
     if (!overlay) return null;
 
+    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
+    
     currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     return currentHighlight;
 };
