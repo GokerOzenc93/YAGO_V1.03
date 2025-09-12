@@ -18,6 +18,7 @@
     "react-dom": "^18.3.1",
     "three": "^0.162.0",
     "two.js": "^0.8.13",
+    "vite-plugin-solid": "^2.11.8",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
