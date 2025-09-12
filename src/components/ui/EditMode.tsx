@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
+import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
 
 interface EditModeProps {
   editedShape: Shape;
