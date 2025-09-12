@@ -735,10 +735,16 @@ export const performBooleanSubtract = async (
         const faceNormal = getFaceNormal(targetShape.geometry, selectedFaceIndex);
         const faceCenter = getFaceCenter(targetShape.geometry, selectedFaceIndex);
         
-        if (faceNormal && faceCenter && 
+        // Explicit validation before creating THREE.Plane
+        if (faceNormal !== null && faceNormal !== undefined && 
+            faceCenter !== null && faceCenter !== undefined &&
             faceNormal instanceof THREE.Vector3 && faceCenter instanceof THREE.Vector3 &&
-            !isNaN(faceNormal.x) && !isNaN(faceNormal.y) && !isNaN(faceNormal.z) &&
-            !isNaN(faceCenter.x) && !isNaN(faceCenter.y) && !isNaN(faceCenter.z)) {
+            typeof faceNormal.x === 'number' && !isNaN(faceNormal.x) &&
+            typeof faceNormal.y === 'number' && !isNaN(faceNormal.y) &&
+            typeof faceNormal.z === 'number' && !isNaN(faceNormal.z) &&
+            typeof faceCenter.x === 'number' && !isNaN(faceCenter.x) &&
+            typeof faceCenter.y === 'number' && !isNaN(faceCenter.y) &&
+            typeof faceCenter.z === 'number' && !isNaN(faceCenter.z)) {
           // Seçili yüzeyden itibaren kesme düzlemi oluştur
           const cuttingPlane = new THREE.Plane(faceNormal, -faceNormal.dot(faceCenter));
           
