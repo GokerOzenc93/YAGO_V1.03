@@ -221,28 +221,10 @@ const Scene: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Handle Enter key for Trim with Knife mode
-      if (e.key === 'Enter' && activeTool === Tool.BOOLEAN_SUBTRACT_TOOL) {
-        const { completeBooleanSubtract, resetBooleanSubtract, setActiveTool } = useAppStore.getState();
-        
-        // Complete the boolean subtract operation first
-        completeBooleanSubtract();
-        
-        // Then reset and exit
-        resetBooleanSubtract();
-        setActiveTool(Tool.SELECT);
-        console.log('➖ Boolean Subtract mode ended with Enter key');
-        return;
-      }
-      
       if (e.key === 'Escape') {
         selectShape(null);
         // Reset Point to Point Move when pressing Escape
         useAppStore.getState().resetPointToPointMove();
-        // Reset Boolean Subtract when pressing Escape
-        if (activeTool === Tool.BOOLEAN_SUBTRACT_TOOL) {
-          useAppStore.getState().resetBooleanSubtract();
-        }
         // Exit edit mode when pressing Escape
         if (isEditMode) {
           exitEditMode();
@@ -251,7 +233,7 @@ const Scene: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectShape, isEditMode, activeTool]);
+  }, [selectShape, isEditMode]);
 
   useEffect(() => {
     const handleDoubleClick = (e) => {
