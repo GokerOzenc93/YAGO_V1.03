@@ -236,7 +236,7 @@ const createPolygonFromTriangles = (
     console.warn('Martinez clipping failed, using convex hull fallback:', error);
     
     // Fallback: Create simple convex hull
-    const hull = createConvexHull2D(vertices2D);
+    const hull = createConvexHull2D(weldedVertices2D);
     return [hull];
   }
 };
@@ -438,9 +438,49 @@ export const createPlanarGroupHighlight = (
   
   // Create geometry
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices3D, 3));
+  
+  // Validate vertices before creating geometry
+  const validVertices = [];
+  for (let i = 0; i < vertices3D.length; i += 3) {
+    const x = vertices3D[i];
+    const y = vertices3D[i + 1];
+    const z = vertices3D[i + 2];
+    
+    if (isNaN(x) || isNaN(y) || isNaN(z) || 
+        !isFinite(x) || !isFinite(y) || !isFinite(z)) {
+      console.warn('🎯 Skipping invalid vertex with NaN/Infinite values:', [x, y, z]);
+      continue;
+    }
+    
+    validVertices.push(x, y, z);
+  }
+  
+  // Check if we have enough valid vertices
+  if (validVertices.length < 9) { // Need at least 3 vertices (9 components)
+    console.warn('🎯 Not enough valid vertices for geometry creation');
+    return new THREE.Mesh(new THREE.BufferGeometry()); // Return empty geometry
+  }
+  
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(validVertices, 3));
   geometry.setIndex(triangles);
+  
+  // Validate geometry before computing bounds
+  const posAttr = geometry.attributes.position;
+  if (!posAttr || !posAttr.array || posAttr.array.length === 0) {
+    console.warn('🎯 Invalid position attribute, returning empty geometry');
+    return new THREE.Mesh(new THREE.BufferGeometry());
+  }
+  
   geometry.computeVertexNormals();
+  
+  // Safe bounding computation with error handling
+  try {
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+  } catch (error) {
+    console.warn('🎯 Failed to compute bounds, geometry may have invalid data:', error);
+    return new THREE.Mesh(new THREE.BufferGeometry()); // Return empty geometry on error
+  }
   
   // Create material
   const material = new THREE.MeshBasicMaterial({
