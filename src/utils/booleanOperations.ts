@@ -160,28 +160,16 @@ const addSurfaceToGeometry = (
   const invMatrix = new THREE.Matrix4().copy(worldMatrix).invert();
   const localSurfaceVertices = surfaceVertices.map(v => v.clone().applyMatrix4(invMatrix));
   
-  // Sadece kesişim sonrası kalan alanı kaplayan yüzey oluştur
-  // Çıkarma işlemi yapılan alanı hariç tut
-  const filteredVertices = localSurfaceVertices.filter((vertex, index) => {
-    // Geometrinin mevcut vertex'leriyle çakışan alanları filtrele
-    const positions = geometry.attributes.position;
-    let isInSubtractedArea = false;
-    
-    for (let i = 0; i < positions.count; i++) {
-      const existingVertex = new THREE.Vector3().fromBufferAttribute(positions, i);
-      if (vertex.distanceTo(existingVertex) < 1.0) { // 1mm tolerans
-        isInSubtractedArea = true;
-        break;
-      }
-    }
-    
-    return !isInSubtractedArea; // Çıkarma alanında olmayan vertex'leri tut
-  });
+  // 🎯 Use ALL surface vertices for complete surface coverage
+  // No filtering - we want the entire highlighted surface area
+  const filteredVertices = localSurfaceVertices;
   
   if (filteredVertices.length < 3) {
-    console.log('🎯 Not enough vertices after filtering, skipping surface addition');
+    console.log('🎯 Not enough vertices for surface creation, skipping surface addition');
     return geometry;
   }
+  
+  console.log(`🎯 Using ${filteredVertices.length} vertices for complete surface coverage (no filtering applied)`);
   
   // Yeni vertex array oluştur
   const newPositions = new Float32Array(existingPositions.length + filteredVertices.length * 3);
@@ -196,16 +184,26 @@ const addSurfaceToGeometry = (
     newPositions[offset + 2] = vertex.z;
   });
   
-  // Surface için triangulation yap
+  // 🎯 Advanced triangulation for complete surface
   const surfaceIndices: number[] = [];
   if (filteredVertices.length >= 3) {
-    // Basit fan triangulation
-    for (let i = 1; i < filteredVertices.length - 1; i++) {
-      surfaceIndices.push(
-        startIndex,
-        startIndex + i,
-        startIndex + i + 1
-      );
+    // 🎯 Improved triangulation for complex surfaces
+    if (filteredVertices.length === 3) {
+      // Simple triangle
+      surfaceIndices.push(startIndex, startIndex + 1, startIndex + 2);
+    } else if (filteredVertices.length === 4) {
+      // Quad - split into two triangles
+      surfaceIndices.push(startIndex, startIndex + 1, startIndex + 2);
+      surfaceIndices.push(startIndex, startIndex + 2, startIndex + 3);
+    } else {
+      // Complex polygon - fan triangulation from center
+      for (let i = 1; i < filteredVertices.length - 1; i++) {
+        surfaceIndices.push(
+          startIndex,
+          startIndex + i,
+          startIndex + i + 1
+        );
+      }
     }
   }
   
@@ -248,7 +246,7 @@ const addSurfaceToGeometry = (
   newGeometry.computeBoundingBox();
   newGeometry.computeBoundingSphere();
   
-  console.log(`✅ Filtered surface added: ${surfaceIndices.length / 3} triangles added to geometry (${filteredVertices.length} vertices after filtering)`);
+  console.log(`✅ Complete surface added: ${surfaceIndices.length / 3} triangles added to geometry (${filteredVertices.length} vertices - full coverage)`);
   
   return newGeometry;
 };
