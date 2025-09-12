@@ -332,12 +332,13 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
-    if (isBeingEdited) {
-      return 0.1; // Edit edilen şekiller çok az görünür
+    // 🎯 EDIT MODE: Tamamen şeffaf - sadece çizgiler görünür
+    if (isEditMode) {
+      return 0.0; // Edit modunda tamamen şeffaf
     }
     
-    return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
+    // Normal modda hafif görünür
+    return 0.3;
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
@@ -388,6 +389,15 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getMaterialProps = () => {
     const opacityValue = getOpacity(); // 👈 Dinamik opacity
 
+    // 🎯 EDIT MODE: Beyaz renk ve tamamen şeffaf
+    if (isEditMode) {
+      return {
+        color: '#ffffff', // Beyaz renk
+        transparent: true,
+        opacity: 0.0, // Tamamen şeffaf
+        visible: true,
+      };
+    }
     return {
       color: getShapeColor(),
       transparent: true, // 👈 Şeffaflık aktif
@@ -409,7 +419,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
+        visible={!isEditMode} // 👈 Edit modunda mesh görünmez, sadece çizgiler görünür
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
