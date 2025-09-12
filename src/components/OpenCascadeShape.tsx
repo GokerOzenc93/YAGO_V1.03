@@ -43,10 +43,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
-    isFaceSelectionMode,
-    selectedFaceShapeId,
-    selectedFaceIndex,
-    setSelectedFaceIndex,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -235,8 +231,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    // Face selection mode for boolean subtract
-    if (isFaceSelectionMode && selectedFaceShapeId === shape.id && e.nativeEvent.button === 0) {
+    // Face Edit mode - handle face selection
+    if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
       const hits = detectFaceAtMouse(
         e.nativeEvent,
@@ -246,7 +242,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
 
       if (hits.length === 0) {
-        console.warn('🎯 No face detected for face selection');
+        console.warn('🎯 No face detected');
         return;
       }
 
@@ -273,9 +269,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
 
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
-      if (highlight) {
-        setSelectedFaceIndex(hit.faceIndex);
-        console.log(`🎯 Face ${hit.faceIndex} selected as cutting plane. Press Enter to execute boolean subtract.`);
+      if (highlight && onFaceSelect) {
+        onFaceSelect(hit.faceIndex);
+        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
       }
       return;
     }
@@ -289,8 +285,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Face selection mode - prevent context menu
-    if (isFaceSelectionMode && selectedFaceShapeId === shape.id) {
+    // Face Edit mode - prevent context menu
+    if (isFaceEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;

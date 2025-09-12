@@ -120,7 +120,6 @@ export enum Tool {
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
-  FACE_SELECT_MODE = 'Face Select Mode',
 }
 
 export enum CameraType {
@@ -277,18 +276,6 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
-  // Face selection for boolean operations
-  selectedFaceIndex: number | null;
-  setSelectedFaceIndex: (index: number | null) => void;
-  isFaceSelectionMode: boolean;
-  setIsFaceSelectionMode: (enabled: boolean) => void;
-  selectedFaceShapeId: string | null;
-  setSelectedFaceShapeId: (id: string | null) => void;
-  // Face selection for boolean operations
-  selectedFaceIndex: number | null;
-  setSelectedFaceIndex: (index: number | null) => void;
-  isFaceSelectionMode: boolean;
-  setIsFaceSelectionMode: (enabled: boolean) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -411,17 +398,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
-  
-  // Face selection for boolean operations
-  selectedFaceIndex: null,
-  setSelectedFaceIndex: (index) => set({ selectedFaceIndex: index }),
-  
-  // Face selection mode for boolean operations
-  isFaceSelectionMode: false,
-  setIsFaceSelectionMode: (enabled) => set({ isFaceSelectionMode: enabled }),
-  
-  selectedFaceShapeId: null,
-  setSelectedFaceShapeId: (id) => set({ selectedFaceShapeId: id }),
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -647,7 +623,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
      
-  performBooleanOperation: async (operation) => {
+  performBooleanOperation: (operation) => {
     const { shapes, selectedShapeId, updateShape, deleteShape } = get();
     if (!selectedShapeId) {
       console.warn('No shape selected for boolean operation');
@@ -660,39 +636,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     
-    // For subtract operation, enter face selection mode
-    if (operation === 'subtract') {
-      // Find intersecting shapes (these will be the target shapes to select face from)
-      const intersectingShapes = shapes.filter(shape => {
-        if (shape.id === selectedShapeId) return false;
-        
-        // Simple bounding box intersection check
-        const shape1Bounds = getShapeBounds(selectedShape);
-        const shape2Bounds = getShapeBounds(shape);
-        
-        return boundsIntersect(shape1Bounds, shape2Bounds);
-      });
-      
-      if (intersectingShapes.length === 0) {
-        console.log('❌ No intersecting shapes found for face selection');
-        return;
-      }
-      
-      // Use the first intersecting shape as the target for face selection
-      const targetShape = intersectingShapes[0];
-      
-      set({ 
-        isFaceSelectionMode: true,
-        selectedFaceShapeId: targetShape.id, // Geriye kalacak nesnenin yüzeyini seç
-        selectedFaceIndex: null
-      });
-      console.log(`🎯 Face selection mode activated. Click on the TARGET shape (${targetShape.type}) face to select cutting plane, then press Enter to execute.`);
-      return;
-    }
-    
     let success = false;
-    if (operation === 'union') {
-      success = await performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
+    if (operation === 'subtract') {
+      success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
+    } else if (operation === 'union') {
+      success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
     }
     
     if (success) {
