@@ -405,7 +405,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // Handle extrude height input from terminal
-  const handleExtrudeInput = (height: number) => {
+  const handleExtrudeInput = async (height: number) => {
     if (!pendingExtrudeShape) {
       console.log('No pending shape to extrude');
       return;
@@ -418,7 +418,7 @@ const focusTerminalForMeasurement = () => {
     }
     
     // Create extruded 3D shape
-    extrudeShape(pendingExtrudeShape, addShape, heightInMm, gridSize);
+    await extrudeShape(pendingExtrudeShape, addShape, heightInMm, gridSize);
     
     // Cleanup
     setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
@@ -517,7 +517,7 @@ const focusTerminalForMeasurement = () => {
   }, [pendingExtrudeShape, extrudeHeight, handleExtrudeSubmit, handleExtrudeCancel]);
 
   // UNIFIED: Convert to 3D and cleanup function
-  const convertAndCleanup = (shape: CompletedShape) => {
+  const convertAndCleanup = async (shape: CompletedShape) => {
     // Extrude için bekleyen şekil olarak kaydet
     setPendingExtrudeShape(shape);
     
@@ -546,7 +546,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // UNIFIED: Handle polyline/polygon drawing
-  const handlePolylinePolygonDrawing = (point: THREE.Vector3) => {
+  const handlePolylinePolygonDrawing = async (point: THREE.Vector3) => {
     if (!drawingState.isDrawing) {
       setDrawingState({
         isDrawing: true,
@@ -575,7 +575,7 @@ const focusTerminalForMeasurement = () => {
         setCompletedShapes(prev => [...prev, newShape]);
         console.log(`${activeTool} closed with ${allPoints.length} points`);
         
-        convertAndCleanup(newShape);
+        await convertAndCleanup(newShape);
         finishDrawing();
       } else {
         updateDrawingState({
@@ -591,7 +591,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // UNIFIED: Handle rectangle/circle drawing
-  const handleShapeDrawing = (point: THREE.Vector3) => {
+  const handleShapeDrawing = async (point: THREE.Vector3) => {
     if (!drawingState.isDrawing) {
       setDrawingState({
         isDrawing: true,
@@ -647,28 +647,12 @@ const focusTerminalForMeasurement = () => {
       setCompletedShapes(prev => [...prev, newShape]);
       console.log(`Shape completed with ID: ${shapeId}`);
       
-      convertAndCleanup(newShape);
+      await convertAndCleanup(newShape);
       finishDrawing();
     }
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
-    // Handle Boolean Subtract mode initialization
-    if (activeTool === Tool.BOOLEAN_SUBTRACT_TOOL) {
-      const { booleanSubtractState, setBooleanSubtractState } = useAppStore.getState();
-      
-      if (!booleanSubtractState.isActive) {
-        // Initialize boolean subtract mode
-        setBooleanSubtractState({
-          isActive: true,
-          isSelectingSubtractor: true,
-          subtractorShapeId: null,
-        });
-        console.log('➖ Boolean Subtract mode activated - Select subtractor shape first');
-      }
-      return;
-    }
-    
     // Handle Point to Point Move
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       if (event.nativeEvent.button !== 0) return;
@@ -891,20 +875,6 @@ const focusTerminalForMeasurement = () => {
       // Handle Enter key for pending extrude shape - convert to 2D selectable object
       if (event.key === 'Enter' && pendingExtrudeShape && !drawingState.isDrawing) {
         handleConvertTo2D();
-      }
-      
-      // Handle Enter key for Trim with Knife mode
-      if (event.key === 'Enter' && activeTool === Tool.BOOLEAN_SUBTRACT_TOOL) {
-        const { completeBooleanSubtract, resetBooleanSubtract, setActiveTool } = useAppStore.getState();
-        
-        // Complete the boolean subtract operation first
-        completeBooleanSubtract();
-        
-        // Then reset and exit
-        resetBooleanSubtract();
-        setActiveTool(Tool.SELECT);
-        console.log('➖ Boolean Subtract mode ended with Enter key');
-        return;
       }
       
       if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
