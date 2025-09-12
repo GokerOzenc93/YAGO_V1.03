@@ -377,12 +377,24 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get edge opacity based on view mode
   const getEdgeOpacity = () => {
-    // Always full opacity
+    // Check if this shape is selected as knife in Trim with Knife mode
+    const { trimWithKnifeState } = useAppStore.getState();
+    if (trimWithKnifeState.knifeShapeId === shape.id) {
+      return 1.0; // Full opacity for knife shape edges
+    }
+    
+    // Always full opacity for other shapes
     return 1.0;
   };
 
   // 🎯 NEW: Get edge color based on view mode
   const getEdgeColor = () => {
+    // Check if this shape is selected as knife in Trim with Knife mode
+    const { trimWithKnifeState } = useAppStore.getState();
+    if (trimWithKnifeState.knifeShapeId === shape.id) {
+      return '#ff0000'; // Red color for knife shape
+    }
+    
     if (viewMode === ViewMode.SOLID) {
       // Solid mode: Black outline edges
       return '#000000';
@@ -394,6 +406,12 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 RESPONSIVE LINE WIDTH - Tablet ve küçük ekranlar için optimize edildi
   const getEdgeLineWidth = () => {
+    // Check if this shape is selected as knife in Trim with Knife mode
+    const { trimWithKnifeState } = useAppStore.getState();
+    if (trimWithKnifeState.knifeShapeId === shape.id) {
+      return 2.0; // Thicker lines for knife shape
+    }
+    
     const screenWidth = window.innerWidth;
 
     if (screenWidth < 768) {
@@ -410,6 +428,17 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get material properties based on view mode
   const getMaterialProps = () => {
+    // Check if this shape is selected as knife in Trim with Knife mode
+    const { trimWithKnifeState } = useAppStore.getState();
+    if (trimWithKnifeState.knifeShapeId === shape.id) {
+      return {
+        color: '#ff4444', // Slightly lighter red for the mesh
+        transparent: true,
+        opacity: 0.3, // Semi-transparent red mesh
+        visible: true,
+      };
+    }
+    
     const opacityValue = getOpacity(); // 👈 Dinamik opacity
 
     return {
