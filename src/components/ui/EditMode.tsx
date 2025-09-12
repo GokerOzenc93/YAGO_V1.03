@@ -51,6 +51,19 @@ const EditMode: React.FC<EditModeProps> = ({
   const startX = useRef(0);
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Multi-select face tracking
+  const [selectedFaceCount, setSelectedFaceCount] = useState(0);
+  
+  // Update selected face count periodically
+  useEffect(() => {
+    const updateFaceCount = () => {
+      setSelectedFaceCount(getSelectedFaceCount());
+    };
+    
+    const interval = setInterval(updateFaceCount, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -194,10 +207,34 @@ const EditMode: React.FC<EditModeProps> = ({
     
     if (newMode) {
       console.log('🎯 Face Edit Mode ACTIVATED - Click on faces to select them');
+      console.log('🎯 Hold Shift to select multiple faces');
     } else {
       console.log('🎯 Face Edit Mode DEACTIVATED');
+      // Clear all highlights when exiting face edit mode
+      if (sceneRef) {
+        clearFaceHighlight(sceneRef);
+      }
     }
   };
+  
+  const clearAllFaceSelections = () => {
+    if (sceneRef) {
+      clearFaceHighlight(sceneRef);
+      setSelectedFaceCount(0);
+      console.log('🎯 All face selections cleared');
+    }
+  };
+  
+  // Get scene reference
+  const [sceneRef, setSceneRef] = useState<THREE.Scene | null>(null);
+  
+  useEffect(() => {
+    // Try to get scene reference from Three.js context
+    const scene = (window as any).currentScene;
+    if (scene) {
+      setSceneRef(scene);
+    }
+  }, []);
 
   const renderComponentContent = () => {
     switch (activeComponent) {
@@ -245,7 +282,29 @@ const EditMode: React.FC<EditModeProps> = ({
                   >
                     <MousePointer size={12} />
                     Face Select
+                    {selectedFaceCount > 0 && (
+                      <span className="ml-auto bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                        {selectedFaceCount}
+                      </span>
+                    )}
                   </button>
+                  
+                  {isFaceEditMode && (
+                    <div className="mt-2 space-y-1">
+                      <div className="text-xs text-gray-400">
+                        Hold <kbd className="bg-gray-700 px-1 rounded text-white">Shift</kbd> for multi-select
+                      </div>
+                      {selectedFaceCount > 0 && (
+                        <button
+                          onClick={clearAllFaceSelections}
+                          className="w-full flex items-center gap-2 px-2 py-1 rounded text-xs bg-red-600/50 text-red-200 hover:bg-red-600/70 transition-colors"
+                        >
+                          <Layers size={10} />
+                          Clear All ({selectedFaceCount})
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

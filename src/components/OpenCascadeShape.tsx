@@ -234,6 +234,10 @@ const OpenCascadeShape: React.FC<Props> = ({
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();
+      
+      // Shift tuşu kontrolü
+      const isShiftPressed = e.nativeEvent.shiftKey;
+      
       const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -268,10 +272,12 @@ const OpenCascadeShape: React.FC<Props> = ({
         return;
       }
 
-      const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
+      const highlight = highlightFace(scene, hit, shape, isShiftPressed, 0xff6b35, 0.6);
       if (highlight && onFaceSelect) {
         onFaceSelect(hit.faceIndex);
-        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
+        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted ${isShiftPressed ? '(Multi-select)' : ''}`);
+      } else if (!highlight && isShiftPressed) {
+        console.log(`🎯 Face ${hit.faceIndex} deselected (Shift+Click)`);
       }
       return;
     }

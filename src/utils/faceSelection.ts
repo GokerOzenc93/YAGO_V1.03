@@ -29,7 +29,8 @@ export interface FaceHighlight {
     shapeId: string;
 }
 
-let currentHighlight: FaceHighlight | null = null;
+let currentHighlights: FaceHighlight[] = [];
+let isMultiSelectMode = false;
 
 /**
  * BufferGeometry'den face vertices'lerini al
@@ -302,12 +303,28 @@ export const createFaceHighlight = (
  * Mevcut highlight'ı temizle
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
-    if (currentHighlight) {
-        scene.remove(currentHighlight.mesh);
-        currentHighlight.mesh.geometry.dispose();
-        (currentHighlight.mesh.material as THREE.Material).dispose();
-        currentHighlight = null;
-        console.log('🎯 Face highlight cleared');
+    currentHighlights.forEach(highlight => {
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+    });
+    currentHighlights = [];
+    isMultiSelectMode = false;
+    console.log('🎯 All face highlights cleared');
+};
+
+/**
+ * Belirli bir highlight'ı kaldır
+ */
+export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shapeId: string) => {
+    const index = currentHighlights.findIndex(h => h.faceIndex === faceIndex && h.shapeId === shapeId);
+    if (index !== -1) {
+        const highlight = currentHighlights[index];
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+        currentHighlights.splice(index, 1);
+        console.log(`🎯 Face highlight removed: face ${faceIndex} of shape ${shapeId}`);
     }
 };
 
@@ -711,6 +728,20 @@ export const detectFaceAtMouse = (
 /**
  * Mevcut highlight'ı al
  */
-export const getCurrentHighlight = (): FaceHighlight | null => {
-    return currentHighlight;
+export const getCurrentHighlights = (): FaceHighlight[] => {
+    return [...currentHighlights];
+};
+
+/**
+ * Multi-select mode durumunu al
+ */
+export const isInMultiSelectMode = (): boolean => {
+    return isMultiSelectMode;
+};
+
+/**
+ * Seçili yüzey sayısını al
+ */
+export const getSelectedFaceCount = (): number => {
+    return currentHighlights.length;
 };

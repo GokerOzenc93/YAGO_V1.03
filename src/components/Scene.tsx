@@ -594,6 +594,8 @@ const Scene: React.FC = () => {
         }}
         onCreated={({ scene }) => {
           setSceneRef(scene);
+          // Make scene globally accessible for face selection
+          (window as any).currentScene = scene;
         }}
       >
         <CameraPositionUpdater />
