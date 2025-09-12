@@ -21,6 +21,7 @@ import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
 import { performBooleanSubtract } from '../utils/booleanOperations';
+import { handleSurfaceRepairClick } from '../utils/smartSurfaceRepair';
 
 const CameraPositionUpdater = () => {
   const { camera } = useThree();

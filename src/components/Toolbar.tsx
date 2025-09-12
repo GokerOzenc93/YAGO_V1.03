@@ -697,6 +697,32 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
 
+        {/* Smart Surface Repair Tool */}
+        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+          <button
+            className={`p-1 rounded transition-all ${
+              activeTool === Tool.SMART_SURFACE_REPAIR
+                ? 'bg-green-600/90 text-white shadow-sm'
+                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+            }`}
+            onClick={() => {
+              if (activeTool === Tool.SMART_SURFACE_REPAIR) {
+                setActiveTool(Tool.SELECT);
+                console.log('Smart Surface Repair tool deactivated');
+              } else {
+                setActiveTool(Tool.SMART_SURFACE_REPAIR);
+                console.log('Smart Surface Repair tool activated');
+              }
+            }}
+            title="Akıllı Yüzey Onarımı - Parçalı yüzeyleri tek parça haline getirir"
+          >
+            <Edit3 size={12} />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+
         {/* Boolean Operations */}
         <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
           {booleanTools.map((tool) => (

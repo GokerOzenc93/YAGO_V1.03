@@ -121,6 +121,7 @@ export enum Tool {
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
   FACE_SELECT_MODE = 'Face Select Mode',
+  SMART_SURFACE_REPAIR = 'Smart Surface Repair',
 }
 
 export enum CameraType {
