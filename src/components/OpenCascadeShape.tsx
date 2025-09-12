@@ -275,14 +275,18 @@ const OpenCascadeShape: React.FC<Props> = ({
 
       console.log(`🎯 Face Edit Mode: Highlighting face ${hit.faceIndex}`);
       
-      // Use shape parameter correctly for face highlighting
+      // Create highlight for the selected face
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
       
       if (highlight && onFaceSelect) {
         onFaceSelect(hit.faceIndex);
         console.log(`🎯 Face Edit Mode: Face ${hit.faceIndex} selected and highlighted successfully`);
       } else {
-        console.warn('🎯 Face Edit Mode: Failed to create highlight or onFaceSelect not available');
+        console.warn('🎯 Face Edit Mode: Failed to create highlight or onFaceSelect not available', {
+          highlight: !!highlight,
+          onFaceSelect: !!onFaceSelect,
+          hitFaceIndex: hit.faceIndex
+        });
       }
       return;
     }

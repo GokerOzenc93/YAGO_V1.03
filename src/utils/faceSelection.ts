@@ -704,62 +704,161 @@ export const highlightFace = (
         return null;
     }
 
-    console.log(`🎯 PLANAR FACE GROUPING - Starting advanced coplanar analysis for face ${hit.faceIndex}`);
+    console.log(`🎯 FACE HIGHLIGHT - Starting highlight creation for face ${hit.faceIndex}`);
     
-    // Build BVH for faster raycasting if not already built
-    const geom = (mesh.geometry as any);
-    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
-        console.log('🔧 Building BVH acceleration structure for planar face grouping');
-        geom.computeBoundsTree();
-    }
-    
-    // Get or create planar groups for this mesh
-    const meshId = shape.id;
-    let planarGroups = cachedPlanarGroups.get(meshId);
-    
-    if (!planarGroups) {
-        console.log('🔧 Computing planar groups for mesh...');
-        try {
+    try {
+        // Build BVH for faster raycasting if not already built
+        const geom = (mesh.geometry as any);
+        if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+            console.log('🔧 Building BVH acceleration structure for face highlighting');
+            geom.computeBoundsTree();
+        }
+        
+        // Get or create planar groups for this mesh
+        const meshId = shape.id;
+        let planarGroups = cachedPlanarGroups.get(meshId);
+        
+        if (!planarGroups) {
+            console.log('🔧 Computing planar groups for mesh...');
             planarGroups = groupPlanarFaces(mesh.geometry as THREE.BufferGeometry, mesh.matrixWorld);
             cachedPlanarGroups.set(meshId, planarGroups);
             console.log(`📊 Cached ${planarGroups.length} planar groups for mesh ${meshId}`);
-        } catch (error) {
-            console.error('🎯 highlightFace: Error computing planar groups:', error);
-            return null;
         }
-    }
-    
-    // Find the planar group containing the clicked triangle
-    const planarGroup = findPlanarGroupByTriangle(planarGroups, hit.faceIndex);
-    
-    if (!planarGroup) {
-        console.warn(`❌ No planar group found for triangle ${hit.faceIndex}`);
-        return null;
-    }
-    
-    console.log(`✅ Found planar group: ${planarGroup.id} with ${planarGroup.triangles.length} triangles, area: ${planarGroup.area.toFixed(1)}`);
-    
-    // Create highlight mesh from planar group
-    let overlay;
-    try {
-        overlay = createPlanarGroupHighlight(planarGroup, color, opacity);
+        
+        // Find the planar group containing the clicked triangle
+        const planarGroup = findPlanarGroupByTriangle(planarGroups, hit.faceIndex);
+        
+        if (!planarGroup) {
+            console.warn(`❌ No planar group found for triangle ${hit.faceIndex}, using fallback highlight`);
+            // Fallback: Create simple triangle highlight
+            return createSimpleFaceHighlight(scene, hit, shape, color, opacity);
+        }
+        
+        console.log(`✅ Found planar group: ${planarGroup.id} with ${planarGroup.triangles.length} triangles, area: ${planarGroup.area.toFixed(1)}`);
+        
+        // Create highlight mesh from planar group
+        const overlay = createPlanarGroupHighlight(planarGroup, color, opacity);
+        if (!overlay) {
+            console.warn('🎯 Failed to create planar group highlight, using fallback');
+            return createSimpleFaceHighlight(scene, hit, shape, color, opacity);
+        }
+        
         scene.add(overlay);
+        
+        console.log(`✅ FACE HIGHLIGHT COMPLETE - Planar surface highlighted successfully`);
+        
+        currentHighlight = { 
+            mesh: overlay, 
+            faceIndex: hit.faceIndex, 
+            shapeId: shape.id,
+            planarGroup 
+        };
+        return currentHighlight;
+        
     } catch (error) {
-        console.error('🎯 highlightFace: Error creating planar group highlight:', error);
+        console.error('🎯 highlightFace: Error in planar face grouping, using fallback:', error);
+        return createSimpleFaceHighlight(scene, hit, shape, color, opacity);
+    }
+};
+
+/**
+ * Create simple face highlight as fallback
+ */
+const createSimpleFaceHighlight = (
+    scene: THREE.Scene,
+    hit: THREE.Intersection,
+    shape: Shape,
+    color: number,
+    opacity: number
+): FaceHighlight | null => {
+    console.log('🎯 Creating simple face highlight as fallback');
+    
+    const mesh = hit.object as THREE.Mesh;
+    const geometry = mesh.geometry as THREE.BufferGeometry;
+    
+    // Get triangle vertices
+    const vertices = getTriangleVertices(geometry, hit.faceIndex!, mesh.matrixWorld);
+    if (vertices.length !== 3) {
+        console.warn('🎯 Invalid triangle vertices for simple highlight');
         return null;
     }
     
-    if (!overlay) return null;
-
-    console.log(`✅ PLANAR FACE GROUPING COMPLETE - Advanced coplanar surface selected`);
+    // Create simple triangle geometry
+    const highlightGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(9); // 3 vertices * 3 components
+    
+    vertices.forEach((vertex, i) => {
+        positions[i * 3] = vertex.x;
+        positions[i * 3 + 1] = vertex.y;
+        positions[i * 3 + 2] = vertex.z;
+    });
+    
+    highlightGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    highlightGeometry.setIndex([0, 1, 2]);
+    highlightGeometry.computeVertexNormals();
+    
+    // Create material
+    const material = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1
+    });
+    
+    const overlay = new THREE.Mesh(highlightGeometry, material);
+    overlay.renderOrder = 999;
+    scene.add(overlay);
     
     currentHighlight = { 
         mesh: overlay, 
-        faceIndex: hit.faceIndex, 
-        shapeId: shape.id,
-        planarGroup 
+        faceIndex: hit.faceIndex!, 
+        shapeId: shape.id
     };
+    
+    console.log('✅ Simple face highlight created successfully');
     return currentHighlight;
+};
+
+/**
+ * Get triangle vertices from geometry
+ */
+const getTriangleVertices = (
+    geometry: THREE.BufferGeometry, 
+    triangleIndex: number,
+    worldMatrix: THREE.Matrix4
+): THREE.Vector3[] => {
+    const position = geometry.attributes.position;
+    const index = geometry.index;
+    
+    const vertices: THREE.Vector3[] = [];
+    
+    try {
+        if (index) {
+            // Indexed geometry
+            for (let i = 0; i < 3; i++) {
+                const vertexIndex = index.getX(triangleIndex * 3 + i);
+                const vertex = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
+                vertex.applyMatrix4(worldMatrix);
+                vertices.push(vertex);
+            }
+        } else {
+            // Non-indexed geometry
+            for (let i = 0; i < 3; i++) {
+                const vertex = new THREE.Vector3().fromBufferAttribute(position, triangleIndex * 3 + i);
+                vertex.applyMatrix4(worldMatrix);
+                vertices.push(vertex);
+            }
+        }
+    } catch (error) {
+        console.warn('Error getting triangle vertices:', error);
+        return null;
+    }
+    
+    return vertices;
 };
 
 
