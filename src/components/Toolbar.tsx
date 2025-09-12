@@ -149,7 +149,7 @@ const Toolbar: React.FC = () => {
     { id: Tool.RECTANGLE, icon: <Square size={12} />, label: 'Rectangle', shortcut: 'R' },
     { id: Tool.CIRCLE, icon: <Circle size={12} />, label: 'Circle', shortcut: 'C' },
     { id: Tool.POLYGON, icon: <Pentagon size={12} />, label: 'Polygon', shortcut: 'P' },
-    { id: Tool.TRIM_WITH_KNIFE, icon: <Knife size={12} />, label: 'Trim with Knife', shortcut: 'TK' },
+    { id: Tool.BOOLEAN_SUBTRACT_TOOL, icon: <Minus size={12} />, label: 'Boolean Subtract', shortcut: 'BS' },
   ];
 
   const modifyTools = [

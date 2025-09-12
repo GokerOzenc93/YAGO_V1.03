@@ -2,20 +2,20 @@ import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 
 /**
- * Perform CSG (Constructive Solid Geometry) subtraction operation
+ * Perform CSG (Constructive Solid Geometry) boolean subtraction operation
  * This is a simplified implementation - in a real CAD application,
  * you would use a proper CSG library like three-csg or similar
  */
 export const performCSGSubtraction = (
   targetShape: Shape,
-  knifeShape: Shape
+  subtractorShape: Shape
 ): THREE.BufferGeometry | null => {
   try {
-    console.log(`🔪 Performing CSG subtraction: ${targetShape.type} - ${knifeShape.type}`);
+    console.log(`➖ Performing CSG boolean subtraction: ${targetShape.type} - ${subtractorShape.type}`);
     
     // Create world matrices for both shapes
     const targetMatrix = new THREE.Matrix4();
-    const knifeMatrix = new THREE.Matrix4();
+    const subtractorMatrix = new THREE.Matrix4();
     
     // Target shape transform
     targetMatrix.compose(
@@ -24,40 +24,40 @@ export const performCSGSubtraction = (
       new THREE.Vector3(...targetShape.scale)
     );
     
-    // Knife shape transform
-    knifeMatrix.compose(
-      new THREE.Vector3(...knifeShape.position),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(...knifeShape.rotation)),
-      new THREE.Vector3(...knifeShape.scale)
+    // Subtractor shape transform
+    subtractorMatrix.compose(
+      new THREE.Vector3(...subtractorShape.position),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(...subtractorShape.rotation)),
+      new THREE.Vector3(...subtractorShape.scale)
     );
     
     // For now, we'll create a simplified result
     // In a real implementation, you would use a CSG library
-    const resultGeometry = createSimplifiedTrimmedGeometry(
+    const resultGeometry = createSimplifiedSubtractedGeometry(
       targetShape.geometry,
-      knifeShape.geometry,
+      subtractorShape.geometry,
       targetMatrix,
-      knifeMatrix
+      subtractorMatrix
     );
     
-    console.log('🔪 CSG subtraction completed successfully');
+    console.log('➖ CSG boolean subtraction completed successfully');
     return resultGeometry;
     
   } catch (error) {
-    console.error('🔪 CSG subtraction failed:', error);
+    console.error('➖ CSG boolean subtraction failed:', error);
     return null;
   }
 };
 
 /**
- * Create a simplified trimmed geometry
+ * Create a simplified subtracted geometry
  * This is a placeholder implementation - replace with actual CSG operations
  */
-const createSimplifiedTrimmedGeometry = (
+const createSimplifiedSubtractedGeometry = (
   targetGeometry: THREE.BufferGeometry,
-  knifeGeometry: THREE.BufferGeometry,
+  subtractorGeometry: THREE.BufferGeometry,
   targetMatrix: THREE.Matrix4,
-  knifeMatrix: THREE.Matrix4
+  subtractorMatrix: THREE.Matrix4
 ): THREE.BufferGeometry => {
   
   // Clone the target geometry
@@ -66,18 +66,18 @@ const createSimplifiedTrimmedGeometry = (
   // Apply transformations
   resultGeometry.applyMatrix4(targetMatrix);
   
-  // Get knife bounds in world space
-  const knifeGeometryTransformed = knifeGeometry.clone();
-  knifeGeometryTransformed.applyMatrix4(knifeMatrix);
-  knifeGeometryTransformed.computeBoundingBox();
+  // Get subtractor bounds in world space
+  const subtractorGeometryTransformed = subtractorGeometry.clone();
+  subtractorGeometryTransformed.applyMatrix4(subtractorMatrix);
+  subtractorGeometryTransformed.computeBoundingBox();
   
-  if (!knifeGeometryTransformed.boundingBox) {
+  if (!subtractorGeometryTransformed.boundingBox) {
     return resultGeometry;
   }
   
-  const knifeBounds = knifeGeometryTransformed.boundingBox;
+  const subtractorBounds = subtractorGeometryTransformed.boundingBox;
   
-  // Simplified trimming: Remove vertices that are inside the knife bounds
+  // Simplified subtraction: Remove vertices that are inside the subtractor bounds
   const positions = resultGeometry.attributes.position;
   const newPositions: number[] = [];
   const newIndices: number[] = [];
@@ -103,8 +103,8 @@ const createSimplifiedTrimmedGeometry = (
         const vertex = new THREE.Vector3().fromBufferAttribute(positions, vertexIndex);
         triangleVertices.push(vertex);
         
-        // Simple inside check - if vertex is inside knife bounds, remove triangle
-        if (knifeBounds.containsPoint(vertex)) {
+        // Simple inside check - if vertex is inside subtractor bounds, remove triangle
+        if (subtractorBounds.containsPoint(vertex)) {
           keepTriangle = false;
           break;
         }
@@ -139,7 +139,7 @@ const createSimplifiedTrimmedGeometry = (
       // Check if any vertex is inside knife bounds
       let keepTriangle = true;
       for (const vertex of triangle) {
-        if (knifeBounds.containsPoint(vertex)) {
+        if (subtractorBounds.containsPoint(vertex)) {
           keepTriangle = false;
           break;
         }
@@ -172,7 +172,7 @@ const createSimplifiedTrimmedGeometry = (
     return new THREE.BoxGeometry(10, 10, 10);
   }
   
-  console.log(`🔪 Trimmed geometry: ${newPositions.length / 3} vertices, ${newIndices.length / 3} triangles`);
+  console.log(`➖ Subtracted geometry: ${newPositions.length / 3} vertices, ${newIndices.length / 3} triangles`);
   
   return trimmedGeometry;
 };
@@ -199,7 +199,7 @@ export const checkGeometryIntersection = (
 };
 
 /**
- * Create a unified geometry from multiple trimmed pieces
+ * Create a unified geometry from multiple subtracted pieces
  */
 export const createUnifiedGeometry = (geometries: THREE.BufferGeometry[]): THREE.BufferGeometry => {
   if (geometries.length === 0) {
@@ -258,7 +258,7 @@ export const createUnifiedGeometry = (geometries: THREE.BufferGeometry[]): THREE
   mergedGeometry.computeBoundingBox();
   mergedGeometry.computeBoundingSphere();
   
-  console.log(`🔪 Unified geometry created: ${positions.length / 3} vertices, ${indices.length / 3} triangles`);
+  console.log(`➖ Unified geometry created: ${positions.length / 3} vertices, ${indices.length / 3} triangles`);
   
   return mergedGeometry;
 };

@@ -140,13 +140,13 @@ const Terminal: React.FC = () => {
                 Tool: <span className="text-white">{activeTool}</span>
               </span>
               {/* Trim with Knife status */}
-              {activeTool === 'Trim with Knife' && (
+              {activeTool === 'Boolean Subtract' && (
                 <span className="text-red-400 font-medium">
-                  {useAppStore.getState().trimWithKnifeState.isSelectingKnife 
-                    ? '🔪 Select knife shape' 
-                    : useAppStore.getState().trimWithKnifeState.knifeShapeId 
-                      ? `🔪 Click shapes to trim (${useAppStore.getState().trimWithKnifeState.targetShapeIds.length} selected, Enter to finish)` 
-                      : '🔪 Ready to trim'}
+                  {useAppStore.getState().booleanSubtractState.isSelectingSubtractor 
+                    ? '➖ Select subtractor shape' 
+                    : useAppStore.getState().booleanSubtractState.subtractorShapeId 
+                      ? `➖ Click shapes to subtract from (${useAppStore.getState().booleanSubtractState.targetShapeIds.length} selected, Enter to finish)` 
+                      : '➖ Ready to subtract'}
                 </span>
               )}
             </div>

@@ -653,18 +653,18 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
-    // Handle Trim with Knife mode initialization
-    if (activeTool === Tool.TRIM_WITH_KNIFE) {
-      const { trimWithKnifeState, setTrimWithKnifeState } = useAppStore.getState();
+    // Handle Boolean Subtract mode initialization
+    if (activeTool === Tool.BOOLEAN_SUBTRACT_TOOL) {
+      const { booleanSubtractState, setBooleanSubtractState } = useAppStore.getState();
       
-      if (!trimWithKnifeState.isActive) {
-        // Initialize trim with knife mode
-        setTrimWithKnifeState({
+      if (!booleanSubtractState.isActive) {
+        // Initialize boolean subtract mode
+        setBooleanSubtractState({
           isActive: true,
-          isSelectingKnife: true,
-          knifeShapeId: null,
+          isSelectingSubtractor: true,
+          subtractorShapeId: null,
         });
-        console.log('🔪 Trim with Knife mode activated - Select knife shape first');
+        console.log('➖ Boolean Subtract mode activated - Select subtractor shape first');
       }
       return;
     }
@@ -894,16 +894,16 @@ const focusTerminalForMeasurement = () => {
       }
       
       // Handle Enter key for Trim with Knife mode
-      if (event.key === 'Enter' && activeTool === Tool.TRIM_WITH_KNIFE) {
-        const { completeTrimOperation, resetTrimWithKnife, setActiveTool } = useAppStore.getState();
+      if (event.key === 'Enter' && activeTool === Tool.BOOLEAN_SUBTRACT_TOOL) {
+        const { completeBooleanSubtract, resetBooleanSubtract, setActiveTool } = useAppStore.getState();
         
-        // Complete the trim operation first
-        completeTrimOperation();
+        // Complete the boolean subtract operation first
+        completeBooleanSubtract();
         
         // Then reset and exit
-        resetTrimWithKnife();
+        resetBooleanSubtract();
         setActiveTool(Tool.SELECT);
-        console.log('🔪 Trim with Knife mode ended with Enter key');
+        console.log('➖ Boolean Subtract mode ended with Enter key');
         return;
       }
       

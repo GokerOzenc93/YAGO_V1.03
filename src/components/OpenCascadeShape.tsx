@@ -233,28 +233,28 @@ const OpenCascadeShape: React.FC<Props> = ({
   const handleClick = (e: any) => {
     const { 
       activeTool, 
-      trimWithKnifeState, 
-      setTrimWithKnifeState, 
-      performTrimOperation,
-      resetTrimWithKnife 
+      booleanSubtractState, 
+      setBooleanSubtractState, 
+      performBooleanSubtract,
+      resetBooleanSubtract 
     } = useAppStore.getState();
     
-    // Handle Trim with Knife mode
-    if (activeTool === Tool.TRIM_WITH_KNIFE && e.nativeEvent.button === 0) {
+    // Handle Boolean Subtract mode
+    if (activeTool === Tool.BOOLEAN_SUBTRACT_TOOL && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      if (trimWithKnifeState.isSelectingKnife) {
-        // First click: Select knife shape
-        setTrimWithKnifeState({
-          knifeShapeId: shape.id,
-          isSelectingKnife: false,
+      if (booleanSubtractState.isSelectingSubtractor) {
+        // First click: Select subtractor shape
+        setBooleanSubtractState({
+          subtractorShapeId: shape.id,
+          isSelectingSubtractor: false,
         });
-        console.log(`🔪 Knife shape selected: ${shape.id}`);
+        console.log(`➖ Subtractor shape selected: ${shape.id}`);
         return;
-      } else if (trimWithKnifeState.knifeShapeId && trimWithKnifeState.knifeShapeId !== shape.id) {
-        // Subsequent clicks: Trim target shapes
-        performTrimOperation(shape.id);
-        console.log(`🔪 Trimming shape ${shape.id} with knife ${trimWithKnifeState.knifeShapeId}`);
+      } else if (booleanSubtractState.subtractorShapeId && booleanSubtractState.subtractorShapeId !== shape.id) {
+        // Subsequent clicks: Subtract from target shapes
+        performBooleanSubtract(shape.id);
+        console.log(`➖ Subtracting ${booleanSubtractState.subtractorShapeId} from ${shape.id}`);
         return;
       }
     }
@@ -377,10 +377,10 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get edge opacity based on view mode
   const getEdgeOpacity = () => {
-    // Check if this shape is selected as knife in Trim with Knife mode
-    const { trimWithKnifeState } = useAppStore.getState();
-    if (trimWithKnifeState.knifeShapeId === shape.id) {
-      return 1.0; // Full opacity for knife shape edges
+    // Check if this shape is selected as subtractor in Boolean Subtract mode
+    const { booleanSubtractState } = useAppStore.getState();
+    if (booleanSubtractState.subtractorShapeId === shape.id) {
+      return 1.0; // Full opacity for subtractor shape edges
     }
     
     // Always full opacity for other shapes
@@ -389,10 +389,10 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get edge color based on view mode
   const getEdgeColor = () => {
-    // Check if this shape is selected as knife in Trim with Knife mode
-    const { trimWithKnifeState } = useAppStore.getState();
-    if (trimWithKnifeState.knifeShapeId === shape.id) {
-      return '#ff0000'; // Red color for knife shape
+    // Check if this shape is selected as subtractor in Boolean Subtract mode
+    const { booleanSubtractState } = useAppStore.getState();
+    if (booleanSubtractState.subtractorShapeId === shape.id) {
+      return '#ff0000'; // Red color for subtractor shape
     }
     
     if (viewMode === ViewMode.SOLID) {
@@ -406,10 +406,10 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 RESPONSIVE LINE WIDTH - Tablet ve küçük ekranlar için optimize edildi
   const getEdgeLineWidth = () => {
-    // Check if this shape is selected as knife in Trim with Knife mode
-    const { trimWithKnifeState } = useAppStore.getState();
-    if (trimWithKnifeState.knifeShapeId === shape.id) {
-      return 2.0; // Thicker lines for knife shape
+    // Check if this shape is selected as subtractor in Boolean Subtract mode
+    const { booleanSubtractState } = useAppStore.getState();
+    if (booleanSubtractState.subtractorShapeId === shape.id) {
+      return 2.0; // Thicker lines for subtractor shape
     }
     
     const screenWidth = window.innerWidth;
@@ -428,13 +428,13 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get material properties based on view mode
   const getMaterialProps = () => {
-    // Check if this shape is selected as knife in Trim with Knife mode
-    const { trimWithKnifeState } = useAppStore.getState();
-    if (trimWithKnifeState.knifeShapeId === shape.id) {
+    // Check if this shape is selected as subtractor in Boolean Subtract mode
+    const { booleanSubtractState } = useAppStore.getState();
+    if (booleanSubtractState.subtractorShapeId === shape.id) {
       return {
-        color: '#ff4444', // Slightly lighter red for the mesh
+        color: '#ff4444', // Slightly lighter red for the subtractor mesh
         transparent: true,
-        opacity: 0.3, // Semi-transparent red mesh
+        opacity: 0.3, // Semi-transparent red subtractor mesh
         visible: true,
       };
     }

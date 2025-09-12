@@ -27,7 +27,7 @@ export enum Tool {
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
-}
+  BOOLEAN_SUBTRACT_TOOL = 'Boolean Subtract',
 
 export enum CameraType {
   PERSPECTIVE = 'perspective',
@@ -69,10 +69,10 @@ export enum OrthoMode {
   ON = 'on'
 }
 
-export interface TrimWithKnifeState {
+export interface BooleanSubtractState {
   isActive: boolean;
-  isSelectingKnife: boolean;
-  knifeShapeId: string | null;
+  isSelectingSubtractor: boolean;
+  subtractorShapeId: string | null;
   targetShapeIds: string[];
 }
 
@@ -184,12 +184,12 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
-  // Trim with Knife state
-  trimWithKnifeState: TrimWithKnifeState;
-  setTrimWithKnifeState: (state: Partial<TrimWithKnifeState>) => void;
-  performTrimOperation: (targetShapeId: string) => void;
-  resetTrimWithKnife: () => void;
-  completeTrimOperation: () => void;
+  // Boolean Subtract state
+  booleanSubtractState: BooleanSubtractState;
+  setBooleanSubtractState: (state: Partial<BooleanSubtractState>) => void;
+  performBooleanSubtract: (targetShapeId: string) => void;
+  resetBooleanSubtract: () => void;
+  completeBooleanSubtract: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -306,121 +306,121 @@ export const useAppStore = create<AppState>((set, get) => ({
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
   
-  // Trim with Knife state
-  trimWithKnifeState: {
+  // Boolean Subtract state
+  booleanSubtractState: {
     isActive: false,
-    isSelectingKnife: false,
-    knifeShapeId: null,
+    isSelectingSubtractor: false,
+    subtractorShapeId: null,
     targetShapeIds: [],
   },
   
-  setTrimWithKnifeState: (updates) =>
+  setBooleanSubtractState: (updates) =>
     set((state) => ({
-      trimWithKnifeState: {
-        ...state.trimWithKnifeState,
+      booleanSubtractState: {
+        ...state.booleanSubtractState,
         ...updates,
       },
     })),
     
-  performTrimOperation: (targetShapeId) => {
-    const { trimWithKnifeState, shapes } = get();
-    if (!trimWithKnifeState.knifeShapeId) return;
+  performBooleanSubtract: (targetShapeId) => {
+    const { booleanSubtractState, shapes } = get();
+    if (!booleanSubtractState.subtractorShapeId) return;
     
-    console.log(`🔪 Trimming shape ${targetShapeId} with knife ${trimWithKnifeState.knifeShapeId}`);
+    console.log(`➖ Boolean subtract: ${booleanSubtractState.subtractorShapeId} from ${targetShapeId}`);
     
     // Add to target shapes list
     set((state) => ({
-      trimWithKnifeState: {
-        ...state.trimWithKnifeState,
-        targetShapeIds: [...state.trimWithKnifeState.targetShapeIds, targetShapeId],
+      booleanSubtractState: {
+        ...state.booleanSubtractState,
+        targetShapeIds: [...state.booleanSubtractState.targetShapeIds, targetShapeId],
       },
     }));
   },
   
-  completeTrimOperation: () => {
-    const { trimWithKnifeState, shapes, updateShape, addShape } = get();
+  completeBooleanSubtract: () => {
+    const { booleanSubtractState, shapes, updateShape, addShape } = get();
     
-    if (!trimWithKnifeState.knifeShapeId || trimWithKnifeState.targetShapeIds.length === 0) {
-      console.log('🔪 No trim operation to complete');
+    if (!booleanSubtractState.subtractorShapeId || booleanSubtractState.targetShapeIds.length === 0) {
+      console.log('➖ No boolean subtract operation to complete');
       return;
     }
     
-    const knifeShape = shapes.find(s => s.id === trimWithKnifeState.knifeShapeId);
-    if (!knifeShape) {
-      console.error('🔪 Knife shape not found');
+    const subtractorShape = shapes.find(s => s.id === booleanSubtractState.subtractorShapeId);
+    if (!subtractorShape) {
+      console.error('➖ Subtractor shape not found');
       return;
     }
     
-    console.log(`🔪 Completing trim operation with ${trimWithKnifeState.targetShapeIds.length} target shapes`);
+    console.log(`➖ Completing boolean subtract with ${booleanSubtractState.targetShapeIds.length} target shapes`);
     
     // Import geometry operations
     import('../utils/geometryOperations').then(({ performCSGSubtraction, createUnifiedGeometry }) => {
-      const trimmedGeometries: THREE.BufferGeometry[] = [];
+      const subtractedGeometries: THREE.BufferGeometry[] = [];
       
       // Process each target shape
-      trimWithKnifeState.targetShapeIds.forEach(targetId => {
+      booleanSubtractState.targetShapeIds.forEach(targetId => {
         const targetShape = shapes.find(s => s.id === targetId);
         if (!targetShape) return;
         
-        console.log(`🔪 Processing target shape: ${targetShape.type} (${targetId})`);
+        console.log(`➖ Processing target shape: ${targetShape.type} (${targetId})`);
         
         // Perform CSG subtraction
-        const trimmedGeometry = performCSGSubtraction(targetShape, knifeShape);
+        const subtractedGeometry = performCSGSubtraction(targetShape, subtractorShape);
         
-        if (trimmedGeometry) {
-          trimmedGeometries.push(trimmedGeometry);
+        if (subtractedGeometry) {
+          subtractedGeometries.push(subtractedGeometry);
           
-          // Update the original shape with trimmed geometry
+          // Update the original shape with subtracted geometry
           updateShape(targetId, {
-            geometry: trimmedGeometry,
+            geometry: subtractedGeometry,
             parameters: {
               ...targetShape.parameters,
-              trimmed: true,
-              trimmedBy: knifeShape.id
+              subtracted: true,
+              subtractedBy: subtractorShape.id
             }
           });
           
-          console.log(`🔪 Shape ${targetId} trimmed successfully`);
+          console.log(`➖ Shape ${targetId} subtracted successfully`);
         } else {
-          console.warn(`🔪 Failed to trim shape ${targetId}`);
+          console.warn(`➖ Failed to subtract from shape ${targetId}`);
         }
       });
       
-      // Create unified geometry if multiple shapes were trimmed
-      if (trimmedGeometries.length > 1) {
-        const unifiedGeometry = createUnifiedGeometry(trimmedGeometries);
+      // Create unified geometry if multiple shapes were subtracted
+      if (subtractedGeometries.length > 1) {
+        const unifiedGeometry = createUnifiedGeometry(subtractedGeometries);
         
         // Create a new unified shape
         const unifiedShape: Shape = {
           id: Math.random().toString(36).substr(2, 9),
-          type: 'unified_trimmed',
+          type: 'unified_subtracted',
           position: [0, 0, 0],
           rotation: [0, 0, 0],
           scale: [1, 1, 1],
           geometry: unifiedGeometry,
           parameters: {
             unified: true,
-            originalShapes: trimWithKnifeState.targetShapeIds,
-            trimmedBy: knifeShape.id
+            originalShapes: booleanSubtractState.targetShapeIds,
+            subtractedBy: subtractorShape.id
           }
         };
         
         addShape(unifiedShape);
-        console.log(`🔪 Unified trimmed shape created: ${unifiedShape.id}`);
+        console.log(`➖ Unified subtracted shape created: ${unifiedShape.id}`);
       }
       
-      console.log('🔪 Trim operation completed successfully');
+      console.log('➖ Boolean subtract operation completed successfully');
     }).catch(error => {
-      console.error('🔪 Failed to import geometry operations:', error);
+      console.error('➖ Failed to import geometry operations:', error);
     });
   },
   
-  resetTrimWithKnife: () =>
+  resetBooleanSubtract: () =>
     set({
-      trimWithKnifeState: {
+      booleanSubtractState: {
         isActive: false,
-        isSelectingKnife: false,
-        knifeShapeId: null,
+        isSelectingSubtractor: false,
+        subtractorShapeId: null,
         targetShapeIds: [],
       },
     }),
