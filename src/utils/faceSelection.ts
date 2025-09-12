@@ -663,13 +663,34 @@ export const highlightFace = (
     scene: THREE.Scene,
     hit: THREE.Intersection,
     shape: Shape,
+    isMultiSelect: boolean = false,
     color: number = 0xff6b35,
     opacity: number = 0.6
 ): FaceHighlight | null => {
-    clearFaceHighlight(scene);
+    if (!isMultiSelect) {
+        clearFaceHighlight(scene);
+    }
+    
     if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;
     if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
+
+    // Check if this face is already selected in multi-select mode
+    if (isMultiSelect) {
+        const existingIndex = currentHighlights.findIndex(
+            h => h.faceIndex === hit.faceIndex && h.shapeId === shape.id
+        );
+        if (existingIndex !== -1) {
+            // Remove existing highlight
+            const highlight = currentHighlights[existingIndex];
+            scene.remove(highlight.mesh);
+            highlight.mesh.geometry.dispose();
+            (highlight.mesh.material as THREE.Material).dispose();
+            currentHighlights.splice(existingIndex, 1);
+            console.log(`🎯 Face highlight removed: face ${hit.faceIndex} of shape ${shape.id}`);
+            return null;
+        }
+    }
 
     console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
@@ -679,8 +700,10 @@ export const highlightFace = (
 
     console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
     
-    currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
-    return currentHighlight;
+    const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
+    currentHighlights.push(newHighlight);
+    isMultiSelectMode = isMultiSelect;
+    return newHighlight;
 };
 
 
