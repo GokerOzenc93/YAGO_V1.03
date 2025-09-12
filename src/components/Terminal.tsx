@@ -139,6 +139,16 @@ const Terminal: React.FC = () => {
               <span className="font-medium">
                 Tool: <span className="text-white">{activeTool}</span>
               </span>
+              {/* Trim with Knife status */}
+              {activeTool === 'Trim with Knife' && (
+                <span className="text-red-400 font-medium">
+                  {useAppStore.getState().trimWithKnifeState.isSelectingKnife 
+                    ? '🔪 Select knife shape' 
+                    : useAppStore.getState().trimWithKnifeState.knifeShapeId 
+                      ? '🔪 Click shapes to trim (Enter to finish)' 
+                      : '🔪 Ready to trim'}
+                </span>
+              )}
             </div>
 
             {/* Orta - Polyline ölçü bilgileri */}

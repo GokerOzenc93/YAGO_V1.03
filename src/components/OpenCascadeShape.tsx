@@ -231,6 +231,34 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
+    const { 
+      activeTool, 
+      trimWithKnifeState, 
+      setTrimWithKnifeState, 
+      performTrimOperation,
+      resetTrimWithKnife 
+    } = useAppStore.getState();
+    
+    // Handle Trim with Knife mode
+    if (activeTool === Tool.TRIM_WITH_KNIFE && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      
+      if (trimWithKnifeState.isSelectingKnife) {
+        // First click: Select knife shape
+        setTrimWithKnifeState({
+          knifeShapeId: shape.id,
+          isSelectingKnife: false,
+        });
+        console.log(`🔪 Knife shape selected: ${shape.id}`);
+        return;
+      } else if (trimWithKnifeState.knifeShapeId && trimWithKnifeState.knifeShapeId !== shape.id) {
+        // Subsequent clicks: Trim target shapes
+        performTrimOperation(shape.id);
+        console.log(`🔪 Trimming shape ${shape.id} with knife ${trimWithKnifeState.knifeShapeId}`);
+        return;
+      }
+    }
+    
     // Face Edit mode - handle face selection
     if (isFaceEditMode && e.nativeEvent.button === 0) {
       e.stopPropagation();

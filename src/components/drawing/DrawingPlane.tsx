@@ -653,6 +653,22 @@ const focusTerminalForMeasurement = () => {
   };
 
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
+    // Handle Trim with Knife mode initialization
+    if (activeTool === Tool.TRIM_WITH_KNIFE) {
+      const { trimWithKnifeState, setTrimWithKnifeState } = useAppStore.getState();
+      
+      if (!trimWithKnifeState.isActive) {
+        // Initialize trim with knife mode
+        setTrimWithKnifeState({
+          isActive: true,
+          isSelectingKnife: true,
+          knifeShapeId: null,
+        });
+        console.log('🔪 Trim with Knife mode activated - Select knife shape first');
+      }
+      return;
+    }
+    
     // Handle Point to Point Move
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       if (event.nativeEvent.button !== 0) return;
