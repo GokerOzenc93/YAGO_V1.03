@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore, CameraType, MeasurementUnit, ViewMode } from '../store/appStore';
 import { Camera, CameraOff, Eye, Monitor, Square, Circle, Box, ZoomIn, Frame as Wireframe, EyeOff, Cuboid as Cube } from 'lucide-react';
+import { GeometryFactory } from '../lib/geometryFactory';
 
 const StatusBar: React.FC = () => {
   const { 
@@ -17,7 +18,8 @@ const StatusBar: React.FC = () => {
     convertToDisplayUnit,
     shapes,
     viewMode, // 🎯 NEW: Get current view mode
-    setViewMode // 🎯 NEW: Set view mode
+    setViewMode, // 🎯 NEW: Set view mode
+    geometryMode
   } = useAppStore();
   
   const formatValue = (value: number) => convertToDisplayUnit(value).toFixed(2);
@@ -181,6 +183,19 @@ const StatusBar: React.FC = () => {
           />
           <span className="text-gray-400">mm</span>
         </div>
+        
+        {/* Geometry Mode Indicator */}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Engine:</span>
+          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+            geometryMode === 'OpenCascade.js' 
+              ? 'bg-green-600/20 text-green-400' 
+              : 'bg-blue-600/20 text-blue-400'
+          }`}>
+            {geometryMode}
+          </span>
+        </div>
+        
         <div className="flex items-center gap-2">
           <span className="text-gray-400">Unit:</span>
           <select
