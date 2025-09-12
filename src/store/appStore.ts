@@ -28,6 +28,7 @@ export enum Tool {
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
   BOOLEAN_SUBTRACT_TOOL = 'Boolean Subtract',
+}
 
 export enum CameraType {
   PERSPECTIVE = 'perspective',
