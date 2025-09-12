@@ -1,6 +1,6 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
 import { Canvas, useThree } from 'solid-three';
-import { OrbitControls, Grid, Environment } from 'solid-three/primitives';
+import { OrbitControls, Grid, Environment } from '@react-three/drei';
 import { useAppStore, ViewMode } from '../store/appStore';
 import * as THREE from 'three';
 

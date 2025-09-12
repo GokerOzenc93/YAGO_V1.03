@@ -1,6 +1,6 @@
 import { createEffect, createSignal } from 'solid-js';
 import { useThree } from 'solid-three';
-import { TransformControls } from 'solid-three/primitives';
+import { TransformControls } from '@react-three/drei';
 import { useAppStore } from '../store/appStore';
 import * as THREE from 'three';
 
