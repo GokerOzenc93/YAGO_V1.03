@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { GeometryFactory } from '../lib/geometryFactory';
-// SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
 
 /**
  * Clean up CSG-generated geometry:
@@ -139,60 +137,6 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   return merged;
 }
 
-/**
- * Reconstruct geometry from world vertices with proper surface generation
- * Creates new clean geometry based on bounding box and shape type
- */
-const reconstructGeometryFromBounds = async (
-  originalShape: any,
-  resultGeometry: THREE.BufferGeometry,
-  targetBrush: any
-): Promise<THREE.BufferGeometry> => {
-  console.log('🎯 Starting geometry reconstruction from bounds...');
-  
-  // Get the result geometry bounds in world space
-  resultGeometry.computeBoundingBox();
-  const bbox = resultGeometry.boundingBox;
-  
-  if (!bbox) {
-    console.warn('No bounding box available for reconstruction');
-    return resultGeometry;
-  }
-  
-  // Calculate dimensions from bounding box
-  const width = Math.abs(bbox.max.x - bbox.min.x);
-  const height = Math.abs(bbox.max.y - bbox.min.y);
-  const depth = Math.abs(bbox.max.z - bbox.min.z);
-  
-  console.log(`🎯 Reconstructing geometry with dimensions: ${width.toFixed(1)} x ${height.toFixed(1)} x ${depth.toFixed(1)}`);
-  
-  let newGeometry: THREE.BufferGeometry;
-  
-  // Determine shape type and create appropriate geometry
-  if (originalShape.type === 'box' || !originalShape.type) {
-    // Create new box geometry with calculated dimensions
-    newGeometry = await GeometryFactory.createBox(width, height, depth);
-  } else if (originalShape.type === 'cylinder') {
-    // For cylinder, use average of width/depth as radius
-    const radius = Math.max(width, depth) / 2;
-    newGeometry = await GeometryFactory.createCylinder(radius, height);
-  } else {
-    // For other shapes, default to box
-    newGeometry = await GeometryFactory.createBox(width, height, depth);
-  }
-  
-  // Center the new geometry at the result's center
-  const center = bbox.getCenter(new THREE.Vector3());
-  newGeometry.translate(center.x, center.y, center.z);
-  
-  // Transform back to local space
-  const invMatrix = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
-  newGeometry.applyMatrix4(invMatrix);
-  
-  console.log('✅ Geometry reconstruction completed with clean surfaces');
-  return newGeometry;
-};
-
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
 const Vector3 = THREE.Vector3;
@@ -206,11 +150,12 @@ const getShapeBounds = (shape) => {
 
   const pos = new THREE.Vector3(...(shape.position || [0, 0, 0]));
   const scale = new THREE.Vector3(...(shape.scale || [1, 1, 1]));
+  // shape.rotation olabilir; eğer yoksa 0,0,0 al
   const rot = shape.rotation ? new THREE.Euler(...shape.rotation) : new THREE.Euler(0, 0, 0);
   const quat = new THREE.Quaternion().setFromEuler(rot);
 
   const m = new THREE.Matrix4().compose(pos, quat, scale);
-  bbox.applyMatrix4(m); 
+  bbox.applyMatrix4(m); // bbox'ı world/shape-space'e dönüştür
 
   return bbox;
 };
@@ -258,6 +203,7 @@ export const findIntersectingShapes = (
 const createBrushFromShape = (shape) => {
   const brush = new Brush(shape.geometry.clone());
   
+  // Apply transforms
   brush.position.fromArray(shape.position || [0, 0, 0]);
   brush.scale.fromArray(shape.scale || [1, 1, 1]);
   
@@ -266,6 +212,7 @@ const createBrushFromShape = (shape) => {
     brush.quaternion.setFromEuler(euler);
   }
   
+  // CRITICAL: Update matrix world
   brush.updateMatrixWorld(true);
   
   console.log(`🎯 Brush created:`, {
@@ -287,6 +234,7 @@ export const performBooleanSubtract = (
   console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for subtraction: ${selectedShape.type} (${selectedShape.id})`);
   
+  // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -299,18 +247,21 @@ export const performBooleanSubtract = (
   const evaluator = new Evaluator();
   
   try {
+    // Process each intersecting shape
     intersectingShapes.forEach((targetShape, index) => {
       console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
+      // Create brushes
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
       console.log('🎯 Performing CSG subtraction...');
       
+      // A - B (subtraction)
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
-      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-        console.error('❌ CSG subtraction operation failed or resulted in an empty mesh. Aborting for this shape.');
+      if (!resultMesh || !resultMesh.geometry) {
+        console.error('❌ CSG subtraction operation failed - no result mesh');
         return;
       }
       
@@ -318,30 +269,23 @@ export const performBooleanSubtract = (
       
       console.log('✅ CSG subtraction completed, transforming result to local space...');
       
+      // Transform result geometry back into target's LOCAL space
       const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
       
+      // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05);
+      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
       
-      // 🎯 NEW: Reconstruct geometry with proper surfaces if cleanup failed or resulted in poor quality
-      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count < 12) {
-        console.log('🎯 CSG result has poor quality, reconstructing geometry from bounds...');
-        try {
-          newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
-        } catch (error) {
-          console.error('❌ Geometry reconstruction failed:', error);
-          return;
-        }
-      }
-      
+      // Dispose old geometry
       try { 
         targetShape.geometry.dispose(); 
       } catch (e) { 
         console.warn('Could not dispose old geometry:', e);
       }
       
+      // Update the target shape
       updateShape(targetShape.id, {
         geometry: newGeom,
         parameters: {
@@ -355,6 +299,7 @@ export const performBooleanSubtract = (
       console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
     });
     
+    // Delete the selected shape (the one being subtracted)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
     
@@ -380,6 +325,7 @@ export const performBooleanUnion = (
   console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for union: ${selectedShape.type} (${selectedShape.id})`);
   
+  // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -392,19 +338,22 @@ export const performBooleanUnion = (
   const evaluator = new Evaluator();
   
   try {
+    // For union, merge with the first intersecting shape
     const targetShape = intersectingShapes[0];
     
     console.log(`🎯 Union target: ${targetShape.type} (${targetShape.id})`);
     
+    // Create brushes
     const selectedBrush = createBrushFromShape(selectedShape);
     const targetBrush = createBrushFromShape(targetShape);
     
     console.log('🎯 Performing CSG union...');
     
+    // A + B (union)
     const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
-    if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
-      console.error('❌ CSG union operation failed or resulted in an empty mesh. Aborting.');
+    if (!resultMesh || !resultMesh.geometry) {
+      console.error('❌ CSG union operation failed - no result mesh');
       return false;
     }
     
@@ -412,30 +361,23 @@ export const performBooleanUnion = (
     
     console.log('✅ CSG union completed, transforming result to local space...');
     
+    // Transform result geometry back into target's LOCAL space
     const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
+    // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.05);
-
-    // 🎯 NEW: Reconstruct geometry with proper surfaces if cleanup failed or resulted in poor quality
-    if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count < 12) {
-      console.log('🎯 CSG result has poor quality, reconstructing geometry from bounds...');
-      try {
-        newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
-      } catch (error) {
-        console.error('❌ Geometry reconstruction failed:', error);
-        return false;
-      }
-    }
+    newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
     
+    // Dispose old geometry
     try { 
       targetShape.geometry.dispose(); 
     } catch (e) { 
       console.warn('Could not dispose old geometry:', e);
     }
     
+    // Update the target shape
     updateShape(targetShape.id, {
       geometry: newGeom,
       parameters: {
@@ -448,6 +390,7 @@ export const performBooleanUnion = (
     
     console.log(`✅ Target shape ${targetShape.id} updated with union geometry`);
     
+    // Delete the selected shape (it's now merged)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Merged shape deleted: ${selectedShape.id}`);
     
