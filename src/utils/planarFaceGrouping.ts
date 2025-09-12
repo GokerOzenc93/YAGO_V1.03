@@ -145,24 +145,75 @@ const createPolygonFromTriangles = (
     allVertices.push(...vertices);
   });
   
+  // Validate that we have vertices
+  if (allVertices.length === 0) {
+    console.warn('No vertices found for triangles');
+    return [];
+  }
+
   // Weld close vertices
-  const { weldedVertices } = weldVertices(allVertices);
+  const { weldedVertices, indexMap } = weldVertices(allVertices);
+  
+  // Validate welded vertices
+  if (weldedVertices.length === 0) {
+    console.warn('No welded vertices found');
+    return [];
+  }
   
   // Project to 2D
-  const vertices2D = projectTo2D(weldedVertices, normal);
+  const weldedVertices2D = projectTo2D(weldedVertices, normal);
+  
+  // Validate 2D projection
+  if (weldedVertices2D.length === 0) {
+    console.warn('No 2D vertices found after projection');
+    return [];
+  }
   
   // Create individual triangle polygons
   const trianglePolygons: number[][][] = [];
   
   for (let i = 0; i < triangles.length; i++) {
-    const startIdx = i * 3;
+    // Get original vertex indices for this triangle
+    const originalIdx0 = i * 3;
+    const originalIdx1 = i * 3 + 1;
+    const originalIdx2 = i * 3 + 2;
+    
+    // Map to welded vertex indices
+    const weldedIdx0 = indexMap.get(originalIdx0);
+    const weldedIdx1 = indexMap.get(originalIdx1);
+    const weldedIdx2 = indexMap.get(originalIdx2);
+    
+    // Validate mapped indices
+    if (weldedIdx0 === undefined || weldedIdx1 === undefined || weldedIdx2 === undefined) {
+      console.warn(`Invalid welded indices for triangle ${i}: ${weldedIdx0}, ${weldedIdx1}, ${weldedIdx2}`);
+      continue;
+    }
+    
+    // Get 2D points
+    const p0 = weldedVertices2D[weldedIdx0];
+    const p1 = weldedVertices2D[weldedIdx1];
+    const p2 = weldedVertices2D[weldedIdx2];
+    
+    // Validate 2D points
+    if (!p0 || !p1 || !p2) {
+      console.warn(`Invalid 2D points for triangle ${i}: ${p0}, ${p1}, ${p2}`);
+      continue;
+    }
+    
+    // Create triangle polygon
     const triangle2D = [
-      [vertices2D[startIdx].x, vertices2D[startIdx].y],
-      [vertices2D[startIdx + 1].x, vertices2D[startIdx + 1].y],
-      [vertices2D[startIdx + 2].x, vertices2D[startIdx + 2].y],
-      [vertices2D[startIdx].x, vertices2D[startIdx].y] // Close the polygon
+      [p0.x, p0.y],
+      [p1.x, p1.y],
+      [p2.x, p2.y],
+      [p0.x, p0.y] // Close the polygon
     ];
     trianglePolygons.push([triangle2D]);
+  }
+  
+  // Validate that we have triangle polygons
+  if (trianglePolygons.length === 0) {
+    console.warn('No valid triangle polygons created');
+    return [];
   }
   
   try {
