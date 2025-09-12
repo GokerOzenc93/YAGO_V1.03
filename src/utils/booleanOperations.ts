@@ -6,13 +6,13 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
  * Clean up CSG-generated geometry:
  * - applyMatrix4 should be done *before* calling this
  * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
- * rebuilds indexed geometry, merges vertices, computes normals/bounds
+ *   rebuilds indexed geometry, merges vertices, computes normals/bounds
  *
  * @param {THREE.BufferGeometry} geom - geometry already in target-local space
  * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
  * @returns {THREE.BufferGeometry} cleaned geometry (indexed)
  */
-export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increased for better welding
+export function cleanCSGGeometry(geom: THREE.BufferGeometry, tolerance = 1e-3): THREE.BufferGeometry {
   // 1) Ensure positions exist
   if (!geom.attributes.position) {
     console.warn('cleanCSGGeometry: geometry has no position attribute');
@@ -26,36 +26,23 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   // 2) Convert to non-indexed so triangles are explicit (easier to dedupe & remove degenerate)
   let nonIndexed = geom.index ? geom.toNonIndexed() : geom.clone();
 
-  // 2.1) Validate geometry after conversion
-  if (!nonIndexed || !nonIndexed.attributes || !nonIndexed.attributes.position) {
-    console.warn('cleanCSGGeometry: geometry became invalid after toNonIndexed/clone');
-    return new THREE.BufferGeometry();
-  }
-
   const posAttr = nonIndexed.attributes.position;
-  
-  // 2.2) Validate position attribute array
-  if (!posAttr.array || posAttr.array.length === 0) {
-    console.warn('cleanCSGGeometry: position attribute has no array or empty array');
-    return new THREE.BufferGeometry();
-  }
-  
-  const posArray = posAttr.array;
+  const posArray = posAttr.array as Float32Array;
   const triCount = posArray.length / 9; // 3 verts * 3 components
 
   // 3) Spatial hash to weld vertices with given tolerance
-  const vertexMap = new Map(); // key -> newIndex
-  const uniqueVerts = []; // flattened xyz
-  const newIndices = []; // triangles (indices into uniqueVerts)
+  const vertexMap = new Map<string, number>(); // key -> newIndex
+  const uniqueVerts: number[] = []; // flattened xyz
+  const newIndices: number[] = []; // triangles (indices into uniqueVerts)
   let nextIndex = 0;
 
-  const hash = (x, y, z) =>
+  const hash = (x: number, y: number, z: number) =>
     `${Math.round(x / tolerance)}_${Math.round(y / tolerance)}_${Math.round(z / tolerance)}`;
 
   let degenerateCount = 0;
 
   for (let tri = 0; tri < triCount; tri++) {
-    const triIndices = [];
+    const triIndices: number[] = [];
     for (let v = 0; v < 3; v++) {
       const i = tri * 9 + v * 3;
       const x = posArray[i];
@@ -63,9 +50,9 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
       const z = posArray[i + 2];
       const key = hash(x, y, z);
 
-      let idx;
+      let idx: number;
       if (vertexMap.has(key)) {
-        idx = vertexMap.get(key);
+        idx = vertexMap.get(key)!;
       } else {
         idx = nextIndex++;
         vertexMap.set(key, idx);
@@ -96,7 +83,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
   cleaned.setIndex(newIndices);
 
   // 5) Merge vertices with BufferGeometryUtils as extra safety
-  let merged;
+  let merged: THREE.BufferGeometry;
   try {
     merged = BufferGeometryUtils.mergeVertices(cleaned, tolerance);
   } catch (err) {
@@ -276,7 +263,7 @@ export const performBooleanSubtract = (
       
       // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+      newGeom = cleanCSGGeometry(newGeom, 0.001); // 0.001mm tolerance for precision
       
       // Dispose old geometry
       try { 
@@ -368,7 +355,7 @@ export const performBooleanUnion = (
     
     // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+    newGeom = cleanCSGGeometry(newGeom, 0.001); // 0.001mm tolerance for precision
     
     // Dispose old geometry
     try { 

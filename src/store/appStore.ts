@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
-import { GeometryFactory } from '../lib/geometryFactory';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {
@@ -209,11 +208,6 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  // OpenCascade integration
-  isOpenCascadeInitialized: boolean;
-  setOpenCascadeInitialized: (initialized: boolean) => void;
-  geometryMode: string;
-  setGeometryMode: (mode: string) => void;
   cameraPosition: [number, number, number];
   setCameraPosition: (position: [number, number, number]) => void;
   selectedObjectPosition: [number, number, number];
@@ -321,13 +315,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ lastTransformTool: tool });
     }
   },
-  
-  // OpenCascade integration
-  isOpenCascadeInitialized: false,
-  setOpenCascadeInitialized: (initialized) => set({ isOpenCascadeInitialized: initialized }),
-  
-  geometryMode: 'Three.js',
-  setGeometryMode: (mode) => set({ geometryMode: mode }),
   
   gridSize: 50,
   setGridSize: (size) => set({ gridSize: size }),

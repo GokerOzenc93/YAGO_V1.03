@@ -405,7 +405,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // Handle extrude height input from terminal
-  const handleExtrudeInput = async (height: number) => {
+  const handleExtrudeInput = (height: number) => {
     if (!pendingExtrudeShape) {
       console.log('No pending shape to extrude');
       return;
@@ -418,7 +418,7 @@ const focusTerminalForMeasurement = () => {
     }
     
     // Create extruded 3D shape
-    await extrudeShape(pendingExtrudeShape, addShape, heightInMm, gridSize);
+    extrudeShape(pendingExtrudeShape, addShape, heightInMm, gridSize);
     
     // Cleanup
     setCompletedShapes(prev => prev.filter(s => s.id !== pendingExtrudeShape.id));
@@ -517,7 +517,7 @@ const focusTerminalForMeasurement = () => {
   }, [pendingExtrudeShape, extrudeHeight, handleExtrudeSubmit, handleExtrudeCancel]);
 
   // UNIFIED: Convert to 3D and cleanup function
-  const convertAndCleanup = async (shape: CompletedShape) => {
+  const convertAndCleanup = (shape: CompletedShape) => {
     // Extrude için bekleyen şekil olarak kaydet
     setPendingExtrudeShape(shape);
     
@@ -546,7 +546,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // UNIFIED: Handle polyline/polygon drawing
-  const handlePolylinePolygonDrawing = async (point: THREE.Vector3) => {
+  const handlePolylinePolygonDrawing = (point: THREE.Vector3) => {
     if (!drawingState.isDrawing) {
       setDrawingState({
         isDrawing: true,
@@ -575,7 +575,7 @@ const focusTerminalForMeasurement = () => {
         setCompletedShapes(prev => [...prev, newShape]);
         console.log(`${activeTool} closed with ${allPoints.length} points`);
         
-        await convertAndCleanup(newShape);
+        convertAndCleanup(newShape);
         finishDrawing();
       } else {
         updateDrawingState({
@@ -591,7 +591,7 @@ const focusTerminalForMeasurement = () => {
   };
 
   // UNIFIED: Handle rectangle/circle drawing
-  const handleShapeDrawing = async (point: THREE.Vector3) => {
+  const handleShapeDrawing = (point: THREE.Vector3) => {
     if (!drawingState.isDrawing) {
       setDrawingState({
         isDrawing: true,
@@ -647,7 +647,7 @@ const focusTerminalForMeasurement = () => {
       setCompletedShapes(prev => [...prev, newShape]);
       console.log(`Shape completed with ID: ${shapeId}`);
       
-      await convertAndCleanup(newShape);
+      convertAndCleanup(newShape);
       finishDrawing();
     }
   };
