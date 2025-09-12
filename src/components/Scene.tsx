@@ -223,7 +223,12 @@ const Scene: React.FC = () => {
     const handleKeyDown = (e) => {
       // Handle Enter key for Trim with Knife mode
       if (e.key === 'Enter' && activeTool === Tool.TRIM_WITH_KNIFE) {
-        const { resetTrimWithKnife, setActiveTool } = useAppStore.getState();
+        const { completeTrimOperation, resetTrimWithKnife, setActiveTool } = useAppStore.getState();
+        
+        // Complete the trim operation first
+        completeTrimOperation();
+        
+        // Then reset and exit
         resetTrimWithKnife();
         setActiveTool(Tool.SELECT);
         console.log('🔪 Trim with Knife mode ended with Enter key');

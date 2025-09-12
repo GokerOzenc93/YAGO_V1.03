@@ -145,7 +145,7 @@ const Terminal: React.FC = () => {
                   {useAppStore.getState().trimWithKnifeState.isSelectingKnife 
                     ? '🔪 Select knife shape' 
                     : useAppStore.getState().trimWithKnifeState.knifeShapeId 
-                      ? '🔪 Click shapes to trim (Enter to finish)' 
+                      ? `🔪 Click shapes to trim (${useAppStore.getState().trimWithKnifeState.targetShapeIds.length} selected, Enter to finish)` 
                       : '🔪 Ready to trim'}
                 </span>
               )}

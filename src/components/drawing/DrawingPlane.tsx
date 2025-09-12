@@ -893,6 +893,20 @@ const focusTerminalForMeasurement = () => {
         handleConvertTo2D();
       }
       
+      // Handle Enter key for Trim with Knife mode
+      if (event.key === 'Enter' && activeTool === Tool.TRIM_WITH_KNIFE) {
+        const { completeTrimOperation, resetTrimWithKnife, setActiveTool } = useAppStore.getState();
+        
+        // Complete the trim operation first
+        completeTrimOperation();
+        
+        // Then reset and exit
+        resetTrimWithKnife();
+        setActiveTool(Tool.SELECT);
+        console.log('🔪 Trim with Knife mode ended with Enter key');
+        return;
+      }
+      
       if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);

@@ -189,6 +189,7 @@ interface AppState {
   setTrimWithKnifeState: (state: Partial<TrimWithKnifeState>) => void;
   performTrimOperation: (targetShapeId: string) => void;
   resetTrimWithKnife: () => void;
+  completeTrimOperation: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -334,6 +335,84 @@ export const useAppStore = create<AppState>((set, get) => ({
         targetShapeIds: [...state.trimWithKnifeState.targetShapeIds, targetShapeId],
       },
     }));
+  },
+  
+  completeTrimOperation: () => {
+    const { trimWithKnifeState, shapes, updateShape, addShape } = get();
+    
+    if (!trimWithKnifeState.knifeShapeId || trimWithKnifeState.targetShapeIds.length === 0) {
+      console.log('🔪 No trim operation to complete');
+      return;
+    }
+    
+    const knifeShape = shapes.find(s => s.id === trimWithKnifeState.knifeShapeId);
+    if (!knifeShape) {
+      console.error('🔪 Knife shape not found');
+      return;
+    }
+    
+    console.log(`🔪 Completing trim operation with ${trimWithKnifeState.targetShapeIds.length} target shapes`);
+    
+    // Import geometry operations
+    import('../utils/geometryOperations').then(({ performCSGSubtraction, createUnifiedGeometry }) => {
+      const trimmedGeometries: THREE.BufferGeometry[] = [];
+      
+      // Process each target shape
+      trimWithKnifeState.targetShapeIds.forEach(targetId => {
+        const targetShape = shapes.find(s => s.id === targetId);
+        if (!targetShape) return;
+        
+        console.log(`🔪 Processing target shape: ${targetShape.type} (${targetId})`);
+        
+        // Perform CSG subtraction
+        const trimmedGeometry = performCSGSubtraction(targetShape, knifeShape);
+        
+        if (trimmedGeometry) {
+          trimmedGeometries.push(trimmedGeometry);
+          
+          // Update the original shape with trimmed geometry
+          updateShape(targetId, {
+            geometry: trimmedGeometry,
+            parameters: {
+              ...targetShape.parameters,
+              trimmed: true,
+              trimmedBy: knifeShape.id
+            }
+          });
+          
+          console.log(`🔪 Shape ${targetId} trimmed successfully`);
+        } else {
+          console.warn(`🔪 Failed to trim shape ${targetId}`);
+        }
+      });
+      
+      // Create unified geometry if multiple shapes were trimmed
+      if (trimmedGeometries.length > 1) {
+        const unifiedGeometry = createUnifiedGeometry(trimmedGeometries);
+        
+        // Create a new unified shape
+        const unifiedShape: Shape = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'unified_trimmed',
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          geometry: unifiedGeometry,
+          parameters: {
+            unified: true,
+            originalShapes: trimWithKnifeState.targetShapeIds,
+            trimmedBy: knifeShape.id
+          }
+        };
+        
+        addShape(unifiedShape);
+        console.log(`🔪 Unified trimmed shape created: ${unifiedShape.id}`);
+      }
+      
+      console.log('🔪 Trim operation completed successfully');
+    }).catch(error => {
+      console.error('🔪 Failed to import geometry operations:', error);
+    });
   },
   
   resetTrimWithKnife: () =>
