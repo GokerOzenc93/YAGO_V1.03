@@ -5,7 +5,7 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
-import { ViewMode, OrthoMode, Tool } from '../store/appStore';
+import { ViewMode, OrthoMode } from '../store/appStore';
 import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
@@ -43,6 +43,10 @@ const OpenCascadeShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
+    isFaceSelectionMode,
+    selectedFaceShapeId,
+    selectedFaceIndex,
+    setSelectedFaceIndex,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   const faceCycleRef = useRef<{
@@ -231,36 +235,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   }, [isSelected, setSelectedObjectPosition, shape.id, shape.position]);
 
   const handleClick = (e: any) => {
-    const { 
-      activeTool, 
-      booleanSubtractState, 
-      setBooleanSubtractState, 
-      performBooleanSubtract,
-      resetBooleanSubtract 
-    } = useAppStore.getState();
-    
-    // Handle Boolean Subtract mode
-    if (activeTool === Tool.BOOLEAN_SUBTRACT_TOOL && e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      
-      if (booleanSubtractState.isSelectingSubtractor) {
-        // First click: Select subtractor shape
-        setBooleanSubtractState({
-          subtractorShapeId: shape.id,
-          isSelectingSubtractor: false,
-        });
-        console.log(`➖ Subtractor shape selected: ${shape.id}`);
-        return;
-      } else if (booleanSubtractState.subtractorShapeId && booleanSubtractState.subtractorShapeId !== shape.id) {
-        // Subsequent clicks: Subtract from target shapes
-        performBooleanSubtract(shape.id);
-        console.log(`➖ Subtracting ${booleanSubtractState.subtractorShapeId} from ${shape.id}`);
-        return;
-      }
-    }
-    
-    // Face Edit mode - handle face selection
-    if (isFaceEditMode && e.nativeEvent.button === 0) {
+    // Face selection mode for boolean subtract
+    if (isFaceSelectionMode && selectedFaceShapeId === shape.id && e.nativeEvent.button === 0) {
       e.stopPropagation();
       const hits = detectFaceAtMouse(
         e.nativeEvent,
@@ -270,7 +246,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
 
       if (hits.length === 0) {
-        console.warn('🎯 No face detected');
+        console.warn('🎯 No face detected for face selection');
         return;
       }
 
@@ -297,9 +273,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       }
 
       const highlight = highlightFace(scene, hit, shape, 0xff6b35, 0.6);
-      if (highlight && onFaceSelect) {
-        onFaceSelect(hit.faceIndex);
-        console.log(`🎯 Face ${hit.faceIndex} selected and highlighted`);
+      if (highlight) {
+        setSelectedFaceIndex(hit.faceIndex);
+        console.log(`🎯 Face ${hit.faceIndex} selected as cutting plane. Press Enter to execute boolean subtract.`);
       }
       return;
     }
@@ -313,8 +289,8 @@ const OpenCascadeShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Face Edit mode - prevent context menu
-    if (isFaceEditMode) {
+    // Face selection mode - prevent context menu
+    if (isFaceSelectionMode && selectedFaceShapeId === shape.id) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       return;
@@ -377,24 +353,12 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get edge opacity based on view mode
   const getEdgeOpacity = () => {
-    // Check if this shape is selected as subtractor in Boolean Subtract mode
-    const { booleanSubtractState } = useAppStore.getState();
-    if (booleanSubtractState.subtractorShapeId === shape.id) {
-      return 1.0; // Full opacity for subtractor shape edges
-    }
-    
-    // Always full opacity for other shapes
+    // Always full opacity
     return 1.0;
   };
 
   // 🎯 NEW: Get edge color based on view mode
   const getEdgeColor = () => {
-    // Check if this shape is selected as subtractor in Boolean Subtract mode
-    const { booleanSubtractState } = useAppStore.getState();
-    if (booleanSubtractState.subtractorShapeId === shape.id) {
-      return '#ff0000'; // Red color for subtractor shape
-    }
-    
     if (viewMode === ViewMode.SOLID) {
       // Solid mode: Black outline edges
       return '#000000';
@@ -406,12 +370,6 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 RESPONSIVE LINE WIDTH - Tablet ve küçük ekranlar için optimize edildi
   const getEdgeLineWidth = () => {
-    // Check if this shape is selected as subtractor in Boolean Subtract mode
-    const { booleanSubtractState } = useAppStore.getState();
-    if (booleanSubtractState.subtractorShapeId === shape.id) {
-      return 2.0; // Thicker lines for subtractor shape
-    }
-    
     const screenWidth = window.innerWidth;
 
     if (screenWidth < 768) {
@@ -428,17 +386,6 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get material properties based on view mode
   const getMaterialProps = () => {
-    // Check if this shape is selected as subtractor in Boolean Subtract mode
-    const { booleanSubtractState } = useAppStore.getState();
-    if (booleanSubtractState.subtractorShapeId === shape.id) {
-      return {
-        color: '#ff4444', // Slightly lighter red for the subtractor mesh
-        transparent: true,
-        opacity: 0.3, // Semi-transparent red subtractor mesh
-        visible: true,
-      };
-    }
-    
     const opacityValue = getOpacity(); // 👈 Dinamik opacity
 
     return {
