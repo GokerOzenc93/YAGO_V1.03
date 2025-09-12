@@ -1,99 +1,6 @@
 import { create } from 'zustand';
 import { Shape } from '../types/shapes';
 import * as THREE from 'three';
-import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
-import { GeometryFactory } from '../lib/geometryFactory';
-
-// Helper function to get shape bounds
-const getShapeBounds = (shape: Shape) => {
-  const geometry = shape.geometry;
-  geometry.computeBoundingBox();
-  const bbox = geometry.boundingBox!;
-  
-  // Apply shape transformations
-  const min = new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
-  const max = new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
-  
-  // Apply scale
-  min.multiply(new THREE.Vector3(...shape.scale));
-  max.multiply(new THREE.Vector3(...shape.scale));
-  
-  // Apply position
-  min.add(new THREE.Vector3(...shape.position));
-  max.add(new THREE.Vector3(...shape.position));
-  
-  return { min, max };
-};
-
-// Helper function to check if two bounding boxes intersect
-const boundsIntersect = (bounds1: any, bounds2: any): boolean => {
-  return (
-    bounds1.min.x <= bounds2.max.x && bounds1.max.x >= bounds2.min.x &&
-    bounds1.min.y <= bounds2.max.y && bounds1.max.y >= bounds2.min.y &&
-    bounds1.min.z <= bounds2.max.z && bounds1.max.z >= bounds2.min.z
-  );
-};
-
-// Helper function to create subtracted geometry (simplified implementation)
-const createSubtractedGeometry = (targetGeometry: THREE.BufferGeometry, subtractShape: Shape): THREE.BufferGeometry => {
-  // Create a new geometry with a hole/cavity based on the subtract shape
-  const newGeometry = targetGeometry.clone();
-  
-  // Get the subtract shape's dimensions and position
-  const subtractBounds = getShapeBounds(subtractShape);
-  const subtractCenter = new THREE.Vector3(
-    (subtractBounds.min.x + subtractBounds.max.x) / 2,
-    (subtractBounds.min.y + subtractBounds.max.y) / 2,
-    (subtractBounds.min.z + subtractBounds.max.z) / 2
-  );
-  
-  // For demonstration, we'll create a modified geometry
-  // This is a simplified approach - in a real CAD system, you'd use proper CSG
-  
-  if (subtractShape.type === 'box' || subtractShape.type === 'cylinder') {
-    // Create a visual indication by modifying the geometry
-    // Scale down the geometry slightly to show the subtraction effect
-    const positions = newGeometry.attributes.position;
-    const positionArray = positions.array as Float32Array;
-    
-    // Modify vertices that are close to the subtract shape
-    for (let i = 0; i < positions.count; i++) {
-      const vertex = new THREE.Vector3(
-        positionArray[i * 3],
-        positionArray[i * 3 + 1],
-        positionArray[i * 3 + 2]
-      );
-      
-      // Check if vertex is within the subtract shape's influence
-      const distance = vertex.distanceTo(subtractCenter);
-      const influenceRadius = Math.max(
-        subtractBounds.max.x - subtractBounds.min.x,
-        subtractBounds.max.y - subtractBounds.min.y,
-        subtractBounds.max.z - subtractBounds.min.z
-      ) / 2;
-      
-      if (distance < influenceRadius) {
-        // Create a cavity effect by pushing vertices inward
-        const direction = vertex.clone().sub(subtractCenter).normalize();
-        const pushDistance = (influenceRadius - distance) * 0.3;
-        vertex.sub(direction.multiplyScalar(pushDistance));
-        
-        positionArray[i * 3] = vertex.x;
-        positionArray[i * 3 + 1] = vertex.y;
-        positionArray[i * 3 + 2] = vertex.z;
-      }
-    }
-    
-    // Mark the attribute as needing update
-    positions.needsUpdate = true;
-    newGeometry.computeVertexNormals();
-    newGeometry.computeBoundingBox();
-    newGeometry.computeBoundingSphere();
-  }
-  
-  console.log('Boolean subtraction applied - geometry modified with cavity effect');
-  return newGeometry;
-};
 
 export enum Tool {
   MOVE = 'Move',
@@ -120,6 +27,7 @@ export enum Tool {
   BOOLEAN_SUBTRACT = 'Subtract',
   BOOLEAN_INTERSECT = 'Intersect',
   POINT_TO_POINT_MOVE = 'Point to Point Move',
+  BOOLEAN_SUBTRACT_TOOL = 'Boolean Subtract',
 }
 
 export enum CameraType {
@@ -160,6 +68,13 @@ export enum ViewMode {
 export enum OrthoMode {
   OFF = 'off',
   ON = 'on'
+}
+
+export interface BooleanSubtractState {
+  isActive: boolean;
+  isSelectingSubtractor: boolean;
+  subtractorShapeId: string | null;
+  targetShapeIds: string[];
 }
 
 export interface SnapSettings {
@@ -208,12 +123,6 @@ interface AppState {
   deleteShape: (id: string) => void;
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
-  performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  // OpenCascade integration
-  isOpenCascadeInitialized: boolean;
-  setOpenCascadeInitialized: (initialized: boolean) => void;
-  geometryMode: string;
-  setGeometryMode: (mode: string) => void;
   cameraPosition: [number, number, number];
   setCameraPosition: (position: [number, number, number]) => void;
   selectedObjectPosition: [number, number, number];
@@ -276,6 +185,12 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Boolean Subtract state
+  booleanSubtractState: BooleanSubtractState;
+  setBooleanSubtractState: (state: Partial<BooleanSubtractState>) => void;
+  performBooleanSubtract: (targetShapeId: string) => void;
+  resetBooleanSubtract: () => void;
+  completeBooleanSubtract: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -321,13 +236,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ lastTransformTool: tool });
     }
   },
-  
-  // OpenCascade integration
-  isOpenCascadeInitialized: false,
-  setOpenCascadeInitialized: (initialized) => set({ isOpenCascadeInitialized: initialized }),
-  
-  geometryMode: 'Three.js',
-  setGeometryMode: (mode) => set({ geometryMode: mode }),
   
   gridSize: 50,
   setGridSize: (size) => set({ gridSize: size }),
@@ -398,6 +306,125 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+  
+  // Boolean Subtract state
+  booleanSubtractState: {
+    isActive: false,
+    isSelectingSubtractor: false,
+    subtractorShapeId: null,
+    targetShapeIds: [],
+  },
+  
+  setBooleanSubtractState: (updates) =>
+    set((state) => ({
+      booleanSubtractState: {
+        ...state.booleanSubtractState,
+        ...updates,
+      },
+    })),
+    
+  performBooleanSubtract: (targetShapeId) => {
+    const { booleanSubtractState, shapes } = get();
+    if (!booleanSubtractState.subtractorShapeId) return;
+    
+    console.log(`➖ Boolean subtract: ${booleanSubtractState.subtractorShapeId} from ${targetShapeId}`);
+    
+    // Add to target shapes list
+    set((state) => ({
+      booleanSubtractState: {
+        ...state.booleanSubtractState,
+        targetShapeIds: [...state.booleanSubtractState.targetShapeIds, targetShapeId],
+      },
+    }));
+  },
+  
+  completeBooleanSubtract: () => {
+    const { booleanSubtractState, shapes, updateShape, addShape } = get();
+    
+    if (!booleanSubtractState.subtractorShapeId || booleanSubtractState.targetShapeIds.length === 0) {
+      console.log('➖ No boolean subtract operation to complete');
+      return;
+    }
+    
+    const subtractorShape = shapes.find(s => s.id === booleanSubtractState.subtractorShapeId);
+    if (!subtractorShape) {
+      console.error('➖ Subtractor shape not found');
+      return;
+    }
+    
+    console.log(`➖ Completing boolean subtract with ${booleanSubtractState.targetShapeIds.length} target shapes`);
+    
+    // Import geometry operations
+    import('../utils/geometryOperations').then(({ performCSGSubtraction, createUnifiedGeometry }) => {
+      const subtractedGeometries: THREE.BufferGeometry[] = [];
+      
+      // Process each target shape
+      booleanSubtractState.targetShapeIds.forEach(targetId => {
+        const targetShape = shapes.find(s => s.id === targetId);
+        if (!targetShape) return;
+        
+        console.log(`➖ Processing target shape: ${targetShape.type} (${targetId})`);
+        
+        // Perform CSG subtraction
+        const subtractedGeometry = performCSGSubtraction(targetShape, subtractorShape);
+        
+        if (subtractedGeometry) {
+          subtractedGeometries.push(subtractedGeometry);
+          
+          // Update the original shape with subtracted geometry
+          updateShape(targetId, {
+            geometry: subtractedGeometry,
+            parameters: {
+              ...targetShape.parameters,
+              subtracted: true,
+              subtractedBy: subtractorShape.id
+            }
+          });
+          
+          console.log(`➖ Shape ${targetId} subtracted successfully`);
+        } else {
+          console.warn(`➖ Failed to subtract from shape ${targetId}`);
+        }
+      });
+      
+      // Create unified geometry if multiple shapes were subtracted
+      if (subtractedGeometries.length > 1) {
+        const unifiedGeometry = createUnifiedGeometry(subtractedGeometries);
+        
+        // Create a new unified shape
+        const unifiedShape: Shape = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'unified_subtracted',
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          geometry: unifiedGeometry,
+          parameters: {
+            unified: true,
+            originalShapes: booleanSubtractState.targetShapeIds,
+            subtractedBy: subtractorShape.id
+          }
+        };
+        
+        addShape(unifiedShape);
+        console.log(`➖ Unified subtracted shape created: ${unifiedShape.id}`);
+      }
+      
+      console.log('➖ Boolean subtract operation completed successfully');
+    }).catch(error => {
+      console.error('➖ Failed to import geometry operations:', error);
+    });
+  },
+  
+  resetBooleanSubtract: () =>
+    set({
+      booleanSubtractState: {
+        isActive: false,
+        isSelectingSubtractor: false,
+        subtractorShapeId: null,
+        targetShapeIds: [],
+      },
+    }),
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -579,7 +606,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     {
       id: '1',
       type: 'box',
-      position: [-200, 250, 0],
+      position: [0, 250, 0],
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       geometry: new THREE.BoxGeometry(500, 500, 500),
@@ -591,15 +618,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
     {
       id: '2',
-      type: 'box',
-      position: [100, 250, 0],
+      type: 'cylinder',
+      position: [750, 250, 0],
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(300, 300, 300),
+      geometry: new THREE.CylinderGeometry(250, 250, 500, 32),
       parameters: {
-        width: 300,
-        height: 300,
-        depth: 300,
+        radius: 250,
+        height: 500,
       },
     },
   ],
@@ -622,31 +648,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       shapes: state.shapes.filter((shape) => shape.id !== id),
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
     })),
-     
-  performBooleanOperation: (operation) => {
-    const { shapes, selectedShapeId, updateShape, deleteShape } = get();
-    if (!selectedShapeId) {
-      console.warn('No shape selected for boolean operation');
-      return;
-    }
-    
-    const selectedShape = shapes.find(s => s.id === selectedShapeId);
-    if (!selectedShape) {
-      console.warn('Selected shape not found');
-      return;
-    }
-    
-    let success = false;
-    if (operation === 'subtract') {
-      success = performBooleanSubtract(selectedShape, shapes, updateShape, deleteShape);
-    } else if (operation === 'union') {
-      success = performBooleanUnion(selectedShape, shapes, updateShape, deleteShape);
-    }
-    
-    if (success) {
-      set({ selectedShapeId: null });
-    }
-  },
     
   selectedShapeId: null,
   selectShape: (id) => {

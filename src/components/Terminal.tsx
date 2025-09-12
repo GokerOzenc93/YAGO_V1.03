@@ -139,6 +139,16 @@ const Terminal: React.FC = () => {
               <span className="font-medium">
                 Tool: <span className="text-white">{activeTool}</span>
               </span>
+              {/* Trim with Knife status */}
+              {activeTool === 'Boolean Subtract' && (
+                <span className="text-red-400 font-medium">
+                  {useAppStore.getState().booleanSubtractState.isSelectingSubtractor 
+                    ? '➖ Select subtractor shape' 
+                    : useAppStore.getState().booleanSubtractState.subtractorShapeId 
+                      ? `➖ Click shapes to subtract from (${useAppStore.getState().booleanSubtractState.targetShapeIds.length} selected, Enter to finish)` 
+                      : '➖ Ready to subtract'}
+                </span>
+              )}
             </div>
 
             {/* Orta - Polyline ölçü bilgileri */}
