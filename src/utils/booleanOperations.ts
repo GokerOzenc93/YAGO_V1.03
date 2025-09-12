@@ -502,17 +502,34 @@ const getFaceNormal = (geometry, faceIndex) => {
     const pos = geometry.attributes.position;
     const index = geometry.index;
     
-    if (!pos || faceIndex === undefined) return null;
+    if (!pos || !pos.array || pos.array.length === 0 || faceIndex === undefined || faceIndex < 0) return null;
+    
+    const posArray = pos.array;
+    const maxVertexIndex = pos.count - 1;
     
     let a, b, c;
     if (index) {
+      if (!index.array || index.array.length === 0) return null;
+      const maxFaceIndex = Math.floor(index.count / 3) - 1;
+      if (faceIndex > maxFaceIndex) return null;
+      
       a = index.getX(faceIndex * 3);
       b = index.getX(faceIndex * 3 + 1);
       c = index.getX(faceIndex * 3 + 2);
     } else {
+      const maxFaceIndex = Math.floor(pos.count / 3) - 1;
+      if (faceIndex > maxFaceIndex) return null;
+      
       a = faceIndex * 3;
       b = faceIndex * 3 + 1;
       c = faceIndex * 3 + 2;
+    }
+    
+    // Validate indices are within bounds
+    if (a > maxVertexIndex || b > maxVertexIndex || c > maxVertexIndex || 
+        a < 0 || b < 0 || c < 0) {
+      console.warn(`Invalid vertex indices: a=${a}, b=${b}, c=${c}, maxIndex=${maxVertexIndex}`);
+      return null;
     }
     
     const vA = new THREE.Vector3().fromBufferAttribute(pos, a);
@@ -533,7 +550,16 @@ const getFaceNormal = (geometry, faceIndex) => {
     const cb = new THREE.Vector3().subVectors(vC, vB);
     const ab = new THREE.Vector3().subVectors(vA, vB);
     
-    return cb.cross(ab).normalize();
+    const normal = cb.cross(ab).normalize();
+    
+    // Validate the resulting normal
+    if (isNaN(normal.x) || isNaN(normal.y) || isNaN(normal.z) ||
+        normal.x === undefined || normal.y === undefined || normal.z === undefined) {
+      console.warn('Invalid normal vector calculated');
+      return null;
+    }
+    
+    return normal;
   } catch (error) {
     console.warn('Error getting face normal:', error);
     return null;
@@ -546,17 +572,34 @@ const getFaceCenter = (geometry, faceIndex) => {
     const pos = geometry.attributes.position;
     const index = geometry.index;
     
-    if (!pos || faceIndex === undefined) return null;
+    if (!pos || !pos.array || pos.array.length === 0 || faceIndex === undefined || faceIndex < 0) return null;
+    
+    const posArray = pos.array;
+    const maxVertexIndex = pos.count - 1;
     
     let a, b, c;
     if (index) {
+      if (!index.array || index.array.length === 0) return null;
+      const maxFaceIndex = Math.floor(index.count / 3) - 1;
+      if (faceIndex > maxFaceIndex) return null;
+      
       a = index.getX(faceIndex * 3);
       b = index.getX(faceIndex * 3 + 1);
       c = index.getX(faceIndex * 3 + 2);
     } else {
+      const maxFaceIndex = Math.floor(pos.count / 3) - 1;
+      if (faceIndex > maxFaceIndex) return null;
+      
       a = faceIndex * 3;
       b = faceIndex * 3 + 1;
       c = faceIndex * 3 + 2;
+    }
+    
+    // Validate indices are within bounds
+    if (a > maxVertexIndex || b > maxVertexIndex || c > maxVertexIndex || 
+        a < 0 || b < 0 || c < 0) {
+      console.warn(`Invalid vertex indices: a=${a}, b=${b}, c=${c}, maxIndex=${maxVertexIndex}`);
+      return null;
     }
     
     const vA = new THREE.Vector3().fromBufferAttribute(pos, a);
@@ -574,10 +617,19 @@ const getFaceCenter = (geometry, faceIndex) => {
       return null;
     }
     
-    return new THREE.Vector3()
+    const center = new THREE.Vector3()
       .addVectors(vA, vB)
       .add(vC)
       .divideScalar(3);
+    
+    // Validate the resulting center
+    if (isNaN(center.x) || isNaN(center.y) || isNaN(center.z) ||
+        center.x === undefined || center.y === undefined || center.z === undefined) {
+      console.warn('Invalid center vector calculated');
+      return null;
+    }
+    
+    return center;
   } catch (error) {
     console.warn('Error getting face center:', error);
     return null;
