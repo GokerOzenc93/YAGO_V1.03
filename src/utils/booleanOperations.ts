@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION, ADDITION } from 'three-bvh-csg';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { GeometryFactory } from '../lib/geometryFactory';
+// SimplifyModifier, nesnelerin kaybolmasına neden olduğu için kaldırıldı.
 
 /**
  * Clean up CSG-generated geometry:
  * - applyMatrix4 should be done *before* calling this
  * - converts to non-indexed, welds vertices by tolerance, removes degenerate triangles,
  * rebuilds indexed geometry, merges vertices, computes normals/bounds
- * - merges coplanar faces to eliminate unnecessary vertices
  *
  * @param {THREE.BufferGeometry} geom - geometry already in target-local space
  * @param {number} tolerance - welding tolerance in world units (e.g. 1e-3)
@@ -118,10 +119,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     }
   }
 
- // 7) 🎯 NEW: Merge coplanar faces to eliminate unnecessary vertices
- console.log('🎯 Starting coplanar face merging...');
- merged = mergeCoplanarFaces(merged, tolerance);
- // 8) Recompute normals and bounds
+  // 7) Recompute normals and bounds
   merged.computeVertexNormals();
   merged.computeBoundingBox();
   merged.computeBoundingSphere();
@@ -142,198 +140,59 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
 }
 
 /**
- * Merge coplanar faces to eliminate unnecessary vertices and create cleaner surfaces
- * @param {THREE.BufferGeometry} geometry - Input geometry
- * @param {number} tolerance - Tolerance for coplanarity check
- * @returns {THREE.BufferGeometry} Geometry with merged coplanar faces
+ * Reconstruct geometry from world vertices with proper surface generation
+ * Creates new clean geometry based on bounding box and shape type
  */
-function mergeCoplanarFaces(geometry, tolerance = 1e-2) {
-  if (!geometry.index || !geometry.attributes.position) {
-    console.warn('mergeCoplanarFaces: Invalid geometry');
-    return geometry;
+const reconstructGeometryFromBounds = async (
+  originalShape: any,
+  resultGeometry: THREE.BufferGeometry,
+  targetBrush: any
+): Promise<THREE.BufferGeometry> => {
+  console.log('🎯 Starting geometry reconstruction from bounds...');
+  
+  // Get the result geometry bounds in world space
+  resultGeometry.computeBoundingBox();
+  const bbox = resultGeometry.boundingBox;
+  
+  if (!bbox) {
+    console.warn('No bounding box available for reconstruction');
+    return resultGeometry;
   }
-
-  const positions = geometry.attributes.position.array;
-  const indices = geometry.index.array;
-  const triangleCount = indices.length / 3;
-
-  console.log(`🎯 Analyzing ${triangleCount} triangles for coplanar face merging...`);
-
-  // Calculate face normals and centers
-  const faceNormals = [];
-  const faceCenters = [];
-  const faceAreas = [];
-
-  for (let i = 0; i < triangleCount; i++) {
-    const i0 = indices[i * 3] * 3;
-    const i1 = indices[i * 3 + 1] * 3;
-    const i2 = indices[i * 3 + 2] * 3;
-
-    const v0 = new THREE.Vector3(positions[i0], positions[i0 + 1], positions[i0 + 2]);
-    const v1 = new THREE.Vector3(positions[i1], positions[i1 + 1], positions[i1 + 2]);
-    const v2 = new THREE.Vector3(positions[i2], positions[i2 + 1], positions[i2 + 2]);
-
-    // Calculate normal
-    const edge1 = new THREE.Vector3().subVectors(v1, v0);
-    const edge2 = new THREE.Vector3().subVectors(v2, v0);
-    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-
-    // Calculate center
-    const center = new THREE.Vector3().addVectors(v0, v1).add(v2).divideScalar(3);
-
-    // Calculate area
-    const area = edge1.cross(edge2).length() / 2;
-
-    faceNormals.push(normal);
-    faceCenters.push(center);
-    faceAreas.push(area);
+  
+  // Calculate dimensions from bounding box
+  const width = Math.abs(bbox.max.x - bbox.min.x);
+  const height = Math.abs(bbox.max.y - bbox.min.y);
+  const depth = Math.abs(bbox.max.z - bbox.min.z);
+  
+  console.log(`🎯 Reconstructing geometry with dimensions: ${width.toFixed(1)} x ${height.toFixed(1)} x ${depth.toFixed(1)}`);
+  
+  let newGeometry: THREE.BufferGeometry;
+  
+  // Determine shape type and create appropriate geometry
+  if (originalShape.type === 'box' || !originalShape.type) {
+    // Create new box geometry with calculated dimensions
+    newGeometry = await GeometryFactory.createBox(width, height, depth);
+  } else if (originalShape.type === 'cylinder') {
+    // For cylinder, use average of width/depth as radius
+    const radius = Math.max(width, depth) / 2;
+    newGeometry = await GeometryFactory.createCylinder(radius, height);
+  } else {
+    // For other shapes, default to box
+    newGeometry = await GeometryFactory.createBox(width, height, depth);
   }
+  
+  // Center the new geometry at the result's center
+  const center = bbox.getCenter(new THREE.Vector3());
+  newGeometry.translate(center.x, center.y, center.z);
+  
+  // Transform back to local space
+  const invMatrix = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
+  newGeometry.applyMatrix4(invMatrix);
+  
+  console.log('✅ Geometry reconstruction completed with clean surfaces');
+  return newGeometry;
+};
 
-  // Group coplanar faces
-  const coplanarGroups = [];
-  const processed = new Set();
-  const normalTolerance = Math.cos(THREE.MathUtils.degToRad(1)); // 1 degree tolerance
-  const planeTolerance = tolerance * 10; // Distance tolerance for same plane
-
-  for (let i = 0; i < triangleCount; i++) {
-    if (processed.has(i)) continue;
-
-    const group = [i];
-    const baseNormal = faceNormals[i];
-    const baseCenter = faceCenters[i];
-    processed.add(i);
-
-    // Find coplanar faces
-    for (let j = i + 1; j < triangleCount; j++) {
-      if (processed.has(j)) continue;
-
-      const testNormal = faceNormals[j];
-      const testCenter = faceCenters[j];
-
-      // Check if normals are parallel (same or opposite direction)
-      const normalDot = Math.abs(baseNormal.dot(testNormal));
-      if (normalDot < normalTolerance) continue;
-
-      // Check if faces are on the same plane
-      const centerDiff = new THREE.Vector3().subVectors(testCenter, baseCenter);
-      const distanceToPlane = Math.abs(centerDiff.dot(baseNormal));
-      
-      if (distanceToPlane < planeTolerance) {
-        group.push(j);
-        processed.add(j);
-      }
-    }
-
-    if (group.length > 1) {
-      coplanarGroups.push(group);
-    }
-  }
-
-  console.log(`🎯 Found ${coplanarGroups.length} coplanar face groups`);
-
-  if (coplanarGroups.length === 0) {
-    return geometry; // No coplanar faces to merge
-  }
-
-  // Create new geometry with merged faces
-  const newPositions = [];
-  const newIndices = [];
-  let vertexIndex = 0;
-
-  // Keep non-coplanar faces as-is
-  const allGroupedFaces = new Set();
-  coplanarGroups.forEach(group => group.forEach(faceIndex => allGroupedFaces.add(faceIndex)));
-
-  for (let i = 0; i < triangleCount; i++) {
-    if (allGroupedFaces.has(i)) continue;
-
-    // Copy original triangle
-    const i0 = indices[i * 3] * 3;
-    const i1 = indices[i * 3 + 1] * 3;
-    const i2 = indices[i * 3 + 2] * 3;
-
-    newPositions.push(
-      positions[i0], positions[i0 + 1], positions[i0 + 2],
-      positions[i1], positions[i1 + 1], positions[i1 + 2],
-      positions[i2], positions[i2 + 1], positions[i2 + 2]
-    );
-
-    newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-    vertexIndex += 3;
-  }
-
-  // Process coplanar groups - create simplified faces
-  let mergedFaceCount = 0;
-  coplanarGroups.forEach(group => {
-    // Collect all vertices from the group
-    const groupVertices = [];
-    const vertexSet = new Set();
-
-    group.forEach(faceIndex => {
-      for (let v = 0; v < 3; v++) {
-        const idx = indices[faceIndex * 3 + v] * 3;
-        const vertex = new THREE.Vector3(positions[idx], positions[idx + 1], positions[idx + 2]);
-        const key = `${vertex.x.toFixed(6)}_${vertex.y.toFixed(6)}_${vertex.z.toFixed(6)}`;
-        
-        if (!vertexSet.has(key)) {
-          vertexSet.add(key);
-          groupVertices.push(vertex);
-        }
-      }
-    });
-
-    if (groupVertices.length < 3) return;
-
-    // Create a simplified representation using convex hull or boundary detection
-    // For now, we'll use a simple approach: create triangles from the boundary vertices
-    const normal = faceNormals[group[0]];
-    
-    // Project vertices to 2D plane for triangulation
-    const u = new THREE.Vector3(1, 0, 0);
-    if (Math.abs(normal.dot(u)) > 0.9) {
-      u.set(0, 1, 0);
-    }
-    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
-    u.crossVectors(v, normal).normalize();
-
-    const projectedVertices = groupVertices.map(vertex => ({
-      vertex,
-      u: vertex.dot(u),
-      v: vertex.dot(v)
-    }));
-
-    // Simple fan triangulation from first vertex
-    if (projectedVertices.length >= 3) {
-      const baseVertex = projectedVertices[0].vertex;
-      
-      for (let i = 1; i < projectedVertices.length - 1; i++) {
-        const v1 = projectedVertices[i].vertex;
-        const v2 = projectedVertices[i + 1].vertex;
-
-        // Add triangle vertices
-        newPositions.push(
-          baseVertex.x, baseVertex.y, baseVertex.z,
-          v1.x, v1.y, v1.z,
-          v2.x, v2.y, v2.z
-        );
-
-        newIndices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-        vertexIndex += 3;
-      }
-      
-      mergedFaceCount++;
-    }
-  });
-
-  console.log(`🎯 Merged ${coplanarGroups.length} coplanar groups into ${mergedFaceCount} simplified faces`);
-
-  // Create new geometry
-  const mergedGeometry = new THREE.BufferGeometry();
-  mergedGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPositions), 3));
-  mergedGeometry.setIndex(newIndices);
-
-  return mergedGeometry;
-}
 // Dummy data and types to make the code runnable without external files
 const Shape = {};
 const Vector3 = THREE.Vector3;
@@ -347,12 +206,11 @@ const getShapeBounds = (shape) => {
 
   const pos = new THREE.Vector3(...(shape.position || [0, 0, 0]));
   const scale = new THREE.Vector3(...(shape.scale || [1, 1, 1]));
-  // shape.rotation olabilir; eğer yoksa 0,0,0 al
   const rot = shape.rotation ? new THREE.Euler(...shape.rotation) : new THREE.Euler(0, 0, 0);
   const quat = new THREE.Quaternion().setFromEuler(rot);
 
   const m = new THREE.Matrix4().compose(pos, quat, scale);
-  bbox.applyMatrix4(m); // bbox'ı world/shape-space'e dönüştür
+  bbox.applyMatrix4(m); 
 
   return bbox;
 };
@@ -400,7 +258,6 @@ export const findIntersectingShapes = (
 const createBrushFromShape = (shape) => {
   const brush = new Brush(shape.geometry.clone());
   
-  // Apply transforms
   brush.position.fromArray(shape.position || [0, 0, 0]);
   brush.scale.fromArray(shape.scale || [1, 1, 1]);
   
@@ -409,7 +266,6 @@ const createBrushFromShape = (shape) => {
     brush.quaternion.setFromEuler(euler);
   }
   
-  // CRITICAL: Update matrix world
   brush.updateMatrixWorld(true);
   
   console.log(`🎯 Brush created:`, {
@@ -431,7 +287,6 @@ export const performBooleanSubtract = (
   console.log('🎯 ===== BOOLEAN SUBTRACT OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for subtraction: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -444,21 +299,18 @@ export const performBooleanSubtract = (
   const evaluator = new Evaluator();
   
   try {
-    // Process each intersecting shape
     intersectingShapes.forEach((targetShape, index) => {
       console.log(`🎯 Subtract operation ${index + 1}/${intersectingShapes.length}: ${targetShape.type} (${targetShape.id})`);
       
-      // Create brushes
       const selectedBrush = createBrushFromShape(selectedShape);
       const targetBrush = createBrushFromShape(targetShape);
       
       console.log('🎯 Performing CSG subtraction...');
       
-      // A - B (subtraction)
       const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, SUBTRACTION);
       
-      if (!resultMesh || !resultMesh.geometry) {
-        console.error('❌ CSG subtraction operation failed - no result mesh');
+      if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+        console.error('❌ CSG subtraction operation failed or resulted in an empty mesh. Aborting for this shape.');
         return;
       }
       
@@ -466,23 +318,30 @@ export const performBooleanSubtract = (
       
       console.log('✅ CSG subtraction completed, transforming result to local space...');
       
-      // Transform result geometry back into target's LOCAL space
       const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
       let newGeom = resultMesh.geometry.clone();
       newGeom.applyMatrix4(invTarget);
       
-      // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+      newGeom = cleanCSGGeometry(newGeom, 0.05);
       
-      // Dispose old geometry
+      // 🎯 NEW: Reconstruct geometry with proper surfaces if cleanup failed or resulted in poor quality
+      if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count < 12) {
+        console.log('🎯 CSG result has poor quality, reconstructing geometry from bounds...');
+        try {
+          newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
+        } catch (error) {
+          console.error('❌ Geometry reconstruction failed:', error);
+          return;
+        }
+      }
+      
       try { 
         targetShape.geometry.dispose(); 
       } catch (e) { 
         console.warn('Could not dispose old geometry:', e);
       }
       
-      // Update the target shape
       updateShape(targetShape.id, {
         geometry: newGeom,
         parameters: {
@@ -496,7 +355,6 @@ export const performBooleanSubtract = (
       console.log(`✅ Target shape ${targetShape.id} updated with CSG result`);
     });
     
-    // Delete the selected shape (the one being subtracted)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Subtracted shape deleted: ${selectedShape.id}`);
     
@@ -522,7 +380,6 @@ export const performBooleanUnion = (
   console.log('🎯 ===== BOOLEAN UNION OPERATION STARTED (CSG) =====');
   console.log(`🎯 Selected shape for union: ${selectedShape.type} (${selectedShape.id})`);
   
-  // Find intersecting shapes
   const intersectingShapes = findIntersectingShapes(selectedShape, allShapes);
   
   if (intersectingShapes.length === 0) {
@@ -535,22 +392,19 @@ export const performBooleanUnion = (
   const evaluator = new Evaluator();
   
   try {
-    // For union, merge with the first intersecting shape
     const targetShape = intersectingShapes[0];
     
     console.log(`🎯 Union target: ${targetShape.type} (${targetShape.id})`);
     
-    // Create brushes
     const selectedBrush = createBrushFromShape(selectedShape);
     const targetBrush = createBrushFromShape(targetShape);
     
     console.log('🎯 Performing CSG union...');
     
-    // A + B (union)
     const resultMesh = evaluator.evaluate(targetBrush, selectedBrush, ADDITION);
     
-    if (!resultMesh || !resultMesh.geometry) {
-      console.error('❌ CSG union operation failed - no result mesh');
+    if (!resultMesh || !resultMesh.geometry || resultMesh.geometry.attributes.position.count === 0) {
+      console.error('❌ CSG union operation failed or resulted in an empty mesh. Aborting.');
       return false;
     }
     
@@ -558,23 +412,30 @@ export const performBooleanUnion = (
     
     console.log('✅ CSG union completed, transforming result to local space...');
     
-    // Transform result geometry back into target's LOCAL space
     const invTarget = new THREE.Matrix4().copy(targetBrush.matrixWorld).invert();
     let newGeom = resultMesh.geometry.clone();
     newGeom.applyMatrix4(invTarget);
     
-    // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+    newGeom = cleanCSGGeometry(newGeom, 0.05);
+
+    // 🎯 NEW: Reconstruct geometry with proper surfaces if cleanup failed or resulted in poor quality
+    if (!newGeom || !newGeom.attributes.position || newGeom.attributes.position.count < 12) {
+      console.log('🎯 CSG result has poor quality, reconstructing geometry from bounds...');
+      try {
+        newGeom = await reconstructGeometryFromBounds(targetShape, resultMesh.geometry, targetBrush);
+      } catch (error) {
+        console.error('❌ Geometry reconstruction failed:', error);
+        return false;
+      }
+    }
     
-    // Dispose old geometry
     try { 
       targetShape.geometry.dispose(); 
     } catch (e) { 
       console.warn('Could not dispose old geometry:', e);
     }
     
-    // Update the target shape
     updateShape(targetShape.id, {
       geometry: newGeom,
       parameters: {
@@ -587,7 +448,6 @@ export const performBooleanUnion = (
     
     console.log(`✅ Target shape ${targetShape.id} updated with union geometry`);
     
-    // Delete the selected shape (it's now merged)
     deleteShape(selectedShape.id);
     console.log(`🗑️ Merged shape deleted: ${selectedShape.id}`);
     
