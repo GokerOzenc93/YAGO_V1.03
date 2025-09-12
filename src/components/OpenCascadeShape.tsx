@@ -337,8 +337,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       return 0.0; // Edit modunda tamamen şeffaf
     }
     
-    // Normal modda hafif görünür
-    return 0.3;
+    // 🎯 ANA SAHNE: Normal modda da şeffaf
+    return 0.1; // Ana sahnede de şeffaf
   };
 
   // 🎯 NEW: Get edge visibility based on view mode
