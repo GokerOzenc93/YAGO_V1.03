@@ -160,13 +160,36 @@ const addSurfaceToGeometry = (
   const invMatrix = new THREE.Matrix4().copy(worldMatrix).invert();
   const localSurfaceVertices = surfaceVertices.map(v => v.clone().applyMatrix4(invMatrix));
   
+  // Sadece kesişim sonrası kalan alanı kaplayan yüzey oluştur
+  // Çıkarma işlemi yapılan alanı hariç tut
+  const filteredVertices = localSurfaceVertices.filter((vertex, index) => {
+    // Geometrinin mevcut vertex'leriyle çakışan alanları filtrele
+    const positions = geometry.attributes.position;
+    let isInSubtractedArea = false;
+    
+    for (let i = 0; i < positions.count; i++) {
+      const existingVertex = new THREE.Vector3().fromBufferAttribute(positions, i);
+      if (vertex.distanceTo(existingVertex) < 1.0) { // 1mm tolerans
+        isInSubtractedArea = true;
+        break;
+      }
+    }
+    
+    return !isInSubtractedArea; // Çıkarma alanında olmayan vertex'leri tut
+  });
+  
+  if (filteredVertices.length < 3) {
+    console.log('🎯 Not enough vertices after filtering, skipping surface addition');
+    return geometry;
+  }
+  
   // Yeni vertex array oluştur
-  const newPositions = new Float32Array(existingPositions.length + localSurfaceVertices.length * 3);
+  const newPositions = new Float32Array(existingPositions.length + filteredVertices.length * 3);
   newPositions.set(existingPositions);
   
   // Surface vertices'leri ekle
   const startIndex = existingPositions.length / 3;
-  localSurfaceVertices.forEach((vertex, i) => {
+  filteredVertices.forEach((vertex, i) => {
     const offset = existingPositions.length + i * 3;
     newPositions[offset] = vertex.x;
     newPositions[offset + 1] = vertex.y;
@@ -175,9 +198,9 @@ const addSurfaceToGeometry = (
   
   // Surface için triangulation yap
   const surfaceIndices: number[] = [];
-  if (localSurfaceVertices.length >= 3) {
+  if (filteredVertices.length >= 3) {
     // Basit fan triangulation
-    for (let i = 1; i < localSurfaceVertices.length - 1; i++) {
+    for (let i = 1; i < filteredVertices.length - 1; i++) {
       surfaceIndices.push(
         startIndex,
         startIndex + i,
@@ -225,7 +248,7 @@ const addSurfaceToGeometry = (
   newGeometry.computeBoundingBox();
   newGeometry.computeBoundingSphere();
   
-  console.log(`✅ Surface added: ${surfaceIndices.length / 3} triangles added to geometry`);
+  console.log(`✅ Filtered surface added: ${surfaceIndices.length / 3} triangles added to geometry (${filteredVertices.length} vertices after filtering)`);
   
   return newGeometry;
 };
