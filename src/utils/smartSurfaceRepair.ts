@@ -74,7 +74,8 @@ const findCoplanarFaces = (
   geometry: THREE.BufferGeometry, 
   referenceFaceIndex: number
 ): number[] => {
-  console.log('🔍 Coplanar face'ler aranıyor...');
+  console.log('🔍 Coplanar face\'ler aranıyor...');
+  )
   
   const referenceVertices = getFaceVertices(geometry, referenceFaceIndex);
   if (referenceVertices.length === 0) return [];

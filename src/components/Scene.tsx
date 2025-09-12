@@ -232,21 +232,9 @@ const Scene: React.FC = () => {
         return;
       }
       
-      // Handle Enter key for Smart Surface Repair mode
-      if (e.key === 'Enter' && isSmartSurfaceRepairMode && selectedFaceShapeId && selectedFaceIndex !== null) {
-        executeSmartSurfaceRepair();
-        return;
-      }
-      
       // Handle Escape key for face selection mode
       if (e.key === 'Escape' && isFaceSelectionMode) {
         exitFaceSelectionMode();
-        return;
-      }
-      
-      // Handle Escape key for Smart Surface Repair mode
-      if (e.key === 'Escape' && isSmartSurfaceRepairMode) {
-        exitSmartSurfaceRepairMode();
         return;
       }
       
@@ -262,38 +250,7 @@ const Scene: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectShape, isEditMode, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex, isSmartSurfaceRepairMode]);
-  
-  // Execute Smart Surface Repair
-  const executeSmartSurfaceRepair = async () => {
-    if (!selectedFaceShapeId || selectedFaceIndex === null) return;
-    
-    console.log(`🔧 Smart Surface Repair başlatılıyor: Shape ${selectedFaceShapeId}, Face ${selectedFaceIndex}`);
-    
-    try {
-      await performSmartSurfaceRepair(selectedFaceShapeId, selectedFaceIndex);
-      console.log('✅ Smart Surface Repair tamamlandı');
-    } catch (error) {
-      console.error('❌ Smart Surface Repair hatası:', error);
-    }
-    
-    // Exit repair mode
-    exitSmartSurfaceRepairMode();
-  };
-  
-  // Exit Smart Surface Repair mode
-  const exitSmartSurfaceRepairMode = () => {
-    setIsSmartSurfaceRepairMode(false);
-    setSelectedFaceShapeId(null);
-    setSelectedFaceIndex(null);
-    
-    // Clear face highlight
-    if (sceneRef) {
-      clearFaceHighlight(sceneRef);
-    }
-    
-    console.log('🔧 Smart Surface Repair mode deactivated');
-  };
+  }, [selectShape, isEditMode, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
 
   useEffect(() => {
     const handleDoubleClick = (e) => {
@@ -900,24 +857,37 @@ const Scene: React.FC = () => {
         )}
 
       {/* Face Edit Mode Indicator */}
-      {(isFaceEditMode || isFaceSelectionMode) &&
+      {(isFaceEditMode || isFaceSelectionMode || isSmartSurfaceRepairMode) &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className="fixed top-32 right-4 bg-orange-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
+          <div className={`fixed top-32 right-4 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40 ${
+            isSmartSurfaceRepairMode ? 'bg-green-600/90' : 'bg-orange-600/90'
+          }`}>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                isSmartSurfaceRepairMode ? 'bg-green-400' : 'bg-orange-400'
+              }`}></div>
               <span className="text-sm font-medium">
-                {isFaceSelectionMode ? 'Face Selection Mode' : 'Face Edit Mode'}
+                {isSmartSurfaceRepairMode 
+                  ? 'Smart Surface Repair Mode' 
+                  : isFaceSelectionMode 
+                  ? 'Face Selection Mode' 
+                  : 'Face Edit Mode'
+                }
               </span>
             </div>
             <div className="text-xs text-orange-200 mt-1">
-              {isFaceSelectionMode 
+              {isSmartSurfaceRepairMode
+                ? 'Click on reference face to repair fragmented surfaces, then press Enter'
+                : isFaceSelectionMode 
                 ? 'Click on SUBTRACTING shape face to select cutting plane, then press Enter' 
                 : 'Click on faces to select them'
               }
             </div>
-            {isFaceSelectionMode && (
-              <div className="text-xs text-orange-300 mt-1 font-mono">
+            {(isFaceSelectionMode || isSmartSurfaceRepairMode) && (
+              <div className={`text-xs mt-1 font-mono ${
+                isSmartSurfaceRepairMode ? 'text-green-300' : 'text-orange-300'
+              }`}>
                 Enter: Execute | Esc: Cancel
               </div>
             )}

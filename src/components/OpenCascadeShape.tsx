@@ -313,6 +313,9 @@ const OpenCascadeShape: React.FC<Props> = ({
       clearFaceHighlight(scene);
     }
   }, [isFaceEditMode, scene]);
+  
+  // Import Smart Surface Repair mode from store
+  const { isSmartSurfaceRepairMode } = useAppStore();
 
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
