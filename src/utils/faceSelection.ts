@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
+import { groupPlanarFaces, findPlanarGroupByTriangle, createPlanarGroupHighlight, PlanarGroup } from './planarFaceGrouping';
 (THREE.Mesh as any).prototype.raycast = acceleratedRaycast;
 
 // --- Shape Interface and Flood-Fill Face Utility Functions ---
@@ -27,9 +28,11 @@ export interface FaceHighlight {
     mesh: THREE.Mesh;
     faceIndex: number;
     shapeId: string;
+    planarGroup?: PlanarGroup;
 }
 
 let currentHighlight: FaceHighlight | null = null;
+let cachedPlanarGroups: Map<string, PlanarGroup[]> = new Map();
 
 /**
  * BufferGeometry'den face vertices'lerini al
@@ -308,6 +311,19 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
         (currentHighlight.mesh.material as THREE.Material).dispose();
         currentHighlight = null;
         console.log('🎯 Face highlight cleared');
+    }
+};
+
+/**
+ * Clear cached planar groups (call when geometry changes)
+ */
+export const clearPlanarGroupsCache = (meshId?: string) => {
+    if (meshId) {
+        cachedPlanarGroups.delete(meshId);
+        console.log(`🗑️ Cleared planar groups cache for mesh: ${meshId}`);
+    } else {
+        cachedPlanarGroups.clear();
+        console.log('🗑️ Cleared all planar groups cache');
     }
 };
 
@@ -677,22 +693,49 @@ export const highlightFace = (
     const mesh = hit.object as THREE.Mesh;
     if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
 
-    console.log(`🎯 ADVANCED COPLANAR FACE SELECTION - Starting robust multi-stage analysis for face ${hit.faceIndex}`);
+    console.log(`🎯 PLANAR FACE GROUPING - Starting advanced coplanar analysis for face ${hit.faceIndex}`);
     
     // Build BVH for faster raycasting if not already built
     const geom = (mesh.geometry as any);
     if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
-        console.log('🔧 Building BVH acceleration structure for robust face selection');
+        console.log('🔧 Building BVH acceleration structure for planar face grouping');
         geom.computeBoundsTree();
     }
     
-    // Build a SINGLE overlay mesh for the entire planar region
-    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
+    // Get or create planar groups for this mesh
+    const meshId = shape.id;
+    let planarGroups = cachedPlanarGroups.get(meshId);
+    
+    if (!planarGroups) {
+        console.log('🔧 Computing planar groups for mesh...');
+        planarGroups = groupPlanarFaces(mesh.geometry as THREE.BufferGeometry, mesh.matrixWorld);
+        cachedPlanarGroups.set(meshId, planarGroups);
+        console.log(`📊 Cached ${planarGroups.length} planar groups for mesh ${meshId}`);
+    }
+    
+    // Find the planar group containing the clicked triangle
+    const planarGroup = findPlanarGroupByTriangle(planarGroups, hit.faceIndex);
+    
+    if (!planarGroup) {
+        console.warn(`❌ No planar group found for triangle ${hit.faceIndex}`);
+        return null;
+    }
+    
+    console.log(`✅ Found planar group: ${planarGroup.id} with ${planarGroup.triangles.length} triangles, area: ${planarGroup.area.toFixed(1)}`);
+    
+    // Create highlight mesh from planar group
+    const overlay = createPlanarGroupHighlight(planarGroup, color, opacity);
+    scene.add(overlay);
     if (!overlay) return null;
 
-    console.log(`✅ ADVANCED COPLANAR SELECTION COMPLETE - Unified surface with robust multi-stage validation`);
+    console.log(`✅ PLANAR FACE GROUPING COMPLETE - Advanced coplanar surface selected`);
     
-    currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
+    currentHighlight = { 
+        mesh: overlay, 
+        faceIndex: hit.faceIndex, 
+        shapeId: shape.id,
+        planarGroup 
+    };
     return currentHighlight;
 };
 
