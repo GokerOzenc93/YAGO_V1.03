@@ -232,9 +232,21 @@ const Scene: React.FC = () => {
         return;
       }
       
+      // Handle Enter key for Smart Surface Repair mode
+      if (e.key === 'Enter' && isSmartSurfaceRepairMode && selectedFaceShapeId && selectedFaceIndex !== null) {
+        executeSmartSurfaceRepair();
+        return;
+      }
+      
       // Handle Escape key for face selection mode
       if (e.key === 'Escape' && isFaceSelectionMode) {
         exitFaceSelectionMode();
+        return;
+      }
+      
+      // Handle Escape key for Smart Surface Repair mode
+      if (e.key === 'Escape' && isSmartSurfaceRepairMode) {
+        exitSmartSurfaceRepairMode();
         return;
       }
       
@@ -250,7 +262,38 @@ const Scene: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectShape, isEditMode, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex]);
+  }, [selectShape, isEditMode, isFaceSelectionMode, selectedFaceShapeId, selectedFaceIndex, isSmartSurfaceRepairMode]);
+  
+  // Execute Smart Surface Repair
+  const executeSmartSurfaceRepair = async () => {
+    if (!selectedFaceShapeId || selectedFaceIndex === null) return;
+    
+    console.log(`🔧 Smart Surface Repair başlatılıyor: Shape ${selectedFaceShapeId}, Face ${selectedFaceIndex}`);
+    
+    try {
+      await performSmartSurfaceRepair(selectedFaceShapeId, selectedFaceIndex);
+      console.log('✅ Smart Surface Repair tamamlandı');
+    } catch (error) {
+      console.error('❌ Smart Surface Repair hatası:', error);
+    }
+    
+    // Exit repair mode
+    exitSmartSurfaceRepairMode();
+  };
+  
+  // Exit Smart Surface Repair mode
+  const exitSmartSurfaceRepairMode = () => {
+    setIsSmartSurfaceRepairMode(false);
+    setSelectedFaceShapeId(null);
+    setSelectedFaceIndex(null);
+    
+    // Clear face highlight
+    if (sceneRef) {
+      clearFaceHighlight(sceneRef);
+    }
+    
+    console.log('🔧 Smart Surface Repair mode deactivated');
+  };
 
   useEffect(() => {
     const handleDoubleClick = (e) => {

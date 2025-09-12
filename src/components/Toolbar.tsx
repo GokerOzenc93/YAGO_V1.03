@@ -703,7 +703,7 @@ const Toolbar: React.FC = () => {
             <button
               key={tool.id}
               className={`p-1 rounded transition-all ${
-                activeTool === tool.id
+                (activeTool === tool.id) || (tool.id === 'SMART_SURFACE_REPAIR' && isSmartSurfaceRepairMode)
                   ? 'bg-blue-600/90 text-white shadow-sm'
                   : !selectedShapeId
                   ? 'opacity-50 cursor-not-allowed text-gray-500'
@@ -711,7 +711,10 @@ const Toolbar: React.FC = () => {
               }`}
               onClick={() => {
                 if (selectedShapeId) {
-                  if (tool.id === Tool.BOOLEAN_UNION) {
+                  if (tool.id === 'SMART_SURFACE_REPAIR') {
+                    setIsSmartSurfaceRepairMode(!isSmartSurfaceRepairMode);
+                    console.log(`🔧 Smart Surface Repair mode: ${!isSmartSurfaceRepairMode ? 'ACTIVATED' : 'DEACTIVATED'}`);
+                  } else if (tool.id === Tool.BOOLEAN_UNION) {
                     performBooleanOperation('union');
                   } else if (tool.id === Tool.BOOLEAN_SUBTRACT) {
                     performBooleanOperation('subtract');
