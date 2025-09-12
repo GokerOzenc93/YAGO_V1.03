@@ -579,6 +579,11 @@ const buildFaceOverlayFromHit = (
     const res = growRegion(mesh, seedTri);
     if (res.boundaryLoops.length === 0) return null;
 
+    // Calculate scale magnitude from mesh matrix
+    const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
+    mesh.matrixWorld.decompose(pvec, q, svec);
+    const scaleMag = Math.max(Math.abs(svec.x), Math.abs(svec.y), Math.abs(svec.z));
+
     const n = res.normal.clone().normalize();
     const up = Math.abs(n.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
     const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
