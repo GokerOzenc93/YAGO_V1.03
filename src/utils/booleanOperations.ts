@@ -519,6 +519,17 @@ const getFaceNormal = (geometry, faceIndex) => {
     const vB = new THREE.Vector3().fromBufferAttribute(pos, b);
     const vC = new THREE.Vector3().fromBufferAttribute(pos, c);
     
+    // Validate that all vector components are valid numbers
+    if (isNaN(vA.x) || isNaN(vA.y) || isNaN(vA.z) ||
+        isNaN(vB.x) || isNaN(vB.y) || isNaN(vB.z) ||
+        isNaN(vC.x) || isNaN(vC.y) || isNaN(vC.z) ||
+        vA.x === undefined || vA.y === undefined || vA.z === undefined ||
+        vB.x === undefined || vB.y === undefined || vB.z === undefined ||
+        vC.x === undefined || vC.y === undefined || vC.z === undefined) {
+      console.warn('Invalid vector components in getFaceNormal, skipping face');
+      return null;
+    }
+    
     const cb = new THREE.Vector3().subVectors(vC, vB);
     const ab = new THREE.Vector3().subVectors(vA, vB);
     
@@ -551,6 +562,17 @@ const getFaceCenter = (geometry, faceIndex) => {
     const vA = new THREE.Vector3().fromBufferAttribute(pos, a);
     const vB = new THREE.Vector3().fromBufferAttribute(pos, b);
     const vC = new THREE.Vector3().fromBufferAttribute(pos, c);
+    
+    // Validate that all vector components are valid numbers
+    if (isNaN(vA.x) || isNaN(vA.y) || isNaN(vA.z) ||
+        isNaN(vB.x) || isNaN(vB.y) || isNaN(vB.z) ||
+        isNaN(vC.x) || isNaN(vC.y) || isNaN(vC.z) ||
+        vA.x === undefined || vA.y === undefined || vA.z === undefined ||
+        vB.x === undefined || vB.y === undefined || vB.z === undefined ||
+        vC.x === undefined || vC.y === undefined || vC.z === undefined) {
+      console.warn('Invalid vector components in getFaceCenter, skipping face');
+      return null;
+    }
     
     return new THREE.Vector3()
       .addVectors(vA, vB)
