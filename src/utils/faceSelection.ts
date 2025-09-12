@@ -325,9 +325,9 @@ type RegionResult = {
     weldedToWorld: Map<number, THREE.Vector3>;
 };
 
-const QUANT_EPS = 1e-4;  // weld tolerance in world units
-const ANGLE_DEG = 4;     // dihedral angle tolerance
-const PLANE_EPS = 5e-3;  // increased plane epsilon for better coplanar detection (5mm tolerance)
+const QUANT_EPS = 1e-3;  // increased weld tolerance for better vertex merging
+const ANGLE_DEG = 2;     // tighter angle tolerance for better coplanarity
+const PLANE_EPS = 1e-2;  // 10mm plane tolerance for robust coplanar detection
 
 const posKey = (v: THREE.Vector3, eps: number) => {
     const kx = Math.round(v.x / eps);
@@ -418,14 +418,20 @@ const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferA
 
 const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
-        mesh, QUANT_EPS * (() => { const s = new THREE.Vector3(); const p = new THREE.Vector3(); const q = new THREE.Quaternion(); mesh.matrixWorld.decompose(p,q,s); return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; })()
+        mesh, QUANT_EPS * (() => { 
+            const s = new THREE.Vector3(); 
+            const p = new THREE.Vector3(); 
+            const q = new THREE.Quaternion(); 
+            mesh.matrixWorld.decompose(p,q,s); 
+            return Math.max(Math.abs(s.x), Math.abs(s.y), Math.abs(s.z)); // use max scale instead of average
+        })()
     );
 
     const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
     mesh.matrixWorld.decompose(pvec, q, svec);
-    const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
-    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 2); // increased scale factor for better tolerance
-    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // increased angle tolerance to 8 degrees
+    const scaleMag = Math.max(Math.abs(svec.x), Math.abs(svec.y), Math.abs(svec.z));
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 3); // 3x scale factor for robust tolerance
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG)); // use original tight angle tolerance
 
     let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
     const seedW = triToWelded[seedTri];
@@ -437,22 +443,39 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const queue: number[] = [seedTri];
     visited.add(seedTri);
 
-    // Enhanced coplanar detection with vertex analysis
-    const analyzeCoplanarVertices = (triangleIndices: number[]): boolean => {
-        // Get all unique vertices from the triangle
-        const vertices = triangleIndices.map(idx => weldedIdToWorld.get(triToWelded[idx][0])!);
+    // ROBUST COPLANAR DETECTION - Multi-stage validation
+    const isTriangleCoplanar = (triIndex: number): boolean => {
+        const wids = triToWelded[triIndex];
+        const pa = weldedIdToWorld.get(wids[0])!;
+        const pb = weldedIdToWorld.get(wids[1])!;
+        const pc = weldedIdToWorld.get(wids[2])!;
         
-        // Check if all vertices lie on the same plane within tolerance
-        let coplanarCount = 0;
-        for (const vertex of vertices) {
-            const distanceToPlane = Math.abs(plane.distanceToPoint(vertex));
-            if (distanceToPlane <= planeEps * 1.5) { // increased tolerance for vertex coplanarity
-                coplanarCount++;
-            }
+        // Stage 1: All vertices must be within plane tolerance
+        const distA = Math.abs(plane.distanceToPoint(pa));
+        const distB = Math.abs(plane.distanceToPoint(pb));
+        const distC = Math.abs(plane.distanceToPoint(pc));
+        
+        // Calculate adaptive tolerance based on triangle size
+        const triangleSize = Math.max(pa.distanceTo(pb), pb.distanceTo(pc), pc.distanceTo(pa));
+        const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.02); // 2% of triangle size
+        
+        // Stage 2: Strict vertex coplanarity check
+        if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
+            return false;
         }
         
-        // If majority of vertices are coplanar, consider the triangle coplanar
-        return coplanarCount >= vertices.length * 0.7; // 70% threshold
+        // Stage 3: Triangle normal alignment check
+        const triNormal = triNormalWorld(mesh, triIndex, index, posAttr);
+        const normalAlignment = Math.max(
+            triNormal.dot(avgNormal),
+            triNormal.dot(avgNormal.clone().negate())
+        );
+        
+        // Stage 4: Triangle center coplanarity
+        const triCenter = new THREE.Vector3().add(pa).add(pb).add(pc).divideScalar(3);
+        const centerDist = Math.abs(plane.distanceToPoint(triCenter));
+        
+        return normalAlignment >= angleCos && centerDist <= adaptiveTolerance * 0.5;
     };
     while (queue.length) {
         const t = queue.shift()!;
@@ -460,46 +483,31 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
         const neighs = neighbors.get(t) || [];
         for (const nt of neighs) {
             if (visited.has(nt)) continue;
+            
+            // MULTI-STAGE COPLANARITY VALIDATION
             const n = triNormalWorld(mesh, nt, index, posAttr);
             
-            // Enhanced normal check with bidirectional tolerance
+            // Stage 1: Bidirectional normal alignment
             const normalDot = Math.max(n.dot(avgNormal), n.dot(avgNormal.clone().negate()));
             if (normalDot < angleCos) continue;
-
-            const wids = triToWelded[nt];
-            const pa = weldedIdToWorld.get(wids[0])!;
-            const pb = weldedIdToWorld.get(wids[1])!;
-            const pc = weldedIdToWorld.get(wids[2])!;
             
-            // Enhanced coplanarity check with adaptive tolerance
-            const distA = Math.abs(plane.distanceToPoint(pa));
-            const distB = Math.abs(plane.distanceToPoint(pb));
-            const distC = Math.abs(plane.distanceToPoint(pc));
-            
-            // Use adaptive tolerance based on triangle size
-            const triangleSize = Math.max(
-                pa.distanceTo(pb),
-                pb.distanceTo(pc),
-                pc.distanceTo(pa)
-            );
-            const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.01); // 1% of triangle size
-            
-            if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
-                // Additional check: analyze coplanar vertices in the region
-                if (!analyzeCoplanarVertices([t, nt])) {
-                    continue;
-                }
+            // Stage 2: Comprehensive coplanarity check
+            if (!isTriangleCoplanar(nt)) {
+                continue;
             }
 
             visited.add(nt);
             queue.push(nt);
             
-            // Weighted normal averaging for better plane estimation
-            const weight = 1.0 / (1.0 + Math.min(distA, distB, distC)); // weight by coplanarity
-            avgNormal.add(n.multiplyScalar(weight)).normalize();
+            // PROGRESSIVE PLANE REFINEMENT
+            // Weight by normal alignment quality
+            const weight = normalDot * normalDot; // quadratic weighting for better alignment
+            avgNormal.lerp(n, weight * 0.1).normalize(); // gentle lerp for stability
             plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
         }
     }
+    
+    console.log(`🎯 Advanced coplanar region grown: ${region.length} triangles with robust multi-stage validation`);
 
     // boundary edges (welded) with count==1
     const edgeCount = new Map<string, number>();
@@ -611,8 +619,9 @@ const buildFaceOverlayFromHit = (
     const verts: number[] = [];
     const all2D = outer.concat(...holes);
     for (const v2 of all2D) {
-        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset)
-        const p3 = to3D(v2).addScaledVector(n, 0.5);
+        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset) - scale aware
+        const offsetDistance = Math.max(0.5, scaleMag * 0.001); // scale-aware offset
+        const p3 = to3D(v2).addScaledVector(n, offsetDistance);
         verts.push(p3.x, p3.y, p3.z);
     }
 
@@ -624,7 +633,16 @@ const buildFaceOverlayFromHit = (
     g.setIndex(indices);
     g.computeVertexNormals();
 
-    const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const mat = new THREE.MeshBasicMaterial({ 
+        color, 
+        opacity: Math.min(opacity + 0.1, 0.8), // slightly more visible
+        transparent: true, 
+        depthWrite: false, 
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1
+    });
     const overlay = new THREE.Mesh(g, mat);
     overlay.renderOrder = 999;
     scene.add(overlay);
@@ -654,13 +672,20 @@ export const highlightFace = (
     const mesh = hit.object as THREE.Mesh;
     if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
 
-    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
+    console.log(`🎯 ADVANCED COPLANAR FACE SELECTION - Starting robust multi-stage analysis for face ${hit.faceIndex}`);
+    
+    // Build BVH for faster raycasting if not already built
+    const geom = (mesh.geometry as any);
+    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+        console.log('🔧 Building BVH acceleration structure for robust face selection');
+        geom.computeBoundsTree();
+    }
     
     // Build a SINGLE overlay mesh for the entire planar region
     const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
     if (!overlay) return null;
 
-    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
+    console.log(`✅ ADVANCED COPLANAR SELECTION COMPLETE - Unified surface with robust multi-stage validation`);
     
     currentHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     return currentHighlight;
