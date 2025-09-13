@@ -10,11 +10,12 @@ import {
   Layers,
   Save,
   Edit3,
+  Archive,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
 import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
-import { saveVolumeToProject, createVolumeDataFromShape } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes } from '../../utils/fileSystem';
 
 interface EditModeProps {
   editedShape: Shape;
@@ -258,6 +259,8 @@ const EditMode: React.FC<EditModeProps> = ({
     if (isActive) {
       if (color === 'blue') {
         return `${baseClasses} bg-blue-600/90 text-white shadow-lg shadow-blue-500/25 border border-blue-400/30`;
+      } else if (color === 'green') {
+        return `${baseClasses} bg-green-600/90 text-white shadow-lg shadow-green-500/25 border border-green-400/30`;
       } else {
         return `${baseClasses} bg-violet-600/90 text-white shadow-lg shadow-violet-500/25 border border-violet-400/30`;
       }
@@ -353,6 +356,57 @@ const EditMode: React.FC<EditModeProps> = ({
             </div>
           </>
         );
+      case 'volumeType':
+        return (
+          <>
+            <div className="flex items-center justify-between px-3 py-2 bg-green-600/20 border-b border-green-500/30">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-6 h-6 bg-green-600/30 rounded">
+                  <Archive size={12} className="text-green-300" />
+                </div>
+                <span className="text-white font-medium text-sm">Volume Type</span>
+              </div>
+              <button
+                onClick={() => setActiveComponent(null)}
+                className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+                title="Back"
+              >
+                <X size={12} />
+              </button>
+            </div>
+
+            <div className="flex-1 p-3 space-y-3">
+              <div className="h-px bg-gradient-to-r from-transparent via-green-400/60 to-transparent mb-3"></div>
+
+              <div className="space-y-2">
+                {(() => {
+                  const savedVolumes = getSavedVolumes();
+                  return savedVolumes.length > 0 ? (
+                    <>
+                      <div className="text-xs text-gray-300 mb-2">
+                        Saved Volumes: <span className="text-green-400 font-medium">{savedVolumes.length}</span>
+                      </div>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {savedVolumes.map((volumeName, index) => (
+                          <div
+                            key={index}
+                            className="text-xs text-gray-200 p-2 bg-gray-800/30 rounded border border-gray-700/50 font-mono"
+                          >
+                            {volumeName}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-400 p-2 bg-gray-800/30 rounded">
+                      No saved volumes found
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </>
+        );
       default:
         return (
           <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
@@ -406,6 +460,30 @@ const EditMode: React.FC<EditModeProps> = ({
                     </span>
                   )}
                   {activeComponent === 'faceSelect' && (
+                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    </div>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => handleComponentClick('volumeType')}
+                  className={`${getIconButtonColorClasses('green', activeComponent === 'volumeType')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  title="Volume Type"
+                >
+                  <div className="flex-shrink-0">
+                    <Archive size={12} />
+                  </div>
+                  <span className="text-xs font-medium truncate">Volume Type</span>
+                  {(() => {
+                    const savedCount = getSavedVolumes().length;
+                    return savedCount > 0 && (
+                      <span className="ml-auto bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                        {savedCount}
+                      </span>
+                    );
+                  })()}
+                  {activeComponent === 'volumeType' && (
                     <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     </div>
