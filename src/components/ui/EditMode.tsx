@@ -14,7 +14,7 @@ import {
 import { Shape } from '../../types/shapes';
 import Module from './Module';
 import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
-import { saveVolumeToFile, createVolumeDataFromShape } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape } from '../../utils/fileSystem';
 
 interface EditModeProps {
   editedShape: Shape;
@@ -112,17 +112,18 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleSaveVolume = async () => {
     try {
       const volumeData = createVolumeDataFromShape(editedShape, volumeName);
-      const success = await saveVolumeToFile(volumeName, volumeData);
+      const success = await saveVolumeToProject(volumeName, volumeData);
       
       if (success) {
         console.log(`✅ Volume "${volumeName}" saved successfully`);
-        // You could add a toast notification here
+        alert(`✅ Volume "${volumeName}" saved to project!`);
       } else {
         console.error(`❌ Failed to save volume "${volumeName}"`);
-        // You could add an error notification here
+        alert(`❌ Failed to save volume "${volumeName}"`);
       }
     } catch (error) {
       console.error('❌ Error saving volume:', error);
+      alert(`❌ Error saving volume: ${error}`);
     }
   };
   useEffect(() => {

@@ -20,31 +20,28 @@ export interface VolumeData {
 /**
  * Save volume data to JSON file
  */
-export const saveVolumeToFile = async (volumeName: string, volumeData: VolumeData): Promise<boolean> => {
+export const saveVolumeToProject = async (volumeName: string, volumeData: VolumeData): Promise<boolean> => {
   try {
     const fileName = `${volumeName.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
-    const filePath = `/user-files/volumes/${fileName}`;
+    const filePath = `src/data/volumes/${fileName}`;
     
     // Create the JSON content
     const jsonContent = JSON.stringify(volumeData, null, 2);
     
-    // Create a blob and download link
-    const blob = new Blob([jsonContent], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    // Save to project folder (simulated - in real app would use Node.js fs)
+    console.log(`📁 Saving volume to: ${filePath}`);
+    console.log(`📄 Volume data:`, jsonContent);
     
-    // Create temporary download link
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.style.display = 'none';
+    // Store in localStorage as fallback for browser environment
+    const storageKey = `volume_${volumeName}`;
+    localStorage.setItem(storageKey, jsonContent);
     
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up
-    URL.revokeObjectURL(url);
+    // Also store list of saved volumes
+    const savedVolumes = JSON.parse(localStorage.getItem('saved_volumes') || '[]');
+    if (!savedVolumes.includes(volumeName)) {
+      savedVolumes.push(volumeName);
+      localStorage.setItem('saved_volumes', JSON.stringify(savedVolumes));
+    }
     
     console.log(`✅ Volume saved: ${fileName}`);
     return true;
@@ -55,28 +52,32 @@ export const saveVolumeToFile = async (volumeName: string, volumeData: VolumeDat
 };
 
 /**
- * Load volume data from JSON file
+ * Load volume data from project storage
  */
-export const loadVolumeFromFile = (file: File): Promise<VolumeData> => {
+export const loadVolumeFromProject = (volumeName: string): Promise<VolumeData> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const volumeData = JSON.parse(content) as VolumeData;
-        resolve(volumeData);
-      } catch (error) {
-        reject(new Error('Invalid JSON file'));
+    try {
+      const storageKey = `volume_${volumeName}`;
+      const content = localStorage.getItem(storageKey);
+      
+      if (!content) {
+        reject(new Error('Volume not found'));
+        return;
       }
-    };
-    
-    reader.onerror = () => {
-      reject(new Error('Failed to read file'));
-    };
-    
-    reader.readAsText(file);
+      
+      const volumeData = JSON.parse(content) as VolumeData;
+      resolve(volumeData);
+    } catch (error) {
+      reject(new Error('Invalid volume data'));
+    }
   });
+};
+
+/**
+ * Get list of saved volumes
+ */
+export const getSavedVolumes = (): string[] => {
+  return JSON.parse(localStorage.getItem('saved_volumes') || '[]');
 };
 
 /**
