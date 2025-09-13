@@ -156,26 +156,23 @@ const EditMode: React.FC<EditModeProps> = ({
         geometry = await GeometryFactory.createBox(500, 500, 500);
       }
       
-      // Create new shape from volume data
-      const newShape = {
-        id: Math.random().toString(36).substr(2, 9),
+      // Replace current edited shape with loaded volume data
+      // Keep the same position as current edited shape
+      updateShape(editedShape.id, {
         type: volumeData.type,
-        position: volumeData.position as [number, number, number],
-        rotation: volumeData.rotation as [number, number, number],
-        scale: volumeData.scale as [number, number, number],
-        geometry,
+        geometry: geometry,
         parameters: volumeData.dimensions,
-      };
+        // Keep current position, rotation, and scale
+        // position: editedShape.position, // Keep same position
+        // rotation: editedShape.rotation, // Keep same rotation  
+        // scale: editedShape.scale, // Keep same scale
+      });
       
-      // Add shape to scene
-      addShape(newShape);
-      selectShape(newShape.id);
-      
-      // Exit edit mode to show the new shape
-      onExit();
+      // Update volume name to loaded volume name
+      setVolumeName(volumeName);
       
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
-      alert(`✅ Volume "${volumeName}" loaded successfully!`);
+      console.log(`🎯 Current volume replaced with: ${volumeName} at same position`);
       
     } catch (error) {
       console.error('❌ Error loading volume:', error);
