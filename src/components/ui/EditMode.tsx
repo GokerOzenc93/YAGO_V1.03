@@ -269,6 +269,28 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
+  const handleVolumeDelete = (volumeName: string) => {
+    // Confirmation dialog
+    const confirmed = window.confirm(`Are you sure you want to delete volume "${volumeName}"?`);
+    
+    if (confirmed) {
+      try {
+        const success = deleteVolumeFromProject(volumeName);
+        
+        if (success) {
+          console.log(`✅ Volume "${volumeName}" deleted successfully`);
+          // Force re-render by updating a state that triggers component refresh
+          setActiveComponent('volumeType'); // This will trigger a re-render and refresh the list
+        } else {
+          console.error(`❌ Failed to delete volume "${volumeName}"`);
+          alert(`❌ Failed to delete volume "${volumeName}"`);
+        }
+      } catch (error) {
+        console.error('❌ Error deleting volume:', error);
+        alert(`❌ Error deleting volume: ${error}`);
+      }
+    }
+  };
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
@@ -530,14 +552,33 @@ const EditMode: React.FC<EditModeProps> = ({
                       </div>
                       <div className="space-y-1 max-h-40 overflow-y-auto">
                         {savedVolumes.map((volumeName, index) => (
-                          <button
+                          <div
                             key={index}
-                            onClick={() => handleVolumeSelect(volumeName)}
-                            className="w-full text-left text-xs text-gray-200 p-2 bg-gray-800/30 hover:bg-gray-700/50 rounded border border-gray-700/50 font-mono transition-colors"
-                            title={`Load volume: ${volumeName}`}
+                            className="flex items-center gap-2 w-full p-2 bg-gray-800/30 hover:bg-gray-700/50 rounded border border-gray-700/50 transition-colors"
                           >
-                            {volumeName}
-                          </button>
+                            <button
+                              onClick={() => handleVolumeSelect(volumeName)}
+                              className="flex-1 text-left text-xs text-gray-200 font-mono hover:text-white transition-colors"
+                              title={`Load volume: ${volumeName}`}
+                            >
+                              {volumeName}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleVolumeDelete(volumeName);
+                              }}
+                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                              title={`Delete volume: ${volumeName}`}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3,6 5,6 21,6"></polyline>
+                                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                              </svg>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </>
