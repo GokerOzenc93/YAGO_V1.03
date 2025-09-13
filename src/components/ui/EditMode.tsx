@@ -154,41 +154,92 @@ const EditMode: React.FC<EditModeProps> = ({
       
       console.log(`🎯 Current dimensions: W=${currentWidth.toFixed(1)}, H=${currentHeight.toFixed(1)}, D=${currentDepth.toFixed(1)}`);
       
-      // Create geometry based on volume type
+      // 🎯 COMPLEX GEOMETRY RECONSTRUCTION
       let geometry: THREE.BufferGeometry;
       let newParameters: any = {};
       
-      if (volumeData.type === 'box' || volumeData.type.includes('rectangle') || volumeData.type.includes('polyline') || volumeData.type.includes('polygon')) {
-        // Use current dimensions instead of saved ones
-        geometry = await GeometryFactory.createBox(
-          currentWidth,
-          currentHeight,
-          currentDepth
-        );
+      // Check if we have complex geometry data (boolean operations, etc.)
+      if (volumeData.geometryData && volumeData.geometryData.vertices.length > 0) {
+        console.log(`🎯 Reconstructing complex geometry: ${volumeData.geometryData.vertexCount} vertices`);
+        
+        // Create BufferGeometry from stored vertex data
+        geometry = new THREE.BufferGeometry();
+        
+        // Convert stored vertices back to Float32Array
+        const positions = new Float32Array(volumeData.geometryData.vertices.length * 3);
+        volumeData.geometryData.vertices.forEach((vertex, i) => {
+          positions[i * 3] = vertex.x;
+          positions[i * 3 + 1] = vertex.y;
+          positions[i * 3 + 2] = vertex.z;
+        });
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        // Add indices if available
+        if (volumeData.geometryData.indices) {
+          geometry.setIndex(volumeData.geometryData.indices);
+        }
+        
+        // Compute normals and bounds
+        geometry.computeVertexNormals();
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        
         newParameters = {
           width: currentWidth,
           height: currentHeight,
-          depth: currentDepth
+          depth: currentDepth,
+          complexGeometry: true,
+          originalVertexCount: volumeData.geometryData.vertexCount,
+          originalTriangleCount: volumeData.geometryData.triangleCount
         };
-      } else if (volumeData.type === 'cylinder' || volumeData.type.includes('circle')) {
-        // For cylinder, use current height and calculate radius from width
-        const currentRadius = currentWidth / 2;
-        geometry = await GeometryFactory.createCylinder(
-          currentRadius,
-          currentHeight
-        );
+        
+        console.log(`✅ Complex geometry reconstructed: ${volumeData.geometryData.triangleCount} triangles`);
+        
+      } else if (volumeData.originalPoints && volumeData.originalPoints.length > 0) {
+        // Reconstruct polyline/polygon geometry
+        console.log(`🎯 Reconstructing polyline geometry: ${volumeData.originalPoints.length} points`);
+        
+        // Convert stored points back to THREE.Vector3
+        const points = volumeData.originalPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+        
+        // Use current height for extrusion
+        geometry = await GeometryFactory.createPolyline(points, currentHeight);
+        
         newParameters = {
-          radius: currentRadius,
-          height: currentHeight
+          points: volumeData.originalPoints.length,
+          height: currentHeight,
+          area: 'calculated',
+          originalPoints: points
         };
+        
+        console.log(`✅ Polyline geometry reconstructed with ${points.length} points`);
+        
       } else {
-        // Fallback to box
-        geometry = await GeometryFactory.createBox(currentWidth, currentHeight, currentDepth);
-        newParameters = {
-          width: currentWidth,
-          height: currentHeight,
-          depth: currentDepth
-        };
+        // Standard geometry types (box, cylinder)
+        if (volumeData.type === 'box' || volumeData.type.includes('rectangle')) {
+          geometry = await GeometryFactory.createBox(currentWidth, currentHeight, currentDepth);
+          newParameters = {
+            width: currentWidth,
+            height: currentHeight,
+            depth: currentDepth
+          };
+        } else if (volumeData.type === 'cylinder' || volumeData.type.includes('circle')) {
+          const currentRadius = currentWidth / 2;
+          geometry = await GeometryFactory.createCylinder(currentRadius, currentHeight);
+          newParameters = {
+            radius: currentRadius,
+            height: currentHeight
+          };
+        } else {
+          // Fallback to box
+          geometry = await GeometryFactory.createBox(currentWidth, currentHeight, currentDepth);
+          newParameters = {
+            width: currentWidth,
+            height: currentHeight,
+            depth: currentDepth
+          };
+        }
       }
       
       // Replace current edited shape with loaded volume data
@@ -197,6 +248,8 @@ const EditMode: React.FC<EditModeProps> = ({
         type: volumeData.type,
         geometry: geometry,
         parameters: newParameters,
+        originalPoints: volumeData.originalPoints ? volumeData.originalPoints.map(p => new THREE.Vector3(p.x, p.y, p.z)) : undefined,
+        is2DShape: volumeData.is2DShape || false,
         // Explicitly keep current transform properties
         position: editedShape.position,
         rotation: editedShape.rotation,
@@ -207,7 +260,7 @@ const EditMode: React.FC<EditModeProps> = ({
       setVolumeName(volumeName);
       
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
-      console.log(`🎯 Volume type changed to: ${volumeName} with current dimensions preserved`);
+      console.log(`🎯 Volume type changed to: ${volumeData.type} with current dimensions preserved`);
       console.log(`🎯 New parameters:`, newParameters);
       
     } catch (error) {

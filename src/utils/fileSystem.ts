@@ -13,6 +13,15 @@ export interface VolumeData {
   position: [number, number, number];
   rotation: [number, number, number];
   scale: [number, number, number];
+  originalPoints?: Array<{x: number, y: number, z: number}> | null; // 🎯 NEW: Original polyline points
+  geometryData?: { // 🎯 NEW: Complex geometry data
+    vertices: Array<{x: number, y: number, z: number}>;
+    indices: number[] | null;
+    vertexCount: number;
+    triangleCount: number;
+  } | null;
+  is2DShape?: boolean; // 🎯 NEW: 2D shape flag
+  parameters?: any; // 🎯 NEW: Shape parameters
   createdAt: string;
   updatedAt: string;
 }
@@ -125,6 +134,50 @@ export const createVolumeDataFromShape = (shape: any, volumeName: string): Volum
     dimensions.height = actualHeight;
   }
   
+  // 🎯 COMPLEX GEOMETRY SUPPORT - Store geometry data for complex shapes
+  let geometryData = null;
+  let originalPoints = null;
+  
+  // Store original points for polyline/polygon shapes
+  if (shape.originalPoints && shape.originalPoints.length > 0) {
+    originalPoints = shape.originalPoints.map(point => ({
+      x: point.x,
+      y: point.y,
+      z: point.z
+    }));
+    console.log(`🎯 Storing ${originalPoints.length} original points for ${shape.type}`);
+  }
+  
+  // Store geometry vertices for complex shapes (boolean operations, etc.)
+  if (geometry && geometry.attributes && geometry.attributes.position) {
+    const positions = geometry.attributes.position.array;
+    const vertices = [];
+    
+    // Convert Float32Array to regular array for JSON serialization
+    for (let i = 0; i < positions.length; i += 3) {
+      vertices.push({
+        x: positions[i],
+        y: positions[i + 1],
+        z: positions[i + 2]
+      });
+    }
+    
+    // Store indices if available
+    let indices = null;
+    if (geometry.index) {
+      indices = Array.from(geometry.index.array);
+    }
+    
+    geometryData = {
+      vertices: vertices,
+      indices: indices,
+      vertexCount: vertices.length,
+      triangleCount: indices ? indices.length / 3 : vertices.length / 3
+    };
+    
+    console.log(`🎯 Storing geometry data: ${vertices.length} vertices, ${geometryData.triangleCount} triangles`);
+  }
+  
   return {
     id: shape.id,
     name: volumeName,
@@ -133,6 +186,10 @@ export const createVolumeDataFromShape = (shape: any, volumeName: string): Volum
     position: [...shape.position],
     rotation: [...shape.rotation],
     scale: [...shape.scale],
+    originalPoints: originalPoints, // 🎯 NEW: Store original polyline points
+    geometryData: geometryData, // 🎯 NEW: Store complex geometry data
+    is2DShape: shape.is2DShape || false, // 🎯 NEW: Store 2D shape flag
+    parameters: shape.parameters ? { ...shape.parameters } : {}, // 🎯 NEW: Store shape parameters
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
