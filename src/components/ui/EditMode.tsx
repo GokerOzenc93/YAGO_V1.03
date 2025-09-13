@@ -137,42 +137,78 @@ const EditMode: React.FC<EditModeProps> = ({
       console.log(`🎯 Loading volume: ${volumeName}`);
       const volumeData = await loadVolumeFromProject(volumeName);
       
+      // Get current dimensions from edited shape
+      const currentGeometry = editedShape.geometry;
+      currentGeometry.computeBoundingBox();
+      const bbox = currentGeometry.boundingBox;
+      
+      if (!bbox) {
+        console.warn('Could not compute current dimensions, using default values');
+        return;
+      }
+      
+      // Calculate current actual dimensions (geometry * scale)
+      const currentWidth = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
+      const currentHeight = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
+      const currentDepth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
+      
+      console.log(`🎯 Current dimensions: W=${currentWidth.toFixed(1)}, H=${currentHeight.toFixed(1)}, D=${currentDepth.toFixed(1)}`);
+      
       // Create geometry based on volume type
       let geometry: THREE.BufferGeometry;
+      let newParameters: any = {};
       
       if (volumeData.type === 'box' || volumeData.type.includes('rectangle') || volumeData.type.includes('polyline') || volumeData.type.includes('polygon')) {
+        // Use current dimensions instead of saved ones
         geometry = await GeometryFactory.createBox(
-          volumeData.dimensions.width || 500,
-          volumeData.dimensions.height || 500,
-          volumeData.dimensions.depth || 500
+          currentWidth,
+          currentHeight,
+          currentDepth
         );
+        newParameters = {
+          width: currentWidth,
+          height: currentHeight,
+          depth: currentDepth
+        };
       } else if (volumeData.type === 'cylinder' || volumeData.type.includes('circle')) {
+        // For cylinder, use current height and calculate radius from width
+        const currentRadius = currentWidth / 2;
         geometry = await GeometryFactory.createCylinder(
-          volumeData.dimensions.radius || 250,
-          volumeData.dimensions.height || 500
+          currentRadius,
+          currentHeight
         );
+        newParameters = {
+          radius: currentRadius,
+          height: currentHeight
+        };
       } else {
         // Fallback to box
-        geometry = await GeometryFactory.createBox(500, 500, 500);
+        geometry = await GeometryFactory.createBox(currentWidth, currentHeight, currentDepth);
+        newParameters = {
+          width: currentWidth,
+          height: currentHeight,
+          depth: currentDepth
+        };
       }
       
       // Replace current edited shape with loaded volume data
-      // Keep the same position as current edited shape
+      // Keep the same position, rotation, and scale as current edited shape
       updateShape(editedShape.id, {
         type: volumeData.type,
         geometry: geometry,
-        parameters: volumeData.dimensions,
-        // Keep current position, rotation, and scale
-        // position: editedShape.position, // Keep same position
-        // rotation: editedShape.rotation, // Keep same rotation  
-        // scale: editedShape.scale, // Keep same scale
+        parameters: newParameters,
+        // Explicitly keep current transform properties
+        position: editedShape.position,
+        rotation: editedShape.rotation,
+        scale: editedShape.scale,
       });
       
       // Update volume name to loaded volume name
       setVolumeName(volumeName);
       
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
-      console.log(`🎯 Current volume replaced with: ${volumeName} at same position`);
+      console.log(`🎯 Volume type changed to: ${volumeName} with current dimensions preserved`);
+      console.log(`🎯 New parameters:`, newParameters);
       
     } catch (error) {
       console.error('❌ Error loading volume:', error);
