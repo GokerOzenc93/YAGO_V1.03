@@ -334,11 +334,7 @@ const OpenCascadeShape: React.FC<Props> = ({
   const getOpacity = () => {
     if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
-    // 🎯 HER İKI MODDA DA: Tamamen şeffaf - sadece çizgiler görünür
-    if (isBeingEdited) {
-      return 0.1; // Edit edilen şekiller çok az görünür
-    }
-    
+    // 🎯 EDIT MODE: Normal sahnedeki gibi şeffaf
     return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
   };
 

@@ -322,7 +322,7 @@ const EditMode: React.FC<EditModeProps> = ({
                   )}
                 </button>
                 
-                <div className="h-px bg-gradient-to-r from-transparent via-gray-500/60 to-transparent my-2"></div>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-500/60 to-transparent my-1"></div>
                 
                 <button
                   onClick={() => {
