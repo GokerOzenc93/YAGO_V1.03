@@ -15,7 +15,7 @@ import {
 import { Shape } from '../../types/shapes';
 import Module from './Module';
 import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
-import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes, loadVolumeFromProject } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
 import * as THREE from 'three';
