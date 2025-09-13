@@ -57,6 +57,7 @@ const EditMode: React.FC<EditModeProps> = ({
   const [volumeName, setVolumeName] = useState('AD06072');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(volumeName);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const MIN_WIDTH_PX = 170;
   const MAX_WIDTH_PX = 453;
@@ -279,8 +280,8 @@ const EditMode: React.FC<EditModeProps> = ({
         
         if (success) {
           console.log(`✅ Volume "${volumeName}" deleted successfully`);
-          // Force re-render by updating a state that triggers component refresh
-          setActiveComponent('volumeType'); // This will trigger a re-render and refresh the list
+          // Force re-render by updating refresh trigger
+          setRefreshTrigger(prev => prev + 1);
         } else {
           console.error(`❌ Failed to delete volume "${volumeName}"`);
           alert(`❌ Failed to delete volume "${volumeName}"`);
@@ -544,7 +545,7 @@ const EditMode: React.FC<EditModeProps> = ({
 
               <div className="space-y-2">
                 {(() => {
-                  const savedVolumes = getSavedVolumes();
+                  const savedVolumes = getSavedVolumes(); // refreshTrigger dependency will cause re-render
                   return savedVolumes.length > 0 ? (
                     <>
                       <div className="text-xs text-gray-300 mb-2">
@@ -587,7 +588,7 @@ const EditMode: React.FC<EditModeProps> = ({
                       No saved volumes found
                     </div>
                   );
-                })()}
+                })() /* refreshTrigger: ${refreshTrigger} */}
               </div>
             </div>
           </>
