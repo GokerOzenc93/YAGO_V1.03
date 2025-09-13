@@ -787,21 +787,6 @@ const Scene: React.FC = () => {
           document.body
         )}
 
-      {/* Face Edit Mode Indicator */}
-      {isFaceEditMode &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed top-32 right-4 bg-orange-600/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg z-40">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Face Edit Mode</span>
-            </div>
-            <div className="text-xs text-orange-200 mt-1">
-              Click on faces to select them
-            </div>
-          </div>,
-          document.body
-        )}
 
     </div>
   );

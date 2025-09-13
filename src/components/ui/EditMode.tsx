@@ -272,42 +272,36 @@ const EditMode: React.FC<EditModeProps> = ({
                 
                 <div className="h-px bg-gradient-to-r from-transparent via-gray-500/60 to-transparent my-2"></div>
                 
-                <div className="px-2">
-                  <h3 className="text-gray-400 text-xs font-medium mb-2">Face Edit</h3>
-                  <button
-                    onClick={toggleFaceEditMode}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                      isFaceEditMode
-                        ? 'bg-orange-600/90 text-white'
-                        : 'bg-gray-600/50 text-gray-300 hover:bg-gray-600/70'
-                    }`}
-                  >
+                <button
+                  onClick={toggleFaceEditMode}
+                  className={`${getIconButtonColorClasses('violet', isFaceEditMode)} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  title="Face Select"
+                >
+                  <div className="flex-shrink-0">
                     <MousePointer size={12} />
-                    Face Select
-                    {selectedFaceCount > 0 && (
-                      <span className="ml-auto bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                        {selectedFaceCount}
-                      </span>
-                    )}
-                  </button>
-                  
+                  </div>
+                  <span className="text-xs font-medium truncate">Face Select</span>
+                  {selectedFaceCount > 0 && (
+                    <span className="ml-auto bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      {selectedFaceCount}
+                    </span>
+                  )}
                   {isFaceEditMode && (
-                    <div className="mt-2 space-y-1">
-                      <div className="text-xs text-gray-400">
-                        Hold <kbd className="bg-gray-700 px-1 rounded text-white">Shift</kbd> for multi-select
-                      </div>
-                      {selectedFaceCount > 0 && (
-                        <button
-                          onClick={clearAllFaceSelections}
-                          className="w-full flex items-center gap-2 px-2 py-1 rounded text-xs bg-red-600/50 text-red-200 hover:bg-red-600/70 transition-colors"
-                        >
-                          <Layers size={10} />
-                          Clear All ({selectedFaceCount})
-                        </button>
-                      )}
+                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     </div>
                   )}
-                </div>
+                </button>
+                
+                {selectedFaceCount > 0 && (
+                  <button
+                    onClick={clearAllFaceSelections}
+                    className="w-full flex items-center gap-2 px-2 py-1 rounded text-xs bg-red-600/50 text-red-200 hover:bg-red-600/70 transition-colors mt-1"
+                  >
+                    <Layers size={10} />
+                    Clear All ({selectedFaceCount})
+                  </button>
+                )}
               </div>
             )}
           </div>
