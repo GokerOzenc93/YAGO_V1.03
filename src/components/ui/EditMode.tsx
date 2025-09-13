@@ -8,10 +8,13 @@ import {
   Puzzle,
   MousePointer,
   Layers,
+  Save,
+  Edit3,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
 import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
+import { saveVolumeToFile, createVolumeDataFromShape } from '../../utils/fileSystem';
 
 interface EditModeProps {
   editedShape: Shape;
@@ -45,6 +48,11 @@ const EditMode: React.FC<EditModeProps> = ({
   // Varsayılan olarak sabitlenmiş (pinned) gelsin
   const [isLocked, setIsLocked] = useState(true); 
   
+  // Volume name editing state
+  const [volumeName, setVolumeName] = useState('AD06072');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(volumeName);
+  
   const MIN_WIDTH_PX = 170;
   const MAX_WIDTH_PX = 453;
   const [panelWidth, setPanelWidth] = useState(250);
@@ -53,6 +61,7 @@ const EditMode: React.FC<EditModeProps> = ({
   const startX = useRef(0);
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   
   // Multi-select face tracking
   const [selectedFaceCount, setSelectedFaceCount] = useState(0);
@@ -67,6 +76,55 @@ const EditMode: React.FC<EditModeProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  const handleNameEdit = () => {
+    setTempName(volumeName);
+    setIsEditingName(true);
+  };
+
+  const handleNameSave = () => {
+    if (tempName.trim()) {
+      setVolumeName(tempName.trim());
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameCancel = () => {
+    setTempName(volumeName);
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSave();
+    } else if (e.key === 'Escape') {
+      handleNameCancel();
+    }
+  };
+
+  const handleSaveVolume = async () => {
+    try {
+      const volumeData = createVolumeDataFromShape(editedShape, volumeName);
+      const success = await saveVolumeToFile(volumeName, volumeData);
+      
+      if (success) {
+        console.log(`✅ Volume "${volumeName}" saved successfully`);
+        // You could add a toast notification here
+      } else {
+        console.error(`❌ Failed to save volume "${volumeName}"`);
+        // You could add an error notification here
+      }
+    } catch (error) {
+      console.error('❌ Error saving volume:', error);
+    }
+  };
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
@@ -244,7 +302,7 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const renderComponentContent = () => {
     switch (activeComponent) {
-      case 'module':
+      case 'volumeParameters':
         return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
       case 'faceSelect':
         return (
@@ -307,15 +365,15 @@ const EditMode: React.FC<EditModeProps> = ({
               editedShape.type === 'circle2d') && (
               <div className="flex flex-col gap-1 px-2">
                 <button
-                  onClick={() => handleComponentClick('module')}
-                  className={`${getIconButtonColorClasses('violet', activeComponent === 'module')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
-                  title="Module"
+                  onClick={() => handleComponentClick('volumeParameters')}
+                  className={`${getIconButtonColorClasses('violet', activeComponent === 'volumeParameters')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  title="Volume Parameters"
                 >
                   <div className="flex-shrink-0">
                     <Puzzle size={12} />
                   </div>
-                  <span className="text-xs font-medium truncate">Module</span>
-                  {activeComponent === 'module' && (
+                  <span className="text-xs font-medium truncate">Volume Parameters</span>
+                  {activeComponent === 'volumeParameters' && (
                     <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     </div>
@@ -386,9 +444,42 @@ const EditMode: React.FC<EditModeProps> = ({
       {!isCollapsed && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between p-2 pt-4 border-b border-gray-700">
-            <span className="text-white font-inter text-base font-bold opacity-90">
-              AD06072
-            </span>
+            <div className="flex items-center gap-2 flex-1">
+              {isEditingName ? (
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  onKeyDown={handleNameKeyDown}
+                  onBlur={handleNameSave}
+                  className="text-white font-inter text-base font-bold bg-transparent border-b border-blue-400 outline-none flex-1 min-w-0"
+                  maxLength={20}
+                />
+              ) : (
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  <span className="text-white font-inter text-base font-bold opacity-90 truncate">
+                    {volumeName}
+                  </span>
+                  <button
+                    onClick={handleNameEdit}
+                    className="text-gray-400 hover:text-blue-400 p-0.5 rounded transition-colors flex-shrink-0"
+                    title="Edit Name"
+                  >
+                    <Edit3 size={10} />
+                  </button>
+                </div>
+              )}
+              
+              <button
+                onClick={handleSaveVolume}
+                className="text-gray-400 hover:text-green-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm flex-shrink-0"
+                title="Save Volume"
+              >
+                <Save size={12} />
+              </button>
+            </div>
+            
             {/* Panel genişliği 200px'ten büyükse düğmeleri göster*/}
             {panelWidth > 200 && (
               <div className="flex items-center gap-1">

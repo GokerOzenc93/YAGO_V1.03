@@ -155,12 +155,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           <div className="flex items-center justify-center w-6 h-6 bg-violet-600/30 rounded">
             <Puzzle size={12} className="text-violet-300" />
           </div>
-          <span className="text-white font-medium text-sm">Modül</span>
+          <span className="text-white font-medium text-sm">Volume Parameters</span>
         </div>
         <button
           onClick={onClose}
           className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-          title="Geri"
+          title="Back"
         >
           <X size={12} />
         </button>
@@ -173,7 +173,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           {/* Genişlik */}
           {canEditWidth && (
             <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">G:</span>
+              <span className="text-gray-300 text-xs w-4">W:</span>
               <input
                 type="text" // Metin girişi olarak ayarlandı
                 value={inputWidth}
@@ -188,7 +188,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               <button
                 onClick={() => applyDimensionChange('width', inputWidth)}
                 className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
-                title="Genişliği Onayla"
+                title="Apply Width"
               >
                 <Check size={12} />
               </button>
@@ -198,7 +198,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           {/* Yükseklik */}
           {canEditHeight && (
             <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">Y:</span>
+              <span className="text-gray-300 text-xs w-4">H:</span>
               <input
                 type="text" // Metin girişi olarak ayarlandı
                 value={inputHeight}
@@ -213,7 +213,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               <button
                 onClick={() => applyDimensionChange('height', inputHeight)}
                 className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
-                title="Yüksekliği Onayla"
+                title="Apply Height"
               >
                 <Check size={12} />
               </button>
@@ -238,7 +238,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               <button
                 onClick={() => applyDimensionChange('depth', inputDepth)}
                 className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
-                title="Derinliği Onayla"
+                title="Apply Depth"
               >
                 <Check size={12} />
               </button>
@@ -248,14 +248,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           {/* Bilgi mesajı - sadece cylinder için */}
           {editedShape.type === 'cylinder' && (
             <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
-              Silindir: Sadece yükseklik düzenlenebilir
+              Cylinder: Only height can be edited
             </div>
           )}
 
           {/* Bilgi mesajı - circle2d için */}
           {editedShape.type === 'circle2d' && (
             <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
-              Daire: Sadece yükseklik düzenlenebilir
+              Circle: Only height can be edited
             </div>
           )}
         </div>
