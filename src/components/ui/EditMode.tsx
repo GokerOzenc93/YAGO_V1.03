@@ -15,7 +15,10 @@ import {
 import { Shape } from '../../types/shapes';
 import Module from './Module';
 import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
-import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes, loadVolumeFromProject } from '../../utils/fileSystem';
+import { useAppStore } from '../../store/appStore';
+import { GeometryFactory } from '../../lib/geometryFactory';
+import * as THREE from 'three';
 
 interface EditModeProps {
   editedShape: Shape;
@@ -42,6 +45,7 @@ const EditMode: React.FC<EditModeProps> = ({
   isFaceEditMode,
   setIsFaceEditMode,
 }) => {
+  const { addShape, selectShape, updateShape } = useAppStore();
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
   const [activeComponent, setActiveComponent] = useState<string | null>(null);
@@ -127,6 +131,58 @@ const EditMode: React.FC<EditModeProps> = ({
       alert(`❌ Error saving volume: ${error}`);
     }
   };
+
+  const handleVolumeSelect = async (volumeName: string) => {
+    try {
+      console.log(`🎯 Loading volume: ${volumeName}`);
+      const volumeData = await loadVolumeFromProject(volumeName);
+      
+      // Create geometry based on volume type
+      let geometry: THREE.BufferGeometry;
+      
+      if (volumeData.type === 'box' || volumeData.type.includes('rectangle') || volumeData.type.includes('polyline') || volumeData.type.includes('polygon')) {
+        geometry = await GeometryFactory.createBox(
+          volumeData.dimensions.width || 500,
+          volumeData.dimensions.height || 500,
+          volumeData.dimensions.depth || 500
+        );
+      } else if (volumeData.type === 'cylinder' || volumeData.type.includes('circle')) {
+        geometry = await GeometryFactory.createCylinder(
+          volumeData.dimensions.radius || 250,
+          volumeData.dimensions.height || 500
+        );
+      } else {
+        // Fallback to box
+        geometry = await GeometryFactory.createBox(500, 500, 500);
+      }
+      
+      // Create new shape from volume data
+      const newShape = {
+        id: Math.random().toString(36).substr(2, 9),
+        type: volumeData.type,
+        position: volumeData.position as [number, number, number],
+        rotation: volumeData.rotation as [number, number, number],
+        scale: volumeData.scale as [number, number, number],
+        geometry,
+        parameters: volumeData.dimensions,
+      };
+      
+      // Add shape to scene
+      addShape(newShape);
+      selectShape(newShape.id);
+      
+      // Exit edit mode to show the new shape
+      onExit();
+      
+      console.log(`✅ Volume loaded successfully: ${volumeName}`);
+      alert(`✅ Volume "${volumeName}" loaded successfully!`);
+      
+    } catch (error) {
+      console.error('❌ Error loading volume:', error);
+      alert(`❌ Failed to load volume "${volumeName}": ${error}`);
+    }
+  };
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
@@ -388,12 +444,14 @@ const EditMode: React.FC<EditModeProps> = ({
                       </div>
                       <div className="space-y-1 max-h-40 overflow-y-auto">
                         {savedVolumes.map((volumeName, index) => (
-                          <div
+                          <button
                             key={index}
-                            className="text-xs text-gray-200 p-2 bg-gray-800/30 rounded border border-gray-700/50 font-mono"
+                            onClick={() => handleVolumeSelect(volumeName)}
+                            className="w-full text-left text-xs text-gray-200 p-2 bg-gray-800/30 hover:bg-gray-700/50 rounded border border-gray-700/50 font-mono transition-colors"
+                            title={`Load volume: ${volumeName}`}
                           >
                             {volumeName}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </>

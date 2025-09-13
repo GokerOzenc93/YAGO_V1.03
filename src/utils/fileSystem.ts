@@ -81,6 +81,27 @@ export const getSavedVolumes = (): string[] => {
 };
 
 /**
+ * Delete volume from project storage
+ */
+export const deleteVolumeFromProject = (volumeName: string): boolean => {
+  try {
+    const storageKey = `volume_${volumeName}`;
+    localStorage.removeItem(storageKey);
+    
+    // Remove from saved volumes list
+    const savedVolumes = getSavedVolumes();
+    const updatedVolumes = savedVolumes.filter(name => name !== volumeName);
+    localStorage.setItem('saved_volumes', JSON.stringify(updatedVolumes));
+    
+    console.log(`✅ Volume deleted: ${volumeName}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to delete volume:', error);
+    return false;
+  }
+};
+
+/**
  * Create volume data from shape
  */
 export const createVolumeDataFromShape = (shape: any, volumeName: string): VolumeData => {
