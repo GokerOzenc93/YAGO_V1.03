@@ -11,6 +11,9 @@ import {
   Save,
   Edit3,
   Archive,
+  PanelLeft,
+  Ruler,
+  BarChart3,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
