@@ -46,11 +46,11 @@ const Toolbar: React.FC = () => {
   const getViewModeIcon = () => {
     switch (viewMode) {
       case ViewMode.SOLID:
-        return <Cube size={10} className="text-blue-400" />;
+        return <Cube size={14} className="text-orange-600" />;
       case ViewMode.WIREFRAME:
-        return <Wireframe size={10} className="text-purple-400" />;
+        return <Wireframe size={14} className="text-orange-600" />;
       default:
-        return <Cube size={10} className="text-blue-400" />;
+        return <Cube size={14} className="text-orange-600" />;
     }
   };
 
