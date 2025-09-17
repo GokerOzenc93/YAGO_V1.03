@@ -344,7 +344,7 @@ const Toolbar: React.FC = () => {
               className="w-27 h-17 object-contain"
             />
             <div className="flex flex-col">
-              <span className="font-medium text-[10px] text-white/80 tracking-wider leading-none">FURNITURE CAD</span>
+              <span className="font-medium text-[10px] text-white/80 tracking-wider leading-none"></span>
             </div>
           </div>
 
