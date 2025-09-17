@@ -341,7 +341,7 @@ const Toolbar: React.FC = () => {
             <img 
               src="/image.png" 
               alt="YAGO Design Logo" 
-              className="w-22 h-13 object-contain"
+              className="w-17 h-9 object-contain"
             />
             <div className="flex flex-col">
               <span className="font-medium text-[10px] text-white/80 tracking-wider leading-none"></span>
