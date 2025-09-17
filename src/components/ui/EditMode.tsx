@@ -619,7 +619,7 @@ const EditMode: React.FC<EditModeProps> = ({
                   <span className="text-sm font-semibold truncate">Volume Parameters</span>
                   {activeComponent === 'volumeParameters' && (
                     <div className="absolute top-1 right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-violet-500 rounded-full"></div>
+                      <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
                     </div>
                   )}
                 </button>

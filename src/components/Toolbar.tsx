@@ -654,8 +654,8 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-1.5 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-gray-700 text-white shadow-md'
-                  : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
+                  ? 'bg-slate-700 text-white shadow-md border border-slate-600'
+                  : 'hover:bg-white text-slate-600 hover:text-slate-800 shadow-sm border border-gray-200'
               }`}
               onClick={() => {
                 if (activeTool === tool.id) {
