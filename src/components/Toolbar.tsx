@@ -333,14 +333,14 @@ const Toolbar: React.FC = () => {
 
   return (
     <div className="flex flex-col font-inter">
-      {/* Top app bar - Consistent with terminal styling */}
-      <div className="flex items-center h-7 px-2 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700/50 shadow-sm">
+      {/* Top app bar - Blue professional header */}
+      <div className="flex items-center h-8 px-3 bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-500/30 shadow-lg">
         <div className="flex items-center gap-3">
           {/* Logo and app name */}
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center justify-center w-6 h-6 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-lg shadow-lg border border-blue-400/30">
+            <div className="flex items-center justify-center w-7 h-7 bg-white/20 rounded-lg shadow-lg border border-white/30 backdrop-blur-sm">
               {/* Professional Furniture CAD Icon */}
-              <svg width="16" height="16" viewBox="0 0 24 24" className="text-white">
+              <svg width="18" height="18" viewBox="0 0 24 24" className="text-white">
                 {/* Cabinet/Furniture outline */}
                 <rect x="3" y="4" width="18" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
                 {/* Vertical divider */}
@@ -362,27 +362,27 @@ const Toolbar: React.FC = () => {
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-white tracking-wide leading-none">YagoDesign</span>
-              <span className="font-medium text-[9px] text-blue-200/80 tracking-wider leading-none">FURNITURE CAD</span>
+              <span className="font-bold text-base text-white tracking-wide leading-none">YagoDesign</span>
+              <span className="font-medium text-[10px] text-white/80 tracking-wider leading-none">FURNITURE CAD</span>
             </div>
           </div>
 
           {/* Separator */}
-          <div className="w-px h-3 bg-gray-600"></div>
+          <div className="w-px h-4 bg-white/30"></div>
 
           {/* Company info */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-gray-400 font-medium">Company:</span>
-            <span className="text-gray-100 font-medium">Göker İnşaat</span>
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-white/70 font-medium">Company:</span>
+            <span className="text-white font-medium">Göker İnşaat</span>
           </div>
 
           {/* Separator */}
-          <div className="w-px h-3 bg-gray-600"></div>
+          <div className="w-px h-4 bg-white/30"></div>
 
           {/* Project info */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-gray-400 font-medium">Project:</span>
-            <span className="text-gray-100 font-medium">Drawing1</span>
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-white/70 font-medium">Project:</span>
+            <span className="text-white font-medium">Drawing1</span>
           </div>
         </div>
 
@@ -391,15 +391,15 @@ const Toolbar: React.FC = () => {
           {/* Camera Toggle Button */}
           <button
             onClick={handleCameraToggle}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-gray-700/50 hover:bg-gray-600 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-sm"
             title={`Switch to ${cameraType === CameraType.PERSPECTIVE ? 'Orthographic' : 'Perspective'} Camera (C)`}
           >
             {cameraType === CameraType.PERSPECTIVE ? (
-              <Camera size={10} className="text-blue-400" />
+              <Camera size={12} className="text-white" />
             ) : (
-              <CameraOff size={10} className="text-gray-400" />
+              <CameraOff size={12} className="text-white/70" />
             )}
-            <span className="text-xs font-medium text-gray-200">
+            <span className="text-sm font-medium text-white">
               {cameraType === CameraType.PERSPECTIVE ? 'Persp' : 'Ortho'}
             </span>
           </button>
@@ -411,11 +411,11 @@ const Toolbar: React.FC = () => {
               cycleViewMode();
               console.log('🎯 View mode button clicked');
             }}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-gray-700/50 hover:bg-gray-600 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-sm"
             title={`Current: ${getViewModeLabel()} View - Click to cycle (1/2/3 or V)`}
           >
             {getViewModeIcon()}
-            <span className="text-xs font-medium text-gray-200">
+            <span className="text-sm font-medium text-white">
               {getViewModeLabel()}
             </span>
           </button>
@@ -425,45 +425,45 @@ const Toolbar: React.FC = () => {
             onClick={handleOrthoModeToggle}
             className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
               orthoMode === OrthoMode.ON
-                ? 'bg-orange-600/90 text-white shadow-sm'
-                : 'bg-gray-700/50 hover:bg-gray-600 text-gray-200'
+                ? 'bg-orange-500 text-white shadow-lg'
+                : 'bg-white/20 hover:bg-white/30 text-white'
             }`}
             title={`Ortho Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
           >
-            <Grid size={10} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-gray-400'} />
-            <span className="text-xs font-medium">
+            <Grid size={12} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-white'} />
+            <span className="text-sm font-medium">
               Ortho
             </span>
           </button>
 
           {/* Separator */}
-          <div className="w-px h-3 bg-gray-600"></div>
+          <div className="w-px h-4 bg-white/30"></div>
 
           <div className="relative">
-            <Search size={10} className="absolute left-1.5 top-1 text-gray-400" />
+            <Search size={12} className="absolute left-2 top-1.5 text-white/70" />
             <input
               type="text"
               placeholder="Search..."
-              className="w-32 h-5 pl-6 pr-1.5 text-xs bg-gray-700/50 rounded border border-gray-600/50 focus:outline-none focus:border-blue-500/50 focus:bg-gray-700/75 transition-colors"
+              className="w-36 h-7 pl-8 pr-2 text-sm bg-white/20 rounded-lg border border-white/30 focus:outline-none focus:border-white/50 focus:bg-white/30 transition-colors placeholder-white/70 text-white backdrop-blur-sm"
             />
           </div>
-          <button className="p-1 hover:bg-gray-700/50 rounded transition-colors">
-            <Settings size={10} className="text-gray-300" />
+          <button className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+            <Settings size={12} className="text-white" />
           </button>
-          <button className="p-1 hover:bg-gray-700/50 rounded transition-colors">
-            <HelpCircle size={10} className="text-gray-300" />
+          <button className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+            <HelpCircle size={12} className="text-white" />
           </button>
         </div>
       </div>
 
       {/* Menu bar - Slightly increased height */}
-      <div className="flex items-center h-6 px-1 bg-gray-800/90 border-b border-gray-600/50">
+      <div className="flex items-center h-8 px-2 bg-white border-b border-gray-200">
         <div className="flex items-center h-full">
           {menus.map((menu) => (
             <div key={menu.label} className="relative h-full">
               <button
-                className={`h-full px-1.5 text-xs font-medium hover:bg-gray-700/50 transition-colors flex items-center ${
-                  activeMenu === menu.label ? 'bg-gray-700/50' : ''
+                className={`h-full px-3 text-sm font-medium hover:bg-blue-50 transition-colors flex items-center ${
+                  activeMenu === menu.label ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                 }`}
                 onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
                 onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
@@ -472,16 +472,16 @@ const Toolbar: React.FC = () => {
               </button>
               {activeMenu === menu.label && (
                 <div 
-                  className="absolute left-0 top-full mt-0.5 w-48 bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-0.5 z-50 shadow-lg"
+                  className="absolute left-0 top-full mt-1 w-52 bg-white backdrop-blur-sm rounded-lg border border-gray-200 py-1 z-50 shadow-xl"
                   onMouseLeave={() => setActiveMenu(null)}
                 >
                   {menu.items.map((item, i) => (
                     item.type === 'separator' ? (
-                      <div key={i} className="border-t border-gray-600/50 my-0.5"></div>
+                      <div key={i} className="border-t border-gray-100 my-1"></div>
                     ) : (
                       <button 
                         key={i}
-                        className="flex items-center justify-between w-full h-6 px-2 text-xs hover:bg-gray-700/50 transition-colors"
+                        className="flex items-center justify-between w-full h-8 px-3 text-sm hover:bg-blue-50 transition-colors text-gray-700 hover:text-blue-600"
                         onClick={() => {
                           // 🎯 NEW: Handle view mode menu items
                           if (item.label === 'Solid View') handleViewModeChange(ViewMode.SOLID);
@@ -494,7 +494,7 @@ const Toolbar: React.FC = () => {
                           <span className="font-medium">{item.label}</span>
                         </div>
                         {item.shortcut && (
-                          <span className="text-gray-400 text-[10px] font-medium">{item.shortcut}</span>
+                          <span className="text-gray-500 text-xs font-medium">{item.shortcut}</span>
                         )}
                       </button>
                     )
@@ -507,13 +507,13 @@ const Toolbar: React.FC = () => {
       </div>
 
       {/* Main toolbar - Consistent styling */}
-      <div className="flex items-center h-8 gap-1 px-1 bg-gray-700/90 backdrop-blur-sm border-b border-gray-600/50">
+      <div className="flex items-center h-10 gap-2 px-3 bg-white border-b border-gray-200">
         {/* Quick access buttons */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           {quickAccessButtons.map((button, index) => (
             <button
               key={index}
-              className="p-1 rounded text-gray-300 hover:bg-gray-600/50 hover:text-gray-100 transition-colors"
+              className="p-2 rounded-md text-gray-600 hover:bg-white hover:text-blue-600 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
               {button.icon}
@@ -522,15 +522,15 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
 
         {/* Edit buttons */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           {editButtons.map((button, index) => (
             <button
               key={index}
-              className="p-1 rounded text-gray-300 hover:bg-gray-600/50 hover:text-gray-100 transition-colors"
+              className="p-2 rounded-md text-gray-600 hover:bg-white hover:text-blue-600 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
               {button.icon}
@@ -539,19 +539,19 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Transform tools (with Select moved to front) */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           {transformTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-1 rounded transition-all ${
+              className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-blue-600/90 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : tool.id === Tool.SELECT || selectedShapeId
-                  ? 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
-                  : 'opacity-50 cursor-not-allowed text-gray-500'
+                  ? 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                  : 'opacity-50 cursor-not-allowed text-gray-400'
               }`}
               onClick={() => {
                 if (tool.id === Tool.SELECT) {
@@ -569,16 +569,16 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Individual Snap Buttons */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           <button
             onClick={() => handleSnapToggle(SnapType.ENDPOINT)}
-            className={`p-1 rounded transition-all ${
+            className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.ENDPOINT]
-                ? 'bg-blue-600/90 text-white shadow-sm'
-                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
             }`}
             title="Endpoint Snap"
           >
@@ -586,10 +586,10 @@ const Toolbar: React.FC = () => {
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
-            className={`p-1 rounded transition-all ${
+            className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.MIDPOINT]
-                ? 'bg-blue-600/90 text-white shadow-sm'
-                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
             }`}
             title="Midpoint Snap"
           >
@@ -597,10 +597,10 @@ const Toolbar: React.FC = () => {
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.CENTER)}
-            className={`p-1 rounded transition-all ${
+            className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.CENTER]
-                ? 'bg-blue-600/90 text-white shadow-sm'
-                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
             }`}
             title="Center Snap"
           >
@@ -608,10 +608,10 @@ const Toolbar: React.FC = () => {
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
-            className={`p-1 rounded transition-all ${
+            className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.PERPENDICULAR]
-                ? 'bg-blue-600/90 text-white shadow-sm'
-                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
             }`}
             title="Perpendicular Snap"
           >
@@ -619,10 +619,10 @@ const Toolbar: React.FC = () => {
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
-            className={`p-1 rounded transition-all ${
+            className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.INTERSECTION]
-                ? 'bg-blue-600/90 text-white shadow-sm'
-                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
             }`}
             title="Intersection Snap"
           >
@@ -630,10 +630,10 @@ const Toolbar: React.FC = () => {
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.NEAREST)}
-            className={`p-1 rounded transition-all ${
+            className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.NEAREST]
-                ? 'bg-blue-600/90 text-white shadow-sm'
-                : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
             }`}
             title="Nearest Snap"
           >
@@ -642,17 +642,17 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Drawing tools */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           {drawingTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-1 rounded transition-all ${
+              className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-blue-600/90 text-white shadow-sm'
-                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
               }`}
               onClick={() => setActiveTool(tool.id)}
               onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
@@ -664,17 +664,17 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Measurement Tools */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           {measurementTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-1 rounded transition-all ${
+              className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-green-600/90 text-white shadow-sm'
-                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                  ? 'bg-green-600 text-white shadow-md'
+                  : 'hover:bg-white text-gray-600 hover:text-green-600 shadow-sm'
               }`}
               onClick={() => {
                 if (activeTool === tool.id) {
@@ -695,19 +695,19 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Boolean Operations */}
-        <div className="flex items-center gap-px bg-gray-800/50 rounded shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           {booleanTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-1 rounded transition-all ${
+              className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-blue-600/90 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : !selectedShapeId
-                  ? 'opacity-50 cursor-not-allowed text-gray-500'
-                  : 'hover:bg-gray-600/50 text-gray-300 hover:text-gray-100'
+                  ? 'opacity-50 cursor-not-allowed text-gray-400'
+                  : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
               }`}
               onClick={() => {
                 if (selectedShapeId) {
@@ -727,33 +727,33 @@ const Toolbar: React.FC = () => {
         </div>
 
         {/* Separator */}
-        <div className="w-px h-5 bg-gray-600/50 mx-0.5"></div>
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
       </div>
 
       {/* Polyline Context Menu */}
       {showPolylineMenu && (
         <div
-          className="fixed bg-gray-800/95 backdrop-blur-sm rounded border border-gray-600/50 py-1 z-50 shadow-lg"
+          className="fixed bg-white backdrop-blur-sm rounded-lg border border-gray-200 py-1 z-50 shadow-xl"
           style={{
             left: polylineMenuPosition.x,
             top: polylineMenuPosition.y,
           }}
         >
           <button
-            className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700/50 flex items-center gap-1.5"
+            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 text-gray-700 hover:text-blue-600"
             onClick={handlePolylineEdit}
           >
-            <Edit3 size={11} />
+            <Edit3 size={14} />
             <span className="font-medium">Edit Polyline</span>
           </button>
           <button
-            className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700/50 flex items-center gap-1.5"
+            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 text-gray-700 hover:text-blue-600"
             onClick={() => {
               setActiveTool(Tool.POLYLINE);
               setShowPolylineMenu(false);
             }}
           >
-            <GitBranch size={11} />
+            <GitBranch size={14} />
             <span className="font-medium">Draw Polyline</span>
           </button>
         </div>
