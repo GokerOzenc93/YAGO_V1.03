@@ -338,31 +338,12 @@ const Toolbar: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* Logo and app name */}
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center justify-center w-7 h-7 bg-white/20 rounded-lg shadow-lg border border-white/30 backdrop-blur-sm">
-              {/* Professional Furniture CAD Icon */}
-              <svg width="18" height="18" viewBox="0 0 24 24" className="text-white">
-                {/* Cabinet/Furniture outline */}
-                <rect x="3" y="4" width="18" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
-                {/* Vertical divider */}
-                <line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" strokeWidth="1"/>
-                {/* Horizontal shelves */}
-                <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth="1"/>
-                <line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" strokeWidth="1"/>
-                {/* Door handles */}
-                <circle cx="9" cy="12" r="0.8" fill="currentColor"/>
-                <circle cx="15" cy="12" r="0.8" fill="currentColor"/>
-                {/* CAD dimension lines */}
-                <line x1="1" y1="4" x2="1" y2="20" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-                <line x1="0.5" y1="4" x2="1.5" y2="4" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-                <line x1="0.5" y1="20" x2="1.5" y2="20" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-                {/* Top dimension line */}
-                <line x1="3" y1="2" x2="21" y2="2" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-                <line x1="3" y1="1.5" x2="3" y2="2.5" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-                <line x1="21" y1="1.5" x2="21" y2="2.5" stroke="currentColor" strokeWidth="0.5" opacity="0.7"/>
-              </svg>
-            </div>
+            <img 
+              src="/image.png" 
+              alt="YAGO Design Logo" 
+              className="w-20 h-6 object-contain"
+            />
             <div className="flex flex-col">
-              <span className="font-bold text-base text-white tracking-wide leading-none">YagoDesign</span>
               <span className="font-medium text-[10px] text-white/80 tracking-wider leading-none">FURNITURE CAD</span>
             </div>
           </div>
@@ -411,11 +392,11 @@ const Toolbar: React.FC = () => {
               cycleViewMode();
               console.log('🎯 View mode button clicked');
             }}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-sm"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 transition-colors backdrop-blur-sm border border-orange-400/30"
             title={`Current: ${getViewModeLabel()} View - Click to cycle (1/2/3 or V)`}
           >
             {getViewModeIcon()}
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-orange-100">
               {getViewModeLabel()}
             </span>
           </button>
@@ -425,12 +406,12 @@ const Toolbar: React.FC = () => {
             onClick={handleOrthoModeToggle}
             className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
               orthoMode === OrthoMode.ON
-                ? 'bg-orange-500 text-white shadow-lg'
-                : 'bg-white/20 hover:bg-white/30 text-white'
+                ? 'bg-orange-500 text-white shadow-lg border border-orange-400'
+                : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-100 border border-orange-400/30'
             }`}
             title={`Ortho Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
           >
-            <Grid size={12} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-white'} />
+            <Grid size={12} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-orange-100'} />
             <span className="text-sm font-medium">
               Ortho
             </span>
