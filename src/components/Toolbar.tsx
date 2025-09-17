@@ -457,13 +457,13 @@ const Toolbar: React.FC = () => {
       </div>
 
       {/* Menu bar - Slightly increased height */}
-      <div className="flex items-center h-8 px-1 bg-white border-b border-gray-200">
+      <div className="flex items-center h-6 px-1 bg-white border-b border-gray-200">
         <div className="flex items-center h-full">
           {menus.map((menu) => (
             <div key={menu.label} className="relative h-full">
               <button
-                className={`h-full px-2 text-sm font-medium hover:bg-blue-50 transition-colors flex items-center ${
-                  activeMenu === menu.label ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                className={`h-full px-2 text-xs font-medium hover:bg-gray-100 transition-colors flex items-center ${
+                  activeMenu === menu.label ? 'bg-gray-100 text-gray-800' : 'text-gray-700'
                 }`}
                 onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
                 onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
@@ -481,7 +481,7 @@ const Toolbar: React.FC = () => {
                     ) : (
                       <button 
                         key={i}
-                        className="flex items-center justify-between w-full h-8 px-3 text-sm hover:bg-blue-50 transition-colors text-gray-700 hover:text-blue-600"
+                        className="flex items-center justify-between w-full h-7 px-3 text-xs hover:bg-gray-100 transition-colors text-gray-700 hover:text-gray-800"
                         onClick={() => {
                           // 🎯 NEW: Handle view mode menu items
                           if (item.label === 'Solid View') handleViewModeChange(ViewMode.SOLID);
@@ -513,10 +513,10 @@ const Toolbar: React.FC = () => {
           {quickAccessButtons.map((button, index) => (
             <button
               key={index}
-              className="p-2 rounded-md text-gray-600 hover:bg-white hover:text-blue-600 transition-colors shadow-sm"
+              className="p-1.5 rounded-md text-gray-600 hover:bg-white hover:text-gray-800 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
-              {React.cloneElement(button.icon, { size: 16 })}
+              {React.cloneElement(button.icon, { size: 14 })}
             </button>
           ))}
         </div>
@@ -530,10 +530,10 @@ const Toolbar: React.FC = () => {
           {editButtons.map((button, index) => (
             <button
               key={index}
-              className="p-2 rounded-md text-gray-600 hover:bg-white hover:text-blue-600 transition-colors shadow-sm"
+              className="p-1.5 rounded-md text-gray-600 hover:bg-white hover:text-gray-800 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
-              {React.cloneElement(button.icon, { size: 16 })}
+              {React.cloneElement(button.icon, { size: 14 })}
             </button>
           ))}
         </div>
@@ -548,9 +548,9 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : tool.id === Tool.SELECT || selectedShapeId
-                  ? 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                  ? 'bg-gray-800 text-white shadow-md'
+                  : (tool.id === Tool.SELECT || selectedShapeId)
+                  ? 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
                   : 'opacity-50 cursor-not-allowed text-gray-400'
               }`}
               onClick={() => {
@@ -563,7 +563,7 @@ const Toolbar: React.FC = () => {
               disabled={tool.id !== Tool.SELECT && !selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 16 })}
+              {React.cloneElement(tool.icon, { size: 14 })}
             </button>
           ))}
         </div>
@@ -577,67 +577,67 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.ENDPOINT)}
             className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.ENDPOINT]
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                ? 'bg-gray-800 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Endpoint Snap"
           >
-            <Target size={16} />
+            <Target size={14} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
             className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.MIDPOINT]
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                ? 'bg-gray-800 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Midpoint Snap"
           >
-            <Navigation size={16} />
+            <Navigation size={14} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.CENTER)}
             className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.CENTER]
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                ? 'bg-gray-800 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Center Snap"
           >
-            <Crosshair size={16} />
+            <Crosshair size={14} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
             className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.PERPENDICULAR]
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                ? 'bg-gray-800 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Perpendicular Snap"
           >
-            <Zap size={16} />
+            <Zap size={14} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
             className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.INTERSECTION]
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                ? 'bg-gray-800 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Intersection Snap"
           >
-            <Intersection size={16} />
+            <Intersection size={14} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.NEAREST)}
             className={`p-2 rounded-md transition-all ${
               snapSettings[SnapType.NEAREST]
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                ? 'bg-gray-800 text-white shadow-md'
+                : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Nearest Snap"
           >
-            <MapPin size={16} />
+            <MapPin size={14} />
           </button>
         </div>
 
@@ -651,14 +651,14 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                  ? 'bg-gray-800 text-white shadow-md'
+                  : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
               }`}
               onClick={() => setActiveTool(tool.id)}
               onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 16 })}
+              {React.cloneElement(tool.icon, { size: 14 })}
             </button>
           ))}
         </div>
@@ -673,8 +673,8 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-green-600 text-white shadow-md'
-                  : 'hover:bg-white text-gray-600 hover:text-green-600 shadow-sm'
+                  ? 'bg-gray-800 text-white shadow-md'
+                  : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
               }`}
               onClick={() => {
                 if (activeTool === tool.id) {
@@ -689,7 +689,7 @@ const Toolbar: React.FC = () => {
               }}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 16 })}
+              {React.cloneElement(tool.icon, { size: 14 })}
             </button>
           ))}
         </div>
@@ -704,10 +704,10 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-2 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-gray-800 text-white shadow-md'
                   : !selectedShapeId
                   ? 'opacity-50 cursor-not-allowed text-gray-400'
-                  : 'hover:bg-white text-gray-600 hover:text-blue-600 shadow-sm'
+                  : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
               }`}
               onClick={() => {
                 if (selectedShapeId) {
@@ -721,7 +721,7 @@ const Toolbar: React.FC = () => {
               disabled={!selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 16 })}
+              {React.cloneElement(tool.icon, { size: 14 })}
             </button>
           ))}
         </div>
@@ -740,14 +740,14 @@ const Toolbar: React.FC = () => {
           }}
         >
           <button
-            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 text-gray-700 hover:text-blue-600"
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-700 hover:text-gray-800"
             onClick={handlePolylineEdit}
           >
             <Edit3 size={14} />
             <span className="font-medium">Edit Polyline</span>
           </button>
           <button
-            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 text-gray-700 hover:text-blue-600"
+            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-700 hover:text-gray-800"
             onClick={() => {
               setActiveTool(Tool.POLYLINE);
               setShowPolylineMenu(false);
