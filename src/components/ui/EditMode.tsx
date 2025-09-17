@@ -479,16 +479,16 @@ const EditMode: React.FC<EditModeProps> = ({
       case 'faceSelect':
         return (
           <>
-            <div className="flex items-center justify-between px-3 py-3 bg-blue-50 border-b border-blue-200">
+            <div className="flex items-center justify-between px-3 py-3 bg-slate-50 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-7 h-7 bg-blue-600 rounded-lg">
+                <div className="flex items-center justify-center w-7 h-7 bg-slate-800 rounded-lg">
                   <MousePointer size={14} className="text-white" />
                 </div>
-                <span className="text-blue-900 font-semibold text-base">Face Select</span>
+                <span className="text-slate-800 font-semibold text-base">Face Select</span>
               </div>
               <button
                 onClick={() => setActiveComponent(null)}
-                className="text-gray-500 hover:text-blue-600 p-1.5 rounded-lg transition-colors hover:bg-blue-100"
+                className="text-stone-500 hover:text-slate-800 p-1.5 rounded-lg transition-colors hover:bg-slate-100"
                 title="Geri"
               >
                 <X size={14} />
@@ -496,12 +496,12 @@ const EditMode: React.FC<EditModeProps> = ({
             </div>
 
             <div className="flex-1 p-4 space-y-4">
-              <div className="h-px bg-gradient-to-r from-transparent via-blue-300 to-transparent mb-4"></div>
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent mb-4"></div>
 
               <div className="space-y-3">
                 {selectedFaceCount > 0 && (
-                  <div className="text-sm text-gray-700 mb-3">
-                    Selected Faces: <span className="text-blue-600 font-semibold">{selectedFaceCount}</span>
+                  <div className="text-sm text-slate-700 mb-3">
+                    Selected Faces: <span className="text-slate-800 font-semibold">{selectedFaceCount}</span>
                   </div>
                 )}
                 
@@ -516,7 +516,7 @@ const EditMode: React.FC<EditModeProps> = ({
                 )}
                 
                 {selectedFaceCount === 0 && (
-                  <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-sm text-stone-600 p-3 bg-stone-100 rounded-lg border border-stone-200">
                     Click on faces to select them
                   </div>
                 )}
@@ -527,16 +527,16 @@ const EditMode: React.FC<EditModeProps> = ({
       case 'volumeType':
         return (
           <>
-            <div className="flex items-center justify-between px-3 py-3 bg-green-50 border-b border-green-200">
+            <div className="flex items-center justify-between px-3 py-3 bg-orange-50 border-b border-orange-200">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-7 h-7 bg-green-600 rounded-lg">
+                <div className="flex items-center justify-center w-7 h-7 bg-orange-600 rounded-lg">
                   <Archive size={14} className="text-white" />
                 </div>
-                <span className="text-green-900 font-semibold text-base">Volume Type</span>
+                <span className="text-orange-900 font-semibold text-base">Volume Type</span>
               </div>
               <button
                 onClick={() => setActiveComponent(null)}
-                className="text-gray-500 hover:text-green-600 p-1.5 rounded-lg transition-colors hover:bg-green-100"
+                className="text-stone-500 hover:text-orange-600 p-1.5 rounded-lg transition-colors hover:bg-orange-100"
                 title="Back"
               >
                 <X size={14} />
@@ -544,25 +544,25 @@ const EditMode: React.FC<EditModeProps> = ({
             </div>
 
             <div className="flex-1 p-4 space-y-4">
-              <div className="h-px bg-gradient-to-r from-transparent via-green-300 to-transparent mb-4"></div>
+              <div className="h-px bg-gradient-to-r from-transparent via-orange-300 to-transparent mb-4"></div>
 
               <div className="space-y-3">
                 {(() => {
                   const savedVolumes = getSavedVolumes(); // refreshTrigger dependency will cause re-render
                   return savedVolumes.length > 0 ? (
                     <>
-                      <div className="text-sm text-gray-700 mb-3">
-                        Saved Volumes: <span className="text-green-600 font-semibold">{savedVolumes.length}</span>
+                      <div className="text-sm text-slate-700 mb-3">
+                        Saved Volumes: <span className="text-orange-600 font-semibold">{savedVolumes.length}</span>
                       </div>
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {savedVolumes.map((volumeName, index) => (
                           <div
                             key={index}
-                            className="flex items-center gap-2 w-full p-3 bg-white hover:bg-green-50 rounded-lg border border-gray-200 hover:border-green-300 transition-colors shadow-sm"
+                            className="flex items-center gap-2 w-full p-3 bg-white hover:bg-orange-50 rounded-lg border border-stone-200 hover:border-orange-300 transition-colors shadow-sm"
                           >
                             <button
                               onClick={() => handleVolumeSelect(volumeName)}
-                              className="flex-1 text-left text-sm text-gray-700 font-mono hover:text-green-700 transition-colors"
+                              className="flex-1 text-left text-sm text-slate-700 font-mono hover:text-orange-700 transition-colors"
                               title={`Load volume: ${volumeName}`}
                             >
                               {volumeName}
@@ -572,7 +572,7 @@ const EditMode: React.FC<EditModeProps> = ({
                                 e.stopPropagation();
                                 handleVolumeDelete(volumeName);
                               }}
-                              className="flex-shrink-0 p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="flex-shrink-0 p-1.5 text-stone-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title={`Delete volume: ${volumeName}`}
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -587,7 +587,7 @@ const EditMode: React.FC<EditModeProps> = ({
                       </div>
                     </>
                   ) : (
-                    <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-sm text-stone-600 p-3 bg-stone-100 rounded-lg border border-stone-200">
                       No saved volumes found
                     </div>
                   );

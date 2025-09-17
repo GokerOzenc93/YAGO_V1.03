@@ -132,29 +132,29 @@ const Terminal: React.FC = () => {
     <>
       {/* Status Display */}
       {polylineStatus && (
-        <div className="fixed bottom-5 left-0 right-0 bg-gray-700/95 backdrop-blur-sm border-t border-gray-600 z-20" style={{ height: '4mm' }}>
+        <div className="fixed bottom-5 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-stone-300 z-20" style={{ height: '4mm' }}>
           <div className="flex items-center justify-between h-full px-3">
             {/* Sol taraf - Tool bilgisi */}
-            <div className="flex items-center gap-4 text-xs text-gray-300">
+            <div className="flex items-center gap-4 text-xs text-stone-600">
               <span className="font-medium">
-                Tool: <span className="text-white">{activeTool}</span>
+                Tool: <span className="text-slate-800">{activeTool}</span>
               </span>
             </div>
 
             {/* Orta - Polyline ölçü bilgileri */}
             <div className="flex items-center gap-4 text-xs">
               <span className="text-gray-300">
-                Length: <span className="text-green-400 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
+                Length: <span className="text-orange-600 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
               </span>
               {polylineStatus.angle !== undefined && (
-                <span className="text-gray-300">
-                  Angle: <span className="text-blue-400 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+                <span className="text-stone-600">
+                  Angle: <span className="text-slate-700 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
                 </span>
               )}
             </div>
 
             {/* Sağ taraf - Durum bilgileri */}
-            <div className="flex items-center gap-4 text-xs text-gray-300">
+            <div className="flex items-center gap-4 text-xs text-stone-600">
               <span>Ready</span>
             </div>
           </div>
@@ -162,9 +162,9 @@ const Terminal: React.FC = () => {
       )}
 
       {/* Terminal */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-30" style={{ height: '5mm' }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30" style={{ height: '5mm' }}>
       <div className="flex items-center h-full px-2">
-        <span className="text-green-400 font-mono text-xs mr-2">$</span>
+        <span className="text-stone-500 font-mono text-xs mr-2">$</span>
         <input
           ref={inputRef}
           type="text"
@@ -172,11 +172,11 @@ const Terminal: React.FC = () => {
           onChange={(e) => setCommandInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Enter command or value..."
-          className="flex-1 bg-transparent text-white font-mono text-xs outline-none placeholder-gray-500"
+          className="flex-1 bg-transparent text-slate-800 font-mono text-xs outline-none placeholder-stone-500"
         />
         <button
           onClick={() => executeCommand(commandInput)}
-          className="ml-2 p-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+          className="ml-2 p-1 bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors"
         >
           <Send className="w-2 h-2" />
         </button>

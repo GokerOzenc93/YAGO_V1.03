@@ -50,11 +50,11 @@ const StatusBar: React.FC = () => {
   const getViewModeIcon = () => {
     switch (viewMode) {
       case ViewMode.WIREFRAME:
-        return <Wireframe size={10} className="text-purple-400" />;
+        return <Wireframe size={10} className="text-slate-700" />;
       case ViewMode.SOLID:
-        return <Cube size={10} className="text-green-400" />;
+        return <Cube size={10} className="text-slate-700" />;
       default:
-        return <Cube size={10} className="text-green-400" />;
+        return <Cube size={10} className="text-slate-700" />;
     }
   };
 
