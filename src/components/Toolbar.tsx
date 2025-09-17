@@ -333,8 +333,8 @@ const Toolbar: React.FC = () => {
 
   return (
     <div className="flex flex-col font-inter">
-      {/* Top app bar - Blue professional header */}
-      <div className="flex items-center h-8 px-3 bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-500/30 shadow-lg">
+      {/* Top app bar - Antrasit mavi professional header */}
+      <div className="flex items-center h-8 px-3 bg-gray-800 border-b border-gray-700 shadow-lg">
         <div className="flex items-center gap-3">
           {/* Logo and app name */}
           <div className="flex items-center gap-1.5">
@@ -457,12 +457,12 @@ const Toolbar: React.FC = () => {
       </div>
 
       {/* Menu bar - Slightly increased height */}
-      <div className="flex items-center h-8 px-2 bg-white border-b border-gray-200">
+      <div className="flex items-center h-8 px-1 bg-white border-b border-gray-200">
         <div className="flex items-center h-full">
           {menus.map((menu) => (
             <div key={menu.label} className="relative h-full">
               <button
-                className={`h-full px-3 text-sm font-medium hover:bg-blue-50 transition-colors flex items-center ${
+                className={`h-full px-2 text-sm font-medium hover:bg-blue-50 transition-colors flex items-center ${
                   activeMenu === menu.label ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                 }`}
                 onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
@@ -516,7 +516,7 @@ const Toolbar: React.FC = () => {
               className="p-2 rounded-md text-gray-600 hover:bg-white hover:text-blue-600 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
-              {button.icon}
+              {React.cloneElement(button.icon, { size: 16 })}
             </button>
           ))}
         </div>
@@ -533,7 +533,7 @@ const Toolbar: React.FC = () => {
               className="p-2 rounded-md text-gray-600 hover:bg-white hover:text-blue-600 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
-              {button.icon}
+              {React.cloneElement(button.icon, { size: 16 })}
             </button>
           ))}
         </div>
@@ -563,7 +563,7 @@ const Toolbar: React.FC = () => {
               disabled={tool.id !== Tool.SELECT && !selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {tool.icon}
+              {React.cloneElement(tool.icon, { size: 16 })}
             </button>
           ))}
         </div>
@@ -582,7 +582,7 @@ const Toolbar: React.FC = () => {
             }`}
             title="Endpoint Snap"
           >
-            <Target size={12} />
+            <Target size={16} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
@@ -593,7 +593,7 @@ const Toolbar: React.FC = () => {
             }`}
             title="Midpoint Snap"
           >
-            <Navigation size={12} />
+            <Navigation size={16} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.CENTER)}
@@ -604,7 +604,7 @@ const Toolbar: React.FC = () => {
             }`}
             title="Center Snap"
           >
-            <Crosshair size={12} />
+            <Crosshair size={16} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
@@ -615,7 +615,7 @@ const Toolbar: React.FC = () => {
             }`}
             title="Perpendicular Snap"
           >
-            <Zap size={12} />
+            <Zap size={16} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
@@ -626,7 +626,7 @@ const Toolbar: React.FC = () => {
             }`}
             title="Intersection Snap"
           >
-            <Intersection size={12} />
+            <Intersection size={16} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.NEAREST)}
@@ -637,7 +637,7 @@ const Toolbar: React.FC = () => {
             }`}
             title="Nearest Snap"
           >
-            <MapPin size={12} />
+            <MapPin size={16} />
           </button>
         </div>
 
@@ -658,7 +658,7 @@ const Toolbar: React.FC = () => {
               onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {tool.icon}
+              {React.cloneElement(tool.icon, { size: 16 })}
             </button>
           ))}
         </div>
@@ -689,7 +689,7 @@ const Toolbar: React.FC = () => {
               }}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {tool.icon}
+              {React.cloneElement(tool.icon, { size: 16 })}
             </button>
           ))}
         </div>
@@ -721,7 +721,7 @@ const Toolbar: React.FC = () => {
               disabled={!selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {tool.icon}
+              {React.cloneElement(tool.icon, { size: 16 })}
             </button>
           ))}
         </div>
