@@ -334,7 +334,7 @@ const Toolbar: React.FC = () => {
   return (
     <div className="flex flex-col font-inter">
       {/* Top app bar - Antrasit mavi professional header */}
-      <div className="flex items-center h-8 px-3 bg-gray-800 border-b border-gray-700 shadow-lg">
+      <div className="flex items-center h-8 px-3 bg-gray-900 border-b border-gray-800 shadow-lg">
         <div className="flex items-center gap-3">
           {/* Logo and app name */}
           <div className="flex items-center gap-1.5">
@@ -513,10 +513,10 @@ const Toolbar: React.FC = () => {
           {quickAccessButtons.map((button, index) => (
             <button
               key={index}
-              className="p-1.5 rounded-md text-gray-600 hover:bg-white hover:text-gray-800 transition-colors shadow-sm"
+              className="p-1 rounded-md text-gray-600 hover:bg-white hover:text-gray-800 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
-              {React.cloneElement(button.icon, { size: 14 })}
+              {React.cloneElement(button.icon, { size: 12 })}
             </button>
           ))}
         </div>
@@ -530,10 +530,10 @@ const Toolbar: React.FC = () => {
           {editButtons.map((button, index) => (
             <button
               key={index}
-              className="p-1.5 rounded-md text-gray-600 hover:bg-white hover:text-gray-800 transition-colors shadow-sm"
+              className="p-1 rounded-md text-gray-600 hover:bg-white hover:text-gray-800 transition-colors shadow-sm"
               title={`${button.label} (${button.shortcut})`}
             >
-              {React.cloneElement(button.icon, { size: 14 })}
+              {React.cloneElement(button.icon, { size: 12 })}
             </button>
           ))}
         </div>
@@ -546,9 +546,9 @@ const Toolbar: React.FC = () => {
           {transformTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-gray-800 text-white shadow-md'
+                  ? 'bg-gray-700 text-white shadow-md'
                   : (tool.id === Tool.SELECT || selectedShapeId)
                   ? 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
                   : 'opacity-50 cursor-not-allowed text-gray-400'
@@ -563,7 +563,7 @@ const Toolbar: React.FC = () => {
               disabled={tool.id !== Tool.SELECT && !selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 14 })}
+              {React.cloneElement(tool.icon, { size: 12 })}
             </button>
           ))}
         </div>
@@ -575,69 +575,69 @@ const Toolbar: React.FC = () => {
         <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 shadow-sm">
           <button
             onClick={() => handleSnapToggle(SnapType.ENDPOINT)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded-md transition-all ${
               snapSettings[SnapType.ENDPOINT]
-                ? 'bg-gray-800 text-white shadow-md'
+                ? 'bg-gray-700 text-white shadow-md'
                 : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Endpoint Snap"
           >
-            <Target size={14} />
+            <Target size={12} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded-md transition-all ${
               snapSettings[SnapType.MIDPOINT]
-                ? 'bg-gray-800 text-white shadow-md'
+                ? 'bg-gray-700 text-white shadow-md'
                 : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Midpoint Snap"
           >
-            <Navigation size={14} />
+            <Navigation size={12} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.CENTER)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded-md transition-all ${
               snapSettings[SnapType.CENTER]
-                ? 'bg-gray-800 text-white shadow-md'
+                ? 'bg-gray-700 text-white shadow-md'
                 : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Center Snap"
           >
-            <Crosshair size={14} />
+            <Crosshair size={12} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded-md transition-all ${
               snapSettings[SnapType.PERPENDICULAR]
-                ? 'bg-gray-800 text-white shadow-md'
+                ? 'bg-gray-700 text-white shadow-md'
                 : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Perpendicular Snap"
           >
-            <Zap size={14} />
+            <Zap size={12} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded-md transition-all ${
               snapSettings[SnapType.INTERSECTION]
-                ? 'bg-gray-800 text-white shadow-md'
+                ? 'bg-gray-700 text-white shadow-md'
                 : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Intersection Snap"
           >
-            <Intersection size={14} />
+            <Intersection size={12} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.NEAREST)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded-md transition-all ${
               snapSettings[SnapType.NEAREST]
-                ? 'bg-gray-800 text-white shadow-md'
+                ? 'bg-gray-700 text-white shadow-md'
                 : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
             }`}
             title="Nearest Snap"
           >
-            <MapPin size={14} />
+            <MapPin size={12} />
           </button>
         </div>
 
@@ -649,16 +649,16 @@ const Toolbar: React.FC = () => {
           {drawingTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-gray-800 text-white shadow-md'
+                  ? 'bg-gray-700 text-white shadow-md'
                   : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
               }`}
               onClick={() => setActiveTool(tool.id)}
               onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 14 })}
+              {React.cloneElement(tool.icon, { size: 12 })}
             </button>
           ))}
         </div>
@@ -671,9 +671,9 @@ const Toolbar: React.FC = () => {
           {measurementTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-gray-800 text-white shadow-md'
+                  ? 'bg-gray-700 text-white shadow-md'
                   : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
               }`}
               onClick={() => {
@@ -689,7 +689,7 @@ const Toolbar: React.FC = () => {
               }}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 14 })}
+              {React.cloneElement(tool.icon, { size: 12 })}
             </button>
           ))}
         </div>
@@ -702,9 +702,9 @@ const Toolbar: React.FC = () => {
           {booleanTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 rounded-md transition-all ${
                 activeTool === tool.id
-                  ? 'bg-gray-800 text-white shadow-md'
+                  ? 'bg-gray-700 text-white shadow-md'
                   : !selectedShapeId
                   ? 'opacity-50 cursor-not-allowed text-gray-400'
                   : 'hover:bg-white text-gray-600 hover:text-gray-800 shadow-sm'
@@ -721,7 +721,7 @@ const Toolbar: React.FC = () => {
               disabled={!selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 14 })}
+              {React.cloneElement(tool.icon, { size: 12 })}
             </button>
           ))}
         </div>
