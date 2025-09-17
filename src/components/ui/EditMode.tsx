@@ -422,18 +422,18 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const getIconButtonColorClasses = (color: string, isActive: boolean) => {
-    const baseClasses = 'relative flex items-center rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]';
+    const baseClasses = 'relative flex items-center rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm';
 
     if (isActive) {
       if (color === 'blue') {
-        return `${baseClasses} bg-blue-600/90 text-white shadow-lg shadow-blue-500/25 border border-blue-400/30`;
+        return `${baseClasses} bg-blue-600 text-white shadow-lg shadow-blue-500/25`;
       } else if (color === 'green') {
-        return `${baseClasses} bg-green-600/90 text-white shadow-lg shadow-green-500/25 border border-green-400/30`;
+        return `${baseClasses} bg-green-600 text-white shadow-lg shadow-green-500/25`;
       } else {
-        return `${baseClasses} bg-violet-600/90 text-white shadow-lg shadow-violet-500/25 border border-violet-400/30`;
+        return `${baseClasses} bg-violet-600 text-white shadow-lg shadow-violet-500/25`;
       }
     } else {
-      return `${baseClasses} bg-gray-800/50 text-gray-300 hover:bg-gray-600/50 border border-gray-500/30 hover:border-gray-400/50`;
+      return `${baseClasses} bg-gray-50 text-gray-600 hover:bg-white hover:text-blue-600 border border-gray-200`;
     }
   };
 
@@ -479,44 +479,44 @@ const EditMode: React.FC<EditModeProps> = ({
       case 'faceSelect':
         return (
           <>
-            <div className="flex items-center justify-between px-3 py-2 bg-blue-600/20 border-b border-blue-500/30">
+            <div className="flex items-center justify-between px-3 py-3 bg-blue-50 border-b border-blue-200">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-6 h-6 bg-blue-600/30 rounded">
-                  <MousePointer size={12} className="text-blue-300" />
+                <div className="flex items-center justify-center w-7 h-7 bg-blue-600 rounded-lg">
+                  <MousePointer size={14} className="text-white" />
                 </div>
-                <span className="text-white font-medium text-sm">Face Select</span>
+                <span className="text-blue-900 font-semibold text-base">Face Select</span>
               </div>
               <button
                 onClick={() => setActiveComponent(null)}
-                className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+                className="text-gray-500 hover:text-blue-600 p-1.5 rounded-lg transition-colors hover:bg-blue-100"
                 title="Geri"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             </div>
 
-            <div className="flex-1 p-3 space-y-3">
-              <div className="h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent mb-3"></div>
+            <div className="flex-1 p-4 space-y-4">
+              <div className="h-px bg-gradient-to-r from-transparent via-blue-300 to-transparent mb-4"></div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {selectedFaceCount > 0 && (
-                  <div className="text-xs text-gray-300 mb-2">
-                    Selected Faces: <span className="text-blue-400 font-medium">{selectedFaceCount}</span>
+                  <div className="text-sm text-gray-700 mb-3">
+                    Selected Faces: <span className="text-blue-600 font-semibold">{selectedFaceCount}</span>
                   </div>
                 )}
                 
                 {selectedFaceCount > 0 && (
                   <button
                     onClick={clearAllFaceSelections}
-                    className="w-full flex items-center gap-2 px-2 py-1 rounded text-xs bg-red-600/50 text-red-200 hover:bg-red-600/70 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-red-50 text-red-700 hover:bg-red-100 transition-colors border border-red-200"
                   >
-                    <Layers size={10} />
+                    <Layers size={14} />
                     Clear All ({selectedFaceCount})
                   </button>
                 )}
                 
                 {selectedFaceCount === 0 && (
-                  <div className="text-xs text-gray-400 p-2 bg-gray-800/30 rounded">
+                  <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     Click on faces to select them
                   </div>
                 )}
@@ -527,42 +527,42 @@ const EditMode: React.FC<EditModeProps> = ({
       case 'volumeType':
         return (
           <>
-            <div className="flex items-center justify-between px-3 py-2 bg-green-600/20 border-b border-green-500/30">
+            <div className="flex items-center justify-between px-3 py-3 bg-green-50 border-b border-green-200">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-6 h-6 bg-green-600/30 rounded">
-                  <Archive size={12} className="text-green-300" />
+                <div className="flex items-center justify-center w-7 h-7 bg-green-600 rounded-lg">
+                  <Archive size={14} className="text-white" />
                 </div>
-                <span className="text-white font-medium text-sm">Volume Type</span>
+                <span className="text-green-900 font-semibold text-base">Volume Type</span>
               </div>
               <button
                 onClick={() => setActiveComponent(null)}
-                className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+                className="text-gray-500 hover:text-green-600 p-1.5 rounded-lg transition-colors hover:bg-green-100"
                 title="Back"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             </div>
 
-            <div className="flex-1 p-3 space-y-3">
-              <div className="h-px bg-gradient-to-r from-transparent via-green-400/60 to-transparent mb-3"></div>
+            <div className="flex-1 p-4 space-y-4">
+              <div className="h-px bg-gradient-to-r from-transparent via-green-300 to-transparent mb-4"></div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {(() => {
                   const savedVolumes = getSavedVolumes(); // refreshTrigger dependency will cause re-render
                   return savedVolumes.length > 0 ? (
                     <>
-                      <div className="text-xs text-gray-300 mb-2">
-                        Saved Volumes: <span className="text-green-400 font-medium">{savedVolumes.length}</span>
+                      <div className="text-sm text-gray-700 mb-3">
+                        Saved Volumes: <span className="text-green-600 font-semibold">{savedVolumes.length}</span>
                       </div>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
                         {savedVolumes.map((volumeName, index) => (
                           <div
                             key={index}
-                            className="flex items-center gap-2 w-full p-2 bg-gray-800/30 hover:bg-gray-700/50 rounded border border-gray-700/50 transition-colors"
+                            className="flex items-center gap-2 w-full p-3 bg-white hover:bg-green-50 rounded-lg border border-gray-200 hover:border-green-300 transition-colors shadow-sm"
                           >
                             <button
                               onClick={() => handleVolumeSelect(volumeName)}
-                              className="flex-1 text-left text-xs text-gray-200 font-mono hover:text-white transition-colors"
+                              className="flex-1 text-left text-sm text-gray-700 font-mono hover:text-green-700 transition-colors"
                               title={`Load volume: ${volumeName}`}
                             >
                               {volumeName}
@@ -572,10 +572,10 @@ const EditMode: React.FC<EditModeProps> = ({
                                 e.stopPropagation();
                                 handleVolumeDelete(volumeName);
                               }}
-                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                              className="flex-shrink-0 p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title={`Delete volume: ${volumeName}`}
                             >
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <polyline points="3,6 5,6 21,6"></polyline>
                                 <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                                 <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -587,7 +587,7 @@ const EditMode: React.FC<EditModeProps> = ({
                       </div>
                     </>
                   ) : (
-                    <div className="text-xs text-gray-400 p-2 bg-gray-800/30 rounded">
+                    <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg border border-gray-200">
                       No saved volumes found
                     </div>
                   );
@@ -598,7 +598,7 @@ const EditMode: React.FC<EditModeProps> = ({
         );
       default:
         return (
-          <div className="flex flex-col w-full bg-gray-700/50 flex-shrink-0 py-2">
+          <div className="flex flex-col w-full bg-gray-50 flex-shrink-0 py-3">
             {(editedShape.type === 'box' || 
               editedShape.type === 'cylinder' || 
               editedShape.type === 'polyline2d' || 
@@ -607,24 +607,24 @@ const EditMode: React.FC<EditModeProps> = ({
               editedShape.type === 'polygon3d' || 
               editedShape.type === 'rectangle2d' || 
               editedShape.type === 'circle2d') && (
-              <div className="flex flex-col gap-1 px-2">
+              <div className="flex flex-col gap-2 px-3">
                 <button
                   onClick={() => handleComponentClick('volumeParameters')}
-                  className={`${getIconButtonColorClasses('violet', activeComponent === 'volumeParameters')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  className={`${getIconButtonColorClasses('violet', activeComponent === 'volumeParameters')} w-full justify-start gap-3 px-3 py-2.5 text-left`}
                   title="Volume Parameters"
                 >
                   <div className="flex-shrink-0">
-                    <Puzzle size={12} />
+                    <Puzzle size={16} />
                   </div>
-                  <span className="text-xs font-medium truncate">Volume Parameters</span>
+                  <span className="text-sm font-semibold truncate">Volume Parameters</span>
                   {activeComponent === 'volumeParameters' && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    <div className="absolute top-1 right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-violet-500 rounded-full"></div>
                     </div>
                   )}
                 </button>
                 
-                <div className="h-px bg-gradient-to-r from-transparent via-gray-500/60 to-transparent my-1"></div>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent my-1"></div>
                 
                 <button
                   onClick={() => {
@@ -636,44 +636,44 @@ const EditMode: React.FC<EditModeProps> = ({
                       setIsFaceEditMode(true);
                     }
                   }}
-                  className={`${getIconButtonColorClasses('blue', activeComponent === 'faceSelect')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  className={`${getIconButtonColorClasses('blue', activeComponent === 'faceSelect')} w-full justify-start gap-3 px-3 py-2.5 text-left`}
                   title="Face Select"
                 >
                   <div className="flex-shrink-0">
-                    <MousePointer size={12} />
+                    <MousePointer size={16} />
                   </div>
-                  <span className="text-xs font-medium truncate">Face Select</span>
+                  <span className="text-sm font-semibold truncate">Face Select</span>
                   {selectedFaceCount > 0 && (
-                    <span className="ml-auto bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    <span className="ml-auto bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
                       {selectedFaceCount}
                     </span>
                   )}
                   {activeComponent === 'faceSelect' && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    <div className="absolute top-1 right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                     </div>
                   )}
                 </button>
                 
                 <button
                   onClick={() => handleComponentClick('volumeType')}
-                  className={`${getIconButtonColorClasses('green', activeComponent === 'volumeType')} w-full justify-start gap-2 px-2 py-1.5 text-left`}
+                  className={`${getIconButtonColorClasses('green', activeComponent === 'volumeType')} w-full justify-start gap-3 px-3 py-2.5 text-left`}
                   title="Volume Type"
                 >
                   <div className="flex-shrink-0">
-                    <Archive size={12} />
+                    <Archive size={16} />
                   </div>
-                  <span className="text-xs font-medium truncate">Volume Type</span>
+                  <span className="text-sm font-semibold truncate">Volume Type</span>
                   {(() => {
                     const savedCount = getSavedVolumes().length;
                     return savedCount > 0 && (
-                      <span className="ml-auto bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      <span className="ml-auto bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
                         {savedCount}
                       </span>
                     );
                   })()}
                   {activeComponent === 'volumeType' && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                    <div className="absolute top-1 right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     </div>
                   )}
@@ -688,7 +688,7 @@ const EditMode: React.FC<EditModeProps> = ({
   return (
     <div
       ref={panelRef}
-      className={`fixed left-0 z-50 bg-gray-800/95 backdrop-blur-sm border-r border-blue-500/50 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+      className={`fixed left-0 z-50 bg-white backdrop-blur-sm border-r border-gray-200 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
       style={{
         top: panelTop,
         height: panelHeight,
@@ -702,16 +702,16 @@ const EditMode: React.FC<EditModeProps> = ({
       {isCollapsed && (
         <button
           onClick={handleExpand}
-          className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-gray-700/80 p-2 rounded-full shadow-lg border border-blue-500/50 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
+          className="absolute top-1/2 -translate-y-1/2 left-full -translate-x-1/2 bg-white p-2 rounded-full shadow-lg border border-gray-200 transition-all duration-300 group-hover:left-1/2 group-hover:-translate-x-1/2"
           title="Paneli Genişlet"
         >
-          <ChevronRight size={16} className="text-white group-hover:text-blue-300" />
+          <ChevronRight size={16} className="text-blue-600 group-hover:text-blue-700" />
         </button>
       )}
 
       {!isCollapsed && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between p-2 pt-4 border-b border-gray-700">
+          <div className="flex items-center justify-between p-3 pt-4 border-b border-gray-200">
             <div className="flex items-center gap-2 flex-1">
               {isEditingName ? (
                 <input
@@ -721,30 +721,30 @@ const EditMode: React.FC<EditModeProps> = ({
                   onChange={(e) => setTempName(e.target.value)}
                   onKeyDown={handleNameKeyDown}
                   onBlur={handleNameSave}
-                  className="text-white font-inter text-base font-bold bg-transparent border-b border-blue-400 outline-none flex-1 min-w-0"
+                  className="text-gray-900 font-inter text-base font-bold bg-transparent border-b border-blue-500 outline-none flex-1 min-w-0"
                   maxLength={20}
                 />
               ) : (
                 <div className="flex items-center gap-1 flex-1 min-w-0">
-                  <span className="text-white font-inter text-base font-bold opacity-90 truncate">
+                  <span className="text-gray-900 font-inter text-base font-bold truncate">
                     {volumeName}
                   </span>
                   <button
                     onClick={handleNameEdit}
-                    className="text-gray-400 hover:text-blue-400 p-0.5 rounded transition-colors flex-shrink-0"
+                    className="text-gray-500 hover:text-blue-600 p-0.5 rounded transition-colors flex-shrink-0"
                     title="Edit Name"
                   >
-                    <Edit3 size={10} />
+                    <Edit3 size={12} />
                   </button>
                 </div>
               )}
               
               <button
                 onClick={handleSaveVolume}
-                className="text-gray-400 hover:text-green-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm flex-shrink-0"
+                className="text-gray-500 hover:text-green-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-green-50 flex-shrink-0"
                 title="Save Volume"
               >
-                <Save size={12} />
+                <Save size={14} />
               </button>
             </div>
             
@@ -754,29 +754,29 @@ const EditMode: React.FC<EditModeProps> = ({
                 {isLocked && (
                   <button
                     onClick={handleCollapse}
-                    className="text-gray-400 hover:text-white p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                    className="text-gray-500 hover:text-blue-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-blue-50"
                     title="Arayüzü Küçült"
                   >
-                    <ChevronLeft size={12} />
+                    <ChevronLeft size={14} />
                   </button>
                 )}
                 
                 <button
                   onClick={toggleLock}
                   className={`p-1 rounded transition-colors ${
-                    isLocked ? 'bg-blue-600/90 text-white' : 'text-gray-400 hover:text-blue-400'
-                  } bg-gray-800/80 backdrop-blur-sm`}
+                    isLocked ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50'
+                  }`}
                   title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
                 >
-                  {isLocked ? <Pin size={12} /> : <PinOff size={12} />}
+                  {isLocked ? <Pin size={14} /> : <PinOff size={14} />}
                 </button>
                 
                 <button
                   onClick={handleClose}
-                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors bg-gray-800/80 backdrop-blur-sm"
+                  className="text-gray-500 hover:text-red-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-red-50"
                   title="Düzenleme Modundan Çık"
                 >
-                  <X size={12} />
+                  <X size={14} />
                 </button>
               </div>
             )}
@@ -789,7 +789,7 @@ const EditMode: React.FC<EditModeProps> = ({
       )}
       
       <div
-        className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/30' : 'hover:bg-blue-500/30'}`}
+        className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/20' : 'hover:bg-blue-500/20'}`}
         onMouseDown={handleResizeMouseDown}
       />
     </div>
