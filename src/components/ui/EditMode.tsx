@@ -822,6 +822,63 @@ const EditMode: React.FC<EditModeProps> = ({
                 {/* Surface Content */}
                 <div className="flex-1 p-4 space-y-4">
                   <div className="bg-white rounded-lg border border-stone-200 p-4">
+                    {/* Face Count Display */}
+                    <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-orange-800">
+                          Detected Faces: {(() => {
+                            // Calculate actual face count from geometry
+                            const geometry = editedShape.geometry;
+                            if (!geometry || !geometry.attributes.position) return 0;
+                            
+                            // Get triangle count from geometry
+                            const triangleCount = geometry.index 
+                              ? Math.floor(geometry.index.count / 3)
+                              : Math.floor(geometry.attributes.position.count / 3);
+                            
+                            // For extruded polylines, calculate faces more accurately
+                            if (editedShape.originalPoints && editedShape.originalPoints.length > 0) {
+                              const pointCount = editedShape.originalPoints.length;
+                              // Closed polyline: n side faces + 2 caps
+                              const sideFaces = pointCount > 2 && editedShape.originalPoints[0].equals(editedShape.originalPoints[pointCount - 1]) 
+                                ? pointCount - 1  // Remove duplicate closing point
+                                : pointCount;
+                              const totalFaces = sideFaces + 2; // Add top and bottom caps
+                              console.log(`🎯 Polyline face calculation: ${pointCount} points → ${sideFaces} sides + 2 caps = ${totalFaces} faces`);
+                              return totalFaces;
+                            }
+                            
+                            // For simple geometries, use triangle-based estimation
+                            let estimatedFaces = triangleCount;
+                            
+                            // Apply heuristics based on shape type
+                            if (editedShape.type === 'box') {
+                              estimatedFaces = 6; // Box always has 6 faces
+                            } else if (editedShape.type === 'cylinder') {
+                              // Cylinder: 2 caps + side segments
+                              const segments = Math.max(8, Math.floor(triangleCount / 4));
+                              estimatedFaces = segments + 2;
+                            } else {
+                              // For complex geometries, use triangle count with reasonable limits
+                              estimatedFaces = Math.min(Math.max(triangleCount, 1), 100);
+                            }
+                            
+                            console.log(`🎯 Edit mode face count:`, {
+                              shapeType: editedShape.type,
+                              triangleCount,
+                              estimatedFaces,
+                              hasOriginalPoints: !!editedShape.originalPoints
+                            });
+                            
+                            return estimatedFaces;
+                          })()}
+                        </span>
+                        <div className="text-xs text-orange-600">
+                          Shape: {editedShape.type}
+                        </div>
+                      </div>
+                    </div>
+
                     <button
                       onClick={toggleFaceEditMode}
                       className={`w-full px-3 py-2 rounded text-sm transition-colors mb-4 ${
