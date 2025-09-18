@@ -324,15 +324,30 @@ const OpenCascadeShape: React.FC<Props> = ({
     const geometry = meshRef.current.geometry;
     if (!geometry.attributes.position) return [];
     
+    let faceCount = 0;
+    
+    // Calculate actual face count based on shape type
+    if (shape.type === 'box' || shape.type === 'rectangle2d') {
+      faceCount = 6; // Box always has 6 faces
+    } else if (shape.type === 'cylinder' || shape.type === 'circle2d') {
+      // Cylinder: estimate based on geometry complexity
+      const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+      faceCount = Math.min(Math.ceil(triangleCount / 2), 50);
+    } else {
+      // Other geometries: use triangle count
+      faceCount = geometry.index ? 
+        Math.min(geometry.index.count / 3, 50) : 
+        Math.min(geometry.attributes.position.count / 3, 50);
+    }
+    
     const positions = geometry.attributes.position;
-    const faceCount = geometry.index ? geometry.index.count / 3 : positions.count / 3;
     const numbers = [];
     
     // Calculate face centers
-    for (let i = 0; i < Math.min(faceCount, 50); i++) {
+    for (let i = 0; i < faceCount; i++) {
       let center = new THREE.Vector3();
       
-      if (geometry.index) {
+      if (geometry.index && i * 3 < geometry.index.count) {
         // Indexed geometry
         const a = geometry.index.getX(i * 3);
         const b = geometry.index.getX(i * 3 + 1);
@@ -343,13 +358,16 @@ const OpenCascadeShape: React.FC<Props> = ({
         const vc = new THREE.Vector3().fromBufferAttribute(positions, c);
         
         center.add(va).add(vb).add(vc).divideScalar(3);
-      } else {
+      } else if (i * 3 + 2 < positions.count) {
         // Non-indexed geometry
         const va = new THREE.Vector3().fromBufferAttribute(positions, i * 3);
         const vb = new THREE.Vector3().fromBufferAttribute(positions, i * 3 + 1);
         const vc = new THREE.Vector3().fromBufferAttribute(positions, i * 3 + 2);
         
         center.add(va).add(vb).add(vc).divideScalar(3);
+      } else {
+        // Skip if we don't have enough vertices
+        continue;
       }
       
       // Apply shape transforms
@@ -362,6 +380,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       });
     }
     
+    console.log(`🎯 Generated ${numbers.length} face numbers for ${shape.type}`);
     return numbers;
   }, [shape.position, shape.scale, shapeGeometry]);
   // Calculate shape center for transform controls positioning

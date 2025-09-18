@@ -850,7 +850,35 @@ const EditMode: React.FC<EditModeProps> = ({
                     <div className="mt-4 space-y-3">
                       <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {Array.from({ length: Math.min(editedShape.geometry?.index ? editedShape.geometry.index.count / 3 : editedShape.geometry?.attributes?.position?.count / 3 || 0, 50) }, (_, i) => {
+                        {(() => {
+                          // Calculate actual face count for the geometry
+                          const geometry = editedShape.geometry;
+                          if (!geometry || !geometry.attributes.position) return [];
+                          
+                          let faceCount = 0;
+                          
+                          // For box geometry, we know it has 6 faces (12 triangles = 6 quads)
+                          if (editedShape.type === 'box' || editedShape.type === 'rectangle2d') {
+                            faceCount = 6;
+                          }
+                          // For cylinder geometry, calculate based on segments + top/bottom
+                          else if (editedShape.type === 'cylinder' || editedShape.type === 'circle2d') {
+                            // Cylinder typically has: side faces + top + bottom
+                            // For standard cylinder with 32 segments: 32 side faces + 2 caps = 34 faces
+                            const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                            // Estimate faces from triangles (rough approximation)
+                            faceCount = Math.min(Math.ceil(triangleCount / 2), 50);
+                          }
+                          // For other geometries, calculate from triangles
+                          else {
+                            const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                            // For complex geometries, use triangle count as face count (each triangle is a face)
+                            faceCount = Math.min(triangleCount, 50);
+                          }
+                          
+                          console.log(`🎯 Face count for ${editedShape.type}: ${faceCount}`);
+                          
+                          return Array.from({ length: faceCount }, (_, i) => {
                           const faceNumber = i + 1;
                           const faceData = faceDefinitions[faceNumber] || { definition: '', description: '' };
                           
@@ -899,7 +927,8 @@ const EditMode: React.FC<EditModeProps> = ({
                               </button>
                             </div>
                           );
-                        })}
+                          });
+                        })()}
                       </div>
                     </div>
                   </div>
