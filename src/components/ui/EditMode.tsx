@@ -458,6 +458,39 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const toggleFaceEditMode = () => {
+    // Face edit mode artık Surface Specification altında yönetiliyor
+    if (activeMainSection === 'volume' && activeVolumeSubSection === 'surface') {
+      const newMode = !isFaceEditMode;
+      setIsFaceEditMode(newMode);
+      
+      if (newMode) {
+        console.log('🎯 Face Edit Mode ACTIVATED - Click on faces to select them');
+        console.log('🎯 Hold Shift to select multiple faces');
+      } else {
+        console.log('🎯 Face Edit Mode DEACTIVATED');
+        // Clear all highlights when exiting face edit mode
+        if (sceneRef) {
+          clearFaceHighlight(sceneRef);
+        }
+      }
+    }
+  };
+
+  // Face edit mode'u Surface Specification açıldığında otomatik aktif et
+  useEffect(() => {
+    if (activeMainSection === 'volume' && activeVolumeSubSection === 'surface') {
+      setIsFaceEditMode(true);
+      console.log('🎯 Face Edit Mode AUTO-ACTIVATED for Surface Specification');
+    } else {
+      setIsFaceEditMode(false);
+      // Clear all highlights when leaving surface specification
+      if (sceneRef) {
+        clearFaceHighlight(sceneRef);
+      }
+    }
+  }, [activeMainSection, activeVolumeSubSection]);
+
+  const toggleFaceEditModeOld = () => {
     const newMode = !isFaceEditMode;
     setIsFaceEditMode(newMode);
     
