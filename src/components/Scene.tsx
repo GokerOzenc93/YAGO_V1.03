@@ -535,8 +535,17 @@ const Scene: React.FC = () => {
 
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
   const handleFaceSelect = (faceIndex) => {
+    // Add face to the selected faces list in EditMode
     setSelectedFaceIndex(faceIndex);
-    console.log(`🎯 Face ${faceIndex} selected for panel creation`);
+    
+    // Check if face already exists in list
+    const exists = selectedFaces.some(face => face.index === faceIndex);
+    if (!exists) {
+      setSelectedFaces(prev => [...prev, { index: faceIndex, role: '' }]);
+      console.log(`🎯 Face ${faceIndex} added to selected faces list`);
+    } else {
+      console.log(`🎯 Face ${faceIndex} already in list`);
+    }
   };
 
   // Handle face cycle updates from OpenCascadeShape

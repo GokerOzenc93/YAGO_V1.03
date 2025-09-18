@@ -305,11 +305,12 @@ const OpenCascadeShape: React.FC<Props> = ({
       );
 
       if (hits.length > 0 && hits[0].faceIndex !== undefined) {
-        // Call parent function to add face to list
+        // Add face to list via right-click
+        const faceIndex = hits[0].faceIndex;
         if (onFaceSelect) {
-          onFaceSelect(hits[0].faceIndex);
+          onFaceSelect(faceIndex);
+          console.log(`🎯 Face ${faceIndex} added to list via right-click`);
         }
-        console.log(`🎯 Face ${hits[0].faceIndex} added via right-click`);
       }
       return;
     }
