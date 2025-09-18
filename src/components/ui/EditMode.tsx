@@ -851,65 +851,80 @@ const EditMode: React.FC<EditModeProps> = ({
                       <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {(() => {
-                          // Calculate actual face count for the geometry
+                          // Calculate EXACT face count for the geometry
                           const geometry = editedShape.geometry;
                           if (!geometry || !geometry.attributes.position) return [];
                           
                           let faceCount = 0;
                           
-                          // For box geometry, we know it has 6 faces (12 triangles = 6 quads)
+                          console.log(`🎯 Calculating faces for ${editedShape.type}:`, {
+                            hasIndex: !!geometry.index,
+                            positionCount: geometry.attributes.position.count,
+                            indexCount: geometry.index ? geometry.index.count : 0,
+                            originalPoints: editedShape.originalPoints?.length || 0,
+                            parameters: editedShape.parameters
+                          });
+                          
+                          // Box geometry - always 6 faces
                           if (editedShape.type === 'box' || editedShape.type === 'rectangle2d') {
                             faceCount = 6;
+                            console.log(`🎯 Box geometry: ${faceCount} faces`);
                           }
-                          // For cylinder geometry, calculate based on segments + top/bottom
+                          // Cylinder geometry - calculate based on segments
                           else if (editedShape.type === 'cylinder' || editedShape.type === 'circle2d') {
-                            // Cylinder typically has: side faces + top + bottom
-                            // For standard cylinder with 32 segments: 32 side faces + 2 caps = 34 faces
-                            const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
-                            // Estimate faces from triangles (rough approximation)
-                            faceCount = Math.min(Math.ceil(triangleCount / 2), 50);
+                            // Standard cylinder: 32 segments + 2 caps = 34 faces
+                            const segments = 32; // Standard cylinder segments
+                            faceCount = segments + 2; // side faces + top + bottom
+                            console.log(`🎯 Cylinder geometry: ${segments} segments + 2 caps = ${faceCount} faces`);
                           }
-                          // For polyline/polygon geometries (extruded shapes)
+                          // Polyline/polygon geometries - calculate from original points
                           else if (editedShape.type === 'polyline2d' || editedShape.type === 'polygon2d' || 
                                    editedShape.type === 'polyline3d' || editedShape.type === 'polygon3d') {
-                            // Polyline extruded geometry has:
-                            // - Top face: 1
-                            // - Bottom face: 1  
-                            // - Side faces: number of segments (points - 1 for open, points for closed)
                             
                             let segmentCount = 0;
                             
-                            // Try to get original points count from shape parameters or originalPoints
+                            // Get segment count from original points
                             if (editedShape.originalPoints && editedShape.originalPoints.length > 0) {
                               const pointCount = editedShape.originalPoints.length;
-                              // Remove duplicate closing point if exists
-                              const uniquePoints = editedShape.originalPoints.length > 2 && 
-                                editedShape.originalPoints[editedShape.originalPoints.length - 1].equals(editedShape.originalPoints[0]) 
-                                ? pointCount - 1 
-                                : pointCount;
-                              segmentCount = uniquePoints;
+                              // Check if shape is closed (last point equals first point)
+                              const isClosed = pointCount > 2 && 
+                                editedShape.originalPoints[pointCount - 1].equals(editedShape.originalPoints[0]);
+                              
+                              if (isClosed) {
+                                // Closed shape: remove duplicate closing point
+                                segmentCount = pointCount - 1;
+                              } else {
+                                // Open shape: all points create segments
+                                segmentCount = pointCount - 1; // n points = n-1 segments
+                              }
+                              
+                              console.log(`🎯 Original points: ${pointCount}, closed: ${isClosed}, segments: ${segmentCount}`);
                             } else if (editedShape.parameters && editedShape.parameters.points) {
                               segmentCount = editedShape.parameters.points;
+                              console.log(`🎯 From parameters: ${segmentCount} segments`);
                             } else {
-                              // Fallback: estimate from geometry complexity
+                              // Fallback: estimate from triangle count
                               const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
-                              // For extruded polylines: roughly triangles / 4 (top + bottom + sides)
-                              segmentCount = Math.max(Math.ceil(triangleCount / 8), 4);
+                              segmentCount = Math.max(Math.ceil(triangleCount / 6), 3); // Conservative estimate
+                              console.log(`🎯 Fallback from triangles: ${triangleCount} → ${segmentCount} segments`);
                             }
                             
-                            // Polyline faces: top + bottom + side faces
-                            faceCount = 2 + segmentCount; // 2 caps + side segments
+                            // Extruded polyline faces: top + bottom + side faces
+                            faceCount = 2 + segmentCount;
                             
-                            console.log(`🎯 Polyline face calculation: ${segmentCount} segments → ${faceCount} total faces (2 caps + ${segmentCount} sides)`);
+                            console.log(`🎯 Polyline geometry: ${segmentCount} segments → ${faceCount} faces (2 caps + ${segmentCount} sides)`);
                           }
-                          // For other geometries, calculate from triangles
+                          // Other complex geometries
                           else {
                             const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
-                            // For complex geometries, use triangle count as face count (each triangle is a face)
-                            faceCount = Math.min(triangleCount, 50);
+                            faceCount = Math.min(Math.ceil(triangleCount / 2), 50); // Estimate faces from triangles
+                            console.log(`🎯 Complex geometry: ${triangleCount} triangles → ${faceCount} faces`);
                           }
                           
-                          console.log(`🎯 Face count for ${editedShape.type}: ${faceCount}`);
+                          // Ensure minimum face count
+                          faceCount = Math.max(faceCount, 1);
+                          
+                          console.log(`🎯 FINAL face count for ${editedShape.type}: ${faceCount} faces`);
                           
                           return Array.from({ length: faceCount }, (_, i) => {
                           const faceNumber = i + 1;
