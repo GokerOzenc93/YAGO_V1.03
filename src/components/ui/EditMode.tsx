@@ -304,6 +304,38 @@ const EditMode: React.FC<EditModeProps> = ({
       }
     }
   };
+
+  // Handle face definition changes
+  const handleFaceDefinitionChange = (faceNumber: number, field: 'definition' | 'description', value: string) => {
+    setFaceDefinitions(prev => ({
+      ...prev,
+      [faceNumber]: {
+        ...prev[faceNumber],
+        [field]: value
+      }
+    }));
+  };
+  
+  // Save face definition
+  const saveFaceDefinition = (faceNumber: number) => {
+    const faceData = faceDefinitions[faceNumber];
+    if (faceData && (faceData.definition || faceData.description)) {
+      console.log(`Face ${faceNumber} saved:`, faceData);
+      // Here you could save to localStorage or send to backend
+      
+      // Visual feedback
+      const button = document.querySelector(`[title="Save"]:nth-of-type(${faceNumber})`);
+      if (button) {
+        button.textContent = '✓';
+        button.classList.add('bg-green-100', 'text-green-700');
+        setTimeout(() => {
+          button.textContent = '✓';
+          button.classList.remove('bg-green-100', 'text-green-700');
+        }, 1000);
+      }
+    }
+  };
+  
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
