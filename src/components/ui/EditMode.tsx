@@ -14,6 +14,9 @@ import {
   PanelLeft,
   Ruler,
   BarChart3,
+  Plus,
+  Check,
+  Target,
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
@@ -78,6 +81,10 @@ const EditMode: React.FC<EditModeProps> = ({
   
   // Face list with roles
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
+  
+  // New face input state
+  const [newFaceIndex, setNewFaceIndex] = useState('');
+  const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   
   // Update selected face count periodically
   useEffect(() => {
@@ -527,6 +534,37 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
+  const handleAddNewFace = () => {
+    const index = parseInt(newFaceIndex);
+    if (!isNaN(index) && index >= 0) {
+      const exists = selectedFaces.some(face => face.index === index);
+      if (!exists) {
+        setSelectedFaces(prev => [...prev, { index: index, role: '' }]);
+        setNewFaceIndex('');
+        console.log(`🎯 Face ${index} manually added to list`);
+      } else {
+        console.log(`🎯 Face ${index} already exists in list`);
+      }
+    }
+  };
+
+  const handleFaceSelectionMode = (faceIndex: number) => {
+    setPendingFaceSelection(faceIndex);
+    setIsFaceEditMode(true);
+    console.log(`🎯 Face selection mode activated for index ${faceIndex}`);
+  };
+
+  const handleConfirmFaceSelection = (faceIndex: number) => {
+    if (pendingFaceSelection !== null) {
+      // Update the face index in the list
+      setSelectedFaces(prev => prev.map(face => 
+        face.index === pendingFaceSelection ? { ...face, index: faceIndex } : face
+      ));
+      setPendingFaceSelection(null);
+      setIsFaceEditMode(false);
+      console.log(`🎯 Face ${pendingFaceSelection} updated to ${faceIndex}`);
+    }
+  };
   return (
     <div
       ref={panelRef}
@@ -819,6 +857,27 @@ const EditMode: React.FC<EditModeProps> = ({
                     </button>
                   </div>
 
+                  {/* Add New Face */}
+                  <div className="bg-white rounded-lg border border-stone-200 p-4">
+                    <h4 className="font-medium text-slate-800 mb-3">Add Face Index</h4>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={newFaceIndex}
+                        onChange={(e) => setNewFaceIndex(e.target.value)}
+                        placeholder="Face index"
+                        className="flex-1 text-sm bg-white border border-gray-300 rounded px-2 py-1"
+                        min="0"
+                      />
+                      <button
+                        onClick={handleAddNewFace}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                        title="Add Face"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
                   {/* Face Index List with Roles */}
                   {selectedFaces.length > 0 && (
                     <div className="bg-white rounded-lg border border-stone-200 p-4">
@@ -843,6 +902,26 @@ const EditMode: React.FC<EditModeProps> = ({
                               <option value="back">Back Face</option>
                               <option value="door">Door Face</option>
                             </select>
+                            <button
+                              onClick={() => handleFaceSelectionMode(face.index)}
+                              className={`p-1 rounded transition-colors ${
+                                pendingFaceSelection === face.index
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                              }`}
+                              title="Select Face on Surface"
+                            >
+                              <Target size={12} />
+                            </button>
+                            {pendingFaceSelection === face.index && (
+                              <button
+                                onClick={() => handleConfirmFaceSelection(face.index)}
+                                className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                title="Confirm Selection"
+                              >
+                                <Check size={12} />
+                              </button>
+                            )}
                             <button
                               onClick={() => removeFaceFromList(index)}
                               className="text-red-500 hover:text-red-700 p-1"
