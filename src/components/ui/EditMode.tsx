@@ -76,6 +76,14 @@ const EditMode: React.FC<EditModeProps> = ({
   // Multi-select face tracking
   const [selectedFaceCount, setSelectedFaceCount] = useState(0);
   
+  // Face definitions state
+  const [faceDefinitions, setFaceDefinitions] = useState<{
+    [faceNumber: number]: {
+      definition: string;
+      description: string;
+    }
+  }>({});
+  
   // Update selected face count periodically
   useEffect(() => {
     const updateFaceCount = () => {
@@ -807,17 +815,59 @@ const EditMode: React.FC<EditModeProps> = ({
                       </div>
                     )}
                     
-                    <div className="mt-4">
+                    <div className="mt-4 space-y-3">
                       <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
-                      <div className="grid grid-cols-6 gap-2">
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <div
-                            key={i}
-                            className="w-8 h-8 bg-stone-100 rounded flex items-center justify-center text-xs font-medium text-slate-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer transition-colors"
-                          >
-                            {i + 1}
-                          </div>
-                        ))}
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const faceNumber = i + 1;
+                          const faceData = faceDefinitions[faceNumber] || { definition: '', description: '' };
+                          
+                          return (
+                            <div key={i} className="flex items-center gap-2 p-2 bg-stone-50 rounded border border-stone-200">
+                              {/* Face Number */}
+                              <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center text-xs font-medium text-orange-700 flex-shrink-0">
+                                {faceNumber}
+                              </div>
+                              
+                              {/* Definition Dropdown */}
+                              <select
+                                value={faceData.definition}
+                                onChange={(e) => handleFaceDefinitionChange(faceNumber, 'definition', e.target.value)}
+                                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none focus:border-orange-400"
+                              >
+                                <option value="">Select...</option>
+                                <option value="Left">Left</option>
+                                <option value="Right">Right</option>
+                                <option value="Top">Top</option>
+                                <option value="Bottom">Bottom</option>
+                                <option value="Front">Front</option>
+                                <option value="Back">Back</option>
+                                <option value="Door">Door</option>
+                                <option value="Panel">Panel</option>
+                                <option value="Side">Side</option>
+                                <option value="Edge">Edge</option>
+                              </select>
+                              
+                              {/* Description Input */}
+                              <input
+                                type="text"
+                                value={faceData.description}
+                                onChange={(e) => handleFaceDefinitionChange(faceNumber, 'description', e.target.value)}
+                                placeholder="Description..."
+                                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none focus:border-orange-400"
+                              />
+                              
+                              {/* Save Button */}
+                              <button
+                                onClick={() => saveFaceDefinition(faceNumber)}
+                                className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors flex-shrink-0"
+                                title="Save"
+                              >
+                                ✓
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
