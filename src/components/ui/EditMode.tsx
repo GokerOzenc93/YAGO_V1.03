@@ -793,20 +793,6 @@ const EditMode: React.FC<EditModeProps> = ({
                       {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
                     </button>
                     
-                    <div className="mb-4">
-                      <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
-                      <div className="grid grid-cols-6 gap-2">
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <div
-                            key={i}
-                            className="w-8 h-8 bg-stone-100 rounded flex items-center justify-center text-xs font-medium text-slate-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer transition-colors"
-                          >
-                            {i + 1}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
                     {selectedFaceCount > 0 && (
                       <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
                         <span className="text-sm text-orange-700">
@@ -820,6 +806,20 @@ const EditMode: React.FC<EditModeProps> = ({
                         </button>
                       </div>
                     )}
+                    
+                    <div className="mt-4">
+                      <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
+                      <div className="grid grid-cols-6 gap-2">
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <div
+                            key={i}
+                            className="w-8 h-8 bg-stone-100 rounded flex items-center justify-center text-xs font-medium text-slate-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer transition-colors"
+                          >
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

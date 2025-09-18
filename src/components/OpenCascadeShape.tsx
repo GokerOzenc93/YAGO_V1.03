@@ -319,7 +319,7 @@ const OpenCascadeShape: React.FC<Props> = ({
 
   // Calculate face centers for numbering
   const faceNumbers = useMemo(() => {
-    if (!isFaceEditMode || !meshRef.current) return [];
+    if (!meshRef.current) return [];
     
     const geometry = meshRef.current.geometry;
     if (!geometry.attributes.position) return [];
@@ -363,7 +363,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
     
     return numbers;
-  }, [isFaceEditMode, shape.position, shape.scale, shapeGeometry]);
+  }, [shape.position, shape.scale, shapeGeometry]);
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {
@@ -509,7 +509,7 @@ const OpenCascadeShape: React.FC<Props> = ({
         )}
 
       {/* Face Numbers - Only show in Face Edit Mode */}
-      {isFaceEditMode && faceNumbers.map((face) => (
+      {isBeingEdited && faceNumbers.map((face) => (
         <Billboard key={face.index} position={face.position} follow={true} lockX={false} lockY={false} lockZ={false}>
           <mesh>
             <circleGeometry args={[15]} />
@@ -521,7 +521,6 @@ const OpenCascadeShape: React.FC<Props> = ({
             color="white"
             anchorX="center"
             anchorY="middle"
-            font="/fonts/inter-bold.woff"
           >
             {face.index}
           </Text>
