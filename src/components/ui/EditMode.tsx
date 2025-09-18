@@ -851,81 +851,31 @@ const EditMode: React.FC<EditModeProps> = ({
                       <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {(() => {
-                          // Calculate EXACT face count for the geometry
+                          // Calculate ACTUAL face count from geometry triangles
                           const geometry = editedShape.geometry;
                           if (!geometry || !geometry.attributes.position) return [];
                           
-                          let faceCount = 0;
+                          // Get actual triangle count from geometry
+                          const triangleCount = geometry.index ? 
+                            geometry.index.count / 3 : 
+                            geometry.attributes.position.count / 3;
                           
-                          console.log(`🎯 Calculating faces for ${editedShape.type}:`, {
+                          // Use triangle count as face count (each triangle is a selectable face)
+                          const actualFaceCount = Math.floor(triangleCount);
+                          
+                          // Apply reasonable limits for UI performance
+                          const faceCount = Math.min(Math.max(actualFaceCount, 1), 100);
+                          
+                          console.log(`🎯 Geometry face calculation:`, {
+                            shapeType: editedShape.type,
+                            triangleCount: triangleCount,
+                            actualFaceCount: actualFaceCount,
+                            finalFaceCount: faceCount,
                             hasIndex: !!geometry.index,
-                            positionCount: geometry.attributes.position.count,
-                            indexCount: geometry.index ? geometry.index.count : 0,
-                            originalPoints: editedShape.originalPoints?.length || 0,
-                            parameters: editedShape.parameters
+                            positionCount: geometry.attributes.position.count
                           });
                           
-                          // Box geometry - always 6 faces
-                          if (editedShape.type === 'box' || editedShape.type === 'rectangle2d') {
-                            faceCount = 6;
-                            console.log(`🎯 Box geometry: ${faceCount} faces`);
-                          }
-                          // Cylinder geometry - calculate based on segments
-                          else if (editedShape.type === 'cylinder' || editedShape.type === 'circle2d') {
-                            // Standard cylinder: 32 segments + 2 caps = 34 faces
-                            const segments = 32; // Standard cylinder segments
-                            faceCount = segments + 2; // side faces + top + bottom
-                            console.log(`🎯 Cylinder geometry: ${segments} segments + 2 caps = ${faceCount} faces`);
-                          }
-                          // Polyline/polygon geometries - calculate from original points
-                          else if (editedShape.type === 'polyline2d' || editedShape.type === 'polygon2d' || 
-                                   editedShape.type === 'polyline3d' || editedShape.type === 'polygon3d') {
-                            
-                            let segmentCount = 0;
-                            
-                            // Get segment count from original points
-                            if (editedShape.originalPoints && editedShape.originalPoints.length > 0) {
-                              const pointCount = editedShape.originalPoints.length;
-                              // Check if shape is closed (last point equals first point)
-                              const isClosed = pointCount > 2 && 
-                                editedShape.originalPoints[pointCount - 1].equals(editedShape.originalPoints[0]);
-                              
-                              if (isClosed) {
-                                // Closed shape: remove duplicate closing point
-                                segmentCount = pointCount - 1;
-                              } else {
-                                // Open shape: all points create segments
-                                segmentCount = pointCount - 1; // n points = n-1 segments
-                              }
-                              
-                              console.log(`🎯 Original points: ${pointCount}, closed: ${isClosed}, segments: ${segmentCount}`);
-                            } else if (editedShape.parameters && editedShape.parameters.points) {
-                              segmentCount = editedShape.parameters.points;
-                              console.log(`🎯 From parameters: ${segmentCount} segments`);
-                            } else {
-                              // Fallback: estimate from triangle count
-                              const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
-                              segmentCount = Math.max(Math.ceil(triangleCount / 6), 3); // Conservative estimate
-                              console.log(`🎯 Fallback from triangles: ${triangleCount} → ${segmentCount} segments`);
-                            }
-                            
-                            // Extruded polyline faces: top + bottom + side faces
-                            faceCount = 2 + segmentCount;
-                            
-                            console.log(`🎯 Polyline geometry: ${segmentCount} segments → ${faceCount} faces (2 caps + ${segmentCount} sides)`);
-                          }
-                          // Other complex geometries
-                          else {
-                            const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
-                            faceCount = Math.min(Math.ceil(triangleCount / 2), 50); // Estimate faces from triangles
-                            console.log(`🎯 Complex geometry: ${triangleCount} triangles → ${faceCount} faces`);
-                          }
-                          
-                          // Ensure minimum face count
-                          faceCount = Math.max(faceCount, 1);
-                          
-                          console.log(`🎯 FINAL face count for ${editedShape.type}: ${faceCount} faces`);
-                          
+                          // Generate face index list based on actual geometry
                           return Array.from({ length: faceCount }, (_, i) => {
                           const faceNumber = i + 1;
                           const faceData = faceDefinitions[faceNumber] || { definition: '', description: '' };
