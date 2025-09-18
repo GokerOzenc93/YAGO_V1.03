@@ -327,6 +327,9 @@ const OpenCascadeShape: React.FC<Props> = ({
     // Calculate actual face count from geometry triangles
     const triangleCount = geometry.index ? 
       geometry.index.count / 3 : 
+      geometry.attributes.position.count / 3;
+    
+    const actualFaceCount = triangleCount;
     // Apply reasonable limits for performance
     const faceCount = Math.min(Math.max(actualFaceCount, 1), 100);
     // Use triangle count as face count (each triangle is a selectable face)
