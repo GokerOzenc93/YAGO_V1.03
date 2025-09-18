@@ -604,11 +604,6 @@ const EditMode: React.FC<EditModeProps> = ({
             {/* Ana Menü - Volume ve Panel seçimi */}
             {!activeMainSection && (
               <div className="flex-1 p-4 space-y-3">
-                <div className="text-center mb-6">
-                  <h2 className="text-lg font-semibold text-slate-800 mb-2">Edit Mode</h2>
-                  <p className="text-sm text-slate-600">Select a category to edit</p>
-                </div>
-                
                 {/* Volume Button */}
                 <button
                   onClick={() => handleMainSectionClick('volume')}
@@ -660,12 +655,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     <Puzzle size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Volume</span>
                   </div>
-                  <button
-                    onClick={handleClose}
-                    className="p-1 hover:bg-orange-200 rounded transition-colors"
-                  >
-                    <X size={16} className="text-orange-600" />
-                  </button>
                 </div>
 
                 {/* Volume Alt Menüleri */}
@@ -733,12 +722,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     <Archive size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Volume Library</span>
                   </div>
-                  <button
-                    onClick={handleClose}
-                    className="p-1 hover:bg-orange-200 rounded transition-colors"
-                  >
-                    <X size={16} className="text-orange-600" />
-                  </button>
                 </div>
 
                 {/* Library Content */}
@@ -794,12 +777,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     <MousePointer size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Surface Specification</span>
                   </div>
-                  <button
-                    onClick={handleClose}
-                    className="p-1 hover:bg-orange-200 rounded transition-colors"
-                  >
-                    <X size={16} className="text-orange-600" />
-                  </button>
                 </div>
 
                 {/* Surface Content */}
@@ -864,12 +841,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     <PanelLeft size={16} className="text-blue-600" />
                     <span className="font-semibold text-blue-800">Panel</span>
                   </div>
-                  <button
-                    onClick={handleClose}
-                    className="p-1 hover:bg-blue-200 rounded transition-colors"
-                  >
-                    <X size={16} className="text-blue-600" />
-                  </button>
                 </div>
 
                 {/* Panel Content */}
