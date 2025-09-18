@@ -324,26 +324,105 @@ const OpenCascadeShape: React.FC<Props> = ({
     const geometry = meshRef.current.geometry;
     if (!geometry.attributes.position) return [];
     
-    // Calculate actual face count from geometry triangles
-    const triangleCount = geometry.index ? 
-      geometry.index.count / 3 : 
-      geometry.attributes.position.count / 3;
+    // 🎯 AUTO-DETECT FACE COUNT using face selection system
+    const autoDetectFaceCount = () => {
+      // Import face selection functions
+      const { highlightFace, clearFaceHighlight } = require('../utils/faceSelection');
+      
+      // Create temporary mesh for auto face selection
+      const tempMesh = new THREE.Mesh(geometry);
+      tempMesh.position.set(...shape.position);
+      tempMesh.rotation.set(...shape.rotation);
+      tempMesh.scale.set(...shape.scale);
+      tempMesh.updateMatrixWorld();
+      
+      // Clear any existing highlights
+      if (scene) {
+        clearFaceHighlight(scene);
+      }
+      
+      // Auto-select all unique faces to count them
+      const selectedFaces = new Set();
+      const raycaster = new THREE.Raycaster();
+      
+      // Comprehensive sampling directions
+      const samplingDirections = [
+        // Primary axes
+        new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+        new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1),
+        // Diagonal directions
+        new THREE.Vector3(1, 1, 0), new THREE.Vector3(-1, 1, 0),
+        new THREE.Vector3(1, -1, 0), new THREE.Vector3(-1, -1, 0),
+        new THREE.Vector3(1, 0, 1), new THREE.Vector3(-1, 0, 1),
+        new THREE.Vector3(1, 0, -1), new THREE.Vector3(-1, 0, -1),
+        new THREE.Vector3(0, 1, 1), new THREE.Vector3(0, 1, -1),
+        new THREE.Vector3(0, -1, 1), new THREE.Vector3(0, -1, -1),
+        // Corner directions
+        new THREE.Vector3(1, 1, 1), new THREE.Vector3(-1, 1, 1),
+        new THREE.Vector3(1, -1, 1), new THREE.Vector3(-1, -1, 1),
+        new THREE.Vector3(1, 1, -1), new THREE.Vector3(-1, 1, -1),
+        new THREE.Vector3(1, -1, -1), new THREE.Vector3(-1, -1, -1),
+      ];
+      
+      // Calculate geometry bounds
+      geometry.computeBoundingBox();
+      const bbox = geometry.boundingBox;
+      if (!bbox) return 1;
+      
+      const center = bbox.getCenter(new THREE.Vector3());
+      const size = bbox.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const sampleDistance = maxDim * 3;
+      
+      // Auto-select faces from all directions
+      samplingDirections.forEach((direction, dirIndex) => {
+        const origin = center.clone().add(direction.clone().multiplyScalar(sampleDistance));
+        raycaster.set(origin, direction.clone().negate());
+        
+        const intersects = raycaster.intersectObject(tempMesh, false);
+        
+        intersects.forEach((hit) => {
+          if (hit.faceIndex !== undefined) {
+            try {
+              // Auto-select this face using the face selection system
+              if (scene) {
+                const highlight = highlightFace(scene, hit, shape, true, 0xff6b35, 0.6);
+                if (highlight) {
+                  selectedFaces.add(hit.faceIndex);
+                }
+              }
+            } catch (error) {
+              console.warn(`Failed to auto-select face ${hit.faceIndex}:`, error);
+            }
+          }
+        });
+      });
+      
+      const faceCount = selectedFaces.size;
+      
+      console.log(`🎯 Scene auto-face detection:`, {
+        shapeType: shape.type,
+        autoSelectedFaces: faceCount,
+        selectedFaceIndices: Array.from(selectedFaces).sort((a, b) => a - b)
+      });
+      
+      // Clear auto-selections after counting
+      setTimeout(() => {
+        if (scene) {
+          clearFaceHighlight(scene);
+        }
+      }, 50);
+      
+      return Math.max(faceCount, 1);
+    };
     
-    const actualFaceCount = triangleCount;
-    // Apply reasonable limits for performance
-    const faceCount = Math.min(Math.max(actualFaceCount, 1), 100);
-    // Use triangle count as face count (each triangle is a selectable face)
-    console.log(`🎯 Scene face numbering:`, {
-      shapeType: shape.type,
-      triangleCount: triangleCount,
-      actualFaceCount: actualFaceCount,
-      finalFaceCount: faceCount
-    });
+    const faceCount = autoDetectFaceCount();
     
     const positions = geometry.attributes.position;
     const numbers = [];
     
-    // Calculate face centers
+    // Calculate face centers for numbering
     for (let i = 0; i < faceCount; i++) {
       let center = new THREE.Vector3();
       
@@ -380,7 +459,7 @@ const OpenCascadeShape: React.FC<Props> = ({
       });
     }
     
-    console.log(`🎯 Generated ${numbers.length} face numbers from geometry`);
+    console.log(`🎯 Generated ${numbers.length} face numbers from auto-detected faces`);
     return numbers;
   }, [shape.position, shape.scale, shapeGeometry]);
   // Calculate shape center for transform controls positioning

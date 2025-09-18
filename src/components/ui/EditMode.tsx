@@ -851,93 +851,135 @@ const EditMode: React.FC<EditModeProps> = ({
                       <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {(() => {
-                          // Calculate ACTUAL face count from geometry triangles
-                          // 🎯 DETECT ACTUAL FACES using face selection system
-                          const detectActualFaces = () => {
+                          // 🎯 AUTO-SELECT ALL FACES to determine exact count
+                          const autoDetectAllFaces = () => {
                             const geometry = editedShape.geometry;
                             if (!geometry || !geometry.attributes.position) return 0;
                             
-                            // Create a temporary mesh for face detection
+                            // Create temporary mesh for auto face selection
                             const tempMesh = new THREE.Mesh(geometry);
                             tempMesh.position.set(...editedShape.position);
                             tempMesh.rotation.set(...editedShape.rotation);
                             tempMesh.scale.set(...editedShape.scale);
                             tempMesh.updateMatrixWorld();
                             
-                            // Use the face selection system to detect unique faces
-                            const detectedFaces = new Set();
+                            // Import face selection functions
+                            const { highlightFace, clearFaceHighlight } = require('../../utils/faceSelection');
+                            
+                            // Clear any existing highlights
+                            if (sceneRef) {
+                              clearFaceHighlight(sceneRef);
+                            }
+                            
+                            // Auto-select all unique faces to count them
+                            const selectedFaces = new Set();
                             const raycaster = new THREE.Raycaster();
                             
-                            // Sample points around the geometry to detect faces
-                            const sampleDirections = [
-                              new THREE.Vector3(1, 0, 0),   // Right
-                              new THREE.Vector3(-1, 0, 0),  // Left
-                              new THREE.Vector3(0, 1, 0),   // Top
-                              new THREE.Vector3(0, -1, 0),  // Bottom
-                              new THREE.Vector3(0, 0, 1),   // Front
-                              new THREE.Vector3(0, 0, -1),  // Back
-                              new THREE.Vector3(1, 1, 0),   // Top-Right
-                              new THREE.Vector3(-1, 1, 0),  // Top-Left
-                              new THREE.Vector3(1, -1, 0),  // Bottom-Right
-                              new THREE.Vector3(-1, -1, 0), // Bottom-Left
-                              new THREE.Vector3(1, 0, 1),   // Front-Right
-                              new THREE.Vector3(-1, 0, 1),  // Front-Left
-                              new THREE.Vector3(1, 0, -1),  // Back-Right
-                              new THREE.Vector3(-1, 0, -1), // Back-Left
-                              new THREE.Vector3(0, 1, 1),   // Top-Front
-                              new THREE.Vector3(0, 1, -1),  // Top-Back
-                              new THREE.Vector3(0, -1, 1),  // Bottom-Front
-                              new THREE.Vector3(0, -1, -1), // Bottom-Back
+                            // Comprehensive sampling directions for complete coverage
+                            const samplingDirections = [
+                              // Primary axes
+                              new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+                              new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+                              new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1),
+                              // Diagonal directions
+                              new THREE.Vector3(1, 1, 0), new THREE.Vector3(-1, 1, 0),
+                              new THREE.Vector3(1, -1, 0), new THREE.Vector3(-1, -1, 0),
+                              new THREE.Vector3(1, 0, 1), new THREE.Vector3(-1, 0, 1),
+                              new THREE.Vector3(1, 0, -1), new THREE.Vector3(-1, 0, -1),
+                              new THREE.Vector3(0, 1, 1), new THREE.Vector3(0, 1, -1),
+                              new THREE.Vector3(0, -1, 1), new THREE.Vector3(0, -1, -1),
+                              // Corner directions for complex geometries
+                              new THREE.Vector3(1, 1, 1), new THREE.Vector3(-1, 1, 1),
+                              new THREE.Vector3(1, -1, 1), new THREE.Vector3(-1, -1, 1),
+                              new THREE.Vector3(1, 1, -1), new THREE.Vector3(-1, 1, -1),
+                              new THREE.Vector3(1, -1, -1), new THREE.Vector3(-1, -1, -1),
+                              // Additional intermediate directions
+                              new THREE.Vector3(0.5, 1, 0.5), new THREE.Vector3(-0.5, 1, 0.5),
+                              new THREE.Vector3(0.5, -1, 0.5), new THREE.Vector3(-0.5, -1, 0.5),
+                              new THREE.Vector3(0.5, 1, -0.5), new THREE.Vector3(-0.5, 1, -0.5),
+                              new THREE.Vector3(0.5, -1, -0.5), new THREE.Vector3(-0.5, -1, -0.5),
                             ];
                             
-                            // Get geometry bounds for sampling distance
+                            // Calculate geometry bounds for proper sampling
                             geometry.computeBoundingBox();
                             const bbox = geometry.boundingBox;
-                            if (!bbox) return 6; // Fallback
+                            if (!bbox) return 1;
                             
                             const center = bbox.getCenter(new THREE.Vector3());
                             const size = bbox.getSize(new THREE.Vector3());
                             const maxDim = Math.max(size.x, size.y, size.z);
-                            const sampleDistance = maxDim * 2; // Sample from outside
+                            const sampleDistance = maxDim * 3; // Sample from far outside
                             
-                            // Cast rays from different directions to detect faces
-                            sampleDirections.forEach(direction => {
+                            console.log(`🎯 Auto-selecting faces for geometry:`, {
+                              shapeType: editedShape.type,
+                              geometryBounds: {
+                                center: center.toArray().map(v => v.toFixed(1)),
+                                size: size.toArray().map(v => v.toFixed(1)),
+                                maxDim: maxDim.toFixed(1)
+                              },
+                              samplingDirections: samplingDirections.length,
+                              sampleDistance: sampleDistance.toFixed(1)
+                            });
+                            
+                            // Auto-select faces from all directions
+                            samplingDirections.forEach((direction, dirIndex) => {
                               const origin = center.clone().add(direction.clone().multiplyScalar(sampleDistance));
                               raycaster.set(origin, direction.clone().negate());
                               
                               const intersects = raycaster.intersectObject(tempMesh, false);
-                              intersects.forEach(hit => {
+                              
+                              intersects.forEach((hit, hitIndex) => {
                                 if (hit.faceIndex !== undefined) {
-                                  // Use face normal to group similar faces
-                                  const face = hit.face;
-                                  if (face) {
-                                    // Round normal to group similar faces
-                                    const normalKey = `${Math.round(face.normal.x * 10)}_${Math.round(face.normal.y * 10)}_${Math.round(face.normal.z * 10)}`;
-                                    detectedFaces.add(normalKey);
+                                  try {
+                                    // Auto-select this face using the face selection system
+                                    const fakeEvent = {
+                                      nativeEvent: {
+                                        clientX: 100 + dirIndex * 10, // Fake mouse position
+                                        clientY: 100 + hitIndex * 10,
+                                        button: 0,
+                                        shiftKey: true // Multi-select mode
+                                      }
+                                    };
+                                    
+                                    // Use the actual face selection system
+                                    if (sceneRef) {
+                                      const highlight = highlightFace(sceneRef, hit, editedShape, true, 0xff6b35, 0.6);
+                                      if (highlight) {
+                                        selectedFaces.add(hit.faceIndex);
+                                        console.log(`🎯 Auto-selected face ${hit.faceIndex} from direction ${dirIndex}`);
+                                      }
+                                    }
+                                  } catch (error) {
+                                    console.warn(`Failed to auto-select face ${hit.faceIndex}:`, error);
                                   }
                                 }
                               });
                             });
                             
-                            const faceCount = Math.max(detectedFaces.size, 1);
+                            // Get the actual count of selected faces
+                            const actualFaceCount = selectedFaces.size;
                             
-                            console.log(`🎯 Face Detection Results:`, {
+                            console.log(`🎯 Auto-selection completed:`, {
                               shapeType: editedShape.type,
-                              detectedUniqueFaces: detectedFaces.size,
-                              finalFaceCount: faceCount,
-                              sampleDirections: sampleDirections.length,
-                              geometryBounds: {
-                                center: center.toArray().map(v => v.toFixed(1)),
-                                size: size.toArray().map(v => v.toFixed(1))
-                              }
+                              autoSelectedFaces: actualFaceCount,
+                              sampledDirections: samplingDirections.length,
+                              selectedFaceIndices: Array.from(selectedFaces).sort((a, b) => a - b)
                             });
                             
-                            return faceCount;
+                            // Clear auto-selections after counting (they were just for counting)
+                            setTimeout(() => {
+                              if (sceneRef) {
+                                clearFaceHighlight(sceneRef);
+                                console.log(`🎯 Auto-selections cleared - count determined: ${actualFaceCount}`);
+                              }
+                            }, 100);
+                            
+                            return Math.max(actualFaceCount, 1);
                           };
                           
-                          const faceCount = detectActualFaces();
+                          const faceCount = autoDetectAllFaces();
                           
-                          // Generate face index list based on actual geometry
+                          // Generate face index list based on auto-detected count
                           return Array.from({ length: faceCount }, (_, i) => {
                           const faceNumber = i + 1;
                           const faceData = faceDefinitions[faceNumber] || { definition: '', description: '' };
