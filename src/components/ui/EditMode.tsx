@@ -864,7 +864,6 @@ const EditMode: React.FC<EditModeProps> = ({
                 </div>
               </div>
             )}
-            )}
 
             {/* Volume Parameters İçeriği */}
             {activeMainSection === 'volume' && activeVolumeSubSection === 'parameters' && (
