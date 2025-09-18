@@ -852,28 +852,90 @@ const EditMode: React.FC<EditModeProps> = ({
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {(() => {
                           // Calculate ACTUAL face count from geometry triangles
-                          const geometry = editedShape.geometry;
-                          if (!geometry || !geometry.attributes.position) return [];
+                          // 🎯 DETECT ACTUAL FACES using face selection system
+                          const detectActualFaces = () => {
+                            const geometry = editedShape.geometry;
+                            if (!geometry || !geometry.attributes.position) return 0;
+                            
+                            // Create a temporary mesh for face detection
+                            const tempMesh = new THREE.Mesh(geometry);
+                            tempMesh.position.set(...editedShape.position);
+                            tempMesh.rotation.set(...editedShape.rotation);
+                            tempMesh.scale.set(...editedShape.scale);
+                            tempMesh.updateMatrixWorld();
+                            
+                            // Use the face selection system to detect unique faces
+                            const detectedFaces = new Set();
+                            const raycaster = new THREE.Raycaster();
+                            
+                            // Sample points around the geometry to detect faces
+                            const sampleDirections = [
+                              new THREE.Vector3(1, 0, 0),   // Right
+                              new THREE.Vector3(-1, 0, 0),  // Left
+                              new THREE.Vector3(0, 1, 0),   // Top
+                              new THREE.Vector3(0, -1, 0),  // Bottom
+                              new THREE.Vector3(0, 0, 1),   // Front
+                              new THREE.Vector3(0, 0, -1),  // Back
+                              new THREE.Vector3(1, 1, 0),   // Top-Right
+                              new THREE.Vector3(-1, 1, 0),  // Top-Left
+                              new THREE.Vector3(1, -1, 0),  // Bottom-Right
+                              new THREE.Vector3(-1, -1, 0), // Bottom-Left
+                              new THREE.Vector3(1, 0, 1),   // Front-Right
+                              new THREE.Vector3(-1, 0, 1),  // Front-Left
+                              new THREE.Vector3(1, 0, -1),  // Back-Right
+                              new THREE.Vector3(-1, 0, -1), // Back-Left
+                              new THREE.Vector3(0, 1, 1),   // Top-Front
+                              new THREE.Vector3(0, 1, -1),  // Top-Back
+                              new THREE.Vector3(0, -1, 1),  // Bottom-Front
+                              new THREE.Vector3(0, -1, -1), // Bottom-Back
+                            ];
+                            
+                            // Get geometry bounds for sampling distance
+                            geometry.computeBoundingBox();
+                            const bbox = geometry.boundingBox;
+                            if (!bbox) return 6; // Fallback
+                            
+                            const center = bbox.getCenter(new THREE.Vector3());
+                            const size = bbox.getSize(new THREE.Vector3());
+                            const maxDim = Math.max(size.x, size.y, size.z);
+                            const sampleDistance = maxDim * 2; // Sample from outside
+                            
+                            // Cast rays from different directions to detect faces
+                            sampleDirections.forEach(direction => {
+                              const origin = center.clone().add(direction.clone().multiplyScalar(sampleDistance));
+                              raycaster.set(origin, direction.clone().negate());
+                              
+                              const intersects = raycaster.intersectObject(tempMesh, false);
+                              intersects.forEach(hit => {
+                                if (hit.faceIndex !== undefined) {
+                                  // Use face normal to group similar faces
+                                  const face = hit.face;
+                                  if (face) {
+                                    // Round normal to group similar faces
+                                    const normalKey = `${Math.round(face.normal.x * 10)}_${Math.round(face.normal.y * 10)}_${Math.round(face.normal.z * 10)}`;
+                                    detectedFaces.add(normalKey);
+                                  }
+                                }
+                              });
+                            });
+                            
+                            const faceCount = Math.max(detectedFaces.size, 1);
+                            
+                            console.log(`🎯 Face Detection Results:`, {
+                              shapeType: editedShape.type,
+                              detectedUniqueFaces: detectedFaces.size,
+                              finalFaceCount: faceCount,
+                              sampleDirections: sampleDirections.length,
+                              geometryBounds: {
+                                center: center.toArray().map(v => v.toFixed(1)),
+                                size: size.toArray().map(v => v.toFixed(1))
+                              }
+                            });
+                            
+                            return faceCount;
+                          };
                           
-                          // Get actual triangle count from geometry
-                          const triangleCount = geometry.index ? 
-                            geometry.index.count / 3 : 
-                            geometry.attributes.position.count / 3;
-                          
-                          // Use triangle count as face count (each triangle is a selectable face)
-                          const actualFaceCount = Math.floor(triangleCount);
-                          
-                          // Apply reasonable limits for UI performance
-                          const faceCount = Math.min(Math.max(actualFaceCount, 1), 100);
-                          
-                          console.log(`🎯 Geometry face calculation:`, {
-                            shapeType: editedShape.type,
-                            triangleCount: triangleCount,
-                            actualFaceCount: actualFaceCount,
-                            finalFaceCount: faceCount,
-                            hasIndex: !!geometry.index,
-                            positionCount: geometry.attributes.position.count
-                          });
+                          const faceCount = detectActualFaces();
                           
                           // Generate face index list based on actual geometry
                           return Array.from({ length: faceCount }, (_, i) => {
