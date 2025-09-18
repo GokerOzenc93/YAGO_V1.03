@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import Module from './Module';
-import { getSelectedFaceCount, clearFaceHighlight, highlightFace } from '../../utils/faceSelection';
+import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
 import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
@@ -75,14 +75,6 @@ const EditMode: React.FC<EditModeProps> = ({
   
   // Multi-select face tracking
   const [selectedFaceCount, setSelectedFaceCount] = useState(0);
-  
-  // Face definitions state
-  const [faceDefinitions, setFaceDefinitions] = useState<{
-    [faceNumber: number]: {
-      definition: string;
-      description: string;
-    }
-  }>({});
   
   // Update selected face count periodically
   useEffect(() => {
@@ -304,38 +296,6 @@ const EditMode: React.FC<EditModeProps> = ({
       }
     }
   };
-
-  // Handle face definition changes
-  const handleFaceDefinitionChange = (faceNumber: number, field: 'definition' | 'description', value: string) => {
-    setFaceDefinitions(prev => ({
-      ...prev,
-      [faceNumber]: {
-        ...prev[faceNumber],
-        [field]: value
-      }
-    }));
-  };
-  
-  // Save face definition
-  const saveFaceDefinition = (faceNumber: number) => {
-    const faceData = faceDefinitions[faceNumber];
-    if (faceData && (faceData.definition || faceData.description)) {
-      console.log(`Face ${faceNumber} saved:`, faceData);
-      // Here you could save to localStorage or send to backend
-      
-      // Visual feedback
-      const button = document.querySelector(`[title="Save"]:nth-of-type(${faceNumber})`);
-      if (button) {
-        button.textContent = '✓';
-        button.classList.add('bg-green-100', 'text-green-700');
-        setTimeout(() => {
-          button.textContent = '✓';
-          button.classList.remove('bg-green-100', 'text-green-700');
-        }, 1000);
-      }
-    }
-  };
-  
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
@@ -822,76 +782,22 @@ const EditMode: React.FC<EditModeProps> = ({
                 {/* Surface Content */}
                 <div className="flex-1 p-4 space-y-4">
                   <div className="bg-white rounded-lg border border-stone-200 p-4">
-                    {/* Face Count Display */}
-                    <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-orange-800">
-                          Detected Faces: {(() => {
-                            // Calculate actual face count from geometry
-                            const geometry = editedShape.geometry;
-                            if (!geometry || !geometry.attributes.position) return 0;
-                            
-                            // Get triangle count from geometry
-                            const triangleCount = geometry.index 
-                              ? Math.floor(geometry.index.count / 3)
-                              : Math.floor(geometry.attributes.position.count / 3);
-                            
-                            // For extruded polylines, calculate faces more accurately
-                            if (editedShape.originalPoints && editedShape.originalPoints.length > 0) {
-                              const pointCount = editedShape.originalPoints.length;
-                              // Closed polyline: n side faces + 2 caps
-                              const sideFaces = pointCount > 2 && editedShape.originalPoints[0].equals(editedShape.originalPoints[pointCount - 1]) 
-                                ? pointCount - 1  // Remove duplicate closing point
-                                : pointCount;
-                              const totalFaces = sideFaces + 2; // Add top and bottom caps
-                              console.log(`🎯 Polyline face calculation: ${pointCount} points → ${sideFaces} sides + 2 caps = ${totalFaces} faces`);
-                              return totalFaces;
-                            }
-                            
-                            // For simple geometries, use triangle-based estimation
-                            let estimatedFaces = triangleCount;
-                            
-                            // Apply heuristics based on shape type
-                            if (editedShape.type === 'box') {
-                              estimatedFaces = 6; // Box always has 6 faces
-                            } else if (editedShape.type === 'cylinder') {
-                              // Cylinder: 2 caps + side segments
-                              const segments = Math.max(8, Math.floor(triangleCount / 4));
-                              estimatedFaces = segments + 2;
-                            } else {
-                              // For complex geometries, use triangle count with reasonable limits
-                              estimatedFaces = Math.min(Math.max(triangleCount, 1), 100);
-                            }
-                            
-                            console.log(`🎯 Edit mode face count:`, {
-                              shapeType: editedShape.type,
-                              triangleCount,
-                              estimatedFaces,
-                              hasOriginalPoints: !!editedShape.originalPoints
-                            });
-                            
-                            return estimatedFaces;
-                          })()}
-                        </span>
-                        <div className="text-xs text-orange-600">
-                          Shape: {editedShape.type}
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-slate-800">Face Selection</h4>
+                      <button
+                        onClick={toggleFaceEditMode}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${
+                          isFaceEditMode
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
+                        }`}
+                      >
+                        {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
+                      </button>
                     </div>
-
-                    <button
-                      onClick={toggleFaceEditMode}
-                      className={`w-full px-3 py-2 rounded text-sm transition-colors mb-4 ${
-                        isFaceEditMode
-                          ? 'bg-orange-600 text-white'
-                          : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
-                      }`}
-                    >
-                      {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
-                    </button>
                     
                     {selectedFaceCount > 0 && (
-                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
+                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded mb-3">
                         <span className="text-sm text-orange-700">
                           {selectedFaceCount} face{selectedFaceCount > 1 ? 's' : ''} selected
                         </span>
@@ -904,90 +810,12 @@ const EditMode: React.FC<EditModeProps> = ({
                       </div>
                     )}
                     
-                    <div className="mt-4 space-y-3">
-                      <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {(() => {
-                          // Calculate face count from geometry triangles
-                          const calculateFaceCount = () => {
-                            const geometry = editedShape.geometry;
-                            if (!geometry || !geometry.attributes.position) return 1;
-                            
-                            // Calculate triangle count (each triangle is a potential face)
-                            const triangleCount = geometry.index 
-                              ? Math.floor(geometry.index.count / 3)
-                              : Math.floor(geometry.attributes.position.count / 3);
-                            
-                            // Apply reasonable limits for UI performance
-                            const faceCount = Math.min(Math.max(triangleCount, 1), 50);
-                            
-                            console.log(`🎯 Face count calculation:`, {
-                              shapeType: editedShape.type,
-                              triangleCount,
-                              finalFaceCount: faceCount,
-                              hasIndex: !!geometry.index,
-                              positionCount: geometry.attributes.position.count
-                            });
-                            
-                            return faceCount;
-                          };
-                          
-                          const faceCount = calculateFaceCount();
-                          
-                          // Generate face index list based on auto-detected count
-                          return Array.from({ length: faceCount }, (_, i) => {
-                          const faceNumber = i + 1;
-                          const faceData = faceDefinitions[faceNumber] || { definition: '', description: '' };
-                          
-                          return (
-                            <div key={i} className="flex items-center gap-2 p-2 bg-stone-50 rounded border border-stone-200">
-                              {/* Face Number */}
-                              <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center text-xs font-medium text-orange-700 flex-shrink-0">
-                                {faceNumber}
-                              </div>
-                              
-                              {/* Definition Dropdown */}
-                              <select
-                                value={faceData.definition}
-                                onChange={(e) => handleFaceDefinitionChange(faceNumber, 'definition', e.target.value)}
-                                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none focus:border-orange-400"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Left">Left</option>
-                                <option value="Right">Right</option>
-                                <option value="Top">Top</option>
-                                <option value="Bottom">Bottom</option>
-                                <option value="Front">Front</option>
-                                <option value="Back">Back</option>
-                                <option value="Door">Door</option>
-                                <option value="Panel">Panel</option>
-                                <option value="Side">Side</option>
-                                <option value="Edge">Edge</option>
-                              </select>
-                              
-                              {/* Description Input */}
-                              <input
-                                type="text"
-                                value={faceData.description}
-                                onChange={(e) => handleFaceDefinitionChange(faceNumber, 'description', e.target.value)}
-                                placeholder="Description..."
-                                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none focus:border-orange-400"
-                              />
-                              
-                              {/* Save Button */}
-                              <button
-                                onClick={() => saveFaceDefinition(faceNumber)}
-                                className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors flex-shrink-0"
-                                title="Save"
-                              >
-                                ✓
-                              </button>
-                            </div>
-                          );
-                          });
-                        })()}
-                      </div>
-                    </div>
+                    <p className="text-sm text-slate-600">
+                      {isFaceEditMode 
+                        ? 'Click on faces to select them. Hold Shift for multiple selection.'
+                        : 'Enable face selection to choose surfaces for editing.'
+                      }
+                    </p>
                   </div>
                 </div>
               </div>

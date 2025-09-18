@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
@@ -317,84 +316,6 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
   }, [isFaceEditMode, scene]);
 
-  // Calculate face centers for numbering
-  const faceNumbers = useMemo(() => {
-    if (!meshRef.current) return [];
-    
-    const geometry = meshRef.current.geometry;
-    if (!geometry.attributes.position) return [];
-    
-    // Use the same face count calculation as EditMode
-    const calculateFaceCount = () => {
-      // For polylines with original points, calculate faces properly
-      if (shape.originalPoints && shape.originalPoints.length > 0) {
-        const pointCount = shape.originalPoints.length;
-        const sideFaces = pointCount > 2 && shape.originalPoints[0].equals(shape.originalPoints[pointCount - 1]) 
-          ? pointCount - 1  // Remove duplicate closing point
-          : pointCount;
-        return sideFaces + 2; // Add top and bottom caps
-      }
-      
-      // For simple geometries
-      if (shape.type === 'box') return 6;
-      if (shape.type === 'cylinder') return 8; // Reasonable default
-      
-      // For complex geometries, use triangle count with limits
-      const triangleCount = geometry.index 
-        ? Math.floor(geometry.index.count / 3)
-        : Math.floor(geometry.attributes.position.count / 3);
-      
-      return Math.min(Math.max(triangleCount, 1), 20); // Reduced limit
-    };
-    
-    const faceCount = calculateFaceCount();
-    
-    const positions = geometry.attributes.position;
-    const faceMap = new Map(); // Use Map to avoid duplicates
-    
-    // Generate unique face centers
-    for (let i = 0; i < faceCount; i++) {
-      let center = new THREE.Vector3();
-      
-      // Generate distributed face centers based on bounding box
-      geometry.computeBoundingBox();
-      const bbox = geometry.boundingBox;
-      if (!bbox) continue;
-      
-      // Create evenly distributed points on the geometry surface
-      const size = bbox.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const spacing = maxDim / Math.ceil(Math.sqrt(faceCount));
-      
-      const row = Math.floor(i / Math.ceil(Math.sqrt(faceCount)));
-      const col = i % Math.ceil(Math.sqrt(faceCount));
-      
-      center.set(
-        bbox.min.x + (col + 0.5) * spacing,
-        bbox.min.y + (row + 0.5) * spacing,
-        bbox.min.z + spacing * 0.5
-      );
-      
-      // Apply shape transforms
-      center.multiply(new THREE.Vector3(...shape.scale));
-      center.add(new THREE.Vector3(...shape.position));
-      
-      // Create unique key for position to avoid duplicates
-      const key = `${Math.round(center.x)}_${Math.round(center.y)}_${Math.round(center.z)}`;
-      
-      if (!faceMap.has(key)) {
-        faceMap.set(key, {
-          index: faceMap.size + 1,
-          position: center.clone()
-        });
-      }
-    }
-    
-    const numbers = Array.from(faceMap.values());
-    
-    console.log(`🎯 Generated ${numbers.length} unique face numbers (no duplicates)`);
-    return numbers;
-  }, [shape.position, shape.scale, shapeGeometry]);
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {
@@ -538,25 +459,6 @@ const OpenCascadeShape: React.FC<Props> = ({
             }}
           />
         )}
-
-      {/* Face Numbers - Only show in Face Edit Mode */}
-      {isBeingEdited && faceNumbers.map((face) => (
-        <Billboard key={face.index} position={face.position} follow={true} lockX={false} lockY={false} lockZ={false}>
-          <mesh>
-            <circleGeometry args={[15]} />
-            <meshBasicMaterial color="#ff6b35" transparent opacity={0.9} />
-          </mesh>
-          <Text
-            position={[0, 0, 0.1]}
-            fontSize={12}
-            color="white"
-            anchorX="center"
-            anchorY="middle"
-          >
-            {face.index}
-          </Text>
-        </Billboard>
-      ))}
     </group>
   );
 };
