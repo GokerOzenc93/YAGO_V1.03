@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
+import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
@@ -316,6 +317,53 @@ const OpenCascadeShape: React.FC<Props> = ({
     }
   }, [isFaceEditMode, scene]);
 
+  // Calculate face centers for numbering
+  const faceNumbers = useMemo(() => {
+    if (!isFaceEditMode || !meshRef.current) return [];
+    
+    const geometry = meshRef.current.geometry;
+    if (!geometry.attributes.position) return [];
+    
+    const positions = geometry.attributes.position;
+    const faceCount = geometry.index ? geometry.index.count / 3 : positions.count / 3;
+    const numbers = [];
+    
+    // Calculate face centers
+    for (let i = 0; i < Math.min(faceCount, 24); i++) {
+      let center = new THREE.Vector3();
+      
+      if (geometry.index) {
+        // Indexed geometry
+        const a = geometry.index.getX(i * 3);
+        const b = geometry.index.getX(i * 3 + 1);
+        const c = geometry.index.getX(i * 3 + 2);
+        
+        const va = new THREE.Vector3().fromBufferAttribute(positions, a);
+        const vb = new THREE.Vector3().fromBufferAttribute(positions, b);
+        const vc = new THREE.Vector3().fromBufferAttribute(positions, c);
+        
+        center.add(va).add(vb).add(vc).divideScalar(3);
+      } else {
+        // Non-indexed geometry
+        const va = new THREE.Vector3().fromBufferAttribute(positions, i * 3);
+        const vb = new THREE.Vector3().fromBufferAttribute(positions, i * 3 + 1);
+        const vc = new THREE.Vector3().fromBufferAttribute(positions, i * 3 + 2);
+        
+        center.add(va).add(vb).add(vc).divideScalar(3);
+      }
+      
+      // Apply shape transforms
+      center.multiply(new THREE.Vector3(...shape.scale));
+      center.add(new THREE.Vector3(...shape.position));
+      
+      numbers.push({
+        index: i + 1,
+        position: center
+      });
+    }
+    
+    return numbers;
+  }, [isFaceEditMode, shape.position, shape.scale, shapeGeometry]);
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {
@@ -459,6 +507,26 @@ const OpenCascadeShape: React.FC<Props> = ({
             }}
           />
         )}
+
+      {/* Face Numbers - Only show in Face Edit Mode */}
+      {isFaceEditMode && faceNumbers.map((face) => (
+        <Billboard key={face.index} position={face.position} follow={true} lockX={false} lockY={false} lockZ={false}>
+          <mesh>
+            <circleGeometry args={[15]} />
+            <meshBasicMaterial color="#ff6b35" transparent opacity={0.9} />
+          </mesh>
+          <Text
+            position={[0, 0, 0.1]}
+            fontSize={12}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+            font="/fonts/inter-bold.woff"
+          >
+            {face.index}
+          </Text>
+        </Billboard>
+      ))}
     </group>
   );
 };

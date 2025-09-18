@@ -782,22 +782,33 @@ const EditMode: React.FC<EditModeProps> = ({
                 {/* Surface Content */}
                 <div className="flex-1 p-4 space-y-4">
                   <div className="bg-white rounded-lg border border-stone-200 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-slate-800">Face Selection</h4>
-                      <button
-                        onClick={toggleFaceEditMode}
-                        className={`px-3 py-1 rounded text-sm transition-colors ${
-                          isFaceEditMode
-                            ? 'bg-orange-600 text-white'
-                            : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
-                        }`}
-                      >
-                        {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
-                      </button>
+                    <button
+                      onClick={toggleFaceEditMode}
+                      className={`w-full px-3 py-2 rounded text-sm transition-colors mb-4 ${
+                        isFaceEditMode
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
+                      }`}
+                    >
+                      {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
+                    </button>
+                    
+                    <div className="mb-4">
+                      <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
+                      <div className="grid grid-cols-6 gap-2">
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <div
+                            key={i}
+                            className="w-8 h-8 bg-stone-100 rounded flex items-center justify-center text-xs font-medium text-slate-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer transition-colors"
+                          >
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     
                     {selectedFaceCount > 0 && (
-                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded mb-3">
+                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
                         <span className="text-sm text-orange-700">
                           {selectedFaceCount} face{selectedFaceCount > 1 ? 's' : ''} selected
                         </span>
@@ -809,13 +820,6 @@ const EditMode: React.FC<EditModeProps> = ({
                         </button>
                       </div>
                     )}
-                    
-                    <p className="text-sm text-slate-600">
-                      {isFaceEditMode 
-                        ? 'Click on faces to select them. Hold Shift for multiple selection.'
-                        : 'Enable face selection to choose surfaces for editing.'
-                      }
-                    </p>
                   </div>
                 </div>
               </div>
