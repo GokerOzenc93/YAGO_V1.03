@@ -265,7 +265,6 @@ const EditMode: React.FC<EditModeProps> = ({
         originalPoints: volumeData.originalPoints ? volumeData.originalPoints.map(p => new THREE.Vector3(p.x, p.y, p.z)) : undefined,
         is2DShape: volumeData.is2DShape || false,
         // Explicitly keep current transform properties
-          console.log(`🎯 Should highlight face ${face.index} in green with number ${faceNumber}`);
         scale: editedShape.scale,
       });
       
