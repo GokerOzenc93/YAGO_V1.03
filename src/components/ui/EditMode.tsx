@@ -526,7 +526,7 @@ const EditMode: React.FC<EditModeProps> = ({
     // Check if face already exists in list
     const exists = selectedFaces.some(face => face.index === faceIndex);
     if (!exists) {
-      setSelectedFaces(prev => [...prev, { index: faceIndex, role: '' }]);
+      setSelectedFaces(prev => [...prev, { index: faceIndex, role: '', confirmed: false }]);
       console.log(`🎯 Face ${faceIndex} added to list`);
     }
   };
@@ -534,7 +534,7 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleAddNewFace = () => {
     // Get next available face index (starting from 1)
     const nextIndex = selectedFaces.length + 1;
-    setSelectedFaces(prev => [...prev, { index: nextIndex, role: '' }]);
+    setSelectedFaces(prev => [...prev, { index: nextIndex, role: '', confirmed: false }]);
     console.log(`🎯 New face row added with index ${nextIndex} (starting from 1)`);
   };
 

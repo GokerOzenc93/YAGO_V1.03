@@ -332,6 +332,34 @@ const OpenCascadeShape: React.FC<Props> = ({
       clearFaceHighlight(scene);
     }
   }, [isFaceEditMode, scene]);
+  
+  // Listen for confirmed face highlight events
+  useEffect(() => {
+    const handleConfirmedFaceHighlight = (event: CustomEvent) => {
+      const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
+      
+      if (shapeId === shape.id && meshRef.current) {
+        // Create a mock hit object for the face
+        const mockHit = {
+          faceIndex: faceIndex,
+          object: meshRef.current,
+          face: { a: 0, b: 1, c: 2 }, // Mock face
+          point: new THREE.Vector3()
+        };
+        
+        // Highlight the face with green color and face number
+        highlightFace(scene, mockHit, shape, false, color, 0.6, faceNumber);
+        
+        console.log(`🎯 Confirmed face ${faceIndex} highlighted with number ${faceNumber}`);
+      }
+    };
+    
+    window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
+    
+    return () => {
+      window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
+    };
+  }, [scene, shape.id, shape]);
 
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
