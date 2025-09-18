@@ -869,6 +869,39 @@ const EditMode: React.FC<EditModeProps> = ({
                             // Estimate faces from triangles (rough approximation)
                             faceCount = Math.min(Math.ceil(triangleCount / 2), 50);
                           }
+                          // For polyline/polygon geometries (extruded shapes)
+                          else if (editedShape.type === 'polyline2d' || editedShape.type === 'polygon2d' || 
+                                   editedShape.type === 'polyline3d' || editedShape.type === 'polygon3d') {
+                            // Polyline extruded geometry has:
+                            // - Top face: 1
+                            // - Bottom face: 1  
+                            // - Side faces: number of segments (points - 1 for open, points for closed)
+                            
+                            let segmentCount = 0;
+                            
+                            // Try to get original points count from shape parameters or originalPoints
+                            if (editedShape.originalPoints && editedShape.originalPoints.length > 0) {
+                              const pointCount = editedShape.originalPoints.length;
+                              // Remove duplicate closing point if exists
+                              const uniquePoints = editedShape.originalPoints.length > 2 && 
+                                editedShape.originalPoints[editedShape.originalPoints.length - 1].equals(editedShape.originalPoints[0]) 
+                                ? pointCount - 1 
+                                : pointCount;
+                              segmentCount = uniquePoints;
+                            } else if (editedShape.parameters && editedShape.parameters.points) {
+                              segmentCount = editedShape.parameters.points;
+                            } else {
+                              // Fallback: estimate from geometry complexity
+                              const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                              // For extruded polylines: roughly triangles / 4 (top + bottom + sides)
+                              segmentCount = Math.max(Math.ceil(triangleCount / 8), 4);
+                            }
+                            
+                            // Polyline faces: top + bottom + side faces
+                            faceCount = 2 + segmentCount; // 2 caps + side segments
+                            
+                            console.log(`🎯 Polyline face calculation: ${segmentCount} segments → ${faceCount} total faces (2 caps + ${segmentCount} sides)`);
+                          }
                           // For other geometries, calculate from triangles
                           else {
                             const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;

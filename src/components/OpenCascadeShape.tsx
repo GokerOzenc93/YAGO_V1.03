@@ -333,6 +333,32 @@ const OpenCascadeShape: React.FC<Props> = ({
       // Cylinder: estimate based on geometry complexity
       const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
       faceCount = Math.min(Math.ceil(triangleCount / 2), 50);
+    } else if (shape.type === 'polyline2d' || shape.type === 'polygon2d' || 
+               shape.type === 'polyline3d' || shape.type === 'polygon3d') {
+      // Polyline extruded geometry calculation
+      let segmentCount = 0;
+      
+      // Try to get original points count
+      if (shape.originalPoints && shape.originalPoints.length > 0) {
+        const pointCount = shape.originalPoints.length;
+        // Remove duplicate closing point if exists
+        const uniquePoints = shape.originalPoints.length > 2 && 
+          shape.originalPoints[shape.originalPoints.length - 1].equals(shape.originalPoints[0]) 
+          ? pointCount - 1 
+          : pointCount;
+        segmentCount = uniquePoints;
+      } else if (shape.parameters && shape.parameters.points) {
+        segmentCount = shape.parameters.points;
+      } else {
+        // Fallback: estimate from geometry
+        const triangleCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+        segmentCount = Math.max(Math.ceil(triangleCount / 8), 4);
+      }
+      
+      // Polyline faces: top + bottom + side faces
+      faceCount = 2 + segmentCount;
+      
+      console.log(`🎯 Polyline scene numbering: ${segmentCount} segments → ${faceCount} faces`);
     } else {
       // Other geometries: use triangle count
       faceCount = geometry.index ? 
