@@ -988,4 +988,4 @@ const EditMode: React.FC<EditModeProps> = ({
   );
 };
 
-export default EditMode;
+export { EditMode as default };
