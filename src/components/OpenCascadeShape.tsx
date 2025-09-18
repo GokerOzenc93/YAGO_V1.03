@@ -324,62 +324,75 @@ const OpenCascadeShape: React.FC<Props> = ({
     const geometry = meshRef.current.geometry;
     if (!geometry.attributes.position) return [];
     
-    // Calculate face count from geometry triangles
-    const triangleCount = geometry.index 
-      ? Math.floor(geometry.index.count / 3)
-      : Math.floor(geometry.attributes.position.count / 3);
+    // Use the same face count calculation as EditMode
+    const calculateFaceCount = () => {
+      // For polylines with original points, calculate faces properly
+      if (shape.originalPoints && shape.originalPoints.length > 0) {
+        const pointCount = shape.originalPoints.length;
+        const sideFaces = pointCount > 2 && shape.originalPoints[0].equals(shape.originalPoints[pointCount - 1]) 
+          ? pointCount - 1  // Remove duplicate closing point
+          : pointCount;
+        return sideFaces + 2; // Add top and bottom caps
+      }
+      
+      // For simple geometries
+      if (shape.type === 'box') return 6;
+      if (shape.type === 'cylinder') return 8; // Reasonable default
+      
+      // For complex geometries, use triangle count with limits
+      const triangleCount = geometry.index 
+        ? Math.floor(geometry.index.count / 3)
+        : Math.floor(geometry.attributes.position.count / 3);
+      
+      return Math.min(Math.max(triangleCount, 1), 20); // Reduced limit
+    };
     
-    // Apply reasonable limits for performance
-    const faceCount = Math.min(Math.max(triangleCount, 1), 50);
-    
-    console.log(`🎯 Face numbering calculation:`, {
-      shapeType: shape.type,
-      triangleCount,
-      finalFaceCount: faceCount,
-      hasIndex: !!geometry.index
-    });
+    const faceCount = calculateFaceCount();
     
     const positions = geometry.attributes.position;
-    const numbers = [];
+    const faceMap = new Map(); // Use Map to avoid duplicates
     
-    // Calculate face centers for numbering
+    // Generate unique face centers
     for (let i = 0; i < faceCount; i++) {
       let center = new THREE.Vector3();
       
-      if (geometry.index && i * 3 < geometry.index.count) {
-        // Indexed geometry
-        const a = geometry.index.getX(i * 3);
-        const b = geometry.index.getX(i * 3 + 1);
-        const c = geometry.index.getX(i * 3 + 2);
-        
-        const va = new THREE.Vector3().fromBufferAttribute(positions, a);
-        const vb = new THREE.Vector3().fromBufferAttribute(positions, b);
-        const vc = new THREE.Vector3().fromBufferAttribute(positions, c);
-        
-        center.add(va).add(vb).add(vc).divideScalar(3);
-      } else if (i * 3 + 2 < positions.count) {
-        // Non-indexed geometry
-        const va = new THREE.Vector3().fromBufferAttribute(positions, i * 3);
-        const vb = new THREE.Vector3().fromBufferAttribute(positions, i * 3 + 1);
-        const vc = new THREE.Vector3().fromBufferAttribute(positions, i * 3 + 2);
-        
-        center.add(va).add(vb).add(vc).divideScalar(3);
-      } else {
-        // Skip if we don't have enough vertices
-        continue;
-      }
+      // Generate distributed face centers based on bounding box
+      geometry.computeBoundingBox();
+      const bbox = geometry.boundingBox;
+      if (!bbox) continue;
+      
+      // Create evenly distributed points on the geometry surface
+      const size = bbox.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const spacing = maxDim / Math.ceil(Math.sqrt(faceCount));
+      
+      const row = Math.floor(i / Math.ceil(Math.sqrt(faceCount)));
+      const col = i % Math.ceil(Math.sqrt(faceCount));
+      
+      center.set(
+        bbox.min.x + (col + 0.5) * spacing,
+        bbox.min.y + (row + 0.5) * spacing,
+        bbox.min.z + spacing * 0.5
+      );
       
       // Apply shape transforms
       center.multiply(new THREE.Vector3(...shape.scale));
       center.add(new THREE.Vector3(...shape.position));
       
-      numbers.push({
-        index: i + 1,
-        position: center
-      });
+      // Create unique key for position to avoid duplicates
+      const key = `${Math.round(center.x)}_${Math.round(center.y)}_${Math.round(center.z)}`;
+      
+      if (!faceMap.has(key)) {
+        faceMap.set(key, {
+          index: faceMap.size + 1,
+          position: center.clone()
+        });
+      }
     }
     
-    console.log(`🎯 Generated ${numbers.length} face numbers from auto-detected faces`);
+    const numbers = Array.from(faceMap.values());
+    
+    console.log(`🎯 Generated ${numbers.length} unique face numbers (no duplicates)`);
     return numbers;
   }, [shape.position, shape.scale, shapeGeometry]);
   // Calculate shape center for transform controls positioning
