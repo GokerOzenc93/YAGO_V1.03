@@ -76,6 +76,9 @@ const EditMode: React.FC<EditModeProps> = ({
   // Multi-select face tracking
   const [selectedFaceCount, setSelectedFaceCount] = useState(0);
   
+  // Face list with roles
+  const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
+  
   // Update selected face count periodically
   useEffect(() => {
     const updateFaceCount = () => {
@@ -477,6 +480,7 @@ const EditMode: React.FC<EditModeProps> = ({
     if (sceneRef) {
       clearFaceHighlight(sceneRef);
       setSelectedFaceCount(0);
+      setSelectedFaces([]);
       console.log('🎯 All face selections cleared');
     }
   };
@@ -500,6 +504,26 @@ const EditMode: React.FC<EditModeProps> = ({
         return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
       default:
         return null;
+    }
+  };
+
+  // Face role management functions
+  const updateFaceRole = (faceListIndex: number, role: string) => {
+    setSelectedFaces(prev => prev.map((face, index) => 
+      index === faceListIndex ? { ...face, role } : face
+    ));
+  };
+
+  const removeFaceFromList = (faceListIndex: number) => {
+    setSelectedFaces(prev => prev.filter((_, index) => index !== faceListIndex));
+  };
+
+  const addFaceToList = (faceIndex: number) => {
+    // Check if face already exists in list
+    const exists = selectedFaces.some(face => face.index === faceIndex);
+    if (!exists) {
+      setSelectedFaces(prev => [...prev, { index: faceIndex, role: '' }]);
+      console.log(`🎯 Face ${faceIndex} added to list`);
     }
   };
 
@@ -781,41 +805,62 @@ const EditMode: React.FC<EditModeProps> = ({
 
                 {/* Surface Content */}
                 <div className="flex-1 p-4 space-y-4">
+                  {/* Face Selection Button */}
                   <div className="bg-white rounded-lg border border-stone-200 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-slate-800">Face Selection</h4>
+                    <button
+                      onClick={toggleFaceEditMode}
+                      className={`w-full px-4 py-2 rounded text-sm transition-colors ${
+                        isFaceEditMode
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
+                      }`}
+                    >
+                      {isFaceEditMode ? 'Exit Face Selection' : 'Select Faces'}
+                    </button>
+                  </div>
+
+                  {/* Face Index List with Roles */}
+                  {selectedFaces.length > 0 && (
+                    <div className="bg-white rounded-lg border border-stone-200 p-4">
+                      <h4 className="font-medium text-slate-800 mb-3">Selected Faces</h4>
+                      <div className="space-y-2">
+                        {selectedFaces.map((face, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <span className="text-sm font-mono text-slate-600">
+                              Face {face.index}
+                            </span>
+                            <select
+                              value={face.role}
+                              onChange={(e) => updateFaceRole(index, e.target.value)}
+                              className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1"
+                            >
+                              <option value="">Select Role</option>
+                              <option value="left">Left Face</option>
+                              <option value="right">Right Face</option>
+                              <option value="top">Top Face</option>
+                              <option value="bottom">Bottom Face</option>
+                              <option value="front">Front Face</option>
+                              <option value="back">Back Face</option>
+                              <option value="door">Door Face</option>
+                            </select>
+                            <button
+                              onClick={() => removeFaceFromList(index)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                              title="Remove Face"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                       <button
-                        onClick={toggleFaceEditMode}
-                        className={`px-3 py-1 rounded text-sm transition-colors ${
-                          isFaceEditMode
-                            ? 'bg-orange-600 text-white'
-                            : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
-                        }`}
+                        onClick={clearAllFaceSelections}
+                        className="mt-3 text-xs text-orange-600 hover:text-orange-800"
                       >
-                        {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
+                        Clear All Faces
                       </button>
                     </div>
-                    
-                    {selectedFaceCount > 0 && (
-                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded mb-3">
-                        <span className="text-sm text-orange-700">
-                          {selectedFaceCount} face{selectedFaceCount > 1 ? 's' : ''} selected
-                        </span>
-                        <button
-                          onClick={clearAllFaceSelections}
-                          className="text-xs text-orange-600 hover:text-orange-800"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                    )}
-                    
-                    <p className="text-sm text-slate-600">
-                      {isFaceEditMode 
-                        ? 'Click on faces to select them. Hold Shift for multiple selection.'
-                        : 'Enable face selection to choose surfaces for editing.'
-                      }
-                    </p>
+                  )}
                   </div>
                 </div>
               </div>

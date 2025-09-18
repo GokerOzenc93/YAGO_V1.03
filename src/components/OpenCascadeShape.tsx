@@ -295,6 +295,22 @@ const OpenCascadeShape: React.FC<Props> = ({
     if (isFaceEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
+      
+      // Add face to list on right click in face edit mode
+      const hits = detectFaceAtMouse(
+        e.nativeEvent,
+        camera,
+        meshRef.current!,
+        gl.domElement
+      );
+
+      if (hits.length > 0 && hits[0].faceIndex !== undefined) {
+        // Call parent function to add face to list
+        if (onFaceSelect) {
+          onFaceSelect(hits[0].faceIndex);
+        }
+        console.log(`🎯 Face ${hits[0].faceIndex} added via right-click`);
+      }
       return;
     }
     

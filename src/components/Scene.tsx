@@ -553,6 +553,12 @@ const Scene: React.FC = () => {
   // Scene referansını al
   const [sceneRef, setSceneRef] = useState(null);
 
+  // Face selection handler for EditMode
+  const handleFaceSelect = (faceIndex: number) => {
+    // This will be passed to EditMode to handle face list management
+    console.log(`🎯 Face ${faceIndex} selected for role assignment`);
+  };
+
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
@@ -712,8 +718,7 @@ const Scene: React.FC = () => {
               isBeingEdited={isCurrentlyEditing}
               // Face Edit Mode props
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
-              selectedFaceIndex={selectedFaceIndex}
-              onFaceSelect={handleFaceSelect}
+              onFaceSelect={isCurrentlyEditing ? handleFaceSelect : undefined}
             />
           );
         })}
