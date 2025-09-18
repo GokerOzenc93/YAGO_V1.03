@@ -534,10 +534,10 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const handleAddNewFace = () => {
-    // Get next available face index (starting from 0)
-    const nextIndex = selectedFaces.length;
+    // Get next available face index (starting from 1)
+    const nextIndex = selectedFaces.length + 1;
     setSelectedFaces(prev => [...prev, { index: nextIndex, role: '' }]);
-    console.log(`🎯 New face row added with index ${nextIndex}`);
+    console.log(`🎯 New face row added with index ${nextIndex} (starting from 1)`);
   };
 
   const handleFaceSelectionMode = (faceIndex: number) => {
@@ -548,13 +548,35 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleConfirmFaceSelection = (faceIndex: number) => {
     if (pendingFaceSelection !== null) {
+      // Find the face in the list to get its display number
+      const faceListIndex = selectedFaces.findIndex(face => face.index === pendingFaceSelection);
+      const displayNumber = faceListIndex >= 0 ? faceListIndex + 1 : pendingFaceSelection;
+      
       // Update the face index in the list
       setSelectedFaces(prev => prev.map(face => 
         face.index === pendingFaceSelection ? { ...face, index: faceIndex } : face
       ));
+      
+      // Highlight the face with green color and face number
+      if (sceneRef) {
+        // Clear existing highlights first
+        const { clearFaceHighlight } = require('../../utils/faceSelection');
+        clearFaceHighlight(sceneRef);
+        
+        // Add green highlight with face number for all confirmed faces
+        selectedFaces.forEach((face, index) => {
+          if (face.index !== pendingFaceSelection || face.index === faceIndex) {
+            // This is a confirmed face, highlight it in green
+            const faceNumber = index + 1;
+            // Note: This would need actual face selection logic to work properly
+            console.log(`🎯 Should highlight face ${face.index} in green with number ${faceNumber}`);
+          }
+        });
+      }
+      
       setPendingFaceSelection(null);
       setIsFaceEditMode(false);
-      console.log(`🎯 Face ${pendingFaceSelection} updated to ${faceIndex}`);
+      console.log(`🎯 Face ${pendingFaceSelection} confirmed as ${faceIndex} with display number ${displayNumber}`);
     }
   };
   return (

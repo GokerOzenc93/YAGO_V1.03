@@ -304,6 +304,12 @@ export const createFaceHighlight = (
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
     currentHighlights.forEach(highlight => {
+        // Remove text mesh if exists
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
+        }
         scene.remove(highlight.mesh);
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
@@ -320,6 +326,12 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
     const index = currentHighlights.findIndex(h => h.faceIndex === faceIndex && h.shapeId === shapeId);
     if (index !== -1) {
         const highlight = currentHighlights[index];
+        // Remove text mesh if exists
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
+        }
         scene.remove(highlight.mesh);
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
@@ -583,7 +595,8 @@ const buildFaceOverlayFromHit = (
     mesh: THREE.Mesh,
     seedTri: number,
     color: number,
-    opacity: number
+    opacity: number,
+    faceNumber?: number
 ): THREE.Mesh | null => {
     const res = growRegion(mesh, seedTri);
     if (res.boundaryLoops.length === 0) return null;
@@ -644,6 +657,61 @@ const buildFaceOverlayFromHit = (
     const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
     const overlay = new THREE.Mesh(g, mat);
     overlay.renderOrder = 999;
+    
+    // Add face number text if provided
+    if (faceNumber !== undefined) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (context) {
+            canvas.width = 128;
+            canvas.height = 64;
+            
+            // Clear canvas
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set text properties
+            context.font = 'bold 32px Arial';
+            context.fillStyle = '#ffffff';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            
+            // Add text shadow for better visibility
+            context.shadowColor = '#000000';
+            context.shadowBlur = 4;
+            context.shadowOffsetX = 2;
+            context.shadowOffsetY = 2;
+            
+            // Draw face number
+            context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
+            
+            // Create texture from canvas
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            
+            // Create text material
+            const textMaterial = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                depthWrite: false,
+                depthTest: false
+            });
+            
+            // Create text plane geometry
+            const textGeometry = new THREE.PlaneGeometry(100, 50);
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            
+            // Position text at surface center, slightly above
+            textMesh.position.copy(surfaceCenter).addScaledVector(n, 2);
+            textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 100));
+            textMesh.renderOrder = 1000;
+            
+            scene.add(textMesh);
+            
+            // Store text mesh reference for cleanup
+            (overlay as any).textMesh = textMesh;
+        }
+    }
+    
     scene.add(overlay);
     return overlay;
 };
@@ -665,7 +733,8 @@ export const highlightFace = (
     shape: Shape,
     isMultiSelect: boolean = false,
     color: number = 0xff6b35,
-    opacity: number = 0.6
+    opacity: number = 0.6,
+    faceNumber?: number
 ): FaceHighlight | null => {
     if (!isMultiSelect) {
         clearFaceHighlight(scene);
@@ -694,8 +763,8 @@ export const highlightFace = (
 
     console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
-    // Build a SINGLE overlay mesh for the entire planar region
-    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity);
+    // Build a SINGLE overlay mesh for the entire planar region with face number
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
     if (!overlay) return null;
 
     console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
