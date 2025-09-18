@@ -51,7 +51,8 @@ const EditMode: React.FC<EditModeProps> = ({
   const { addShape, selectShape, updateShape } = useAppStore();
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
-  const [activeComponent, setActiveComponent] = useState<string | null>(null);
+  const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
+  const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   // Varsayılan olarak sabitlenmiş (pinned) gelsin
   const [isLocked, setIsLocked] = useState(true); 
@@ -368,16 +369,35 @@ const EditMode: React.FC<EditModeProps> = ({
   }, []);
 
   const handleClose = () => {
-    setActiveComponent(null);
+    setActiveMainSection(null);
+    setActiveVolumeSubSection(null);
     setIsFaceEditMode(false);
     onExit();
   };
 
-  const handleComponentClick = (componentType: string) => {
-    if (activeComponent === componentType) {
-      setActiveComponent(null);
+  const handleMainSectionClick = (section: 'volume' | 'panel') => {
+    if (activeMainSection === section) {
+      setActiveMainSection(null);
+      setActiveVolumeSubSection(null);
     } else {
-      setActiveComponent(componentType);
+      setActiveMainSection(section);
+      setActiveVolumeSubSection(null);
+    }
+  };
+
+  const handleVolumeSubSectionClick = (subSection: 'library' | 'surface' | 'parameters') => {
+    if (activeVolumeSubSection === subSection) {
+      setActiveVolumeSubSection(null);
+    } else {
+      setActiveVolumeSubSection(subSection);
+    }
+  };
+
+  const handleBackToMain = () => {
+    if (activeVolumeSubSection) {
+      setActiveVolumeSubSection(null);
+    } else {
+      setActiveMainSection(null);
     }
   };
 
