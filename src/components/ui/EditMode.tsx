@@ -546,34 +546,30 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleConfirmFaceSelection = (faceIndex: number) => {
     if (pendingFaceSelection !== null) {
-      // Find the face in the list to get its display number
-      const faceListIndex = selectedFaces.findIndex(face => face.index === pendingFaceSelection);
-      const displayNumber = faceListIndex >= 0 ? faceListIndex + 1 : pendingFaceSelection;
-      
-      // Update the face index in the list
+      // Update the face index in the list and mark as confirmed
       setSelectedFaces(prev => prev.map(face => 
-        face.index === pendingFaceSelection ? { ...face, index: faceIndex } : face
+        face.index === pendingFaceSelection ? { ...face, index: faceIndex, confirmed: true } : face
       ));
       
-      // Highlight the face with green color and face number
-      if (sceneRef) {
-        // Clear existing highlights first
-        clearFaceHighlight(sceneRef);
-        
-        // Add green highlight with face number for all confirmed faces
-        selectedFaces.forEach((face, index) => {
-          if (face.index !== pendingFaceSelection || face.index === faceIndex) {
-            // This is a confirmed face, highlight it in green
-            const faceNumber = index + 1;
-            // Note: This would need actual face selection logic to work properly
-            console.log(`🎯 Should highlight face ${face.index} in green with number ${faceNumber}`);
-          }
-        });
-      }
+      // Get the display number (1-based index in the list)
+      const faceListIndex = selectedFaces.findIndex(face => face.index === pendingFaceSelection);
+      const displayNumber = faceListIndex >= 0 ? faceListIndex + 1 : 1;
+      
+      // Send event to highlight the confirmed face in green with face number
+      const event = new CustomEvent('highlightConfirmedFace', {
+        detail: {
+          shapeId: editedShape.id,
+          faceIndex: faceIndex,
+          faceNumber: displayNumber,
+          color: 0x00ff00, // Green color
+          confirmed: true
+        }
+      });
+      window.dispatchEvent(event);
       
       setPendingFaceSelection(null);
       setIsFaceEditMode(false);
-      console.log(`🎯 Face ${pendingFaceSelection} confirmed as ${faceIndex} with display number ${displayNumber}`);
+      console.log(`🎯 Face ${faceIndex} confirmed with display number ${displayNumber}`);
     }
   };
   return (
@@ -777,8 +773,10 @@ const EditMode: React.FC<EditModeProps> = ({
                     </div>
                   </button>
                 </div>
+                          {/* Status indicator */}
+                          <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
               </div>
-            )}
+                            {face.confirmed ? '✓' : ''} Face {index + 1}
 
             {/* Volume Library İçeriği */}
             {activeMainSection === 'volume' && activeVolumeSubSection === 'library' && (
@@ -795,9 +793,9 @@ const EditMode: React.FC<EditModeProps> = ({
                     <Archive size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Volume Library</span>
                   </div>
-                </div>
+                            onClick={() => handleFaceSelectionMode(index + 1)}
 
-                {/* Library Content */}
+                              pendingFaceSelection === (index + 1)
                 <div className="flex-1 p-4">
                   <div className="space-y-2">
                     {getSavedVolumes().map((volumeName) => (
@@ -805,9 +803,9 @@ const EditMode: React.FC<EditModeProps> = ({
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
                             <Archive size={14} className="text-orange-600" />
-                          </div>
+                          {pendingFaceSelection === (index + 1) && (
                           <span className="font-medium text-slate-800">{volumeName}</span>
-                        </div>
+                              onClick={() => handleConfirmFaceSelection(index + 1)}
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleVolumeSelect(volumeName)}

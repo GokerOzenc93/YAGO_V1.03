@@ -339,6 +339,8 @@ const OpenCascadeShape: React.FC<Props> = ({
       const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
+        console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
+        
         // Create a mock hit object for the face
         const mockHit = {
           faceIndex: faceIndex,
@@ -347,10 +349,17 @@ const OpenCascadeShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // Highlight the face with green color and face number
-        highlightFace(scene, mockHit, shape, false, color, 0.6, faceNumber);
+        // Clear existing highlights first
+        clearFaceHighlight(scene);
         
-        console.log(`🎯 Confirmed face ${faceIndex} highlighted with number ${faceNumber}`);
+        // Highlight the face with green color and face number
+        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.8, faceNumber);
+        
+        if (highlight) {
+          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
+        } else {
+          console.warn(`❌ Failed to highlight face ${faceIndex}`);
+        }
       }
     };
     
