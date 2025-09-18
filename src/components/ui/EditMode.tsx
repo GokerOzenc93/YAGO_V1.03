@@ -773,10 +773,8 @@ const EditMode: React.FC<EditModeProps> = ({
                     </div>
                   </button>
                 </div>
-                          {/* Status indicator */}
-                          <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
               </div>
-                            {face.confirmed ? '✓' : ''} Face {index + 1}
+            )}
 
             {/* Volume Library İçeriği */}
             {activeMainSection === 'volume' && activeVolumeSubSection === 'library' && (
@@ -793,9 +791,8 @@ const EditMode: React.FC<EditModeProps> = ({
                     <Archive size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Volume Library</span>
                   </div>
-                            onClick={() => handleFaceSelectionMode(index + 1)}
+                </div>
 
-                              pendingFaceSelection === (index + 1)
                 <div className="flex-1 p-4">
                   <div className="space-y-2">
                     {getSavedVolumes().map((volumeName) => (
@@ -803,9 +800,9 @@ const EditMode: React.FC<EditModeProps> = ({
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
                             <Archive size={14} className="text-orange-600" />
-                          {pendingFaceSelection === (index + 1) && (
+                          </div>
                           <span className="font-medium text-slate-800">{volumeName}</span>
-                              onClick={() => handleConfirmFaceSelection(index + 1)}
+                        </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleVolumeSelect(volumeName)}
@@ -872,9 +869,13 @@ const EditMode: React.FC<EditModeProps> = ({
                       <div className="space-y-2">
                         {selectedFaces.map((face, index) => (
                           <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <span className="text-sm font-mono text-slate-600">
-                              Face {face.index}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {/* Status indicator */}
+                              <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                              <span className="text-sm font-mono text-slate-600">
+                                {face.confirmed ? '✓' : ''} Face {index + 1}
+                              </span>
+                            </div>
                             <select
                               value={face.role}
                               onChange={(e) => updateFaceRole(index, e.target.value)}
@@ -890,9 +891,9 @@ const EditMode: React.FC<EditModeProps> = ({
                               <option value="door">Door Face</option>
                             </select>
                             <button
-                              onClick={() => handleFaceSelectionMode(face.index)}
+                              onClick={() => handleFaceSelectionMode(index + 1)}
                               className={`p-1 rounded transition-colors ${
-                                pendingFaceSelection === face.index
+                                pendingFaceSelection === (index + 1)
                                   ? 'bg-orange-600 text-white'
                                   : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                               }`}
@@ -900,9 +901,9 @@ const EditMode: React.FC<EditModeProps> = ({
                             >
                               <Target size={12} />
                             </button>
-                            {pendingFaceSelection === face.index && (
+                            {pendingFaceSelection === (index + 1) && (
                               <button
-                                onClick={() => handleConfirmFaceSelection(face.index)}
+                                onClick={() => handleConfirmFaceSelection(index + 1)}
                                 className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                                 title="Confirm Selection"
                               >
