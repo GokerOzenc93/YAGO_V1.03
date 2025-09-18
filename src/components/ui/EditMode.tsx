@@ -830,40 +830,24 @@ const EditMode: React.FC<EditModeProps> = ({
                     </button>
                     <MousePointer size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Surface Specification</span>
+                  </div>
+                </div>
+
+                {/* Surface Content */}
+                <div className="flex-1 p-4 space-y-4">
                   <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Add new face row:</span>
-                        isFaceEditMode
-                          ? 'bg-orange-600 text-white'
+                    <button
+                      onClick={handleAddNewFace}
                       className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1"
                       title="Add New Face Row"
                     >
-                      {isFaceEditMode ? 'Exit Face Selection' : 'Select Faces'}
+                      <Plus size={14} />
                       <span className="text-sm font-medium">Add Row</span>
                     </button>
                   </div>
 
-                  {/* Add New Face */}
-                  <div className="bg-white rounded-lg border border-stone-200 p-4">
-                    <h4 className="font-medium text-slate-800 mb-3">Add Face Index</h4>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={newFaceIndex}
-                        onChange={(e) => setNewFaceIndex(e.target.value)}
-                        placeholder="Face index"
-                        className="flex-1 text-sm bg-white border border-gray-300 rounded px-2 py-1"
-                        min="0"
-                      />
-                      <button
-                        onClick={handleAddNewFace}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                        title="Add Face"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  </div>
                   {/* Face Index List with Roles */}
                   {selectedFaces.length > 0 && (
                     <div className="bg-white rounded-lg border border-stone-200 p-4">
