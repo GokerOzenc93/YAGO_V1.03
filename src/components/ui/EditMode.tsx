@@ -601,7 +601,287 @@ const EditMode: React.FC<EditModeProps> = ({
           </div>
           
           <div className="flex-1 flex flex-col overflow-hidden">
-            {renderComponentContent()}
+            {/* Ana Menü - Volume ve Panel seçimi */}
+            {!activeMainSection && (
+              <div className="flex-1 p-4 space-y-3">
+                <div className="text-center mb-6">
+                  <h2 className="text-lg font-semibold text-slate-800 mb-2">Edit Mode</h2>
+                  <p className="text-sm text-slate-600">Select a category to edit</p>
+                </div>
+                
+                {/* Volume Button */}
+                <button
+                  onClick={() => handleMainSectionClick('volume')}
+                  className="w-full p-4 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                      <Puzzle size={20} className="text-orange-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h3 className="font-semibold text-slate-800 group-hover:text-orange-700">Volume</h3>
+                      <p className="text-sm text-slate-600">Manage volume properties and library</p>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400 group-hover:text-orange-600" />
+                  </div>
+                </button>
+
+                {/* Panel Button */}
+                <button
+                  onClick={() => handleMainSectionClick('panel')}
+                  className="w-full p-4 bg-white rounded-lg border border-stone-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                      <PanelLeft size={20} className="text-blue-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h3 className="font-semibold text-slate-800 group-hover:text-blue-700">Panel</h3>
+                      <p className="text-sm text-slate-600">Panel management and configuration</p>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-600" />
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Volume Ana Menüsü */}
+            {activeMainSection === 'volume' && !activeVolumeSubSection && (
+              <div className="flex-1 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBackToMain}
+                      className="p-1 hover:bg-orange-200 rounded transition-colors"
+                    >
+                      <ChevronLeft size={16} className="text-orange-600" />
+                    </button>
+                    <Puzzle size={16} className="text-orange-600" />
+                    <span className="font-semibold text-orange-800">Volume</span>
+                  </div>
+                  <button
+                    onClick={handleClose}
+                    className="p-1 hover:bg-orange-200 rounded transition-colors"
+                  >
+                    <X size={16} className="text-orange-600" />
+                  </button>
+                </div>
+
+                {/* Volume Alt Menüleri */}
+                <div className="flex-1 p-4 space-y-3">
+                  {/* Volume Library */}
+                  <button
+                    onClick={() => handleVolumeSubSectionClick('library')}
+                    className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Archive size={16} className="text-orange-600" />
+                      <div className="flex-1 text-left">
+                        <h4 className="font-medium text-slate-800">Volume Library</h4>
+                        <p className="text-xs text-slate-600">Saved volumes and templates</p>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600" />
+                    </div>
+                  </button>
+
+                  {/* Surface Specification */}
+                  <button
+                    onClick={() => handleVolumeSubSectionClick('surface')}
+                    className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MousePointer size={16} className="text-orange-600" />
+                      <div className="flex-1 text-left">
+                        <h4 className="font-medium text-slate-800">Surface Specification</h4>
+                        <p className="text-xs text-slate-600">Select and edit surfaces</p>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600" />
+                    </div>
+                  </button>
+
+                  {/* Volume Parameters */}
+                  <button
+                    onClick={() => handleVolumeSubSectionClick('parameters')}
+                    className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Ruler size={16} className="text-orange-600" />
+                      <div className="flex-1 text-left">
+                        <h4 className="font-medium text-slate-800">Volume Parameters</h4>
+                        <p className="text-xs text-slate-600">Dimensions and properties</p>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Volume Library İçeriği */}
+            {activeMainSection === 'volume' && activeVolumeSubSection === 'library' && (
+              <div className="flex-1 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBackToMain}
+                      className="p-1 hover:bg-orange-200 rounded transition-colors"
+                    >
+                      <ChevronLeft size={16} className="text-orange-600" />
+                    </button>
+                    <Archive size={16} className="text-orange-600" />
+                    <span className="font-semibold text-orange-800">Volume Library</span>
+                  </div>
+                  <button
+                    onClick={handleClose}
+                    className="p-1 hover:bg-orange-200 rounded transition-colors"
+                  >
+                    <X size={16} className="text-orange-600" />
+                  </button>
+                </div>
+
+                {/* Library Content */}
+                <div className="flex-1 p-4">
+                  <div className="space-y-2">
+                    {getSavedVolumes().map((volumeName) => (
+                      <div key={volumeName} className="flex items-center justify-between p-3 bg-white rounded-lg border border-stone-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
+                            <Archive size={14} className="text-orange-600" />
+                          </div>
+                          <span className="font-medium text-slate-800">{volumeName}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleVolumeSelect(volumeName)}
+                            className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
+                          >
+                            Load
+                          </button>
+                          <button
+                            onClick={() => handleVolumeDelete(volumeName)}
+                            className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {getSavedVolumes().length === 0 && (
+                      <div className="text-center py-8 text-slate-500">
+                        <Archive size={32} className="mx-auto mb-2 opacity-50" />
+                        <p>No saved volumes</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Surface Specification İçeriği */}
+            {activeMainSection === 'volume' && activeVolumeSubSection === 'surface' && (
+              <div className="flex-1 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBackToMain}
+                      className="p-1 hover:bg-orange-200 rounded transition-colors"
+                    >
+                      <ChevronLeft size={16} className="text-orange-600" />
+                    </button>
+                    <MousePointer size={16} className="text-orange-600" />
+                    <span className="font-semibold text-orange-800">Surface Specification</span>
+                  </div>
+                  <button
+                    onClick={handleClose}
+                    className="p-1 hover:bg-orange-200 rounded transition-colors"
+                  >
+                    <X size={16} className="text-orange-600" />
+                  </button>
+                </div>
+
+                {/* Surface Content */}
+                <div className="flex-1 p-4 space-y-4">
+                  <div className="bg-white rounded-lg border border-stone-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-slate-800">Face Selection</h4>
+                      <button
+                        onClick={toggleFaceEditMode}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${
+                          isFaceEditMode
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
+                        }`}
+                      >
+                        {isFaceEditMode ? 'Exit Selection' : 'Select Faces'}
+                      </button>
+                    </div>
+                    
+                    {selectedFaceCount > 0 && (
+                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded mb-3">
+                        <span className="text-sm text-orange-700">
+                          {selectedFaceCount} face{selectedFaceCount > 1 ? 's' : ''} selected
+                        </span>
+                        <button
+                          onClick={clearAllFaceSelections}
+                          className="text-xs text-orange-600 hover:text-orange-800"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    )}
+                    
+                    <p className="text-sm text-slate-600">
+                      {isFaceEditMode 
+                        ? 'Click on faces to select them. Hold Shift for multiple selection.'
+                        : 'Enable face selection to choose surfaces for editing.'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Volume Parameters İçeriği */}
+            {activeMainSection === 'volume' && activeVolumeSubSection === 'parameters' && (
+              <Module editedShape={editedShape} onClose={handleBackToMain} />
+            )}
+
+            {/* Panel Ana Menüsü */}
+            {activeMainSection === 'panel' && (
+              <div className="flex-1 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-3 bg-blue-50 border-b border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBackToMain}
+                      className="p-1 hover:bg-blue-200 rounded transition-colors"
+                    >
+                      <ChevronLeft size={16} className="text-blue-600" />
+                    </button>
+                    <PanelLeft size={16} className="text-blue-600" />
+                    <span className="font-semibold text-blue-800">Panel</span>
+                  </div>
+                  <button
+                    onClick={handleClose}
+                    className="p-1 hover:bg-blue-200 rounded transition-colors"
+                  >
+                    <X size={16} className="text-blue-600" />
+                  </button>
+                </div>
+
+                {/* Panel Content */}
+                <div className="flex-1 p-4">
+                  <div className="bg-white rounded-lg border border-stone-200 p-4 text-center">
+                    <PanelLeft size={32} className="mx-auto mb-2 text-blue-400" />
+                    <h4 className="font-medium text-slate-800 mb-2">Panel Management</h4>
+                    <p className="text-sm text-slate-600">Panel features will be implemented here</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
