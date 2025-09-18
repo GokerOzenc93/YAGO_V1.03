@@ -861,9 +861,9 @@ const EditMode: React.FC<EditModeProps> = ({
                       </button>
                     </div>
                   )}
-                  </div>
                 </div>
               </div>
+            )}
             )}
 
             {/* Volume Parameters İçeriği */}
