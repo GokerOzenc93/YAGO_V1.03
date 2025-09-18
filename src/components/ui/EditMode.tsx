@@ -558,7 +558,6 @@ const EditMode: React.FC<EditModeProps> = ({
       // Highlight the face with green color and face number
       if (sceneRef) {
         // Clear existing highlights first
-        const { clearFaceHighlight } = require('../../utils/faceSelection');
         clearFaceHighlight(sceneRef);
         
         // Add green highlight with face number for all confirmed faces
