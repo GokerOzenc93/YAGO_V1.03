@@ -83,7 +83,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   
   // New face input state
-  const [newFaceIndex, setNewFaceIndex] = useState('');
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   
   // Update selected face count periodically
@@ -535,17 +534,10 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const handleAddNewFace = () => {
-    const index = parseInt(newFaceIndex);
-    if (!isNaN(index) && index >= 0) {
-      const exists = selectedFaces.some(face => face.index === index);
-      if (!exists) {
-        setSelectedFaces(prev => [...prev, { index: index, role: '' }]);
-        setNewFaceIndex('');
-        console.log(`🎯 Face ${index} manually added to list`);
-      } else {
-        console.log(`🎯 Face ${index} already exists in list`);
-      }
-    }
+    // Get next available face index (starting from 0)
+    const nextIndex = selectedFaces.length;
+    setSelectedFaces(prev => [...prev, { index: nextIndex, role: '' }]);
+    console.log(`🎯 New face row added with index ${nextIndex}`);
   };
 
   const handleFaceSelectionMode = (faceIndex: number) => {
@@ -838,22 +830,16 @@ const EditMode: React.FC<EditModeProps> = ({
                     </button>
                     <MousePointer size={16} className="text-orange-600" />
                     <span className="font-semibold text-orange-800">Surface Specification</span>
-                  </div>
-                </div>
-
-                {/* Surface Content */}
-                <div className="flex-1 p-4 space-y-4">
-                  {/* Face Selection Button */}
-                  <div className="bg-white rounded-lg border border-stone-200 p-4">
-                    <button
-                      onClick={toggleFaceEditMode}
-                      className={`w-full px-4 py-2 rounded text-sm transition-colors ${
+                  <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Add new face row:</span>
                         isFaceEditMode
                           ? 'bg-orange-600 text-white'
-                          : 'bg-stone-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
-                      }`}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1"
+                      title="Add New Face Row"
                     >
                       {isFaceEditMode ? 'Exit Face Selection' : 'Select Faces'}
+                      <span className="text-sm font-medium">Add Row</span>
                     </button>
                   </div>
 
