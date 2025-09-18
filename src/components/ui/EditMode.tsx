@@ -850,7 +850,7 @@ const EditMode: React.FC<EditModeProps> = ({
                     <div className="mt-4 space-y-3">
                       <h4 className="font-medium text-slate-800 mb-2">Face Index</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {Array.from({ length: 24 }, (_, i) => {
+                        {Array.from({ length: Math.min(editedShape.geometry?.index ? editedShape.geometry.index.count / 3 : editedShape.geometry?.attributes?.position?.count / 3 || 0, 50) }, (_, i) => {
                           const faceNumber = i + 1;
                           const faceData = faceDefinitions[faceNumber] || { definition: '', description: '' };
                           

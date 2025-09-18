@@ -329,7 +329,7 @@ const OpenCascadeShape: React.FC<Props> = ({
     const numbers = [];
     
     // Calculate face centers
-    for (let i = 0; i < Math.min(faceCount, 24); i++) {
+    for (let i = 0; i < Math.min(faceCount, 50); i++) {
       let center = new THREE.Vector3();
       
       if (geometry.index) {
