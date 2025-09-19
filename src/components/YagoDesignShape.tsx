@@ -508,6 +508,7 @@ const YagoDesignShape: React.FC<Props> = ({
     return () => {
       window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
     };
+  }, [scene, shape.id, shape, camera]);
 
   // Listen for face selection mode activation
   useEffect(() => {
