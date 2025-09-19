@@ -742,7 +742,7 @@ export const highlightFace = (
     shape: Shape,
     isMultiSelect: boolean = false,
     color: number = 0xff6b35,
-    opacity: number = 0.6,
+    opacity: number = 0.9,
     faceText?: string
 ): FaceHighlight | null => {
     if (!isMultiSelect) {
@@ -770,13 +770,16 @@ export const highlightFace = (
         }
     }
 
-    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex} with text: ${faceText}`);
+    console.log(`🎯 SIMPLE face selection started for face ${hit.faceIndex} with text: ${faceText}`);
     
-    // Build a SINGLE overlay mesh for the entire planar region with face text
-    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceText);
-    if (!overlay) return null;
+    // Create simple face highlight using the clicked triangle
+    const overlay = createSimpleFaceHighlight(scene, mesh, hit, color, opacity, faceText);
+    if (!overlay) {
+        console.error('❌ Failed to create face highlight');
+        return null;
+    }
 
-    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected with text: ${faceText}`);
+    console.log(`✅ Simple face highlight created with text: ${faceText}`);
     
     const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     currentHighlights.push(newHighlight);
