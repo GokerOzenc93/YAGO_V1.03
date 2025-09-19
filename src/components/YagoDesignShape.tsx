@@ -356,8 +356,9 @@ const YagoDesignShape: React.FC<Props> = ({
           object: meshRef.current
         };
         
-        // Use the existing face selection system to create proper highlight
-        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.7, faceNumber);
+        // Use the existing face selection system to create proper highlight with face role text
+        const displayText = `${faceNumber}: ${faceRole}`;
+        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.8, displayText);
         
         if (highlight) {
           // Store the highlight for cleanup
