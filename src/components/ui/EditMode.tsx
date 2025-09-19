@@ -456,7 +456,8 @@ const EditMode: React.FC<EditModeProps> = ({
           color: 0x00ff00, // Green color
           confirmed: true,
           persistent: true, // Keep highlight visible
-          hitPoint: hitData?.point // Pass the hit point for accurate positioning
+          hitPoint: hitData?.point, // Pass the hit point for accurate positioning
+          highlightMesh: hitData?.highlightMesh // Pass the existing highlight mesh
         }
       });
       window.dispatchEvent(event);
