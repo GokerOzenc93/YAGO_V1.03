@@ -11,7 +11,7 @@ import {
   OrthographicCamera,
 } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
-import OpenCascadeShape from './OpenCascadeShape';
+import YagoDesignShape from './YagoDesignShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
@@ -548,7 +548,7 @@ const Scene: React.FC = () => {
     }
   };
 
-  // Handle face cycle updates from OpenCascadeShape
+  // Handle face cycle updates from YagoDesignShape
   // Filter shapes based on edit mode
   const visibleShapes = shapes.filter(
     (shape) => !hiddenShapeIds.includes(shape.id)
@@ -713,13 +713,12 @@ const Scene: React.FC = () => {
           const isCurrentlyEditing = editingShapeId === shape.id;
 
           return (
-            <OpenCascadeShape
+            <YagoDesignShape
               key={shape.id}
               shape={shape}
               onContextMenuRequest={handleShapeContextMenuRequest}
               isEditMode={isEditMode}
               isBeingEdited={isCurrentlyEditing}
-              // Face Edit Mode props
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
               onFaceSelect={isCurrentlyEditing ? handleFaceSelect : undefined}
             />

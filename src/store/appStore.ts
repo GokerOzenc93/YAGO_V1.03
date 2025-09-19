@@ -209,9 +209,9 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  // OpenCascade integration
-  isOpenCascadeInitialized: boolean;
-  setOpenCascadeInitialized: (initialized: boolean) => void;
+  // YagoDesign integration
+  isYagoDesignInitialized: boolean;
+  setYagoDesignInitialized: (initialized: boolean) => void;
   geometryMode: string;
   setGeometryMode: (mode: string) => void;
   cameraPosition: [number, number, number];
@@ -322,9 +322,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
-  // OpenCascade integration
-  isOpenCascadeInitialized: false,
-  setOpenCascadeInitialized: (initialized) => set({ isOpenCascadeInitialized: initialized }),
+  // YagoDesign integration
+  isYagoDesignInitialized: false,
+  setYagoDesignInitialized: (initialized) => set({ isYagoDesignInitialized: initialized }),
   
   geometryMode: 'Three.js',
   setGeometryMode: (mode) => set({ geometryMode: mode }),

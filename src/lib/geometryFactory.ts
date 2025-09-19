@@ -1,20 +1,20 @@
 import * as THREE from 'three';
-import { isOpenCascadeInitialized, initializeOpenCascade } from './opencascadeCore';
+import { isYagoDesignInitialized, initializeYagoDesign } from './yagoDesignCore';
 import { 
-  createOCBox, 
-  createOCCylinder, 
-  createOCPolyline, 
-  ocShapeToThreeGeometry,
-  performOCUnion,
-  performOCSubtraction,
-  disposeOCShape
-} from './opencascadeGeometry';
+  createYagoBox, 
+  createYagoCylinder, 
+  createYagoPolyline, 
+  yagoShapeToThreeGeometry,
+  performYagoUnion,
+  performYagoSubtraction,
+  disposeYagoShape
+} from './yagoDesignGeometry';
 
 /**
- * Geometry creation factory - uses OpenCascade when available, fallback to Three.js
+ * Geometry creation factory - uses YagoDesign when available, fallback to Three.js
  */
 export class GeometryFactory {
-  private static useOpenCascade = false;
+  private static useYagoDesign = false;
   private static initializationPromise: Promise<void> | null = null;
 
   /**
@@ -25,19 +25,19 @@ export class GeometryFactory {
       return this.initializationPromise;
     }
 
-    this.initializationPromise = this.tryInitializeOpenCascade();
+    this.initializationPromise = this.tryInitializeYagoDesign();
     return this.initializationPromise;
   }
 
-  private static async tryInitializeOpenCascade(): Promise<void> {
+  private static async tryInitializeYagoDesign(): Promise<void> {
     try {
-      console.log('🎯 Attempting to initialize OpenCascade.js...');
-      await initializeOpenCascade();
-      this.useOpenCascade = true;
-      console.log('✅ GeometryFactory: OpenCascade.js mode enabled');
+      console.log('🎯 Attempting to initialize YagoDesign.js...');
+      await initializeYagoDesign();
+      this.useYagoDesign = true;
+      console.log('✅ GeometryFactory: YagoDesign.js mode enabled');
     } catch (error) {
-      console.warn('⚠️ OpenCascade.js initialization failed, using Three.js fallback:', error);
-      this.useOpenCascade = false;
+      console.warn('⚠️ YagoDesign.js initialization failed, using Three.js fallback:', error);
+      this.useYagoDesign = false;
     }
   }
 
@@ -47,14 +47,14 @@ export class GeometryFactory {
   static async createBox(width: number, height: number, depth: number): Promise<THREE.BufferGeometry> {
     await this.initialize();
 
-    if (this.useOpenCascade && isOpenCascadeInitialized()) {
+    if (this.useYagoDesign && isYagoDesignInitialized()) {
       try {
-        const ocShape = createOCBox(width, height, depth);
-        const geometry = ocShapeToThreeGeometry(ocShape);
-        disposeOCShape(ocShape);
+        const yagoShape = createYagoBox(width, height, depth);
+        const geometry = yagoShapeToThreeGeometry(yagoShape);
+        disposeYagoShape(yagoShape);
         return geometry;
       } catch (error) {
-        console.warn('OpenCascade box creation failed, using Three.js fallback:', error);
+        console.warn('YagoDesign box creation failed, using Three.js fallback:', error);
       }
     }
 
@@ -72,14 +72,14 @@ export class GeometryFactory {
   static async createCylinder(radius: number, height: number): Promise<THREE.BufferGeometry> {
     await this.initialize();
 
-    if (this.useOpenCascade && isOpenCascadeInitialized()) {
+    if (this.useYagoDesign && isYagoDesignInitialized()) {
       try {
-        const ocShape = createOCCylinder(radius, height);
-        const geometry = ocShapeToThreeGeometry(ocShape);
-        disposeOCShape(ocShape);
+        const yagoShape = createYagoCylinder(radius, height);
+        const geometry = yagoShapeToThreeGeometry(yagoShape);
+        disposeYagoShape(yagoShape);
         return geometry;
       } catch (error) {
-        console.warn('OpenCascade cylinder creation failed, using Three.js fallback:', error);
+        console.warn('YagoDesign cylinder creation failed, using Three.js fallback:', error);
       }
     }
 
@@ -97,14 +97,14 @@ export class GeometryFactory {
   static async createPolyline(points: THREE.Vector3[], height: number): Promise<THREE.BufferGeometry> {
     await this.initialize();
 
-    if (this.useOpenCascade && isOpenCascadeInitialized()) {
+    if (this.useYagoDesign && isYagoDesignInitialized()) {
       try {
-        const ocShape = createOCPolyline(points, height);
-        const geometry = ocShapeToThreeGeometry(ocShape);
-        disposeOCShape(ocShape);
+        const yagoShape = createYagoPolyline(points, height);
+        const geometry = yagoShapeToThreeGeometry(yagoShape);
+        disposeYagoShape(yagoShape);
         return geometry;
       } catch (error) {
-        console.warn('OpenCascade polyline creation failed, using Three.js fallback:', error);
+        console.warn('YagoDesign polyline creation failed, using Three.js fallback:', error);
       }
     }
 
@@ -193,14 +193,14 @@ export class GeometryFactory {
   static async performUnion(geometry1: THREE.BufferGeometry, geometry2: THREE.BufferGeometry): Promise<THREE.BufferGeometry> {
     await this.initialize();
 
-    if (this.useOpenCascade && isOpenCascadeInitialized()) {
+    if (this.useYagoDesign && isYagoDesignInitialized()) {
       try {
-        // Convert geometries to OpenCascade shapes
+        // Convert geometries to YagoDesign shapes
         // This would require implementing geometry-to-shape conversion
         // For now, we'll use the existing CSG approach
-        console.log('🎯 OpenCascade union not yet implemented for existing geometries');
+        console.log('🎯 YagoDesign union not yet implemented for existing geometries');
       } catch (error) {
-        console.warn('OpenCascade union failed:', error);
+        console.warn('YagoDesign union failed:', error);
       }
     }
 
@@ -215,14 +215,14 @@ export class GeometryFactory {
   static async performSubtraction(geometry1: THREE.BufferGeometry, geometry2: THREE.BufferGeometry): Promise<THREE.BufferGeometry> {
     await this.initialize();
 
-    if (this.useOpenCascade && isOpenCascadeInitialized()) {
+    if (this.useYagoDesign && isYagoDesignInitialized()) {
       try {
-        // Convert geometries to OpenCascade shapes
+        // Convert geometries to YagoDesign shapes
         // This would require implementing geometry-to-shape conversion
         // For now, we'll use the existing CSG approach
-        console.log('🎯 OpenCascade subtraction not yet implemented for existing geometries');
+        console.log('🎯 YagoDesign subtraction not yet implemented for existing geometries');
       } catch (error) {
-        console.warn('OpenCascade subtraction failed:', error);
+        console.warn('YagoDesign subtraction failed:', error);
       }
     }
 
@@ -232,16 +232,16 @@ export class GeometryFactory {
   }
 
   /**
-   * Check if OpenCascade is being used
+   * Check if YagoDesign is being used
    */
-  static isUsingOpenCascade(): boolean {
-    return this.useOpenCascade && isOpenCascadeInitialized();
+  static isUsingYagoDesign(): boolean {
+    return this.useYagoDesign && isYagoDesignInitialized();
   }
 
   /**
    * Get current mode
    */
   static getCurrentMode(): string {
-    return this.isUsingOpenCascade() ? 'OpenCascade.js' : 'Three.js';
+    return this.isUsingYagoDesign() ? 'YagoDesign.js' : 'Three.js';
   }
 }

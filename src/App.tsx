@@ -9,17 +9,17 @@ import { GeometryFactory } from './lib/geometryFactory';
 import { useAppStore } from './store/appStore';
 
 function App() {
-  const { setOpenCascadeInitialized, setGeometryMode } = useAppStore();
+  const { setYagoDesignInitialized, setGeometryMode } = useAppStore();
 
   useEffect(() => {
     // Initialize GeometryFactory on app start
     const initializeGeometry = async () => {
       try {
         await GeometryFactory.initialize();
-        const isUsingOC = GeometryFactory.isUsingOpenCascade();
+        const isUsingYD = GeometryFactory.isUsingYagoDesign();
         const mode = GeometryFactory.getCurrentMode();
         
-        setOpenCascadeInitialized(isUsingOC);
+        setYagoDesignInitialized(isUsingYD);
         setGeometryMode(mode);
         
         console.log(`🎯 App initialized with geometry engine: ${mode}`);
@@ -30,7 +30,7 @@ function App() {
     };
 
     initializeGeometry();
-  }, [setOpenCascadeInitialized, setGeometryMode]);
+  }, [setYagoDesignInitialized, setGeometryMode]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-200">
