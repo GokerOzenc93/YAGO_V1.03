@@ -370,6 +370,16 @@ const YagoDesignShape: React.FC<Props> = ({
     };
   }, [scene, shape.id, shape]);
 
+  // Listen for face selection mode activation
+  useEffect(() => {
+    const handleFaceSelectionMode = () => {
+      if (isFaceEditMode) {
+        console.log(`🎯 Face selection mode activated for shape ${shape.id}`);
+      }
+    };
+    
+    handleFaceSelectionMode();
+  }, [isFaceEditMode, shape.id]);
   // Calculate shape center for transform controls positioning
   // 🎯 NEW: Get appropriate color based on view mode
   const getShapeColor = () => {

@@ -102,7 +102,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   </button>
                   {pendingFaceSelection === (index + 1) && (
                     <button
-                      onClick={() => onConfirmFaceSelection(index + 1)}
+                      onClick={() => onConfirmFaceSelection(index)}
                       className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                       title="Confirm Selection"
                     >

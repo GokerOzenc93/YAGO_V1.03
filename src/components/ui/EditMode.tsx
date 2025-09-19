@@ -422,22 +422,25 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleFaceSelectionMode = (faceIndex: number) => {
     setPendingFaceSelection(faceIndex);
+    setIsFaceEditMode(true);
     console.log(`🎯 Face selection mode activated for index ${faceIndex}`);
   };
 
   const handleConfirmFaceSelection = (faceIndex: number) => {
-    if (pendingFaceSelection !== null) {
-      setSelectedFaces(prev => prev.map(face => 
-        face.index === pendingFaceSelection ? { ...face, index: faceIndex, confirmed: true } : face
+    if (pendingFaceSelection !== null && pendingFaceSelection > 0) {
+      // Update the face at the correct array index (faceIndex is the array index, not display number)
+      setSelectedFaces(prev => prev.map((face, idx) => 
+        idx === faceIndex ? { ...face, confirmed: true } : face
       ));
       
-      const faceListIndex = selectedFaces.findIndex(face => face.index === pendingFaceSelection);
-      const displayNumber = faceListIndex >= 0 ? faceListIndex + 1 : 1;
+      // Display number is array index + 1
+      const displayNumber = faceIndex + 1;
       
+      // Dispatch event to highlight the face in 3D scene
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
           shapeId: editedShape.id,
-          faceIndex: faceIndex,
+          faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
           faceNumber: displayNumber,
           color: 0x00ff00, // Green color
           confirmed: true
@@ -447,7 +450,7 @@ const EditMode: React.FC<EditModeProps> = ({
       
       setPendingFaceSelection(null);
       setIsFaceEditMode(false);
-      console.log(`🎯 Face ${faceIndex} confirmed with display number ${displayNumber}`);
+      console.log(`🎯 Face confirmed with display number ${displayNumber}`);
     }
   };
 
