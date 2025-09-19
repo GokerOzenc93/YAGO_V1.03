@@ -310,10 +310,10 @@ const YagoDesignShape: React.FC<Props> = ({
 
       if (hits.length > 0 && hits[0].faceIndex !== undefined) {
         // Add face to list via right-click
-        const faceIndex = hits[0].faceIndex;
-        if (onFaceSelect) {
+          onFaceSelect(hits[0].faceIndex, { ...hits[0], highlightMesh: highlight.mesh });
+          console.log(`🎯 Face ${hits[0].faceIndex} selected and highlighted ${isShiftPressed ? '(Multi-select)' : ''}`);
           onFaceSelect(faceIndex, hits[0]);
-          console.log(`🎯 Face ${faceIndex} added to list via right-click`);
+          console.log(`🎯 Face ${hits[0].faceIndex} deselected (Shift+Click)`);
         }
       }
       return;
