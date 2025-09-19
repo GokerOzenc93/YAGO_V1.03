@@ -35,6 +35,7 @@ const YagoDesignShape: React.FC<Props> = ({
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
   const { scene, camera, gl } = useThree();
+  const persistentHighlights = useRef<Map<number, { mesh: THREE.Mesh; textMesh?: THREE.Mesh }>>(new Map());
   const {
     activeTool,
     selectedShapeId,
@@ -336,30 +337,169 @@ const YagoDesignShape: React.FC<Props> = ({
   // Listen for confirmed face highlight events
   useEffect(() => {
     const handleConfirmedFaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
+      const { shapeId, faceIndex, faceNumber, faceRole, color, confirmed, persistent } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
-        console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
+        console.log(`🎯 Creating persistent highlight for face ${faceIndex} with number ${faceNumber} and role ${faceRole}`);
         
-        // Create a mock hit object for the face
-        const mockHit = {
-          faceIndex: faceIndex,
-          object: meshRef.current,
-          face: { a: 0, b: 1, c: 2 }, // Mock face
-          point: new THREE.Vector3()
-        };
+        // Create persistent highlight geometry
+        const geometry = meshRef.current.geometry as THREE.BufferGeometry;
+        const positions = geometry.attributes.position;
         
-        // Clear existing highlights first
-        clearFaceHighlight(scene);
-        
-        // Highlight the face with green color and face number
-        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.8, faceNumber);
-        
-        if (highlight) {
-          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
-        } else {
-          console.warn(`❌ Failed to highlight face ${faceIndex}`);
+        // Get face vertices (simplified - using first 3 vertices for demo)
+        const faceVertices = [];
+        for (let i = 0; i < 3; i++) {
+          const vertex = new THREE.Vector3().fromBufferAttribute(positions, faceIndex * 3 + i);
+          // Apply shape transforms
+          vertex.applyMatrix4(meshRef.current.matrixWorld);
+          faceVertices.push(vertex);
         }
+        
+        // Create highlight plane geometry
+        const highlightGeometry = new THREE.BufferGeometry();
+        const highlightPositions = new Float32Array(9); // 3 vertices * 3 components
+        
+        faceVertices.forEach((vertex, i) => {
+          highlightPositions[i * 3] = vertex.x;
+          highlightPositions[i * 3 + 1] = vertex.y;
+          highlightPositions[i * 3 + 2] = vertex.z;
+        });
+        
+        highlightGeometry.setAttribute('position', new THREE.BufferAttribute(highlightPositions, 3));
+        highlightGeometry.computeVertexNormals();
+        
+        // Create highlight material
+        const highlightMaterial = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide,
+          depthTest: false,
+          depthWrite: false
+        });
+        
+        // Create highlight mesh
+        const highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
+        highlightMesh.renderOrder = 999;
+        
+        // Calculate face center for text positioning
+        const faceCenter = new THREE.Vector3();
+        faceVertices.forEach(vertex => faceCenter.add(vertex));
+        faceCenter.divideScalar(faceVertices.length);
+        
+        // Create text label
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (context) {
+          canvas.width = 256;
+          canvas.height = 128;
+          
+          // Clear canvas
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Set text properties
+          context.font = 'bold 24px Arial';
+          context.fillStyle = '#ffffff';
+          context.strokeStyle = '#000000';
+          context.lineWidth = 3;
+          context.textAlign = 'center';
+          context.textBaseline = 'middle';
+          
+          // Draw text with outline
+          const text = `${faceNumber}: ${faceRole}`;
+          context.strokeText(text, canvas.width / 2, canvas.height / 2);
+          context.fillText(text, canvas.width / 2, canvas.height / 2);
+          
+          // Create texture from canvas
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.needsUpdate = true;
+          
+          // Create text material
+          const textMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+          });
+          
+          // Create text plane geometry
+          const textGeometry = new THREE.PlaneGeometry(150, 75);
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+          
+          // Position text at face center, slightly above
+          textMesh.position.copy(faceCenter);
+          textMesh.position.y += 50; // Offset above the face
+          textMesh.lookAt(camera.position);
+          textMesh.renderOrder = 1000;
+          
+          scene.add(textMesh);
+          
+          // Store both highlight and text mesh
+          persistentHighlights.current.set(faceNumber, { 
+            mesh: highlightMesh, 
+            textMesh: textMesh 
+          });
+        }
+        
+        scene.add(highlightMesh);
+        
+        console.log(`✅ Persistent highlight created for face ${faceNumber} with role ${faceRole}`);
+      }
+    };
+    
+    const handleClearAllFaceHighlights = (event: CustomEvent) => {
+      const { shapeId } = event.detail;
+      
+      if (shapeId === shape.id) {
+        console.log(`🧹 Clearing all persistent highlights for shape ${shapeId}`);
+        
+        // Remove all persistent highlights
+        persistentHighlights.current.forEach(({ mesh, textMesh }) => {
+          scene.remove(mesh);
+          if (textMesh) {
+            scene.remove(textMesh);
+            textMesh.geometry.dispose();
+            (textMesh.material as THREE.Material).dispose();
+          }
+          mesh.geometry.dispose();
+          (mesh.material as THREE.Material).dispose();
+        });
+        
+        persistentHighlights.current.clear();
+        console.log(`✅ All persistent highlights cleared for shape ${shapeId}`);
+      }
+    };
+    
+    window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
+    window.addEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
+    
+    return () => {
+      window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
+      window.removeEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
+      
+      // Cleanup persistent highlights on unmount
+      persistentHighlights.current.forEach(({ mesh, textMesh }) => {
+        scene.remove(mesh);
+        if (textMesh) {
+          scene.remove(textMesh);
+          textMesh.geometry.dispose();
+          (textMesh.material as THREE.Material).dispose();
+        }
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      });
+      persistentHighlights.current.clear();
+    };
+  }, [scene, shape.id, shape, camera]);
+
+  // Original face highlight event listener (kept for compatibility)
+  useEffect(() => {
+    const handleConfirmedFaceHighlight = (event: CustomEvent) => {
+      const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
+      
+      if (shapeId === shape.id && meshRef.current && !event.detail.persistent) {
+        // This is for temporary highlights only
+        console.log(`🎯 Temporary highlight for face ${faceIndex}`);
       }
     };
     
@@ -368,7 +508,6 @@ const YagoDesignShape: React.FC<Props> = ({
     return () => {
       window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
     };
-  }, [scene, shape.id, shape]);
 
   // Listen for face selection mode activation
   useEffect(() => {
