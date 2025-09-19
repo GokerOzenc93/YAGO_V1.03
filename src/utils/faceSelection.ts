@@ -596,7 +596,7 @@ const buildFaceOverlayFromHit = (
     seedTri: number,
     color: number,
     opacity: number,
-    faceText?: string
+    faceNumber?: number
 ): THREE.Mesh | null => {
     const res = growRegion(mesh, seedTri);
     if (res.boundaryLoops.length === 0) return null;
@@ -641,8 +641,8 @@ const buildFaceOverlayFromHit = (
     const verts: number[] = [];
     const all2D = outer.concat(...holes);
     for (const v2 of all2D) {
-        // Yüzeyin hemen üstünde konumlandır (daha büyük offset)
-        const p3 = to3D(v2).addScaledVector(n, 2.0);
+        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset)
+        const p3 = to3D(v2).addScaledVector(n, 0.5);
         verts.push(p3.x, p3.y, p3.z);
     }
 
@@ -654,42 +654,35 @@ const buildFaceOverlayFromHit = (
     g.setIndex(indices);
     g.computeVertexNormals();
 
-    const mat = new THREE.MeshBasicMaterial({ 
-        color, 
-        opacity: Math.max(opacity, 0.7), // Minimum 0.7 opacity for visibility
-        transparent: true, 
-        depthWrite: false, 
-        depthTest: false, // Always visible
-        side: THREE.DoubleSide 
-    });
+    const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
     const overlay = new THREE.Mesh(g, mat);
-    overlay.renderOrder = 1000; // Higher render order
+    overlay.renderOrder = 999;
     
-    // Add face text if provided
-    if (faceText !== undefined) {
+    // Add face number text if provided
+    if (faceNumber !== undefined) {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (context) {
-            canvas.width = 256;
-            canvas.height = 128;
+            canvas.width = 128;
+            canvas.height = 64;
             
             // Clear canvas
             context.clearRect(0, 0, canvas.width, canvas.height);
             
             // Set text properties
-            context.font = 'bold 24px Arial';
+            context.font = 'bold 32px Arial';
             context.fillStyle = '#ffffff';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             
             // Add text shadow for better visibility
             context.shadowColor = '#000000';
-            context.shadowBlur = 8;
-            context.shadowOffsetX = 4;
-            context.shadowOffsetY = 4;
+            context.shadowBlur = 4;
+            context.shadowOffsetX = 2;
+            context.shadowOffsetY = 2;
             
-            // Draw face text
-            context.fillText(faceText, canvas.width / 2, canvas.height / 2);
+            // Draw face number
+            context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
             
             // Create texture from canvas
             const texture = new THREE.CanvasTexture(canvas);
@@ -700,18 +693,17 @@ const buildFaceOverlayFromHit = (
                 map: texture,
                 transparent: true,
                 depthWrite: false,
-                depthTest: false,
-                opacity: 1.0
+                depthTest: false
             });
             
             // Create text plane geometry
-            const textGeometry = new THREE.PlaneGeometry(150, 75);
+            const textGeometry = new THREE.PlaneGeometry(100, 50);
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
             
             // Position text at surface center, slightly above
-            textMesh.position.copy(surfaceCenter).addScaledVector(n, 5.0);
-            textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 200));
-            textMesh.renderOrder = 1001;
+            textMesh.position.copy(surfaceCenter).addScaledVector(n, 2);
+            textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 100));
+            textMesh.renderOrder = 1000;
             
             scene.add(textMesh);
             
@@ -721,7 +713,6 @@ const buildFaceOverlayFromHit = (
     }
     
     scene.add(overlay);
-    console.log(`✅ Face overlay created with ${indices.length / 3} triangles, opacity: ${mat.opacity}`);
     return overlay;
 };
 /** ===== End Robust Planar Region Selection ===== **/
@@ -742,8 +733,8 @@ export const highlightFace = (
     shape: Shape,
     isMultiSelect: boolean = false,
     color: number = 0xff6b35,
-    opacity: number = 0.9,
-    faceText?: string
+    opacity: number = 0.6,
+    faceNumber?: number
 ): FaceHighlight | null => {
     if (!isMultiSelect) {
         clearFaceHighlight(scene);
@@ -770,16 +761,13 @@ export const highlightFace = (
         }
     }
 
-    console.log(`🎯 SIMPLE face selection started for face ${hit.faceIndex} with text: ${faceText}`);
+    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
-    // Create simple face highlight using the clicked triangle
-    const overlay = createSimpleFaceHighlight(scene, mesh, hit, color, opacity, faceText);
-    if (!overlay) {
-        console.error('❌ Failed to create face highlight');
-        return null;
-    }
+    // Build a SINGLE overlay mesh for the entire planar region with face number
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
+    if (!overlay) return null;
 
-    console.log(`✅ Simple face highlight created with text: ${faceText}`);
+    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
     
     const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     currentHighlights.push(newHighlight);
@@ -787,182 +775,6 @@ export const highlightFace = (
     return newHighlight;
 };
 
-/**
- * Create simple face highlight from hit intersection
- */
-const createSimpleFaceHighlight = (
-    scene: THREE.Scene,
-    mesh: THREE.Mesh,
-    hit: THREE.Intersection,
-    color: number,
-    opacity: number,
-    faceText?: string
-): THREE.Mesh | null => {
-    if (!hit.face || hit.faceIndex === undefined) return null;
-    
-    const geometry = mesh.geometry as THREE.BufferGeometry;
-    const positions = geometry.attributes.position;
-    const index = geometry.index;
-    
-    if (!positions) return null;
-    
-    console.log(`🎯 Creating simple highlight for face ${hit.faceIndex}`);
-    
-    // Get the triangle vertices
-    const faceIndex = hit.faceIndex;
-    const a = faceIndex * 3;
-    const vertices: THREE.Vector3[] = [];
-    
-    try {
-        if (index) {
-            // Indexed geometry
-            for (let i = 0; i < 3; i++) {
-                const vertexIndex = index.getX(a + i);
-                const vertex = new THREE.Vector3().fromBufferAttribute(positions, vertexIndex);
-                vertices.push(vertex);
-            }
-        } else {
-            // Non-indexed geometry
-            for (let i = 0; i < 3; i++) {
-                const vertex = new THREE.Vector3().fromBufferAttribute(positions, a + i);
-                vertices.push(vertex);
-            }
-        }
-    } catch (error) {
-        console.error('Error getting face vertices:', error);
-        return null;
-    }
-    
-    if (vertices.length !== 3) {
-        console.error('Invalid vertex count:', vertices.length);
-        return null;
-    }
-    
-    // Transform vertices to world space
-    const worldVertices = vertices.map(v => v.clone().applyMatrix4(mesh.matrixWorld));
-    
-    // Calculate face normal and center
-    const v1 = new THREE.Vector3().subVectors(worldVertices[1], worldVertices[0]);
-    const v2 = new THREE.Vector3().subVectors(worldVertices[2], worldVertices[0]);
-    const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
-    
-    const center = new THREE.Vector3()
-        .add(worldVertices[0])
-        .add(worldVertices[1])
-        .add(worldVertices[2])
-        .divideScalar(3);
-    
-    // Create highlight geometry - make it bigger than the original triangle
-    const highlightGeometry = new THREE.BufferGeometry();
-    const scale = 1.1; // Make it 10% bigger
-    const scaledVertices: number[] = [];
-    
-    worldVertices.forEach(vertex => {
-        // Scale from center
-        const scaled = vertex.clone().sub(center).multiplyScalar(scale).add(center);
-        // Offset along normal to prevent z-fighting
-        scaled.addScaledVector(normal, 5.0);
-        scaledVertices.push(scaled.x, scaled.y, scaled.z);
-    });
-    
-    highlightGeometry.setAttribute('position', new THREE.Float32BufferAttribute(scaledVertices, 3));
-    highlightGeometry.setIndex([0, 1, 2]);
-    highlightGeometry.computeVertexNormals();
-    
-    // Create material with high visibility
-    const material = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: Math.max(opacity, 0.8),
-        side: THREE.DoubleSide,
-        depthTest: false,
-        depthWrite: false,
-        wireframe: false
-    });
-    
-    const highlightMesh = new THREE.Mesh(highlightGeometry, material);
-    highlightMesh.renderOrder = 1000;
-    
-    // Add face text if provided
-    if (faceText) {
-        const textMesh = createFaceTextMesh(center, normal, faceText);
-        if (textMesh) {
-            scene.add(textMesh);
-            (highlightMesh as any).textMesh = textMesh;
-        }
-    }
-    
-    scene.add(highlightMesh);
-    console.log(`✅ Simple face highlight created at:`, center.toArray().map(v => v.toFixed(1)));
-    
-    return highlightMesh;
-};
-
-/**
- * Create face text mesh
- */
-const createFaceTextMesh = (
-    position: THREE.Vector3,
-    normal: THREE.Vector3,
-    text: string
-): THREE.Mesh | null => {
-    try {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (!context) return null;
-        
-        canvas.width = 512;
-        canvas.height = 256;
-        
-        // Clear canvas with semi-transparent background
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Set text properties
-        context.font = 'bold 48px Arial';
-        context.fillStyle = '#ffffff';
-        context.strokeStyle = '#000000';
-        context.lineWidth = 4;
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        
-        // Draw text with outline
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        context.strokeText(text, centerX, centerY);
-        context.fillText(text, centerX, centerY);
-        
-        // Create texture
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.needsUpdate = true;
-        
-        // Create material
-        const textMaterial = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            depthTest: false,
-            depthWrite: false,
-            opacity: 1.0
-        });
-        
-        // Create geometry
-        const textGeometry = new THREE.PlaneGeometry(200, 100);
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        
-        // Position text above the face
-        textMesh.position.copy(position).addScaledVector(normal, 50);
-        textMesh.lookAt(position.clone().addScaledVector(normal, 200));
-        textMesh.renderOrder = 1001;
-        
-        console.log(`✅ Face text created: "${text}" at position:`, textMesh.position.toArray().map(v => v.toFixed(1)));
-        
-        return textMesh;
-    } catch (error) {
-        console.error('Error creating face text:', error);
-        return null;
-    }
-};
 
 /**
  * Raycaster ile yüzey tespiti - tüm intersectionları döndür
