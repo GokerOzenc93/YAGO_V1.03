@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Puzzle, PanelLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Puzzle, PanelLeft, Archive, MousePointer, Ruler } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import EditModeHeader from './EditModeHeader';
 import VolumeLibrary from './VolumeLibrary';
