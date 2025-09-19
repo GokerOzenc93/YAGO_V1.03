@@ -23,7 +23,7 @@ interface Props {
   onFaceSelect?: (faceIndex: number) => void;
 }
 
-const OpenCascadeShape: React.FC<Props> = ({
+const YagoDesignShape: React.FC<Props> = ({
   shape,
   onContextMenuRequest,
   isEditMode = false,
@@ -517,4 +517,4 @@ const OpenCascadeShape: React.FC<Props> = ({
   );
 };
 
-export default React.memo(OpenCascadeShape);
+export default React.memo(YagoDesignShape);

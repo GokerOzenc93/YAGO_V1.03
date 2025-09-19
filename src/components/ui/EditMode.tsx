@@ -1,27 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X,
-  Pin,
-  PinOff,
-  ChevronLeft,
-  ChevronRight,
-  Puzzle,
-  MousePointer,
-  Layers,
-  Save,
-  Edit3,
-  Archive,
-  PanelLeft,
-  Ruler,
-  BarChart3,
-  Plus,
-  Check,
-  Target,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Puzzle, PanelLeft } from 'lucide-react';
 import { Shape } from '../../types/shapes';
+import EditModeHeader from './EditModeHeader';
+import VolumeLibrary from './VolumeLibrary';
+import SurfaceSpecification from './SurfaceSpecification';
 import Module from './Module';
-import { getSelectedFaceCount, clearFaceHighlight } from '../../utils/faceSelection';
-import { saveVolumeToProject, createVolumeDataFromShape, getSavedVolumes, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
 import * as THREE from 'three';
@@ -57,13 +41,9 @@ const EditMode: React.FC<EditModeProps> = ({
   const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
   const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  // Varsayılan olarak sabitlenmiş (pinned) gelsin
   const [isLocked, setIsLocked] = useState(true); 
   
-  // Volume name editing state
   const [volumeName, setVolumeName] = useState('AD06072');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState(volumeName);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const MIN_WIDTH_PX = 170;
@@ -74,58 +54,12 @@ const EditMode: React.FC<EditModeProps> = ({
   const startX = useRef(0);
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
   
-  // Multi-select face tracking
-  const [selectedFaceCount, setSelectedFaceCount] = useState(0);
-  
-  // Face list with roles
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
-  
-  // New face input state
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   
-  // Update selected face count periodically
-  useEffect(() => {
-    const updateFaceCount = () => {
-      setSelectedFaceCount(getSelectedFaceCount());
-    };
-    
-    const interval = setInterval(updateFaceCount, 100);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
-    }
-  }, [isEditingName]);
-
-  const handleNameEdit = () => {
-    setTempName(volumeName);
-    setIsEditingName(true);
-  };
-
-  const handleNameSave = () => {
-    if (tempName.trim()) {
-      setVolumeName(tempName.trim());
-    }
-    setIsEditingName(false);
-  };
-
-  const handleNameCancel = () => {
-    setTempName(volumeName);
-    setIsEditingName(false);
-  };
-
-  const handleNameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleNameSave();
-    } else if (e.key === 'Escape') {
-      handleNameCancel();
-    }
+  const handleVolumeNameChange = (name: string) => {
+    setVolumeName(name);
   };
 
   const handleSaveVolume = async () => {
@@ -282,7 +216,6 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const handleVolumeDelete = (volumeName: string) => {
-    // Confirmation dialog
     const confirmed = window.confirm(`Are you sure you want to delete volume "${volumeName}"?`);
     
     if (confirmed) {
@@ -378,7 +311,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleClose = () => {
     setActiveMainSection(null);
     setActiveVolumeSubSection(null);
-    setIsFaceEditMode(false);
     onExit();
   };
 
@@ -463,54 +395,6 @@ const EditMode: React.FC<EditModeProps> = ({
       return `${baseClasses} bg-gray-50 text-gray-600 hover:bg-white hover:text-blue-600 border border-gray-200`;
     }
   };
-
-  const toggleFaceEditMode = () => {
-    const newMode = !isFaceEditMode;
-    setIsFaceEditMode(newMode);
-    
-    if (newMode) {
-      console.log('🎯 Face Edit Mode ACTIVATED - Click on faces to select them');
-      console.log('🎯 Hold Shift to select multiple faces');
-    } else {
-      console.log('🎯 Face Edit Mode DEACTIVATED');
-      // Clear all highlights when exiting face edit mode
-      if (sceneRef) {
-        clearFaceHighlight(sceneRef);
-      }
-    }
-  };
-  
-  const clearAllFaceSelections = () => {
-    if (sceneRef) {
-      clearFaceHighlight(sceneRef);
-      setSelectedFaceCount(0);
-      setSelectedFaces([]);
-      console.log('🎯 All face selections cleared');
-    }
-  };
-  
-  // Get scene reference
-  const [sceneRef, setSceneRef] = useState<THREE.Scene | null>(null);
-  
-  useEffect(() => {
-    // Try to get scene reference from Three.js context
-    const scene = (window as any).currentScene;
-    if (scene) {
-      setSceneRef(scene);
-    }
-  }, []);
-
-  const [activeComponent, setActiveComponent] = useState<string | null>(null);
-
-  const renderComponentContent = () => {
-    switch (activeComponent) {
-      case 'volumeParameters':
-        return <Module editedShape={editedShape} onClose={() => setActiveComponent(null)} />;
-      default:
-        return null;
-    }
-  };
-
   // Face role management functions
   const updateFaceRole = (faceListIndex: number, role: string) => {
     setSelectedFaces(prev => prev.map((face, index) => 
@@ -523,7 +407,6 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const addFaceToList = (faceIndex: number) => {
-    // Check if face already exists in list
     const exists = selectedFaces.some(face => face.index === faceIndex);
     if (!exists) {
       setSelectedFaces(prev => [...prev, { index: faceIndex, role: '', confirmed: false }]);
@@ -532,7 +415,6 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const handleAddNewFace = () => {
-    // Get next available face index (starting from 1)
     const nextIndex = selectedFaces.length + 1;
     setSelectedFaces(prev => [...prev, { index: nextIndex, role: '', confirmed: false }]);
     console.log(`🎯 New face row added with index ${nextIndex} (starting from 1)`);
@@ -540,22 +422,18 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleFaceSelectionMode = (faceIndex: number) => {
     setPendingFaceSelection(faceIndex);
-    setIsFaceEditMode(true);
     console.log(`🎯 Face selection mode activated for index ${faceIndex}`);
   };
 
   const handleConfirmFaceSelection = (faceIndex: number) => {
     if (pendingFaceSelection !== null) {
-      // Update the face index in the list and mark as confirmed
       setSelectedFaces(prev => prev.map(face => 
         face.index === pendingFaceSelection ? { ...face, index: faceIndex, confirmed: true } : face
       ));
       
-      // Get the display number (1-based index in the list)
       const faceListIndex = selectedFaces.findIndex(face => face.index === pendingFaceSelection);
       const displayNumber = faceListIndex >= 0 ? faceListIndex + 1 : 1;
       
-      // Send event to highlight the confirmed face in green with face number
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
           shapeId: editedShape.id,
@@ -572,6 +450,12 @@ const EditMode: React.FC<EditModeProps> = ({
       console.log(`🎯 Face ${faceIndex} confirmed with display number ${displayNumber}`);
     }
   };
+
+  const handleClearAllFaceSelections = () => {
+    setSelectedFaces([]);
+    console.log('🎯 All face selections cleared');
+  };
+
   return (
     <div
       ref={panelRef}
@@ -598,82 +482,20 @@ const EditMode: React.FC<EditModeProps> = ({
 
       {!isCollapsed && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between p-3 pt-4 border-b border-gray-200">
-            <div className="flex items-center gap-2 flex-1">
-              {isEditingName ? (
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  onKeyDown={handleNameKeyDown}
-                  onBlur={handleNameSave}
-                  className="text-gray-900 font-inter text-base font-bold bg-transparent border-b border-blue-500 outline-none flex-1 min-w-0"
-                  maxLength={20}
-                />
-              ) : (
-                <div className="flex items-center gap-1 flex-1 min-w-0">
-                  <span className="text-gray-900 font-inter text-base font-bold truncate">
-                    {volumeName}
-                  </span>
-                  <button
-                    onClick={handleNameEdit}
-                    className="text-gray-500 hover:text-blue-600 p-0.5 rounded transition-colors flex-shrink-0"
-                    title="Edit Name"
-                  >
-                    <Edit3 size={12} />
-                  </button>
-                </div>
-              )}
-              
-              <button
-                onClick={handleSaveVolume}
-                className="text-gray-500 hover:text-green-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-green-50 flex-shrink-0"
-                title="Save Volume"
-              >
-                <Save size={14} />
-              </button>
-            </div>
-            
-            {/* Panel genişliği 200px'ten büyükse düğmeleri göster*/}
-            {panelWidth > 200 && (
-              <div className="flex items-center gap-1">
-                {isLocked && (
-                  <button
-                    onClick={handleCollapse}
-                    className="text-gray-500 hover:text-blue-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-blue-50"
-                    title="Arayüzü Küçült"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                )}
-                
-                <button
-                  onClick={toggleLock}
-                  className={`p-1 rounded transition-colors ${
-                    isLocked ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50'
-                  }`}
-                  title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
-                >
-                  {isLocked ? <Pin size={14} /> : <PinOff size={14} />}
-                </button>
-                
-                <button
-                  onClick={handleClose}
-                  className="text-gray-500 hover:text-red-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-red-50"
-                  title="Düzenleme Modundan Çık"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-          </div>
+          <EditModeHeader
+            volumeName={volumeName}
+            onVolumeNameChange={handleVolumeNameChange}
+            onSaveVolume={handleSaveVolume}
+            onToggleLock={toggleLock}
+            onCollapse={handleCollapse}
+            onClose={handleClose}
+            isLocked={isLocked}
+            panelWidth={panelWidth}
+          />
           
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Ana Menü - Volume ve Panel seçimi */}
             {!activeMainSection && (
               <div className="flex-1 p-4 space-y-3">
-                {/* Volume Button */}
                 <button
                   onClick={() => handleMainSectionClick('volume')}
                   className="w-full p-4 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
@@ -690,7 +512,6 @@ const EditMode: React.FC<EditModeProps> = ({
                   </div>
                 </button>
 
-                {/* Panel Button */}
                 <button
                   onClick={() => handleMainSectionClick('panel')}
                   className="w-full p-4 bg-white rounded-lg border border-stone-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
@@ -709,10 +530,8 @@ const EditMode: React.FC<EditModeProps> = ({
               </div>
             )}
 
-            {/* Volume Ana Menüsü */}
             {activeMainSection === 'volume' && !activeVolumeSubSection && (
               <div className="flex-1 flex flex-col">
-                {/* Header */}
                 <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
                   <div className="flex items-center gap-2">
                     <button
@@ -726,9 +545,7 @@ const EditMode: React.FC<EditModeProps> = ({
                   </div>
                 </div>
 
-                {/* Volume Alt Menüleri */}
                 <div className="flex-1 p-4 space-y-3">
-                  {/* Volume Library */}
                   <button
                     onClick={() => handleVolumeSubSectionClick('library')}
                     className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
@@ -743,7 +560,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     </div>
                   </button>
 
-                  {/* Surface Specification */}
                   <button
                     onClick={() => handleVolumeSubSectionClick('surface')}
                     className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
@@ -758,7 +574,6 @@ const EditMode: React.FC<EditModeProps> = ({
                     </div>
                   </button>
 
-                  {/* Volume Parameters */}
                   <button
                     onClick={() => handleVolumeSubSectionClick('parameters')}
                     className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
@@ -776,171 +591,35 @@ const EditMode: React.FC<EditModeProps> = ({
               </div>
             )}
 
-            {/* Volume Library İçeriği */}
             {activeMainSection === 'volume' && activeVolumeSubSection === 'library' && (
-              <div className="flex-1 flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleBackToMain}
-                      className="p-1 hover:bg-orange-200 rounded transition-colors"
-                    >
-                      <ChevronLeft size={16} className="text-orange-600" />
-                    </button>
-                    <Archive size={16} className="text-orange-600" />
-                    <span className="font-semibold text-orange-800">Volume Library</span>
-                  </div>
-                </div>
-
-                <div className="flex-1 p-4">
-                  <div className="space-y-2">
-                    {getSavedVolumes().map((volumeName) => (
-                      <div key={volumeName} className="flex items-center justify-between p-3 bg-white rounded-lg border border-stone-200">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                            <Archive size={14} className="text-orange-600" />
-                          </div>
-                          <span className="font-medium text-slate-800">{volumeName}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleVolumeSelect(volumeName)}
-                            className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
-                          >
-                            Load
-                          </button>
-                          <button
-                            onClick={() => handleVolumeDelete(volumeName)}
-                            className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {getSavedVolumes().length === 0 && (
-                      <div className="text-center py-8 text-slate-500">
-                        <Archive size={32} className="mx-auto mb-2 opacity-50" />
-                        <p>No saved volumes</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <VolumeLibrary
+                onBack={handleBackToMain}
+                onVolumeSelect={handleVolumeSelect}
+                onVolumeDelete={handleVolumeDelete}
+                refreshTrigger={refreshTrigger}
+              />
             )}
 
-            {/* Surface Specification İçeriği */}
             {activeMainSection === 'volume' && activeVolumeSubSection === 'surface' && (
-              <div className="flex-1 flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleBackToMain}
-                      className="p-1 hover:bg-orange-200 rounded transition-colors"
-                    >
-                      <ChevronLeft size={16} className="text-orange-600" />
-                    </button>
-                    <MousePointer size={16} className="text-orange-600" />
-                    <span className="font-semibold text-orange-800">Surface Specification</span>
-                  </div>
-                </div>
-
-                {/* Surface Content */}
-                <div className="flex-1 p-4 space-y-4">
-                  <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Add new face row:</span>
-                    <button
-                      onClick={handleAddNewFace}
-                      className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1"
-                      title="Add New Face Row"
-                    >
-                      <Plus size={14} />
-                      <span className="text-sm font-medium">Add Row</span>
-                    </button>
-                  </div>
-
-                  {/* Face Index List with Roles */}
-                  {selectedFaces.length > 0 && (
-                    <div className="bg-white rounded-lg border border-stone-200 p-4">
-                      <h4 className="font-medium text-slate-800 mb-3">Selected Faces</h4>
-                      <div className="space-y-2">
-                        {selectedFaces.map((face, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <div className="flex items-center gap-2">
-                              {/* Status indicator */}
-                              <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                              <span className="text-sm font-mono text-slate-600">
-                                {face.confirmed ? '✓' : ''} Face {index + 1}
-                              </span>
-                            </div>
-                            <select
-                              value={face.role}
-                              onChange={(e) => updateFaceRole(index, e.target.value)}
-                              className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1"
-                            >
-                              <option value="">Select Role</option>
-                              <option value="left">Left Face</option>
-                              <option value="right">Right Face</option>
-                              <option value="top">Top Face</option>
-                              <option value="bottom">Bottom Face</option>
-                              <option value="front">Front Face</option>
-                              <option value="back">Back Face</option>
-                              <option value="door">Door Face</option>
-                            </select>
-                            <button
-                              onClick={() => handleFaceSelectionMode(index + 1)}
-                              className={`p-1 rounded transition-colors ${
-                                pendingFaceSelection === (index + 1)
-                                  ? 'bg-orange-600 text-white'
-                                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                              }`}
-                              title="Select Face on Surface"
-                            >
-                              <Target size={12} />
-                            </button>
-                            {pendingFaceSelection === (index + 1) && (
-                              <button
-                                onClick={() => handleConfirmFaceSelection(index + 1)}
-                                className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                                title="Confirm Selection"
-                              >
-                                <Check size={12} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => removeFaceFromList(index)}
-                              className="text-red-500 hover:text-red-700 p-1"
-                              title="Remove Face"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={clearAllFaceSelections}
-                        className="mt-3 text-xs text-orange-600 hover:text-orange-800"
-                      >
-                        Clear All Faces
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <SurfaceSpecification
+                onBack={handleBackToMain}
+                selectedFaces={selectedFaces}
+                onAddNewFace={handleAddNewFace}
+                onUpdateFaceRole={updateFaceRole}
+                onRemoveFaceFromList={removeFaceFromList}
+                onFaceSelectionMode={handleFaceSelectionMode}
+                onConfirmFaceSelection={handleConfirmFaceSelection}
+                onClearAllFaceSelections={handleClearAllFaceSelections}
+                pendingFaceSelection={pendingFaceSelection}
+              />
             )}
 
-            {/* Volume Parameters İçeriği */}
             {activeMainSection === 'volume' && activeVolumeSubSection === 'parameters' && (
               <Module editedShape={editedShape} onClose={handleBackToMain} />
             )}
 
-            {/* Panel Ana Menüsü */}
             {activeMainSection === 'panel' && (
               <div className="flex-1 flex flex-col">
-                {/* Header */}
                 <div className="flex items-center justify-between p-3 bg-blue-50 border-b border-blue-200">
                   <div className="flex items-center gap-2">
                     <button
@@ -954,7 +633,6 @@ const EditMode: React.FC<EditModeProps> = ({
                   </div>
                 </div>
 
-                {/* Panel Content */}
                 <div className="flex-1 p-4">
                   <div className="bg-white rounded-lg border border-stone-200 p-4 text-center">
                     <PanelLeft size={32} className="mx-auto mb-2 text-blue-400" />
