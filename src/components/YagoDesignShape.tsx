@@ -10,7 +10,8 @@ import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
   highlightFace,
-  clearFaceHighlight
+  clearFaceHighlight,
+  removeFaceHighlightByListIndex
 } from '../utils/faceSelection';
 
 interface Props {
