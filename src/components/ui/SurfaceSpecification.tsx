@@ -18,6 +18,7 @@ interface SurfaceSpecificationProps {
   onConfirmFaceSelection: (faceIndex: number) => void;
   onClearAllFaceSelections: () => void;
   pendingFaceSelection: number | null;
+  activeFaceSelectionMode?: boolean;
 }
 
 const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
@@ -29,7 +30,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onFaceSelectionMode,
   onConfirmFaceSelection,
   onClearAllFaceSelections,
-  pendingFaceSelection
+  pendingFaceSelection,
+  activeFaceSelectionMode = false
 }) => {
   const handleClearAllFaceSelections = () => {
     // Dispatch event to clear all highlights from 3D scene
@@ -112,7 +114,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   <button
                     onClick={() => onFaceSelectionMode(index + 1)}
                     className={`p-1 rounded transition-colors ${
-                      pendingFaceSelection === (index + 1)
+                      pendingFaceSelection === (index + 1) && activeFaceSelectionMode
                         ? 'bg-orange-600 text-white'
                         : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                     }`}
@@ -145,6 +147,21 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             </button>
           )}
         </div>
+        
+        {/* Face Selection Status */}
+        {activeFaceSelectionMode && pendingFaceSelection && (
+          <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <span className="text-orange-700 font-medium">
+                Face selection active for Face {pendingFaceSelection}
+              </span>
+            </div>
+            <p className="text-orange-600 mt-1">
+              Click on 3D surface, then right-click to confirm
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

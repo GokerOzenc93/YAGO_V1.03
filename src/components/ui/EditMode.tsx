@@ -57,6 +57,7 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
+  const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
@@ -245,17 +246,25 @@ const EditMode: React.FC<EditModeProps> = ({
       if (shapeId === editedShape.id && confirmed) {
         console.log(`🎯 Processing right-click confirmation for face ${faceIndex}`);
         
-        // Find the first unconfirmed face in the list
-        const unconfirmedIndex = selectedFaces.findIndex(face => !face.confirmed);
+        // Find the pending face selection or first unconfirmed face
+        let targetIndex = -1;
         
-        if (unconfirmedIndex !== -1) {
+        if (pendingFaceSelection !== null) {
+          // Use the pending face selection index (1-based to 0-based)
+          targetIndex = pendingFaceSelection - 1;
+        } else {
+          // Find the first unconfirmed face in the list
+          targetIndex = selectedFaces.findIndex(face => !face.confirmed);
+        }
+        
+        if (targetIndex !== -1 && targetIndex < selectedFaces.length) {
           // Confirm this face and link it
           setSelectedFaces(prev => prev.map((face, idx) => 
-            idx === unconfirmedIndex ? { ...face, confirmed: true, actualFaceIndex: faceIndex } : face
+            idx === targetIndex ? { ...face, confirmed: true, actualFaceIndex: faceIndex } : face
           ));
           
           // Highlight the face in 3D scene with proper linking
-          const displayNumber = unconfirmedIndex + 1;
+          const displayNumber = targetIndex + 1;
           const highlightEvent = new CustomEvent('highlightConfirmedFace', {
             detail: {
               shapeId: editedShape.id,
@@ -263,12 +272,18 @@ const EditMode: React.FC<EditModeProps> = ({
               faceNumber: displayNumber,
               color: 0xffb366,
               confirmed: true,
-              faceListIndex: unconfirmedIndex
+              faceListIndex: targetIndex
             }
           });
           window.dispatchEvent(highlightEvent);
           
-          console.log(`🎯 Face confirmed and linked: List index ${unconfirmedIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
+          // Exit face selection mode after confirmation
+          setActiveFaceSelectionMode(false);
+          setPendingFaceSelection(null);
+          setIsFaceEditMode(false);
+          
+          console.log(`🎯 Face confirmed and linked: List index ${targetIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
+          console.log(`🎯 Face selection mode deactivated after confirmation`);
         } else {
           console.warn('🎯 No unconfirmed faces available to link');
         }
@@ -463,12 +478,20 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleAddNewFace = () => {
     const nextIndex = selectedFaces.length + 1;
     setSelectedFaces(prev => [...prev, { index: nextIndex, role: '', confirmed: false }]);
+    
+    // Automatically activate face selection mode for the new row
+    setPendingFaceSelection(nextIndex);
+    setActiveFaceSelectionMode(true);
+    setIsFaceEditMode(true);
+    
     console.log(`🎯 New face row added with index ${nextIndex} (starting from 1)`);
+    console.log(`🎯 Face selection mode auto-activated for new row`);
   };
 
   const handleFaceSelectionMode = (faceIndex: number) => {
     setPendingFaceSelection(faceIndex);
-    setIsFaceEditMode(true);
+    setActiveFaceSelectionMode(true);
+    setIsFaceEditMode(true); // Activate 3D face selection
     console.log(`🎯 Face selection mode activated for index ${faceIndex}`);
   };
 
@@ -639,6 +662,7 @@ const EditMode: React.FC<EditModeProps> = ({
                 onConfirmFaceSelection={handleConfirmFaceSelection}
                 onClearAllFaceSelections={handleClearAllFaceSelections}
                 pendingFaceSelection={pendingFaceSelection}
+                activeFaceSelectionMode={activeFaceSelectionMode}
               />
             )}
 
