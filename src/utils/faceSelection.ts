@@ -405,9 +405,9 @@ export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex
     });
     
     if (indicesToRemove.length > 0) {
-        console.log(`🎯 ${indicesToRemove.length} face highlight(s) removed by list index: ${faceListIndex}`);
+        console.log(`🗑️ CLEANUP: ${indicesToRemove.length} face highlight(s) and text meshes removed by list index: ${faceListIndex}`);
     } else {
-        console.warn(`🎯 No face highlights found for list index: ${faceListIndex}`);
+        console.warn(`⚠️ CLEANUP WARNING: No face highlights found for list index: ${faceListIndex}`);
     }
 };
 

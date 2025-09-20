@@ -393,10 +393,12 @@ const YagoDesignShape: React.FC<Props> = ({
     const handleRemoveFaceHighlight = (event: CustomEvent) => {
       const { faceListIndex, displayNumber } = event.detail;
       
-      console.log(`🎯 Removing face highlight for display number ${displayNumber}`);
+      console.log(`🗑️ REMOVING: Face highlight for display number ${displayNumber}, list index ${faceListIndex}`);
       
       // Remove specific highlight by face list index
       removeFaceHighlightByListIndex(scene, faceListIndex);
+      
+      console.log(`✅ REMOVED: Face highlight cleanup completed for list index ${faceListIndex}`);
     };
     
     const handleRightClickConfirmation = (event: CustomEvent) => {
