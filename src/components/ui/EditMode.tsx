@@ -236,6 +236,37 @@ const EditMode: React.FC<EditModeProps> = ({
       }
     }
   };
+
+  // Listen for right-click face confirmations
+  useEffect(() => {
+    const handleRightClickConfirmation = (event: CustomEvent) => {
+      const { shapeId, faceIndex, confirmed } = event.detail;
+      
+      if (shapeId === editedShape.id && confirmed) {
+        // Find if this face is in our pending selection
+        const faceListIndex = selectedFaces.findIndex((_, idx) => idx + 1 === pendingFaceSelection);
+        
+        if (faceListIndex !== -1) {
+          // Confirm the face selection
+          setSelectedFaces(prev => prev.map((face, idx) => 
+            idx === faceListIndex ? { ...face, confirmed: true } : face
+          ));
+          
+          setPendingFaceSelection(null);
+          setIsFaceEditMode(false);
+          
+          console.log(`🎯 Face confirmed via right-click: Face ${faceListIndex + 1}`);
+        }
+      }
+    };
+    
+    window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
+    
+    return () => {
+      window.removeEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
+    };
+  }, [editedShape.id, selectedFaces, pendingFaceSelection]);
+  
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
