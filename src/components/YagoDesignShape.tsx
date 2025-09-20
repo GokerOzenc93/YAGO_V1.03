@@ -317,9 +317,6 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // Only clear temporary highlights, keep persistent ones
-        clearTemporaryHighlights(scene);
-        
         // Highlight the face with orange color and face number to make it persistent
         const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8, faceIndex + 1);
         
@@ -375,9 +372,6 @@ const YagoDesignShape: React.FC<Props> = ({
           face: { a: 0, b: 1, c: 2 }, // Mock face
           point: new THREE.Vector3()
         };
-        
-        // Only clear temporary highlights, keep persistent ones
-        clearTemporaryHighlights(scene);
         
         // Highlight the face with specified color and face number to make it persistent
         const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index

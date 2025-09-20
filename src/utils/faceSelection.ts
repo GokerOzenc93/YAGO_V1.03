@@ -784,8 +784,6 @@ export const highlightFace = (
     faceNumber?: number,
     faceListIndex?: number // YENİ: Arayüzdeki liste indeksi
 ): FaceHighlight | null => {
-    // Sadece geçici highlight'ları temizle, kalıcı olanlar kalsın
-    clearTemporaryHighlights(scene);
 
     if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;
@@ -810,45 +808,19 @@ export const highlightFace = (
         shapeId: shape.id,
         faceListIndex: faceListIndex,
         faceNumber: faceNumber,
-        isPersistent: faceNumber !== undefined
+        alwaysPersistent: true
     });
     
     currentHighlights.push(newHighlight);
 
-    // YENİ: Highlight'ın kalıcı olup olmadığını işaretle
-    if (faceNumber !== undefined) {
-        (overlay as any).isPersistent = true;
-        console.log(`🔒 Highlight marked as PERSISTENT with face number ${faceNumber}`);
-    } else {
-        (overlay as any).isPersistent = false;
-        console.log(`⏳ Highlight marked as TEMPORARY`);
-    }
+    // TÜM HIGHLIGHT'LAR KALICI
+    (overlay as any).isPersistent = true;
+    console.log(`🔒 All highlights are now PERSISTENT`);
 
     isMultiSelectMode = isMultiSelect;
     return newHighlight;
 };
 // ... (dosyanın geri kalanı)
-
-export const clearTemporaryHighlights = (scene: THREE.Scene) => {
-    const temporaryHighlights = currentHighlights.filter(highlight =>
-        !(highlight.mesh as any).isPersistent
-    );
-
-    temporaryHighlights.forEach(highlight => {
-        if ((highlight.mesh as any).textMesh) {
-            scene.remove((highlight.mesh as any).textMesh);
-            (highlight.mesh as any).textMesh.geometry.dispose();
-            (highlight.mesh as any).textMesh.material.dispose();
-        }
-        scene.remove(highlight.mesh);
-        highlight.mesh.geometry.dispose();
-        (highlight.mesh.material as THREE.Material).dispose();
-    });
-
-    currentHighlights = currentHighlights.filter(highlight =>
-        (highlight.mesh as any).isPersistent
-    );
-};
 
 export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
     currentHighlights.forEach(highlight => {
