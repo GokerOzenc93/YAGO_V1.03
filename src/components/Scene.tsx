@@ -609,14 +609,6 @@ const Scene: React.FC = () => {
       >
         <CameraPositionUpdater />
         <CameraController isAddPanelMode={isAddPanelMode} />
-        
-        {/* Make camera globally accessible for surface selection */}
-        <primitive object={null} ref={(ref) => {
-          if (ref && camera) {
-            (window as any).currentCamera = camera;
-          }
-        }} />
-        
         <Stats className="hidden" />
 
         {cameraType === CameraType.PERSPECTIVE ? (

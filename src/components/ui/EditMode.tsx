@@ -48,7 +48,7 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const MIN_WIDTH_PX = 170;
   const MAX_WIDTH_PX = 453;
-  const [panelWidth, setPanelWidth] = useState(350); // Increased default width
+  const [panelWidth, setPanelWidth] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -311,13 +311,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleClose = () => {
     setActiveMainSection(null);
     setActiveVolumeSubSection(null);
-    
-    // Clear all face highlights when closing edit mode
-    const event = new CustomEvent('clearAllFaceHighlights', {
-      detail: { shapeId: editedShape.id }
-    });
-    window.dispatchEvent(event);
-    
     onExit();
   };
 
@@ -437,12 +430,11 @@ const EditMode: React.FC<EditModeProps> = ({
     if (pendingFaceSelection !== null && pendingFaceSelection > 0) {
       // Update the face at the correct array index (faceIndex is the array index, not display number)
       setSelectedFaces(prev => prev.map((face, idx) => 
-        idx === faceIndex ? { ...face, confirmed: true, persistent: true } : face
+        idx === faceIndex ? { ...face, confirmed: true } : face
       ));
       
       // Display number is array index + 1
       const displayNumber = faceIndex + 1;
-      const faceRole = selectedFaces[faceIndex]?.role || 'Unnamed Face';
       
       // Dispatch event to highlight the face in 3D scene
       const event = new CustomEvent('highlightConfirmedFace', {
@@ -450,10 +442,8 @@ const EditMode: React.FC<EditModeProps> = ({
           shapeId: editedShape.id,
           faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
           faceNumber: displayNumber,
-          faceRole: faceRole,
           color: 0x00ff00, // Green color
-          confirmed: true,
-          persistent: true // Keep highlight visible
+          confirmed: true
         }
       });
       window.dispatchEvent(event);
@@ -466,13 +456,6 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleClearAllFaceSelections = () => {
     setSelectedFaces([]);
-    
-    // Clear all persistent highlights
-    const event = new CustomEvent('clearAllFaceHighlights', {
-      detail: { shapeId: editedShape.id }
-    });
-    window.dispatchEvent(event);
-    
     console.log('🎯 All face selections cleared');
   };
 

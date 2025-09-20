@@ -355,8 +355,8 @@ type RegionResult = {
 };
 
 const QUANT_EPS = 1e-4;  // weld tolerance in world units
-const ANGLE_DEG = 12;     // dihedral angle tolerance (increased from 4 to 8)
-const PLANE_EPS = 5e-2;  // increased plane epsilon for better coplanar detection (50mm tolerance, was 5mm)
+const ANGLE_DEG = 4;     // dihedral angle tolerance
+const PLANE_EPS = 5e-3;  // increased plane epsilon for better coplanar detection (5mm tolerance)
 
 const posKey = (v: THREE.Vector3, eps: number) => {
     const kx = Math.round(v.x / eps);
@@ -453,8 +453,8 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
     mesh.matrixWorld.decompose(pvec, q, svec);
     const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
-    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 3); // further increased scale factor for better tolerance
-    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // increased angle tolerance to 16 degrees total
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 2); // increased scale factor for better tolerance
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // increased angle tolerance to 8 degrees
 
     let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
     const seedW = triToWelded[seedTri];
@@ -511,7 +511,7 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
                 pb.distanceTo(pc),
                 pc.distanceTo(pa)
             );
-            const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.05); // 5% of triangle size (increased from 1%)
+            const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.01); // 1% of triangle size
             
             if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
                 // Additional check: analyze coplanar vertices in the region
