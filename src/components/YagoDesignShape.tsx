@@ -10,9 +10,7 @@ import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
   highlightFace,
-  clearFaceHighlight,
-  removeFaceHighlightByListIndex,
-  clearAllPersistentHighlights
+  clearFaceHighlight
 } from '../utils/faceSelection';
 
 interface Props {
@@ -317,6 +315,9 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
+        // Clear existing highlights first
+        clearFaceHighlight(scene);
+        
         // Highlight the face with orange color and face number to make it persistent
         const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8, faceIndex + 1);
         
@@ -351,19 +352,17 @@ const YagoDesignShape: React.FC<Props> = ({
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
     if (!isFaceEditMode) {
-      // Don't clear any highlights when exiting face edit mode
-      // Keep all persistent highlights intact
-      console.log('🎯 Face edit mode exited - keeping all persistent highlights');
+      clearFaceHighlight(scene);
     }
   }, [isFaceEditMode, scene]);
   
   // Listen for confirmed face highlight events
   useEffect(() => {
     const handleConfirmedFaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, faceNumber, color, confirmed, faceListIndex } = event.detail;
+      const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
-        console.log(`🎯 HIGHLIGHTING confirmed face ${faceIndex} with number ${faceNumber}, linking to list index ${faceListIndex}`);
+        console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
         
         // Create a mock hit object for the face
         const mockHit = {
@@ -373,11 +372,14 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // CRITICAL: Highlight the face with specified color, face number AND faceListIndex for proper linking
+        // Clear existing highlights first
+        clearFaceHighlight(scene);
+        
+        // Highlight the face with specified color and face number to make it persistent
         const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index
         
         if (highlight) {
-          console.log(`✅ CRITICAL SUCCESS: Confirmed face ${faceIndex} highlighted with number ${faceNumber} and LINKED to list index ${faceListIndex}`);
+          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
         } else {
           console.warn(`❌ Failed to highlight face ${faceIndex}`);
         }
@@ -385,42 +387,12 @@ const YagoDesignShape: React.FC<Props> = ({
     };
     
     const handleRemoveFaceHighlight = (event: CustomEvent) => {
-      const { faceListIndex, displayNumber, shapeId } = event.detail;
+      const { faceListIndex, displayNumber } = event.detail;
       
-      // Only process if this is for our shape
-      if (shapeId && shapeId !== shape.id) {
-        console.log(`🗑️ SKIPPING: Event not for this shape (${shape.id} vs ${shapeId})`);
-        return;
-      }
-      
-      console.log(`🗑️ 3D REMOVAL EVENT: Received removal request for display number ${displayNumber}, list index ${faceListIndex}, shape ${shape.id}`);
+      console.log(`🎯 Removing face highlight for display number ${displayNumber}`);
       
       // Remove specific highlight by face list index
       removeFaceHighlightByListIndex(scene, faceListIndex);
-      
-      console.log(`✅ 3D REMOVAL COMPLETE: Face highlight cleanup completed for list index ${faceListIndex}, shape ${shape.id}`);
-    };
-    
-    const handleRightClickConfirmation = (event: CustomEvent) => {
-      const { shapeId, faceIndex, confirmed } = event.detail;
-      
-      if (shapeId === shape.id && confirmed) {
-        console.log(`🎯 Right-click confirmation received for face ${faceIndex}`);
-        
-        // Find the next available face list index (first unconfirmed face)
-        const editMode = document.querySelector('[data-edit-mode="true"]');
-        if (editMode) {
-          // Dispatch event to EditMode to handle the confirmation
-          const confirmEvent = new CustomEvent('rightClickFaceConfirmation', {
-            detail: {
-              shapeId: shapeId,
-              faceIndex: faceIndex,
-              confirmed: true
-            }
-          });
-          window.dispatchEvent(confirmEvent);
-        }
-      }
     };
     
     const handleClearAllFaceHighlights = () => {
@@ -430,13 +402,11 @@ const YagoDesignShape: React.FC<Props> = ({
     
     window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
     window.addEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
-    window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
     window.addEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     
     return () => {
       window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
       window.removeEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
-      window.removeEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
       window.removeEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     };
   }, [scene, shape.id, shape]);
