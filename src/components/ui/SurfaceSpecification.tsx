@@ -17,6 +17,8 @@ interface SurfaceSpecificationProps {
   onConfirmFaceSelection: (faceIndex: number) => void;
   onClearAllFaceSelections: () => void;
   pendingFaceSelection: number | null;
+  editedShape: any; // Shape being edited
+  onAutoDetectSurfaces: () => void;
 }
 
 const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
@@ -29,6 +31,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onConfirmFaceSelection,
   onClearAllFaceSelections,
   pendingFaceSelection
+  editedShape,
+  onAutoDetectSurfaces
 }) => {
   return (
     <div className="flex-1 flex flex-col">
@@ -49,8 +53,17 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       {/* Surface Content */}
       <div className="flex-1 p-4 space-y-4">
         <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">Add new face row:</span>
+        
+        {/* Auto-detect and Manual Add buttons */}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={onAutoDetectSurfaces}
+            className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
+            title="Auto-detect All Surfaces"
+          >
+            <Target size={14} />
+            <span className="text-sm font-medium">Auto-Detect</span>
+          </button>
           <button
             onClick={onAddNewFace}
             className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1"
