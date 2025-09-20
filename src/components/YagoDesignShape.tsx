@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
@@ -51,6 +51,22 @@ const YagoDesignShape: React.FC<Props> = ({
     hits: THREE.Intersection[];
     index: number;
   } | null>(null);
+
+  // Debug: Add normal vectors visualization for troubleshooting (can be enabled when needed)
+  const [showNormals, setShowNormals] = useState(false);
+  
+  useEffect(() => {
+    if (showNormals && meshRef.current && scene) {
+      const helper = new THREE.VertexNormalsHelper(meshRef.current, 10, 0xff0000);
+      scene.add(helper);
+      console.log('🔍 Normal vectors visualization enabled for debugging face selection');
+
+      return () => {
+        scene.remove(helper);
+        helper.dispose();
+      };
+    }
+  }, [showNormals, shape.geometry, scene]);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
