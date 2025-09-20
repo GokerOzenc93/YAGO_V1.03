@@ -472,11 +472,11 @@ const EditMode: React.FC<EditModeProps> = ({
       // Add to confirmed faces set
       setConfirmedFaces(prev => new Set(prev).add(displayNumber));
       
-      // Dispatch event to highlight the face in 3D scene
+      // Dispatch event to highlight the face in 3D scene with the ACTUAL face index
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
           shapeId: editedShape.id,
-          faceIndex: pendingFaceSelection - 1, // Use the actual pending face selection index
+          faceIndex: pendingFaceSelection - 1, // Convert to 0-based index for geometry
           faceNumber: displayNumber,
           color: 0xff6b35, // Orange color
           confirmed: true
