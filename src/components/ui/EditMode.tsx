@@ -58,6 +58,7 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
+  const [confirmedFaces, setConfirmedFaces] = useState<Set<number>>(new Set());
   
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
