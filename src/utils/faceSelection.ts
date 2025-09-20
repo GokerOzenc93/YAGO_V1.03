@@ -2,6 +2,36 @@ import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
 (THREE.Mesh as any).prototype.raycast = acceleratedRaycast;
 
+/**
+ * Detect face at mouse position using raycasting
+ */
+export const detectFaceAtMouse = (
+  mouseEvent: MouseEvent,
+  camera: THREE.Camera,
+  mesh: THREE.Mesh,
+  domElement: HTMLElement
+): THREE.Intersection[] => {
+  // Get mouse position in normalized device coordinates (-1 to +1)
+  const rect = domElement.getBoundingClientRect();
+  const mouse = new THREE.Vector2();
+  mouse.x = ((mouseEvent.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((mouseEvent.clientY - rect.top) / rect.height) * 2 + 1;
+
+  // Create raycaster
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+
+  // Perform raycast against the specific mesh
+  const intersects = raycaster.intersectObject(mesh, false);
+  
+  // Filter intersects to only include those with face information
+  const validIntersects = intersects.filter(hit => 
+    hit.face && hit.faceIndex !== undefined
+  );
+
+  return validIntersects;
+};
+
 // --- Shape Interface and Flood-Fill Face Utility Functions ---
 
 interface Shape {
