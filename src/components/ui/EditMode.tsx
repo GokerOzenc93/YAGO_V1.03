@@ -473,32 +473,8 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const handleConfirmFaceSelection = (faceIndex: number) => {
-    if (pendingFaceSelection !== null && pendingFaceSelection > 0) {
-      // Update the face at the correct array index (faceIndex is the array index, not display number)
-      setSelectedFaces(prev => prev.map((face, idx) => 
-        idx === faceIndex ? { ...face, confirmed: true } : face
-      ));
-      
-      // Display number is array index + 1
-      const displayNumber = faceIndex + 1;
-      
-      // Dispatch event to highlight the face in 3D scene
-      const event = new CustomEvent('highlightConfirmedFace', {
-        detail: {
-          shapeId: editedShape.id,
-          faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
-          faceNumber: displayNumber,
-          color: 0xff6b35, // Orange color
-          confirmed: true,
-          faceListIndex: faceIndex // Pass the face list index for tracking
-        }
-      });
-      window.dispatchEvent(event);
-      
-      setPendingFaceSelection(null);
-      setIsFaceEditMode(false);
-      console.log(`🎯 Face confirmed with display number ${displayNumber}`);
-    }
+    // This function is no longer used - confirmation only via right-click
+    console.log('🎯 Face confirmation only available via right-click on 3D surface');
   };
 
   const handleClearAllFaceSelections = () => {

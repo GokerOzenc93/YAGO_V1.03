@@ -91,10 +91,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
               {selectedFaces.map((face, index) => (
                 <div key={index} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded text-sm">
                   <div className="flex items-center gap-2">
-                    {/* Status indicator */}
-                    <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     <span className="text-xs font-mono text-slate-600">
-                      {face.confirmed ? '✓' : ''} Face {index + 1}
+                      Face {index + 1}
                     </span>
                   </div>
                   <select
