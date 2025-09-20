@@ -355,7 +355,7 @@ type RegionResult = {
 };
 
 const QUANT_EPS = 1e-4;  // weld tolerance in world units
-const ANGLE_DEG = 8;     // dihedral angle tolerance (increased from 4 to 8)
+const ANGLE_DEG = 12;     // dihedral angle tolerance (increased from 4 to 8)
 const PLANE_EPS = 5e-2;  // increased plane epsilon for better coplanar detection (50mm tolerance, was 5mm)
 
 const posKey = (v: THREE.Vector3, eps: number) => {
