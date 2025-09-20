@@ -442,7 +442,7 @@ const EditMode: React.FC<EditModeProps> = ({
           shapeId: editedShape.id,
           faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
           faceNumber: displayNumber,
-          color: 0x00ff00, // Green color
+          color: 0xff6b35, // Orange color
           confirmed: true
         }
       });

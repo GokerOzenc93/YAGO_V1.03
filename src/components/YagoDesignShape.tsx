@@ -296,7 +296,7 @@ const YagoDesignShape: React.FC<Props> = ({
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       
-      // Add face to list on right click in face edit mode
+      // Right-click confirmation in face edit mode
       const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -305,11 +305,34 @@ const YagoDesignShape: React.FC<Props> = ({
       );
 
       if (hits.length > 0 && hits[0].faceIndex !== undefined) {
-        // Add face to list via right-click
         const faceIndex = hits[0].faceIndex;
-        if (onFaceSelect) {
-          onFaceSelect(faceIndex);
-          console.log(`🎯 Face ${faceIndex} added to list via right-click`);
+        
+        // Create a mock hit object for the face
+        const mockHit = {
+          faceIndex: faceIndex,
+          object: meshRef.current,
+          face: { a: 0, b: 1, c: 2 }, // Mock face
+          point: new THREE.Vector3()
+        };
+        
+        // Clear existing highlights first
+        clearFaceHighlight(scene);
+        
+        // Highlight the face with orange color and make it persistent
+        const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8);
+        
+        if (highlight) {
+          console.log(`🎯 Face ${faceIndex} confirmed and made persistent via right-click`);
+          
+          // Dispatch event to confirm the face selection
+          const event = new CustomEvent('confirmFaceSelection', {
+            detail: {
+              shapeId: shape.id,
+              faceIndex: faceIndex,
+              confirmed: true
+            }
+          });
+          window.dispatchEvent(event);
         }
       }
       return;

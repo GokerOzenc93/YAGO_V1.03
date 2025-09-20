@@ -78,16 +78,16 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   <select
                     value={face.role}
                     onChange={(e) => onUpdateFaceRole(index, e.target.value)}
-                    className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1"
+                    className="flex-1 text-sm font-medium bg-white border border-gray-300 rounded px-2 py-1 text-slate-800"
                   >
-                    <option value="">Select Role</option>
-                    <option value="left">Left Face</option>
-                    <option value="right">Right Face</option>
-                    <option value="top">Top Face</option>
-                    <option value="bottom">Bottom Face</option>
-                    <option value="front">Front Face</option>
-                    <option value="back">Back Face</option>
-                    <option value="door">Door Face</option>
+                    <option value="" className="text-slate-600">Select Role</option>
+                    <option value="left" className="text-slate-800 font-medium">Left Face</option>
+                    <option value="right" className="text-slate-800 font-medium">Right Face</option>
+                    <option value="top" className="text-slate-800 font-medium">Top Face</option>
+                    <option value="bottom" className="text-slate-800 font-medium">Bottom Face</option>
+                    <option value="front" className="text-slate-800 font-medium">Front Face</option>
+                    <option value="back" className="text-slate-800 font-medium">Back Face</option>
+                    <option value="door" className="text-slate-800 font-medium">Door Face</option>
                   </select>
                   <button
                     onClick={() => onFaceSelectionMode(index + 1)}
