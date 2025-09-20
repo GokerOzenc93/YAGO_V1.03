@@ -12,7 +12,7 @@ import {
   highlightFace,
   clearFaceHighlight,
   removeFaceHighlightByListIndex,
-  clearTemporaryHighlights
+  clearAllPersistentHighlights
 } from '../utils/faceSelection';
 
 interface Props {
