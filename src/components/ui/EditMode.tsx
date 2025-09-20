@@ -237,23 +237,6 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
-  // Add data attribute for EditMode identification
-  return (
-    <div
-      ref={panelRef}
-      data-edit-mode="true"
-      className={`fixed left-0 z-50 bg-white backdrop-blur-sm border-r border-gray-200 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
-      style={{
-        top: panelTop,
-        height: panelHeight,
-        width: isCollapsed ? '4px' : `${panelWidth}px`,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onSelectStart={(e) => e.preventDefault()}
-      onDragStart={(e) => e.preventDefault()}
-    >
-
   // Listen for right-click face confirmations
   useEffect(() => {
     const handleRightClickFaceConfirmation = (event: CustomEvent) => {
@@ -523,9 +506,11 @@ const EditMode: React.FC<EditModeProps> = ({
     console.log('🎯 All face selections cleared');
   };
 
+  // Add data attribute for EditMode identification
   return (
     <div
       ref={panelRef}
+      data-edit-mode="true"
       className={`fixed left-0 z-50 bg-white backdrop-blur-sm border-r border-gray-200 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
       style={{
         top: panelTop,
