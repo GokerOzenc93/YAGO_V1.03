@@ -476,7 +476,7 @@ const EditMode: React.FC<EditModeProps> = ({
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
           shapeId: editedShape.id,
-          faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
+          faceIndex: pendingFaceSelection - 1, // Use the actual pending face selection index
           faceNumber: displayNumber,
           color: 0xff6b35, // Orange color
           confirmed: true
