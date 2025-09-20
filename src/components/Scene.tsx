@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import { createPortal } from 'react-dom';
 
 const CameraPositionUpdater = () => {
-  const { camera } = useThree();
+  const { camera, scene } = useThree();
   const { setCameraPosition } = useAppStore();
 
   useEffect(() => {
@@ -33,6 +33,9 @@ const CameraPositionUpdater = () => {
         camera.position.z,
       ]);
     };
+
+    // Make camera globally accessible for surface selection
+    (window as any).currentCamera = camera;
 
     // Update position initially
     updatePosition();
@@ -609,13 +612,6 @@ const Scene: React.FC = () => {
       >
         <CameraPositionUpdater />
         <CameraController isAddPanelMode={isAddPanelMode} />
-        
-        {/* Make camera globally accessible for surface selection */}
-        <primitive object={null} ref={(ref) => {
-          if (ref && camera) {
-            (window as any).currentCamera = camera;
-          }
-        }} />
         
         <Stats className="hidden" />
 
