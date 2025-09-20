@@ -38,6 +38,21 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     onClearAllFaceSelections();
   };
 
+  const handleRemoveFace = (faceListIndex: number) => {
+    // Dispatch event to remove highlight from 3D scene
+    const event = new CustomEvent('removeFaceHighlight', {
+      detail: {
+        faceListIndex: faceListIndex,
+        displayNumber: faceListIndex + 1
+      }
+    });
+    window.dispatchEvent(event);
+    
+    // Remove from list
+    onRemoveFaceFromList(faceListIndex);
+    
+    console.log(`🎯 Face ${faceListIndex + 1} removed from both list and scene`);
+  };
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -117,6 +132,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   )}
                   <button
                     onClick={() => onRemoveFaceFromList(index)}
+                    onClick={() => handleRemoveFace(index)}
                     className="text-red-500 hover:text-red-700 p-0.5"
                     title="Remove Face"
                   >
