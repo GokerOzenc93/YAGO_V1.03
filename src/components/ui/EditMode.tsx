@@ -464,7 +464,7 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const removeFaceFromList = (faceListIndex: number) => {
-    console.log(`🗑️ PARENT REMOVAL: Starting face removal for list index ${faceListIndex}`);
+    console.log(`🗑️ PARENT REMOVAL START: Starting face removal for list index ${faceListIndex}`);
     
     // Dispatch event to remove highlight from 3D scene BEFORE removing from list
     const event = new CustomEvent('removeFaceHighlight', {
@@ -475,10 +475,15 @@ const EditMode: React.FC<EditModeProps> = ({
     });
     window.dispatchEvent(event);
     
-    console.log(`📡 PARENT EVENT: removeFaceHighlight dispatched for index ${faceListIndex}`);
+    console.log(`📡 PARENT EVENT DISPATCHED: removeFaceHighlight for index ${faceListIndex}`);
+    
+    // Small delay to ensure 3D cleanup completes first
+    setTimeout(() => {
+      console.log(`🗑️ PARENT STATE UPDATE: Removing face ${faceListIndex + 1} from state`);
+    }, 10);
     
     setSelectedFaces(prev => prev.filter((_, index) => index !== faceListIndex));
-    console.log(`✅ PARENT COMPLETE: Face ${faceListIndex + 1} removed from state and 3D highlight cleared`);
+    console.log(`✅ PARENT REMOVAL COMPLETE: Face ${faceListIndex + 1} removed from state`);
   };
 
   const addFaceToList = (faceIndex: number) => {

@@ -334,16 +334,30 @@ export const createFaceHighlight = (
 
 // YENİ FONKSİYON: Liste index'ine göre highlight'ı sil
 export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex: number) => {
+    console.log(`🗑️ REMOVAL START: Attempting to remove highlight for list index ${faceListIndex}`);
+    console.log(`🗑️ Current highlights count: ${currentHighlights.length}`);
+    
     const indicesToRemove: number[] = [];
     currentHighlights.forEach((highlight, index) => {
+        console.log(`🔍 Checking highlight ${index}: faceListIndex=${highlight.faceListIndex}, shapeId=${highlight.shapeId}`);
         if (highlight.faceListIndex === faceListIndex) {
             indicesToRemove.push(index);
+            console.log(`✅ Found matching highlight at index ${index} for list index ${faceListIndex}`);
         }
     });
 
+    console.log(`🎯 Indices to remove: [${indicesToRemove.join(', ')}]`);
+    
     indicesToRemove.reverse().forEach(index => {
         const highlight = currentHighlights[index];
+        console.log(`🗑️ Removing highlight at index ${index}:`, {
+            faceIndex: highlight.faceIndex,
+            shapeId: highlight.shapeId,
+            faceListIndex: highlight.faceListIndex
+        });
+        
         if ((highlight.mesh as any).textMesh) {
+            console.log(`🗑️ Removing text mesh for highlight ${index}`);
             scene.remove((highlight.mesh as any).textMesh);
             (highlight.mesh as any).textMesh.geometry.dispose();
             (highlight.mesh as any).textMesh.material.dispose();
@@ -352,10 +366,21 @@ export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
         currentHighlights.splice(index, 1);
+        console.log(`✅ Successfully removed highlight at index ${index}`);
     });
 
+    console.log(`🗑️ REMOVAL COMPLETE: Removed ${indicesToRemove.length} highlights`);
+    console.log(`🗑️ Remaining highlights count: ${currentHighlights.length}`);
+    
     if (indicesToRemove.length > 0) {
-        console.log(`🗑️ Highlight for list index ${faceListIndex} removed.`);
+        console.log(`✅ SUCCESS: Highlight for list index ${faceListIndex} removed successfully`);
+    } else {
+        console.warn(`⚠️ WARNING: No highlight found for list index ${faceListIndex}`);
+        console.log(`🔍 Available highlights:`, currentHighlights.map(h => ({
+            faceListIndex: h.faceListIndex,
+            shapeId: h.shapeId,
+            faceIndex: h.faceIndex
+        })));
     }
 };
 
@@ -779,13 +804,24 @@ export const highlightFace = (
         shapeId: shape.id,
         faceListIndex: faceListIndex // YENİ: Liste indeksini highlight objesine ekle
     };
+    
+    console.log(`🎨 NEW HIGHLIGHT CREATED:`, {
+        faceIndex: hit.faceIndex,
+        shapeId: shape.id,
+        faceListIndex: faceListIndex,
+        faceNumber: faceNumber,
+        isPersistent: faceNumber !== undefined
+    });
+    
     currentHighlights.push(newHighlight);
 
     // YENİ: Highlight'ın kalıcı olup olmadığını işaretle
     if (faceNumber !== undefined) {
         (overlay as any).isPersistent = true;
+        console.log(`🔒 Highlight marked as PERSISTENT with face number ${faceNumber}`);
     } else {
         (overlay as any).isPersistent = false;
+        console.log(`⏳ Highlight marked as TEMPORARY`);
     }
 
     isMultiSelectMode = isMultiSelect;

@@ -42,6 +42,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   };
 
   const handleRemoveFace = (faceListIndex: number) => {
+    console.log(`🗑️ UI REMOVAL: Starting removal process for face list index ${faceListIndex}`);
+    
     console.log(`🗑️ REMOVING ROW: Starting removal process for face list index ${faceListIndex}`);
     
     // Dispatch event to remove highlight from 3D scene
@@ -53,12 +55,12 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     });
     window.dispatchEvent(event);
     
-    console.log(`📡 EVENT DISPATCHED: removeFaceHighlight for index ${faceListIndex}`);
+    console.log(`📡 UI EVENT DISPATCHED: removeFaceHighlight for index ${faceListIndex}`);
     
     // Remove from list
     onRemoveFaceFromList(faceListIndex);
     
-    console.log(`✅ COMPLETE: Face ${faceListIndex + 1} removed from both UI list and 3D scene`);
+    console.log(`✅ UI COMPLETE: Face ${faceListIndex + 1} removed from UI list`);
   };
   return (
     <div className="flex-1 flex flex-col">

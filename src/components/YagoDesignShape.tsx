@@ -383,7 +383,7 @@ const YagoDesignShape: React.FC<Props> = ({
         const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index
         
         if (highlight) {
-          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
+          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} and linked to list index ${faceListIndex}`);
         } else {
           console.warn(`❌ Failed to highlight face ${faceIndex}`);
         }
@@ -393,12 +393,12 @@ const YagoDesignShape: React.FC<Props> = ({
     const handleRemoveFaceHighlight = (event: CustomEvent) => {
       const { faceListIndex, displayNumber } = event.detail;
       
-      console.log(`🗑️ REMOVING: Face highlight for display number ${displayNumber}, list index ${faceListIndex}`);
+      console.log(`🗑️3D REMOVAL EVENT: Received removal request for display number ${displayNumber}, list index ${faceListIndex}`);
       
       // Remove specific highlight by face list index
       removeFaceHighlightByListIndex(scene, faceListIndex);
       
-      console.log(`✅ REMOVED: Face highlight cleanup completed for list index ${faceListIndex}`);
+      console.log(`✅ 3D REMOVAL COMPLETE: Face highlight cleanup completed for list index ${faceListIndex}`);
     };
     
     const handleRightClickConfirmation = (event: CustomEvent) => {
