@@ -318,8 +318,8 @@ const YagoDesignShape: React.FC<Props> = ({
         // Clear existing highlights first
         clearFaceHighlight(scene);
         
-        // Highlight the face with orange color and make it persistent
-        const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8);
+        // Highlight the face with orange color and face number to make it persistent
+        const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8, faceIndex + 1);
         
         if (highlight) {
           console.log(`🎯 Face ${faceIndex} confirmed and made persistent via right-click`);
@@ -375,8 +375,8 @@ const YagoDesignShape: React.FC<Props> = ({
         // Clear existing highlights first
         clearFaceHighlight(scene);
         
-        // Highlight the face with green color and face number
-        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.8, faceNumber);
+        // Highlight the face with specified color and face number to make it persistent
+        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.9, faceNumber);
         
         if (highlight) {
           console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);

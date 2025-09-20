@@ -303,7 +303,12 @@ export const createFaceHighlight = (
  * Mevcut highlight'ı temizle
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
-    currentHighlights.forEach(highlight => {
+    // Only clear non-persistent highlights (those without face numbers)
+    const highlightsToRemove = currentHighlights.filter(highlight => 
+        !(highlight.mesh as any).isPersistent
+    );
+    
+    highlightsToRemove.forEach(highlight => {
         // Remove text mesh if exists
         if ((highlight.mesh as any).textMesh) {
             scene.remove((highlight.mesh as any).textMesh);
@@ -314,9 +319,14 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
     });
-    currentHighlights = [];
+    
+    // Keep only persistent highlights
+    currentHighlights = currentHighlights.filter(highlight => 
+        (highlight.mesh as any).isPersistent
+    );
+    
     isMultiSelectMode = false;
-    console.log('🎯 All face highlights cleared');
+    console.log(`🎯 Cleared ${highlightsToRemove.length} temporary highlights, kept ${currentHighlights.length} persistent highlights`);
 };
 
 /**
@@ -771,6 +781,16 @@ export const highlightFace = (
     
     const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     currentHighlights.push(newHighlight);
+    
+    // Mark as persistent if it has a face number (confirmed face)
+    if (faceNumber !== undefined) {
+        (overlay as any).isPersistent = true;
+        console.log(`🎯 Face ${hit.faceIndex} marked as PERSISTENT with number ${faceNumber}`);
+    } else {
+        (overlay as any).isPersistent = false;
+        console.log(`🎯 Face ${hit.faceIndex} marked as TEMPORARY`);
+    }
+    
     isMultiSelectMode = isMultiSelect;
     return newHighlight;
 };
