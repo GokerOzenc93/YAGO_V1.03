@@ -670,6 +670,10 @@ const buildFaceOverlayFromHit = (
     
     // Add face number text if provided
     if (faceNumber !== undefined) {
+        // Use lighter orange for confirmed faces
+        const lightOrange = 0xffb366; // Light orange color
+        mat.color.setHex(lightOrange);
+        
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (context) {

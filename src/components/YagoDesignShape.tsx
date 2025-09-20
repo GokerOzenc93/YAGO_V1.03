@@ -376,7 +376,7 @@ const YagoDesignShape: React.FC<Props> = ({
         clearFaceHighlight(scene);
         
         // Highlight the face with specified color and face number to make it persistent
-        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.9, faceNumber);
+        const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber); // Light orange color
         
         if (highlight) {
           console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
