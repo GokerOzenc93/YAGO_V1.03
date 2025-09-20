@@ -1,5 +1,12 @@
 import React from 'react';
 import { ChevronLeft, MousePointer, Plus, Target, Check, X } from 'lucide-react';
+import { 
+  initializeSurfaceSelection, 
+  setSurfaceSelectionMode, 
+  clearAllSelections,
+  getActiveSelections,
+  SurfaceSelection 
+} from '../../utils/surfaceSelection';
 
 interface Face {
   index: number;
@@ -30,6 +37,63 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onClearAllFaceSelections,
   pendingFaceSelection
 }) => {
+  const [surfaceSelections, setSurfaceSelections] = React.useState<SurfaceSelection[]>([]);
+  const [isSelectionActive, setIsSelectionActive] = React.useState(false);
+  const cleanupRef = React.useRef<(() => void) | null>(null);
+
+  // Initialize surface selection system
+  React.useEffect(() => {
+    const canvas = document.querySelector('canvas');
+    const scene = (window as any).currentScene;
+    const camera = (window as any).currentCamera;
+    
+    if (canvas && scene && camera) {
+      const cleanup = initializeSurfaceSelection(scene, camera, canvas, {
+        onSurfaceSelected: (selection) => {
+          console.log('🎯 Surface selected:', selection.id);
+        },
+        onSurfacePersisted: (selection) => {
+          console.log('🎯 Surface persisted:', selection.id);
+          setSurfaceSelections(getActiveSelections());
+        },
+        defaultColor: 0xff6b35, // Orange color
+        enableLabels: true
+      });
+      
+      cleanupRef.current = cleanup;
+    }
+    
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
+  }, []);
+
+  const handleToggleSelection = () => {
+    const newState = !isSelectionActive;
+    setIsSelectionActive(newState);
+    setSurfaceSelectionMode(newState);
+    
+    if (newState) {
+      console.log('🎯 Surface selection mode ACTIVATED');
+      console.log('📋 Instructions:');
+      console.log('   • Left-click: Highlight orange surface');
+      console.log('   • Right-click: Persist highlighted surface');
+    } else {
+      console.log('🎯 Surface selection mode DEACTIVATED');
+    }
+  };
+
+  const handleClearAllSurfaces = () => {
+    const scene = (window as any).currentScene;
+    if (scene) {
+      clearAllSelections(scene);
+      setSurfaceSelections([]);
+      console.log('🎯 All surface selections cleared');
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -48,6 +112,61 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
 
       {/* Surface Content */}
       <div className="flex-1 p-4 space-y-4">
+        {/* Surface Selection Controls */}
+        <div className="bg-white rounded-lg border border-stone-200 p-4">
+          <h4 className="font-medium text-slate-800 mb-3">Surface Selection System</h4>
+          
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm text-slate-600">Primary surface selection:</span>
+            <button
+              onClick={handleToggleSelection}
+              className={`px-4 py-2 rounded font-medium transition-colors ${
+                isSelectionActive
+                  ? 'bg-orange-600 text-white hover:bg-orange-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {isSelectionActive ? 'Selection Active' : 'Activate Selection'}
+            </button>
+          </div>
+          
+          {isSelectionActive && (
+            <div className="bg-orange-50 border border-orange-200 rounded p-3 mb-3">
+              <p className="text-sm text-orange-800 font-medium mb-2">Selection Mode Active:</p>
+              <ul className="text-xs text-orange-700 space-y-1">
+                <li>• <strong>Left-click</strong> on orange surface to highlight</li>
+                <li>• <strong>Right-click</strong> on highlighted surface to persist</li>
+                <li>• Selected surfaces remain visible with labels</li>
+              </ul>
+            </div>
+          )}
+          
+          {surfaceSelections.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">
+                  Active Selections ({surfaceSelections.length})
+                </span>
+                <button
+                  onClick={handleClearAllSurfaces}
+                  className="text-xs text-red-600 hover:text-red-800"
+                >
+                  Clear All
+                </button>
+              </div>
+              
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {surfaceSelections.map((selection, index) => (
+                  <div key={selection.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+                    <span className="font-mono">Surface {index + 1}</span>
+                    <span className="text-gray-500">{selection.surfaceVertices.length} vertices</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-600">Add new face row:</span>
