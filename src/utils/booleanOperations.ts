@@ -19,7 +19,7 @@ export function cleanCSGGeometry(geom, tolerance = 1e-2) { // Tolerance increase
     return geom;
   }
 
-  console.log(`🎯 Starting CSG geometry cleanup with tolerance: ${tolerance}`);
+  console.log(`🎯 Starting CSG geometry cleanup with enhanced tolerance: ${tolerance} (improved for face selection)`);
   const originalVertexCount = geom.attributes.position.count;
   const originalTriangleCount = geom.index ? geom.index.count / 3 : originalVertexCount / 3;
 
@@ -276,7 +276,7 @@ export const performBooleanSubtract = (
       
       // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
       console.log('🎯 Applying robust CSG cleanup to subtraction result...');
-      newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+      newGeom = cleanCSGGeometry(newGeom, 0.1); // Yüksek tolerans değeri ile daha iyi kaynaklama (increased from 0.05)
       
       // Dispose old geometry
       try { 
@@ -368,7 +368,7 @@ export const performBooleanUnion = (
     
     // 🎯 ROBUST CSG CLEANUP - Advanced geometry cleaning
     console.log('🎯 Applying robust CSG cleanup to union result...');
-    newGeom = cleanCSGGeometry(newGeom, 0.05); // Yüksek tolerans değeri ile daha iyi kaynaklama
+    newGeom = cleanCSGGeometry(newGeom, 0.1); // Yüksek tolerans değeri ile daha iyi kaynaklama (increased from 0.05)
     
     // Dispose old geometry
     try { 
