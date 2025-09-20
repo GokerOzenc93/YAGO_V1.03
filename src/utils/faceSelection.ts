@@ -736,7 +736,8 @@ export const highlightFace = (
     opacity: number = 0.6,
     faceNumber?: number
 ): FaceHighlight | null => {
-    if (!isMultiSelect) {
+    // Only clear highlights if it's NOT a confirmed face (faceNumber indicates confirmed face)
+    if (!isMultiSelect && !faceNumber) {
         clearFaceHighlight(scene);
     }
     
@@ -761,13 +762,13 @@ export const highlightFace = (
         }
     }
 
-    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
+    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}${faceNumber ? ` (confirmed face ${faceNumber})` : ''}`);
     
     // Build a SINGLE overlay mesh for the entire planar region with face number
     const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
     if (!overlay) return null;
 
-    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
+    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected${faceNumber ? ` with number ${faceNumber}` : ''}`);
     
     const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     currentHighlights.push(newHighlight);
