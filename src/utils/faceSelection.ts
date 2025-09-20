@@ -596,7 +596,7 @@ const buildFaceOverlayFromHit = (
     seedTri: number,
     color: number,
     opacity: number,
-    faceText?: string
+    faceNumber?: number
 ): THREE.Mesh | null => {
     const res = growRegion(mesh, seedTri);
     if (res.boundaryLoops.length === 0) return null;
@@ -658,28 +658,31 @@ const buildFaceOverlayFromHit = (
     const overlay = new THREE.Mesh(g, mat);
     overlay.renderOrder = 999;
     
-    // Add face text if provided
-    if (faceText) {
+    // Add face number text if provided
+    if (faceNumber !== undefined) {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (context) {
-            canvas.width = 256;
-            canvas.height = 128;
+            canvas.width = 128;
+            canvas.height = 64;
             
             // Clear canvas
             context.clearRect(0, 0, canvas.width, canvas.height);
             
             // Set text properties
-            context.font = 'bold 24px Arial';
+            context.font = 'bold 32px Arial';
             context.fillStyle = '#ffffff';
-            context.strokeStyle = '#000000';
-            context.lineWidth = 3;
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             
-            // Draw text with outline
-            context.strokeText(faceText, canvas.width / 2, canvas.height / 2);
-            context.fillText(faceText, canvas.width / 2, canvas.height / 2);
+            // Add text shadow for better visibility
+            context.shadowColor = '#000000';
+            context.shadowBlur = 4;
+            context.shadowOffsetX = 2;
+            context.shadowOffsetY = 2;
+            
+            // Draw face number
+            context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
             
             // Create texture from canvas
             const texture = new THREE.CanvasTexture(canvas);
@@ -694,12 +697,12 @@ const buildFaceOverlayFromHit = (
             });
             
             // Create text plane geometry
-            const textGeometry = new THREE.PlaneGeometry(150, 75);
+            const textGeometry = new THREE.PlaneGeometry(100, 50);
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
             
             // Position text at surface center, slightly above
-            textMesh.position.copy(surfaceCenter).addScaledVector(n, 5);
-            textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 50));
+            textMesh.position.copy(surfaceCenter).addScaledVector(n, 2);
+            textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 100));
             textMesh.renderOrder = 1000;
             
             scene.add(textMesh);
@@ -731,7 +734,7 @@ export const highlightFace = (
     isMultiSelect: boolean = false,
     color: number = 0xff6b35,
     opacity: number = 0.6,
-    faceText?: string
+    faceNumber?: number
 ): FaceHighlight | null => {
     if (!isMultiSelect) {
         clearFaceHighlight(scene);
@@ -760,8 +763,8 @@ export const highlightFace = (
 
     console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
-    // Build a SINGLE overlay mesh for the entire planar region with face text
-    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceText);
+    // Build a SINGLE overlay mesh for the entire planar region with face number
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
     if (!overlay) return null;
 
     console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
