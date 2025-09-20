@@ -47,86 +47,91 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       </div>
 
       {/* Surface Content */}
-      <div className="flex-1 p-4 space-y-4">
-        <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">Add new face row:</span>
-          <button
-            onClick={onAddNewFace}
-            className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1"
-            title="Add New Face Row"
-          >
-            <Plus size={14} />
-            <span className="text-sm font-medium">Add Row</span>
-          </button>
-        </div>
+      <div className="flex-1 p-4">
 
         {/* Face Index List with Roles */}
-        {selectedFaces.length > 0 && (
-          <div className="bg-white rounded-lg border border-stone-200 p-4">
-            <h4 className="font-medium text-slate-800 mb-3">Selected Faces</h4>
-            <div className="space-y-2">
+        <div className="bg-white rounded-lg border border-stone-200 p-3">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-medium text-slate-800">Selected Faces</h4>
+            <button
+              onClick={onAddNewFace}
+              className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              title="Add New Face Row"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+          
+          {selectedFaces.length > 0 ? (
+            <div className="space-y-1">
               {selectedFaces.map((face, index) => (
-                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                <div key={index} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded text-sm">
                   <div className="flex items-center gap-2">
                     {/* Status indicator */}
                     <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                    <span className="text-sm font-mono text-slate-600">
+                    <span className="text-xs font-mono text-slate-600">
                       {face.confirmed ? '✓' : ''} Face {index + 1}
                     </span>
                   </div>
                   <select
                     value={face.role}
                     onChange={(e) => onUpdateFaceRole(index, e.target.value)}
-                    className="flex-1 text-sm font-medium bg-white border border-gray-300 rounded px-2 py-1 text-slate-800"
+                    className="flex-1 text-xs bg-white border border-gray-300 rounded px-1.5 py-0.5 text-slate-800"
                   >
                     <option value="" className="text-slate-600">Select Role</option>
-                    <option value="left" className="text-slate-800 font-medium">Left Face</option>
-                    <option value="right" className="text-slate-800 font-medium">Right Face</option>
-                    <option value="top" className="text-slate-800 font-medium">Top Face</option>
-                    <option value="bottom" className="text-slate-800 font-medium">Bottom Face</option>
-                    <option value="front" className="text-slate-800 font-medium">Front Face</option>
-                    <option value="back" className="text-slate-800 font-medium">Back Face</option>
-                    <option value="door" className="text-slate-800 font-medium">Door Face</option>
+                    <option value="left" className="text-slate-800">Left</option>
+                    <option value="right" className="text-slate-800">Right</option>
+                    <option value="top" className="text-slate-800">Top</option>
+                    <option value="bottom" className="text-slate-800">Bottom</option>
+                    <option value="front" className="text-slate-800">Front</option>
+                    <option value="back" className="text-slate-800">Back</option>
+                    <option value="door" className="text-slate-800">Door</option>
                   </select>
                   <button
                     onClick={() => onFaceSelectionMode(index + 1)}
                     className={`p-1 rounded transition-colors ${
                       pendingFaceSelection === (index + 1)
                         ? 'bg-orange-600 text-white'
-                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                     }`}
                     title="Select Face on Surface"
                   >
-                    <Target size={12} />
+                    <Target size={10} />
                   </button>
                   {pendingFaceSelection === (index + 1) && (
                     <button
                       onClick={() => onConfirmFaceSelection(index)}
-                      className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                      className="p-0.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                       title="Confirm Selection"
                     >
-                      <Check size={12} />
+                      <Check size={10} />
                     </button>
                   )}
                   <button
                     onClick={() => onRemoveFaceFromList(index)}
-                    className="text-red-500 hover:text-red-700 p-1"
+                    className="text-red-500 hover:text-red-700 p-0.5"
                     title="Remove Face"
                   >
-                    <X size={12} />
+                    <X size={10} />
                   </button>
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-center py-4 text-slate-500 text-sm">
+              <span>No faces selected</span>
+            </div>
+          )}
+          
+          {selectedFaces.length > 0 && (
             <button
               onClick={onClearAllFaceSelections}
-              className="mt-3 text-xs text-orange-600 hover:text-orange-800"
+              className="mt-2 text-xs text-orange-600 hover:text-orange-800"
             >
               Clear All Faces
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
