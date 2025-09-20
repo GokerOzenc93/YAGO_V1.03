@@ -360,7 +360,7 @@ const YagoDesignShape: React.FC<Props> = ({
   // Listen for confirmed face highlight events
   useEffect(() => {
     const handleConfirmedFaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
+      const { shapeId, faceIndex, faceNumber, color, confirmed, faceListIndex } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
         console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
