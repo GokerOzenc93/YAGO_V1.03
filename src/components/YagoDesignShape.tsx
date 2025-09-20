@@ -11,7 +11,8 @@ import {
   detectFaceAtMouse,
   highlightFace,
   clearFaceHighlight,
-  removeFaceHighlightByListIndex
+  removeFaceHighlightByListIndex,
+  clearTemporaryHighlights
 } from '../utils/faceSelection';
 
 interface Props {
@@ -354,7 +355,6 @@ const YagoDesignShape: React.FC<Props> = ({
   useEffect(() => {
     if (!isFaceEditMode) {
       // Only clear temporary highlights when exiting face edit mode
-      const { clearTemporaryHighlights } = require('../utils/faceSelection');
       clearTemporaryHighlights(scene);
     }
   }, [isFaceEditMode, scene]);
