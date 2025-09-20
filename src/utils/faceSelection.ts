@@ -303,6 +303,8 @@ export const createFaceHighlight = (
  * Mevcut highlight'ı temizle
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
+    console.log(`🎯 Clearing face highlights - current count: ${currentHighlights.length}`);
+    
     currentHighlights.forEach(highlight => {
         // Remove text mesh if exists
         if ((highlight.mesh as any).textMesh) {
@@ -313,10 +315,11 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
         scene.remove(highlight.mesh);
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
+        console.log(`🎯 Removed highlight for face ${highlight.faceIndex} of shape ${highlight.shapeId}`);
     });
     currentHighlights = [];
     isMultiSelectMode = false;
-    console.log('🎯 All face highlights cleared');
+    console.log('🎯 All face highlights cleared - array reset');
 };
 
 /**
