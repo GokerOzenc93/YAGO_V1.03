@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, MousePointer, Plus, Target, X } from 'lucide-react';
+import { ChevronLeft, MousePointer, Plus, Target, Check, X } from 'lucide-react';
 
 interface Face {
   index: number;
@@ -122,7 +122,15 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     <Target size={10} />
                   </button>
                   {pendingFaceSelection === (index + 1) && (
-                    onClick={() => onRemoveFaceFromList(index)}
+                    <button
+                      onClick={() => onConfirmFaceSelection(index + 1)}
+                      className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                      title="Confirm Face Selection"
+                    >
+                      <Check size={10} />
+                    </button>
+                  )}
+                  <button
                     onClick={() => handleRemoveFace(index)}
                     className="text-red-500 hover:text-red-700 p-0.5"
                     title="Remove Face"
