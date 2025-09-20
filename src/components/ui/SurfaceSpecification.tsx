@@ -30,7 +30,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onFaceSelectionMode,
   onConfirmFaceSelection,
   onClearAllFaceSelections,
-  pendingFaceSelection
+ pendingFaceSelection,
   editedShape,
   onAutoDetectSurfaces
 }) => {
