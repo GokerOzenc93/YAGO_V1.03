@@ -272,7 +272,7 @@ const EditMode: React.FC<EditModeProps> = ({
               faceNumber: displayNumber,
               color: 0xffb366,
               confirmed: true,
-              faceListIndex: targetIndex // CRITICAL: This links the highlight to the row index
+              faceListIndex: targetIndex
             }
           });
           window.dispatchEvent(highlightEvent);
@@ -465,12 +465,19 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const removeFaceFromList = (faceListIndex: number) => {
     console.log(`🗑️ PARENT REMOVAL START: Starting face removal for list index ${faceListIndex}`);
+    console.log(`🗑️ CURRENT FACES BEFORE REMOVAL:`, selectedFaces.map((face, idx) => ({
+      index: idx,
+      role: face.role,
+      confirmed: face.confirmed,
+      actualFaceIndex: face.actualFaceIndex
+    })));
     
     // Dispatch event to remove highlight from 3D scene BEFORE removing from list
     const event = new CustomEvent('removeFaceHighlight', {
       detail: {
         faceListIndex: faceListIndex,
-        displayNumber: faceListIndex + 1
+        displayNumber: faceListIndex + 1,
+        shapeId: editedShape.id // Add shape ID for better targeting
       }
     });
     window.dispatchEvent(event);
@@ -480,7 +487,19 @@ const EditMode: React.FC<EditModeProps> = ({
     // Small delay to ensure 3D cleanup completes first
     setTimeout(() => {
       console.log(`🗑️ PARENT STATE UPDATE: Removing face ${faceListIndex + 1} from state`);
-      setSelectedFaces(prev => prev.filter((_, index) => index !== faceListIndex));
+      
+      // Update state by removing the face at the specified index
+      setSelectedFaces(prev => {
+        const newFaces = prev.filter((_, index) => index !== faceListIndex);
+        console.log(`🗑️ NEW FACES AFTER REMOVAL:`, newFaces.map((face, idx) => ({
+          index: idx,
+          role: face.role,
+          confirmed: face.confirmed,
+          actualFaceIndex: face.actualFaceIndex
+        })));
+        return newFaces;
+      });
+      
       console.log(`✅ PARENT REMOVAL COMPLETE: Face ${faceListIndex + 1} removed from state`);
     }, 10);
   };
