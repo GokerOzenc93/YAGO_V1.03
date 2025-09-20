@@ -336,47 +336,67 @@ export const createFaceHighlight = (
 export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex: number) => {
     console.log(`🗑️ REMOVAL START: Attempting to remove highlight for list index ${faceListIndex}`);
     console.log(`🗑️ Current highlights count: ${currentHighlights.length}`);
+    console.log(`🗑️ All current highlights:`, currentHighlights.map((h, idx) => ({
+        highlightIndex: idx,
+        faceListIndex: h.faceListIndex,
+        faceIndex: h.faceIndex,
+        shapeId: h.shapeId
+    })));
     
     const indicesToRemove: number[] = [];
     currentHighlights.forEach((highlight, index) => {
-        console.log(`🔍 Checking highlight ${index}: faceListIndex=${highlight.faceListIndex}, shapeId=${highlight.shapeId}`);
+        console.log(`🔍 Checking highlight ${index}: faceListIndex=${highlight.faceListIndex}, faceIndex=${highlight.faceIndex}, shapeId=${highlight.shapeId}`);
         if (highlight.faceListIndex === faceListIndex) {
             indicesToRemove.push(index);
-            console.log(`✅ Found matching highlight at index ${index} for list index ${faceListIndex}`);
+            console.log(`✅ MATCH FOUND: highlight at index ${index} matches list index ${faceListIndex}`);
+        } else {
+            console.log(`❌ NO MATCH: highlight faceListIndex ${highlight.faceListIndex} != target ${faceListIndex}`);
         }
     });
 
-    console.log(`🎯 Indices to remove: [${indicesToRemove.join(', ')}]`);
+    console.log(`🎯 Indices to remove: [${indicesToRemove.join(', ')}] out of ${currentHighlights.length} total highlights`);
     
     indicesToRemove.reverse().forEach(index => {
         const highlight = currentHighlights[index];
-        console.log(`🗑️ Removing highlight at index ${index}:`, {
+        console.log(`🗑️ REMOVING highlight at index ${index}:`, {
             faceIndex: highlight.faceIndex,
             shapeId: highlight.shapeId,
             faceListIndex: highlight.faceListIndex
         });
         
+        // Remove text mesh if exists
         if ((highlight.mesh as any).textMesh) {
-            console.log(`🗑️ Removing text mesh for highlight ${index}`);
+            console.log(`🗑️ REMOVING text mesh for highlight ${index}`);
             scene.remove((highlight.mesh as any).textMesh);
             (highlight.mesh as any).textMesh.geometry.dispose();
             (highlight.mesh as any).textMesh.material.dispose();
         }
+        
+        // Remove main mesh
+        console.log(`🗑️ REMOVING main mesh for highlight ${index}`);
         scene.remove(highlight.mesh);
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
+        
+        // Remove from array
         currentHighlights.splice(index, 1);
-        console.log(`✅ Successfully removed highlight at index ${index}`);
+        console.log(`✅ SUCCESSFULLY removed highlight at index ${index}`);
     });
 
     console.log(`🗑️ REMOVAL COMPLETE: Removed ${indicesToRemove.length} highlights`);
     console.log(`🗑️ Remaining highlights count: ${currentHighlights.length}`);
+    console.log(`🗑️ Remaining highlights:`, currentHighlights.map((h, idx) => ({
+        highlightIndex: idx,
+        faceListIndex: h.faceListIndex,
+        faceIndex: h.faceIndex,
+        shapeId: h.shapeId
+    })));
     
     if (indicesToRemove.length > 0) {
-        console.log(`✅ SUCCESS: Highlight for list index ${faceListIndex} removed successfully`);
+        console.log(`✅ SUCCESS: ${indicesToRemove.length} highlight(s) for list index ${faceListIndex} removed successfully`);
     } else {
         console.warn(`⚠️ WARNING: No highlight found for list index ${faceListIndex}`);
-        console.log(`🔍 Available highlights:`, currentHighlights.map(h => ({
+        console.warn(`🔍 Available highlights:`, currentHighlights.map(h => ({
             faceListIndex: h.faceListIndex,
             shapeId: h.shapeId,
             faceIndex: h.faceIndex

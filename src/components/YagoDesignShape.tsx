@@ -363,7 +363,7 @@ const YagoDesignShape: React.FC<Props> = ({
       const { shapeId, faceIndex, faceNumber, color, confirmed, faceListIndex } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
-        console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
+        console.log(`🎯 HIGHLIGHTING confirmed face ${faceIndex} with number ${faceNumber}, linking to list index ${faceListIndex}`);
         
         // Create a mock hit object for the face
         const mockHit = {
@@ -373,11 +373,11 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // Highlight the face with specified color and face number to make it persistent
+        // CRITICAL: Highlight the face with specified color, face number AND faceListIndex for proper linking
         const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index
         
         if (highlight) {
-          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} and linked to list index ${faceListIndex}`);
+          console.log(`✅ CRITICAL SUCCESS: Confirmed face ${faceIndex} highlighted with number ${faceNumber} and LINKED to list index ${faceListIndex}`);
         } else {
           console.warn(`❌ Failed to highlight face ${faceIndex}`);
         }
@@ -385,14 +385,20 @@ const YagoDesignShape: React.FC<Props> = ({
     };
     
     const handleRemoveFaceHighlight = (event: CustomEvent) => {
-      const { faceListIndex, displayNumber } = event.detail;
+      const { faceListIndex, displayNumber, shapeId } = event.detail;
       
-      console.log(`🗑️3D REMOVAL EVENT: Received removal request for display number ${displayNumber}, list index ${faceListIndex}`);
+      // Only process if this is for our shape
+      if (shapeId && shapeId !== shape.id) {
+        console.log(`🗑️ SKIPPING: Event not for this shape (${shape.id} vs ${shapeId})`);
+        return;
+      }
+      
+      console.log(`🗑️ 3D REMOVAL EVENT: Received removal request for display number ${displayNumber}, list index ${faceListIndex}, shape ${shape.id}`);
       
       // Remove specific highlight by face list index
       removeFaceHighlightByListIndex(scene, faceListIndex);
       
-      console.log(`✅ 3D REMOVAL COMPLETE: Face highlight cleanup completed for list index ${faceListIndex}`);
+      console.log(`✅ 3D REMOVAL COMPLETE: Face highlight cleanup completed for list index ${faceListIndex}, shape ${shape.id}`);
     };
     
     const handleRightClickConfirmation = (event: CustomEvent) => {

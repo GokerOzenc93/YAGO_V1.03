@@ -109,7 +109,7 @@ const EditMode: React.FC<EditModeProps> = ({
       
       // Check if we have complex geometry data (boolean operations, etc.)
       if (volumeData.geometryData && volumeData.geometryData.vertices.length > 0) {
-        console.log(`🎯 Reconstructing complex geometry: ${volumeData.geometryData.vertexCount} vertices`);
+        // Highlight the face in 3D scene with proper linking - CRITICAL: Pass targetIndex as faceListIndex
         
         // Create BufferGeometry from stored vertex data
         geometry = new THREE.BufferGeometry();
@@ -118,7 +118,7 @@ const EditMode: React.FC<EditModeProps> = ({
         const positions = new Float32Array(volumeData.geometryData.vertices.length * 3);
         volumeData.geometryData.vertices.forEach((vertex, i) => {
           positions[i * 3] = vertex.x;
-          positions[i * 3 + 1] = vertex.y;
+            faceListIndex: targetIndex // CRITICAL: This links the highlight to the row index
           positions[i * 3 + 2] = vertex.z;
         });
         
@@ -230,7 +230,7 @@ const EditMode: React.FC<EditModeProps> = ({
         } else {
           console.error(`❌ Failed to delete volume "${volumeName}"`);
           alert(`❌ Failed to delete volume "${volumeName}"`);
-        }
+        console.log(`🎯 CRITICAL LINK: Face confirmed and linked: List index ${targetIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
       } catch (error) {
         console.error('❌ Error deleting volume:', error);
         alert(`❌ Error deleting volume: ${error}`);
@@ -465,12 +465,19 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const removeFaceFromList = (faceListIndex: number) => {
     console.log(`🗑️ PARENT REMOVAL START: Starting face removal for list index ${faceListIndex}`);
+    console.log(`🗑️ CURRENT FACES BEFORE REMOVAL:`, selectedFaces.map((face, idx) => ({
+      index: idx,
+      role: face.role,
+      confirmed: face.confirmed,
+      actualFaceIndex: face.actualFaceIndex
+    })));
     
     // Dispatch event to remove highlight from 3D scene BEFORE removing from list
     const event = new CustomEvent('removeFaceHighlight', {
       detail: {
         faceListIndex: faceListIndex,
-        displayNumber: faceListIndex + 1
+        displayNumber: faceListIndex + 1,
+        shapeId: editedShape.id // Add shape ID for better targeting
       }
     });
     window.dispatchEvent(event);
@@ -480,10 +487,21 @@ const EditMode: React.FC<EditModeProps> = ({
     // Small delay to ensure 3D cleanup completes first
     setTimeout(() => {
       console.log(`🗑️ PARENT STATE UPDATE: Removing face ${faceListIndex + 1} from state`);
+      
+      // Update state by removing the face at the specified index
+      setSelectedFaces(prev => {
+        const newFaces = prev.filter((_, index) => index !== faceListIndex);
+        console.log(`🗑️ NEW FACES AFTER REMOVAL:`, newFaces.map((face, idx) => ({
+          index: idx,
+          role: face.role,
+          confirmed: face.confirmed,
+          actualFaceIndex: face.actualFaceIndex
+        })));
+        return newFaces;
+      });
+      
+      console.log(`✅ PARENT REMOVAL COMPLETE: Face ${faceListIndex + 1} removed from state`);
     }, 10);
-    
-    setSelectedFaces(prev => prev.filter((_, index) => index !== faceListIndex));
-    console.log(`✅ PARENT REMOVAL COMPLETE: Face ${faceListIndex + 1} removed from state`);
   };
 
   const addFaceToList = (faceIndex: number) => {
