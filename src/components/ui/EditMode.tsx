@@ -464,7 +464,17 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const removeFaceFromList = (faceListIndex: number) => {
+    // Dispatch event to remove highlight from 3D scene BEFORE removing from list
+    const event = new CustomEvent('removeFaceHighlight', {
+      detail: {
+        faceListIndex: faceListIndex,
+        displayNumber: faceListIndex + 1
+      }
+    });
+    window.dispatchEvent(event);
+    
     setSelectedFaces(prev => prev.filter((_, index) => index !== faceListIndex));
+    console.log(`🎯 Face ${faceListIndex + 1} removed from list and 3D highlight cleared`);
   };
 
   const addFaceToList = (faceIndex: number) => {
