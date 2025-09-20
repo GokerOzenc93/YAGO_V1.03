@@ -342,108 +342,33 @@ const YagoDesignShape: React.FC<Props> = ({
       if (shapeId === shape.id && meshRef.current) {
         console.log(`🎯 Creating persistent highlight for face ${faceIndex} with number ${faceNumber} and role ${faceRole}`);
         
-        // Create persistent highlight geometry
-        const geometry = meshRef.current.geometry as THREE.BufferGeometry;
-        const positions = geometry.attributes.position;
+        // Use the existing highlight system from faceSelection.ts
+        const hits = detectFaceAtMouse(
+          { clientX: 0, clientY: 0 } as MouseEvent, // Dummy event
+          camera,
+          meshRef.current,
+          gl.domElement
+        );
         
-        // Get face vertices (simplified - using first 3 vertices for demo)
-        const faceVertices = [];
-        for (let i = 0; i < 3; i++) {
-          const vertex = new THREE.Vector3().fromBufferAttribute(positions, faceIndex * 3 + i);
-          // Apply shape transforms
-          vertex.applyMatrix4(meshRef.current.matrixWorld);
-          faceVertices.push(vertex);
+        if (hits.length > 0) {
+          const highlight = highlightFace(
+            scene,
+            hits[0],
+            shape,
+            false,
+            color,
+            0.7,
+            `${faceNumber}: ${faceRole}`
+          );
+          
+          if (highlight) {
+            persistentHighlights.current.set(faceNumber, { 
+              mesh: highlight.mesh, 
+              textMesh: (highlight.mesh as any).textMesh 
+            });
+            console.log(`✅ Persistent highlight created for face ${faceNumber} with role ${faceRole}`);
+          }
         }
-        
-        // Create highlight plane geometry
-        const highlightGeometry = new THREE.BufferGeometry();
-        const highlightPositions = new Float32Array(9); // 3 vertices * 3 components
-        
-        faceVertices.forEach((vertex, i) => {
-          highlightPositions[i * 3] = vertex.x;
-          highlightPositions[i * 3 + 1] = vertex.y;
-          highlightPositions[i * 3 + 2] = vertex.z;
-        });
-        
-        highlightGeometry.setAttribute('position', new THREE.BufferAttribute(highlightPositions, 3));
-        highlightGeometry.computeVertexNormals();
-        
-        // Create highlight material
-        const highlightMaterial = new THREE.MeshBasicMaterial({
-          color: color,
-          transparent: true,
-          opacity: 0.7,
-          side: THREE.DoubleSide,
-          depthTest: false,
-          depthWrite: false
-        });
-        
-        // Create highlight mesh
-        const highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
-        highlightMesh.renderOrder = 999;
-        
-        // Calculate face center for text positioning
-        const faceCenter = new THREE.Vector3();
-        faceVertices.forEach(vertex => faceCenter.add(vertex));
-        faceCenter.divideScalar(faceVertices.length);
-        
-        // Create text label
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (context) {
-          canvas.width = 256;
-          canvas.height = 128;
-          
-          // Clear canvas
-          context.clearRect(0, 0, canvas.width, canvas.height);
-          
-          // Set text properties
-          context.font = 'bold 24px Arial';
-          context.fillStyle = '#ffffff';
-          context.strokeStyle = '#000000';
-          context.lineWidth = 3;
-          context.textAlign = 'center';
-          context.textBaseline = 'middle';
-          
-          // Draw text with outline
-          const text = `${faceNumber}: ${faceRole}`;
-          context.strokeText(text, canvas.width / 2, canvas.height / 2);
-          context.fillText(text, canvas.width / 2, canvas.height / 2);
-          
-          // Create texture from canvas
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.needsUpdate = true;
-          
-          // Create text material
-          const textMaterial = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            depthTest: false,
-            depthWrite: false
-          });
-          
-          // Create text plane geometry
-          const textGeometry = new THREE.PlaneGeometry(150, 75);
-          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-          
-          // Position text at face center, slightly above
-          textMesh.position.copy(faceCenter);
-          textMesh.position.y += 50; // Offset above the face
-          textMesh.lookAt(camera.position);
-          textMesh.renderOrder = 1000;
-          
-          scene.add(textMesh);
-          
-          // Store both highlight and text mesh
-          persistentHighlights.current.set(faceNumber, { 
-            mesh: highlightMesh, 
-            textMesh: textMesh 
-          });
-        }
-        
-        scene.add(highlightMesh);
-        
-        console.log(`✅ Persistent highlight created for face ${faceNumber} with role ${faceRole}`);
       }
     };
     
