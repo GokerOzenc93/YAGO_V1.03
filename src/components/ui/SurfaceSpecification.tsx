@@ -19,6 +19,7 @@ interface SurfaceSpecificationProps {
   pendingFaceSelection: number | null;
   editedShape: any; // Shape being edited
   onAutoDetectSurfaces: () => void;
+  confirmedFaces: Set<number>;
 }
 
 const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
@@ -32,7 +33,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onClearAllFaceSelections,
  pendingFaceSelection,
   editedShape,
-  onAutoDetectSurfaces
+  onAutoDetectSurfaces,
+  confirmedFaces
 }) => {
   return (
     <div className="flex-1 flex flex-col">
@@ -80,12 +82,18 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             <h4 className="font-medium text-slate-800 mb-3">Selected Faces</h4>
             <div className="space-y-2">
               {selectedFaces.map((face, index) => (
-                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                <div key={index} className={`flex items-center gap-2 p-2 rounded ${
+                  confirmedFaces.has(index + 1) 
+                    ? 'bg-orange-100 border-2 border-orange-300' 
+                    : 'bg-gray-50'
+                }`}>
                   <div className="flex items-center gap-2">
                     {/* Status indicator */}
-                    <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${
+                      confirmedFaces.has(index + 1) ? 'bg-orange-500' : 'bg-gray-400'
+                    }`}></div>
                     <span className="text-sm font-mono text-slate-600">
-                      {face.confirmed ? '✓' : ''} Face {index + 1}
+                      {confirmedFaces.has(index + 1) ? '✓' : ''} Face {index + 1}
                     </span>
                   </div>
                   <select

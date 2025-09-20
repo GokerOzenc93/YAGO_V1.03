@@ -468,6 +468,9 @@ const EditMode: React.FC<EditModeProps> = ({
       // Display number is array index + 1
       const displayNumber = faceIndex + 1;
       
+      // Add to confirmed faces set
+      setConfirmedFaces(prev => new Set(prev).add(displayNumber));
+      
       // Dispatch event to highlight the face in 3D scene
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
@@ -488,6 +491,7 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleClearAllFaceSelections = () => {
     setSelectedFaces([]);
+    setConfirmedFaces(new Set());
     console.log('🎯 All face selections cleared');
   };
 
@@ -696,6 +700,7 @@ const EditMode: React.FC<EditModeProps> = ({
                 pendingFaceSelection={pendingFaceSelection}
                 editedShape={editedShape}
                 onAutoDetectSurfaces={handleAutoDetectSurfaces}
+                confirmedFaces={confirmedFaces}
               />
             )}
 

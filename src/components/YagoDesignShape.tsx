@@ -372,14 +372,14 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // Clear existing highlights first
-        clearFaceHighlight(scene);
+        // DON'T clear existing highlights - keep them persistent
+        // clearFaceHighlight(scene);
         
-        // Highlight the face with green color and face number
+        // Highlight the face with orange color and face number (persistent)
         const highlight = highlightFace(scene, mockHit, shape, false, color, 0.8, faceNumber);
         
         if (highlight) {
-          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
+          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in orange (persistent)`);
         } else {
           console.warn(`❌ Failed to highlight face ${faceIndex}`);
         }
