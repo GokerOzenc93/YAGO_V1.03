@@ -273,12 +273,9 @@ const YagoDesignShape: React.FC<Props> = ({
         return;
       }
 
-      // Show temporary orange highlight during selection
       const highlight = highlightFace(scene, hit, shape, isShiftPressed, 0xff6b35, 0.6);
-      
       if (highlight && onFaceSelect) {
-        // Pass the hit information for later use in confirmation
-        onFaceSelect(hit.faceIndex, hit);
+        onFaceSelect(hit.faceIndex);
         console.log(`🎯 Face ${hit.faceIndex} selected and highlighted ${isShiftPressed ? '(Multi-select)' : ''}`);
       } else if (!highlight && isShiftPressed) {
         console.log(`🎯 Face ${hit.faceIndex} deselected (Shift+Click)`);
@@ -312,7 +309,7 @@ const YagoDesignShape: React.FC<Props> = ({
         // Add face to list via right-click
         const faceIndex = hits[0].faceIndex;
         if (onFaceSelect) {
-          onFaceSelect(faceIndex, hits[0]);
+          onFaceSelect(faceIndex);
           console.log(`🎯 Face ${faceIndex} added to list via right-click`);
         }
       }
@@ -340,34 +337,113 @@ const YagoDesignShape: React.FC<Props> = ({
   // Listen for confirmed face highlight events
   useEffect(() => {
     const handleConfirmedFaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, faceNumber, faceRole, color, confirmed, persistent, hitPoint } = event.detail;
+      const { shapeId, faceIndex, faceNumber, faceRole, color, confirmed, persistent } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
         console.log(`🎯 Creating persistent highlight for face ${faceIndex} with number ${faceNumber} and role ${faceRole}`);
         
-        // Use the face selection utility to create proper highlight
+        // Create persistent highlight geometry
         const geometry = meshRef.current.geometry as THREE.BufferGeometry;
+        const positions = geometry.attributes.position;
         
-        // Create a mock intersection for the face selection utility
-        const mockHit = {
-          face: { a: faceIndex * 3, b: faceIndex * 3 + 1, c: faceIndex * 3 + 2 },
-          faceIndex: faceIndex,
-          point: hitPoint || new THREE.Vector3(),
-          object: meshRef.current
-        };
+        // Get face vertices (simplified - using first 3 vertices for demo)
+        const faceVertices = [];
+        for (let i = 0; i < 3; i++) {
+          const vertex = new THREE.Vector3().fromBufferAttribute(positions, faceIndex * 3 + i);
+          // Apply shape transforms
+          vertex.applyMatrix4(meshRef.current.matrixWorld);
+          faceVertices.push(vertex);
+        }
         
-        // Use the existing face selection system to create proper highlight
-        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.7, faceNumber);
+        // Create highlight plane geometry
+        const highlightGeometry = new THREE.BufferGeometry();
+        const highlightPositions = new Float32Array(9); // 3 vertices * 3 components
         
-        if (highlight) {
-          // Store the highlight for cleanup
-          persistentHighlights.current.set(faceNumber, { 
-            mesh: highlight.mesh,
-            textMesh: (highlight.mesh as any).textMesh
+        faceVertices.forEach((vertex, i) => {
+          highlightPositions[i * 3] = vertex.x;
+          highlightPositions[i * 3 + 1] = vertex.y;
+          highlightPositions[i * 3 + 2] = vertex.z;
+        });
+        
+        highlightGeometry.setAttribute('position', new THREE.BufferAttribute(highlightPositions, 3));
+        highlightGeometry.computeVertexNormals();
+        
+        // Create highlight material
+        const highlightMaterial = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide,
+          depthTest: false,
+          depthWrite: false
+        });
+        
+        // Create highlight mesh
+        const highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial);
+        highlightMesh.renderOrder = 999;
+        
+        // Calculate face center for text positioning
+        const faceCenter = new THREE.Vector3();
+        faceVertices.forEach(vertex => faceCenter.add(vertex));
+        faceCenter.divideScalar(faceVertices.length);
+        
+        // Create text label
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (context) {
+          canvas.width = 256;
+          canvas.height = 128;
+          
+          // Clear canvas
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Set text properties
+          context.font = 'bold 24px Arial';
+          context.fillStyle = '#ffffff';
+          context.strokeStyle = '#000000';
+          context.lineWidth = 3;
+          context.textAlign = 'center';
+          context.textBaseline = 'middle';
+          
+          // Draw text with outline
+          const text = `${faceNumber}: ${faceRole}`;
+          context.strokeText(text, canvas.width / 2, canvas.height / 2);
+          context.fillText(text, canvas.width / 2, canvas.height / 2);
+          
+          // Create texture from canvas
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.needsUpdate = true;
+          
+          // Create text material
+          const textMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
           });
           
-          console.log(`✅ Persistent highlight created for face ${faceNumber} with role ${faceRole}`);
+          // Create text plane geometry
+          const textGeometry = new THREE.PlaneGeometry(150, 75);
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+          
+          // Position text at face center, slightly above
+          textMesh.position.copy(faceCenter);
+          textMesh.position.y += 50; // Offset above the face
+          textMesh.lookAt(camera.position);
+          textMesh.renderOrder = 1000;
+          
+          scene.add(textMesh);
+          
+          // Store both highlight and text mesh
+          persistentHighlights.current.set(faceNumber, { 
+            mesh: highlightMesh, 
+            textMesh: textMesh 
+          });
         }
+        
+        scene.add(highlightMesh);
+        
+        console.log(`✅ Persistent highlight created for face ${faceNumber} with role ${faceRole}`);
       }
     };
     

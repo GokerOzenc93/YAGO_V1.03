@@ -57,7 +57,6 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
-  const [selectedFaceHits, setSelectedFaceHits] = useState<Map<number, any>>(new Map());
   
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
@@ -444,19 +443,17 @@ const EditMode: React.FC<EditModeProps> = ({
       // Display number is array index + 1
       const displayNumber = faceIndex + 1;
       const faceRole = selectedFaces[faceIndex]?.role || 'Unnamed Face';
-      const hitData = selectedFaceHits.get(faceIndex);
       
       // Dispatch event to highlight the face in 3D scene
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
           shapeId: editedShape.id,
-          faceIndex: hitData?.faceIndex || Math.floor(Math.random() * 6),
+          faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
           faceNumber: displayNumber,
           faceRole: faceRole,
           color: 0x00ff00, // Green color
           confirmed: true,
-          persistent: true, // Keep highlight visible
-          hitPoint: hitData?.point // Pass the hit point for accurate positioning
+          persistent: true // Keep highlight visible
         }
       });
       window.dispatchEvent(event);
@@ -469,7 +466,6 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleClearAllFaceSelections = () => {
     setSelectedFaces([]);
-    setSelectedFaceHits(new Map());
     
     // Clear all persistent highlights
     const event = new CustomEvent('clearAllFaceHighlights', {
@@ -478,23 +474,6 @@ const EditMode: React.FC<EditModeProps> = ({
     window.dispatchEvent(event);
     
     console.log('🎯 All face selections cleared');
-  };
-
-  // Handle face selection with hit data
-  const handleFaceSelect = (faceIndex: number, hitData?: any) => {
-    // Store the hit data for later use in confirmation
-    if (hitData) {
-      setSelectedFaceHits(prev => new Map(prev.set(faceIndex, hitData)));
-    }
-    
-    // Check if face already exists in list
-    const exists = selectedFaces.some(face => face.index === faceIndex);
-    if (!exists) {
-      setSelectedFaces(prev => [...prev, { index: faceIndex, role: '', confirmed: false }]);
-      console.log(`🎯 Face ${faceIndex} added to selected faces list`);
-    } else {
-      console.log(`🎯 Face ${faceIndex} already in list`);
-    }
   };
 
   return (

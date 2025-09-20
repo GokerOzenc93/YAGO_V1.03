@@ -763,7 +763,7 @@ export const highlightFace = (
 
     console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
-    // Build a SINGLE overlay mesh for the entire planar region with face number and role
+    // Build a SINGLE overlay mesh for the entire planar region with face number
     const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
     if (!overlay) return null;
 
