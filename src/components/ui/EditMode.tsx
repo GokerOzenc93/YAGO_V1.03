@@ -474,7 +474,8 @@ const EditMode: React.FC<EditModeProps> = ({
           faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
           faceNumber: displayNumber,
           color: 0xff6b35, // Orange color
-          confirmed: true
+          confirmed: true,
+          faceListIndex: faceIndex // Pass the face list index for tracking
         }
       });
       window.dispatchEvent(event);

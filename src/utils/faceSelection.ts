@@ -27,6 +27,7 @@ export interface FaceHighlight {
     mesh: THREE.Mesh;
     faceIndex: number;
     shapeId: string;
+    faceListIndex?: number;
 }
 
 let currentHighlights: FaceHighlight[] = [];
@@ -348,6 +349,55 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
         currentHighlights.splice(index, 1);
         console.log(`🎯 Face highlight removed: face ${faceIndex} of shape ${shapeId}`);
     }
+};
+
+/**
+ * Remove face highlight by face list index
+ */
+export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex: number) => {
+    const index = currentHighlights.findIndex(h => h.faceListIndex === faceListIndex);
+    if (index !== -1) {
+        const highlight = currentHighlights[index];
+        // Remove text mesh if exists
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
+        }
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+        currentHighlights.splice(index, 1);
+        console.log(`🎯 Face highlight removed by list index: ${faceListIndex}`);
+    }
+};
+
+/**
+ * Clear all persistent highlights
+ */
+export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
+    const persistentHighlights = currentHighlights.filter(highlight => 
+        (highlight.mesh as any).isPersistent
+    );
+    
+    persistentHighlights.forEach(highlight => {
+        // Remove text mesh if exists
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
+        }
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+    });
+    
+    // Remove persistent highlights from array
+    currentHighlights = currentHighlights.filter(highlight => 
+        !(highlight.mesh as any).isPersistent
+    );
+    
+    console.log(`🎯 Cleared ${persistentHighlights.length} persistent highlights`);
 };
 
 /**
@@ -759,7 +809,8 @@ export const highlightFace = (
     isMultiSelect: boolean = false,
     color: number = 0xff6b35,
     opacity: number = 0.6,
-    faceNumber?: number
+    faceNumber?: number,
+    faceListIndex?: number
 ): FaceHighlight | null => {
     if (!isMultiSelect) {
         clearFaceHighlight(scene);
