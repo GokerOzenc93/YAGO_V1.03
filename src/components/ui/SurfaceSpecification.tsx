@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, MousePointer, Plus, Target, Check, X } from 'lucide-react';
+import { ChevronLeft, MousePointer, Plus, Target, X } from 'lucide-react';
 
 interface Face {
   index: number;
@@ -127,7 +127,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                       title="Confirm Face Selection"
                     >
-                      <Check size={10} />
+                      ✓
                     </button>
                   )}
                   <button
