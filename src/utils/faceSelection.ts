@@ -683,17 +683,28 @@ const buildFaceOverlayFromHit = (
             // Clear canvas
             context.clearRect(0, 0, canvas.width, canvas.height);
             
+            // Draw red circular background
+            context.beginPath();
+            context.arc(canvas.width / 2, canvas.height / 2, 28, 0, 2 * Math.PI);
+            context.fillStyle = '#dc2626'; // Red background
+            context.fill();
+            
+            // Add white border
+            context.strokeStyle = '#ffffff';
+            context.lineWidth = 3;
+            context.stroke();
+            
             // Set text properties
-            context.font = 'bold 32px Arial';
+            context.font = 'bold 24px Arial';
             context.fillStyle = '#ffffff';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             
-            // Add text shadow for better visibility
-            context.shadowColor = '#000000';
-            context.shadowBlur = 4;
-            context.shadowOffsetX = 2;
-            context.shadowOffsetY = 2;
+            // Remove shadow for cleaner look
+            context.shadowColor = 'transparent';
+            context.shadowBlur = 0;
+            context.shadowOffsetX = 0;
+            context.shadowOffsetY = 0;
             
             // Draw face number
             context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
@@ -783,7 +794,12 @@ export const highlightFace = (
 
     console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
     
-    const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
+    const newHighlight = { 
+        mesh: overlay, 
+        faceIndex: hit.faceIndex, 
+        shapeId: shape.id,
+        faceListIndex: faceListIndex
+    };
     currentHighlights.push(newHighlight);
     
     // Mark as persistent if it has a face number (confirmed face)

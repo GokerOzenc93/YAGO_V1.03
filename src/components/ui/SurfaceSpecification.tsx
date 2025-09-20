@@ -30,6 +30,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onClearAllFaceSelections,
   pendingFaceSelection
 }) => {
+  const handleClearAllFaceSelections = () => {
+    // Dispatch event to clear all highlights from 3D scene
+    const event = new CustomEvent('clearAllFaceHighlights');
+    window.dispatchEvent(event);
+    
+    onClearAllFaceSelections();
+  };
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -125,7 +133,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           
           {selectedFaces.length > 0 && (
             <button
-              onClick={onClearAllFaceSelections}
+              onClick={handleClearAllFaceSelections}
               className="mt-2 text-xs text-orange-600 hover:text-orange-800"
             >
               Clear All Faces

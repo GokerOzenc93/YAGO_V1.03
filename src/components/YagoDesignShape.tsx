@@ -376,7 +376,7 @@ const YagoDesignShape: React.FC<Props> = ({
         clearFaceHighlight(scene);
         
         // Highlight the face with specified color and face number to make it persistent
-        const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber); // Light orange color
+        const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index
         
         if (highlight) {
           console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
@@ -386,10 +386,28 @@ const YagoDesignShape: React.FC<Props> = ({
       }
     };
     
+    const handleRemoveFaceHighlight = (event: CustomEvent) => {
+      const { faceListIndex, displayNumber } = event.detail;
+      
+      console.log(`🎯 Removing face highlight for display number ${displayNumber}`);
+      
+      // Remove specific highlight by face list index
+      removeFaceHighlightByListIndex(scene, faceListIndex);
+    };
+    
+    const handleClearAllFaceHighlights = () => {
+      console.log('🎯 Clearing all face highlights from 3D scene');
+      clearAllPersistentHighlights(scene);
+    };
+    
     window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
+    window.addEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
+    window.addEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     
     return () => {
       window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
+      window.removeEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
+      window.removeEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     };
   }, [scene, shape.id, shape]);
 
