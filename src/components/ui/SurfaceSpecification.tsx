@@ -5,6 +5,7 @@ interface Face {
   index: number;
   role: string;
   confirmed?: boolean;
+  actualFaceIndex?: number; // The actual 3D face index
 }
 
 interface SurfaceSpecificationProps {

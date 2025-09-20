@@ -237,35 +237,67 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
+  // Add data attribute for EditMode identification
+  return (
+    <div
+      ref={panelRef}
+      data-edit-mode="true"
+      className={`fixed left-0 z-50 bg-white backdrop-blur-sm border-r border-gray-200 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
+      style={{
+        top: panelTop,
+        height: panelHeight,
+        width: isCollapsed ? '4px' : `${panelWidth}px`,
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onSelectStart={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
+
   // Listen for right-click face confirmations
   useEffect(() => {
-    const handleRightClickConfirmation = (event: CustomEvent) => {
+    const handleRightClickFaceConfirmation = (event: CustomEvent) => {
       const { shapeId, faceIndex, confirmed } = event.detail;
       
       if (shapeId === editedShape.id && confirmed) {
-        // Find if this face is in our pending selection
-        const faceListIndex = selectedFaces.findIndex((_, idx) => idx + 1 === pendingFaceSelection);
+        console.log(`🎯 Processing right-click confirmation for face ${faceIndex}`);
         
-        if (faceListIndex !== -1) {
-          // Confirm the face selection
+        // Find the first unconfirmed face in the list
+        const unconfirmedIndex = selectedFaces.findIndex(face => !face.confirmed);
+        
+        if (unconfirmedIndex !== -1) {
+          // Confirm this face and link it
           setSelectedFaces(prev => prev.map((face, idx) => 
-            idx === faceListIndex ? { ...face, confirmed: true } : face
+            idx === unconfirmedIndex ? { ...face, confirmed: true, actualFaceIndex: faceIndex } : face
           ));
           
-          setPendingFaceSelection(null);
-          setIsFaceEditMode(false);
+          // Highlight the face in 3D scene with proper linking
+          const displayNumber = unconfirmedIndex + 1;
+          const highlightEvent = new CustomEvent('highlightConfirmedFace', {
+            detail: {
+              shapeId: editedShape.id,
+              faceIndex: faceIndex,
+              faceNumber: displayNumber,
+              color: 0xffb366,
+              confirmed: true,
+              faceListIndex: unconfirmedIndex
+            }
+          });
+          window.dispatchEvent(highlightEvent);
           
-          console.log(`🎯 Face confirmed via right-click: Face ${faceListIndex + 1}`);
+          console.log(`🎯 Face confirmed and linked: List index ${unconfirmedIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
+        } else {
+          console.warn('🎯 No unconfirmed faces available to link');
         }
       }
     };
     
-    window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
+    window.addEventListener('rightClickFaceConfirmation', handleRightClickFaceConfirmation as EventListener);
     
     return () => {
-      window.removeEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
+      window.removeEventListener('rightClickFaceConfirmation', handleRightClickFaceConfirmation as EventListener);
     };
-  }, [editedShape.id, selectedFaces, pendingFaceSelection]);
+  }, [editedShape.id, selectedFaces]);
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
