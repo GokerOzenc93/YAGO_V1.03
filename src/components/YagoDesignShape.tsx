@@ -362,7 +362,7 @@ const YagoDesignShape: React.FC<Props> = ({
       const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
-        console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in orange`);
+        console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
         
         // Create a mock hit object for the face
         const mockHit = {
@@ -372,13 +372,14 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // DON'T clear existing highlights - keep them persistent
+        // Clear existing highlights first
+        clearFaceHighlight(scene);
         
-        // Highlight the face with orange color and face number - FORCE PERSISTENT
-        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.9, faceNumber);
+        // Highlight the face with green color and face number
+        const highlight = highlightFace(scene, mockHit, shape, false, color, 0.8, faceNumber);
         
         if (highlight) {
-          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in orange - PERSISTENT`);
+          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
         } else {
           console.warn(`❌ Failed to highlight face ${faceIndex}`);
         }

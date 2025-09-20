@@ -9,7 +9,6 @@ import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, 
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
 import * as THREE from 'three';
-import { autoDetectAllSurfaces } from '../../utils/faceSelection';
 
 interface EditModeProps {
   editedShape: Shape;
@@ -58,7 +57,6 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
-  const [confirmedFaces, setConfirmedFaces] = useState<Set<number>>(new Set());
   
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
@@ -469,14 +467,11 @@ const EditMode: React.FC<EditModeProps> = ({
       // Display number is array index + 1
       const displayNumber = faceIndex + 1;
       
-      // Add to confirmed faces set
-      setConfirmedFaces(prev => new Set(prev).add(displayNumber));
-      
-      // Dispatch event to highlight the face in 3D scene with the ACTUAL face index
+      // Dispatch event to highlight the face in 3D scene
       const event = new CustomEvent('highlightConfirmedFace', {
         detail: {
           shapeId: editedShape.id,
-          faceIndex: pendingFaceSelection - 1, // Convert to 0-based index for geometry
+          faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
           faceNumber: displayNumber,
           color: 0xff6b35, // Orange color
           confirmed: true
@@ -492,56 +487,7 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleClearAllFaceSelections = () => {
     setSelectedFaces([]);
-    setConfirmedFaces(new Set());
     console.log('🎯 All face selections cleared');
-  };
-
-  // Auto-detect all surfaces and populate the interface
-  const handleAutoDetectSurfaces = () => {
-    console.log('🎯 Starting auto-detection of all surfaces...');
-    
-    // Find the mesh for the edited shape in the scene
-    const currentScene = (window as any).currentScene;
-    if (!currentScene) {
-      console.warn('❌ Scene not available for surface detection');
-      return;
-    }
-    
-    // Find the mesh that corresponds to our edited shape
-    let targetMesh: THREE.Mesh | null = null;
-    currentScene.traverse((child: any) => {
-      if (child instanceof THREE.Mesh && child.geometry === editedShape.geometry) {
-        targetMesh = child;
-      }
-    });
-    
-    if (!targetMesh) {
-      console.warn('❌ Could not find mesh for surface detection');
-      return;
-    }
-    
-    // Auto-detect all surfaces
-    const detectedSurfaces = autoDetectAllSurfaces(targetMesh, editedShape);
-    
-    // Convert detected surfaces to face list format
-    const newFaces = detectedSurfaces.map((surface, index) => ({
-      index: surface.index,
-      role: '', // Empty role to be filled by user
-      confirmed: false,
-      surfaceData: {
-        normal: surface.normal,
-        center: surface.center,
-        area: surface.area
-      }
-    }));
-    
-    // Update the selected faces list
-    setSelectedFaces(newFaces);
-    
-    console.log(`✅ Auto-detection complete: ${detectedSurfaces.length} surfaces added to interface`);
-    
-    // Show success message
-    alert(`🎯 Auto-detection complete!\n${detectedSurfaces.length} surfaces detected and added to the list.\n\nYou can now assign roles to each surface.`);
   };
 
   return (
@@ -699,9 +645,6 @@ const EditMode: React.FC<EditModeProps> = ({
                 onConfirmFaceSelection={handleConfirmFaceSelection}
                 onClearAllFaceSelections={handleClearAllFaceSelections}
                 pendingFaceSelection={pendingFaceSelection}
-                editedShape={editedShape}
-                onAutoDetectSurfaces={handleAutoDetectSurfaces}
-                confirmedFaces={confirmedFaces}
               />
             )}
 

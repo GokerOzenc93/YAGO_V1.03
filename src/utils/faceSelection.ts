@@ -303,8 +303,6 @@ export const createFaceHighlight = (
  * Mevcut highlight'ı temizle
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
-    console.log(`🎯 Clearing face highlights - current count: ${currentHighlights.length}`);
-    
     currentHighlights.forEach(highlight => {
         // Remove text mesh if exists
         if ((highlight.mesh as any).textMesh) {
@@ -315,11 +313,10 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
         scene.remove(highlight.mesh);
         highlight.mesh.geometry.dispose();
         (highlight.mesh.material as THREE.Material).dispose();
-        console.log(`🎯 Removed highlight for face ${highlight.faceIndex} of shape ${highlight.shapeId}`);
     });
     currentHighlights = [];
     isMultiSelectMode = false;
-    console.log('🎯 All face highlights cleared - array reset');
+    console.log('🎯 All face highlights cleared');
 };
 
 /**
@@ -739,12 +736,8 @@ export const highlightFace = (
     opacity: number = 0.6,
     faceNumber?: number
 ): FaceHighlight | null => {
-    // NEVER clear highlights for confirmed faces (when faceNumber is provided)
-    if (!isMultiSelect && faceNumber === undefined) {
+    if (!isMultiSelect) {
         clearFaceHighlight(scene);
-    } else if (faceNumber !== undefined) {
-        // This is a confirmed face - don't clear anything, just add the highlight
-        console.log(`🎯 Adding PERSISTENT confirmed face highlight ${faceNumber}`);
     }
     
     if (!hit.face || hit.faceIndex === undefined) return null;
@@ -768,15 +761,13 @@ export const highlightFace = (
         }
     }
 
-    const confirmationText = faceNumber ? ` (CONFIRMED PERSISTENT face ${faceNumber})` : '';
-    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}${confirmationText}`);
+    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
     // Build a SINGLE overlay mesh for the entire planar region with face number
     const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
     if (!overlay) return null;
 
-    const completionText = faceNumber ? ` with PERSISTENT number ${faceNumber}` : '';
-    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected${completionText}`);
+    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
     
     const newHighlight = { mesh: overlay, faceIndex: hit.faceIndex, shapeId: shape.id };
     currentHighlights.push(newHighlight);
@@ -831,82 +822,6 @@ export const detectFaceAtMouse = (
  */
 export const getCurrentHighlights = (): FaceHighlight[] => {
     return [...currentHighlights];
-};
-
-/**
- * Auto-detect all surfaces on a shape using flood-fill algorithm
- */
-export const autoDetectAllSurfaces = (
-  mesh: THREE.Mesh,
-  shape: any
-): Array<{ index: number; normal: THREE.Vector3; center: THREE.Vector3; area: number }> => {
-  console.log(`🎯 Auto-detecting all surfaces for shape: ${shape.id}`);
-  
-  const detectedSurfaces: Array<{ index: number; normal: THREE.Vector3; center: THREE.Vector3; area: number }> = [];
-  const processedTriangles = new Set<number>();
-  
-  const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
-    mesh, QUANT_EPS * (() => { 
-      const s = new THREE.Vector3(); 
-      const p = new THREE.Vector3(); 
-      const q = new THREE.Quaternion(); 
-      mesh.matrixWorld.decompose(p,q,s); 
-      return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; 
-    })()
-  );
-  
-  const totalTriangles = Math.floor(index.array.length / 3);
-  
-  // Iterate through all triangles and find unprocessed ones
-  for (let seedTriangle = 0; seedTriangle < totalTriangles; seedTriangle++) {
-    if (processedTriangles.has(seedTriangle)) continue;
-    
-    // Grow region from this seed triangle
-    const region = growRegion(mesh, seedTriangle);
-    
-    // Mark all triangles in this region as processed
-    region.triangles.forEach(triIndex => {
-      processedTriangles.add(triIndex);
-    });
-    
-    // Calculate surface properties
-    const surfaceCenter = new THREE.Vector3();
-    let totalArea = 0;
-    
-    // Calculate center and area from boundary loops
-    if (region.boundaryLoops.length > 0) {
-      const mainLoop = region.boundaryLoops[0];
-      let vertexCount = 0;
-      
-      for (const wid of mainLoop) {
-        const point = region.weldedToWorld.get(wid);
-        if (point) {
-          surfaceCenter.add(point);
-          vertexCount++;
-        }
-      }
-      
-      if (vertexCount > 0) {
-        surfaceCenter.divideScalar(vertexCount);
-      }
-      
-      // Estimate area from triangle count (rough approximation)
-      totalArea = region.triangles.length * 100; // Rough area estimation
-    }
-    
-    // Add to detected surfaces
-    detectedSurfaces.push({
-      index: detectedSurfaces.length, // Sequential index
-      normal: region.normal.clone(),
-      center: surfaceCenter,
-      area: totalArea
-    });
-    
-    console.log(`🎯 Surface ${detectedSurfaces.length} detected: ${region.triangles.length} triangles, center: [${surfaceCenter.x.toFixed(1)}, ${surfaceCenter.y.toFixed(1)}, ${surfaceCenter.z.toFixed(1)}]`);
-  }
-  
-  console.log(`✅ Auto-detection complete: ${detectedSurfaces.length} surfaces found`);
-  return detectedSurfaces;
 };
 
 /**

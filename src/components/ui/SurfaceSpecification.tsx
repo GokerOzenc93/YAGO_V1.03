@@ -17,9 +17,6 @@ interface SurfaceSpecificationProps {
   onConfirmFaceSelection: (faceIndex: number) => void;
   onClearAllFaceSelections: () => void;
   pendingFaceSelection: number | null;
-  editedShape: any; // Shape being edited
-  onAutoDetectSurfaces: () => void;
-  confirmedFaces: Set<number>;
 }
 
 const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
@@ -31,10 +28,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onFaceSelectionMode,
   onConfirmFaceSelection,
   onClearAllFaceSelections,
- pendingFaceSelection,
-  editedShape,
-  onAutoDetectSurfaces,
-  confirmedFaces
+  pendingFaceSelection
 }) => {
   return (
     <div className="flex-1 flex flex-col">
@@ -55,17 +49,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       {/* Surface Content */}
       <div className="flex-1 p-4 space-y-4">
         <h4 className="font-medium text-slate-800 mb-3">Face Index Management</h4>
-        
-        {/* Auto-detect and Manual Add buttons */}
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={onAutoDetectSurfaces}
-            className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
-            title="Auto-detect All Surfaces"
-          >
-            <Target size={14} />
-            <span className="text-sm font-medium">Auto-Detect</span>
-          </button>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-600">Add new face row:</span>
           <button
             onClick={onAddNewFace}
             className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-1"
@@ -82,18 +67,12 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             <h4 className="font-medium text-slate-800 mb-3">Selected Faces</h4>
             <div className="space-y-2">
               {selectedFaces.map((face, index) => (
-                <div key={index} className={`flex items-center gap-2 p-2 rounded ${
-                  confirmedFaces.has(index + 1) 
-                    ? 'bg-orange-100 border-2 border-orange-300' 
-                    : 'bg-gray-50'
-                }`}>
+                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                   <div className="flex items-center gap-2">
                     {/* Status indicator */}
-                    <div className={`w-2 h-2 rounded-full ${
-                      confirmedFaces.has(index + 1) ? 'bg-orange-500' : 'bg-gray-400'
-                    }`}></div>
+                    <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     <span className="text-sm font-mono text-slate-600">
-                      {confirmedFaces.has(index + 1) ? '✓' : ''} Face {index + 1}
+                      {face.confirmed ? '✓' : ''} Face {index + 1}
                     </span>
                   </div>
                   <select
