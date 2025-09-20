@@ -353,7 +353,9 @@ const YagoDesignShape: React.FC<Props> = ({
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
     if (!isFaceEditMode) {
-      clearFaceHighlight(scene);
+      // Only clear temporary highlights when exiting face edit mode
+      const { clearTemporaryHighlights } = require('../utils/faceSelection');
+      clearTemporaryHighlights(scene);
     }
   }, [isFaceEditMode, scene]);
   

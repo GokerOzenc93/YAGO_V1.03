@@ -301,6 +301,34 @@ export const createFaceHighlight = (
 };
 
 /**
+ * Clear only temporary highlights, keep persistent ones
+ */
+export const clearTemporaryHighlights = (scene: THREE.Scene) => {
+    const temporaryHighlights = currentHighlights.filter(highlight => 
+        !(highlight.mesh as any).isPersistent
+    );
+    
+    temporaryHighlights.forEach(highlight => {
+        // Remove text mesh if exists
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
+        }
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+    });
+    
+    // Keep only persistent highlights
+    currentHighlights = currentHighlights.filter(highlight => 
+        (highlight.mesh as any).isPersistent
+    );
+    
+    console.log(`🎯 Cleared ${temporaryHighlights.length} temporary highlights, kept ${currentHighlights.length} persistent`);
+};
+
+/**
  * Mevcut highlight'ı temizle
  */
 export const clearFaceHighlight = (scene: THREE.Scene) => {
@@ -821,10 +849,8 @@ export const highlightFace = (
     faceNumber?: number,
     faceListIndex?: number
 ): FaceHighlight | null => {
-    // Always clear existing highlights before adding new ones to prevent stacking
-    if (!isMultiSelect || faceListIndex !== undefined) {
-        clearFaceHighlight(scene);
-    }
+    // Only clear temporary highlights, keep persistent ones
+    clearTemporaryHighlights(scene);
     
     if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;
