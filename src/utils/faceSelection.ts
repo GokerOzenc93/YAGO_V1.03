@@ -381,23 +381,19 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
 /**
  * Remove face highlight by row index - satır indeksine göre highlight sil
  */
-export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number, specificFaceIndex?: number) => {
-    // Find highlights with the same rowIndex and optionally specific faceIndex
+export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number) => {
+    // Find ALL highlights with the same faceListIndex and remove them
     const indicesToRemove: number[] = [];
     currentHighlights.forEach((highlight, index) => {
-        const matchesRow = highlight.rowIndex === rowIndex;
-        const matchesFace = specificFaceIndex === undefined || highlight.faceIndex === specificFaceIndex;
-        
-        if (matchesRow && matchesFace) {
+        if (highlight.rowIndex === rowIndex) {
             indicesToRemove.push(index);
         }
     });
     
-    console.log(`🎯 Removing highlights for row ${rowIndex}${specificFaceIndex !== undefined ? `, face ${specificFaceIndex}` : ''}:`, {
+    console.log(`🎯 Removing highlights for row ${rowIndex}:`, {
         totalHighlights: currentHighlights.length,
         matchingHighlights: indicesToRemove.length,
-        matchingIndices: indicesToRemove,
-        specificFaceFilter: specificFaceIndex
+        matchingIndices: indicesToRemove
     });
     
     // Remove highlights in reverse order to maintain correct indices
@@ -416,9 +412,9 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
     });
     
     if (indicesToRemove.length > 0) {
-        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}${specificFaceIndex !== undefined ? `, face: ${specificFaceIndex}` : ''}`);
+        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}`);
     } else {
-        console.warn(`⚠️ No face highlights found for row: ${rowIndex}${specificFaceIndex !== undefined ? `, face: ${specificFaceIndex}` : ''}`);
+        console.warn(`⚠️ No face highlights found for row: ${rowIndex}`);
     }
 };
 
