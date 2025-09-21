@@ -427,13 +427,13 @@ const YagoDesignShape: React.FC<Props> = ({
     };
     
     window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
-    window.addEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
+    window.addEventListener('removeFaceHighlightByRow', handleRemoveFaceHighlightByRow as EventListener);
     window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
     window.addEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     
     return () => {
       window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
-      window.removeEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
+      window.removeEventListener('removeFaceHighlightByRow', handleRemoveFaceHighlightByRow as EventListener);
       window.removeEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
       window.removeEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     };

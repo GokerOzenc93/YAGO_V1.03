@@ -272,7 +272,7 @@ const EditMode: React.FC<EditModeProps> = ({
               faceNumber: displayNumber,
               color: 0xffb366,
               confirmed: true,
-              faceListIndex: targetIndex
+              rowIndex: targetIndex // Satır indeksi olarak gönder
             }
           });
           window.dispatchEvent(highlightEvent);
@@ -282,7 +282,7 @@ const EditMode: React.FC<EditModeProps> = ({
           setPendingFaceSelection(null);
           setIsFaceEditMode(false);
           
-          console.log(`🎯 Face confirmed and linked: List index ${targetIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
+          console.log(`🎯 Face confirmed and linked: Row ${targetIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
           console.log(`🎯 Face selection mode deactivated after confirmation`);
         } else {
           console.warn('🎯 No unconfirmed faces available to link');

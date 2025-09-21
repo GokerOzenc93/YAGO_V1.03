@@ -28,6 +28,7 @@ export interface FaceHighlight {
     faceIndex: number;
     shapeId: string;
     faceListIndex?: number;
+    rowIndex?: number; // Hangi satıra ait olduğunu belirtir
 }
 
 let currentHighlights: FaceHighlight[] = [];
@@ -378,15 +379,21 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
 };
 
 /**
- * Remove face highlight by face list index
+ * Remove face highlight by row index - satır indeksine göre highlight sil
  */
-export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex: number) => {
+export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number) => {
     // Find ALL highlights with the same faceListIndex and remove them
     const indicesToRemove: number[] = [];
     currentHighlights.forEach((highlight, index) => {
-        if (highlight.faceListIndex === faceListIndex) {
+        if (highlight.rowIndex === rowIndex) {
             indicesToRemove.push(index);
         }
+    });
+    
+    console.log(`🎯 Removing highlights for row ${rowIndex}:`, {
+        totalHighlights: currentHighlights.length,
+        matchingHighlights: indicesToRemove.length,
+        matchingIndices: indicesToRemove
     });
     
     // Remove highlights in reverse order to maintain correct indices
@@ -405,9 +412,9 @@ export const removeFaceHighlightByListIndex = (scene: THREE.Scene, faceListIndex
     });
     
     if (indicesToRemove.length > 0) {
-        console.log(`🎯 ${indicesToRemove.length} face highlight(s) removed by list index: ${faceListIndex}`);
+        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}`);
     } else {
-        console.warn(`🎯 No face highlights found for list index: ${faceListIndex}`);
+        console.warn(`⚠️ No face highlights found for row: ${rowIndex}`);
     }
 };
 
@@ -847,10 +854,29 @@ export const highlightFace = (
     color: number = 0xff6b35,
     opacity: number = 0.6,
     faceNumber?: number,
-    faceListIndex?: number
+    rowIndex?: number // Satır indeksi parametresi
 ): FaceHighlight | null => {
-    // Only clear temporary highlights, keep persistent ones
-    clearTemporaryHighlights(scene);
+    // Yeni yüzey seçildiğinde önceki geçici highlight'ları temizle
+    // Ancak kalıcı (confirmed) highlight'ları koru
+    const temporaryHighlights = currentHighlights.filter(highlight => 
+        !(highlight.mesh as any).isPersistent
+    );
+    
+    temporaryHighlights.forEach(highlight => {
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
+        }
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+    });
+    
+    // Keep only persistent highlights
+    currentHighlights = currentHighlights.filter(highlight => 
+        (highlight.mesh as any).isPersistent
+    );
     
     if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;
@@ -885,14 +911,14 @@ export const highlightFace = (
         mesh: overlay, 
         faceIndex: hit.faceIndex, 
         shapeId: shape.id,
-        faceListIndex: faceListIndex
+        rowIndex: rowIndex // Satır indeksini kaydet
     };
     currentHighlights.push(newHighlight);
     
     // Mark as persistent if it has a face number (confirmed face)
     if (faceNumber !== undefined) {
         (overlay as any).isPersistent = true;
-        console.log(`🎯 Face ${hit.faceIndex} marked as PERSISTENT with number ${faceNumber}`);
+        console.log(`🎯 Face ${hit.faceIndex} marked as PERSISTENT with number ${faceNumber} for row ${rowIndex}`);
     } else {
         (overlay as any).isPersistent = false;
         console.log(`🎯 Face ${hit.faceIndex} marked as TEMPORARY`);
