@@ -381,24 +381,40 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
 /**
  * Remove face highlight by row index - satır indeksine göre highlight sil
  */
-export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number) => {
-    // Find ALL highlights with the same faceListIndex and remove them
+export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number, specificFaceIndex?: number) => {
+    // Find highlights matching the criteria
     const indicesToRemove: number[] = [];
     currentHighlights.forEach((highlight, index) => {
-        if (highlight.rowIndex === rowIndex) {
-            indicesToRemove.push(index);
+        const matchesRow = highlight.rowIndex === rowIndex;
+        
+        if (specificFaceIndex !== undefined) {
+            // Spesifik face index varsa hem row hem face eşleşmesi gerekli
+            const matchesFace = highlight.faceIndex === specificFaceIndex;
+            if (matchesRow && matchesFace) {
+                indicesToRemove.push(index);
+                console.log(`🎯 Found specific match: rowIndex ${rowIndex}, faceIndex ${specificFaceIndex}, highlightIndex ${index}`);
+            }
+        } else {
+            // Sadece row index eşleşmesi
+            if (matchesRow) {
+                indicesToRemove.push(index);
+                console.log(`🎯 Found row match: rowIndex ${rowIndex}, highlightIndex ${index}`);
+            }
         }
     });
     
-    console.log(`🎯 Removing highlights for row ${rowIndex}:`, {
+    console.log(`🎯 Removing highlights for row ${rowIndex} ${specificFaceIndex ? `(face ${specificFaceIndex})` : ''}:`, {
         totalHighlights: currentHighlights.length,
         matchingHighlights: indicesToRemove.length,
-        matchingIndices: indicesToRemove
+        matchingIndices: indicesToRemove,
+        specificFaceIndex: specificFaceIndex || 'none'
     });
     
     // Remove highlights in reverse order to maintain correct indices
     indicesToRemove.reverse().forEach(index => {
         const highlight = currentHighlights[index];
+        console.log(`🗑️ Removing highlight: rowIndex ${highlight.rowIndex}, faceIndex ${highlight.faceIndex}`);
+        
         // Remove text mesh if exists
         if ((highlight.mesh as any).textMesh) {
             scene.remove((highlight.mesh as any).textMesh);
@@ -412,9 +428,9 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
     });
     
     if (indicesToRemove.length > 0) {
-        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}`);
+        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex} ${specificFaceIndex ? `(face ${specificFaceIndex})` : ''}`);
     } else {
-        console.warn(`⚠️ No face highlights found for row: ${rowIndex}`);
+        console.warn(`⚠️ No face highlights found for row: ${rowIndex} ${specificFaceIndex ? `(face ${specificFaceIndex})` : ''}`);
     }
 };
 
