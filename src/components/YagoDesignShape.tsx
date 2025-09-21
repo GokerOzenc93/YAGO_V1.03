@@ -10,7 +10,9 @@ import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
   highlightFace,
-  clearFaceHighlight
+  clearFaceHighlight,
+  removeFaceHighlightByListIndex,
+  clearTemporaryHighlights
 } from '../utils/faceSelection';
 
 interface Props {
@@ -352,14 +354,16 @@ const YagoDesignShape: React.FC<Props> = ({
   // Face Edit mode'dan çıkıldığında highlight'ı temizle
   useEffect(() => {
     if (!isFaceEditMode) {
-      clearFaceHighlight(scene);
+      // Don't clear any highlights when exiting face edit mode
+      // Keep all persistent highlights intact
+      console.log('🎯 Face edit mode exited - keeping all persistent highlights');
     }
   }, [isFaceEditMode, scene]);
   
   // Listen for confirmed face highlight events
   useEffect(() => {
     const handleConfirmedFaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, faceNumber, color, confirmed } = event.detail;
+      const { shapeId, faceIndex, faceNumber, color, confirmed, faceListIndex } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
         console.log(`🎯 Highlighting confirmed face ${faceIndex} with number ${faceNumber} in green`);
@@ -395,6 +399,28 @@ const YagoDesignShape: React.FC<Props> = ({
       removeFaceHighlightByListIndex(scene, faceListIndex);
     };
     
+    const handleRightClickConfirmation = (event: CustomEvent) => {
+      const { shapeId, faceIndex, confirmed } = event.detail;
+      
+      if (shapeId === shape.id && confirmed) {
+        console.log(`🎯 Right-click confirmation received for face ${faceIndex}`);
+        
+        // Find the next available face list index (first unconfirmed face)
+        const editMode = document.querySelector('[data-edit-mode="true"]');
+        if (editMode) {
+          // Dispatch event to EditMode to handle the confirmation
+          const confirmEvent = new CustomEvent('rightClickFaceConfirmation', {
+            detail: {
+              shapeId: shapeId,
+              faceIndex: faceIndex,
+              confirmed: true
+            }
+          });
+          window.dispatchEvent(confirmEvent);
+        }
+      }
+    };
+    
     const handleClearAllFaceHighlights = () => {
       console.log('🎯 Clearing all face highlights from 3D scene');
       clearAllPersistentHighlights(scene);
@@ -402,11 +428,13 @@ const YagoDesignShape: React.FC<Props> = ({
     
     window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
     window.addEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
+    window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
     window.addEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     
     return () => {
       window.removeEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
       window.removeEventListener('removeFaceHighlight', handleRemoveFaceHighlight as EventListener);
+      window.removeEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
       window.removeEventListener('clearAllFaceHighlights', handleClearAllFaceHighlights as EventListener);
     };
   }, [scene, shape.id, shape]);

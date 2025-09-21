@@ -1,10 +1,11 @@
 import React from 'react';
-import { ChevronLeft, MousePointer, Plus, Target, Check, X } from 'lucide-react';
+import { ChevronLeft, MousePointer, Plus, Target, X } from 'lucide-react';
 
 interface Face {
   index: number;
   role: string;
   confirmed?: boolean;
+  actualFaceIndex?: number; // The actual 3D face index
 }
 
 interface SurfaceSpecificationProps {
@@ -17,6 +18,7 @@ interface SurfaceSpecificationProps {
   onConfirmFaceSelection: (faceIndex: number) => void;
   onClearAllFaceSelections: () => void;
   pendingFaceSelection: number | null;
+  activeFaceSelectionMode?: boolean;
 }
 
 const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
@@ -28,7 +30,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   onFaceSelectionMode,
   onConfirmFaceSelection,
   onClearAllFaceSelections,
-  pendingFaceSelection
+  pendingFaceSelection,
+  activeFaceSelectionMode = false
 }) => {
   const handleClearAllFaceSelections = () => {
     // Dispatch event to clear all highlights from 3D scene
@@ -38,6 +41,21 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     onClearAllFaceSelections();
   };
 
+  const handleRemoveFace = (faceListIndex: number) => {
+    // Dispatch event to remove highlight from 3D scene
+    const event = new CustomEvent('removeFaceHighlight', {
+      detail: {
+        faceListIndex: faceListIndex,
+        displayNumber: faceListIndex + 1
+      }
+    });
+    window.dispatchEvent(event);
+    
+    // Remove from list
+    onRemoveFaceFromList(faceListIndex);
+    
+    console.log(`🎯 Face ${faceListIndex + 1} removed from both list and scene`);
+  };
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -75,10 +93,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
               {selectedFaces.map((face, index) => (
                 <div key={index} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded text-sm">
                   <div className="flex items-center gap-2">
-                    {/* Status indicator */}
-                    <div className={`w-2 h-2 rounded-full ${face.confirmed ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     <span className="text-xs font-mono text-slate-600">
-                      {face.confirmed ? '✓' : ''} Face {index + 1}
+                      Face {index + 1}
                     </span>
                   </div>
                   <select
@@ -98,7 +114,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   <button
                     onClick={() => onFaceSelectionMode(index + 1)}
                     className={`p-1 rounded transition-colors ${
-                      pendingFaceSelection === (index + 1)
+                      pendingFaceSelection === (index + 1) && activeFaceSelectionMode
                         ? 'bg-orange-600 text-white'
                         : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                     }`}
@@ -106,17 +122,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   >
                     <Target size={10} />
                   </button>
-                  {pendingFaceSelection === (index + 1) && (
-                    <button
-                      onClick={() => onConfirmFaceSelection(index)}
-                      className="p-0.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                      title="Confirm Selection"
-                    >
-                      <Check size={10} />
-                    </button>
-                  )}
                   <button
-                    onClick={() => onRemoveFaceFromList(index)}
+                    onClick={() => handleRemoveFace(index)}
                     className="text-red-500 hover:text-red-700 p-0.5"
                     title="Remove Face"
                   >
@@ -140,6 +147,21 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             </button>
           )}
         </div>
+        
+        {/* Face Selection Status */}
+        {activeFaceSelectionMode && pendingFaceSelection && (
+          <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <span className="text-orange-700 font-medium">
+                Face selection active for Face {pendingFaceSelection}
+              </span>
+            </div>
+            <p className="text-orange-600 mt-1">
+              Click on 3D surface, then right-click to confirm
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

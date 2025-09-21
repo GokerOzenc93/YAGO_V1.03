@@ -57,6 +57,7 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
+  const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
@@ -239,33 +240,62 @@ const EditMode: React.FC<EditModeProps> = ({
 
   // Listen for right-click face confirmations
   useEffect(() => {
-    const handleRightClickConfirmation = (event: CustomEvent) => {
+    const handleRightClickFaceConfirmation = (event: CustomEvent) => {
       const { shapeId, faceIndex, confirmed } = event.detail;
       
       if (shapeId === editedShape.id && confirmed) {
-        // Find if this face is in our pending selection
-        const faceListIndex = selectedFaces.findIndex((_, idx) => idx + 1 === pendingFaceSelection);
+        console.log(`🎯 Processing right-click confirmation for face ${faceIndex}`);
         
-        if (faceListIndex !== -1) {
-          // Confirm the face selection
+        // Find the pending face selection or first unconfirmed face
+        let targetIndex = -1;
+        
+        if (pendingFaceSelection !== null) {
+          // Use the pending face selection index (1-based to 0-based)
+          targetIndex = pendingFaceSelection - 1;
+        } else {
+          // Find the first unconfirmed face in the list
+          targetIndex = selectedFaces.findIndex(face => !face.confirmed);
+        }
+        
+        if (targetIndex !== -1 && targetIndex < selectedFaces.length) {
+          // Confirm this face and link it
           setSelectedFaces(prev => prev.map((face, idx) => 
-            idx === faceListIndex ? { ...face, confirmed: true } : face
+            idx === targetIndex ? { ...face, confirmed: true, actualFaceIndex: faceIndex } : face
           ));
           
+          // Highlight the face in 3D scene with proper linking
+          const displayNumber = targetIndex + 1;
+          const highlightEvent = new CustomEvent('highlightConfirmedFace', {
+            detail: {
+              shapeId: editedShape.id,
+              faceIndex: faceIndex,
+              faceNumber: displayNumber,
+              color: 0xffb366,
+              confirmed: true,
+              faceListIndex: targetIndex
+            }
+          });
+          window.dispatchEvent(highlightEvent);
+          
+          // Exit face selection mode after confirmation
+          setActiveFaceSelectionMode(false);
           setPendingFaceSelection(null);
           setIsFaceEditMode(false);
           
-          console.log(`🎯 Face confirmed via right-click: Face ${faceListIndex + 1}`);
+          console.log(`🎯 Face confirmed and linked: List index ${targetIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
+          console.log(`🎯 Face selection mode deactivated after confirmation`);
+        } else {
+          console.warn('🎯 No unconfirmed faces available to link');
         }
       }
     };
     
-    window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
+    window.addEventListener('rightClickFaceConfirmation', handleRightClickFaceConfirmation as EventListener);
     
     return () => {
-      window.removeEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);
+      window.removeEventListener('rightClickFaceConfirmation', handleRightClickFaceConfirmation as EventListener);
     };
-  }, [editedShape.id, selectedFaces, pendingFaceSelection]);
+  }, [editedShape.id, selectedFaces]);
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -448,42 +478,26 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleAddNewFace = () => {
     const nextIndex = selectedFaces.length + 1;
     setSelectedFaces(prev => [...prev, { index: nextIndex, role: '', confirmed: false }]);
+    
+    // Automatically activate face selection mode for the new row
+    setPendingFaceSelection(nextIndex);
+    setActiveFaceSelectionMode(true);
+    setIsFaceEditMode(true);
+    
     console.log(`🎯 New face row added with index ${nextIndex} (starting from 1)`);
+    console.log(`🎯 Face selection mode auto-activated for new row`);
   };
 
   const handleFaceSelectionMode = (faceIndex: number) => {
     setPendingFaceSelection(faceIndex);
-    setIsFaceEditMode(true);
+    setActiveFaceSelectionMode(true);
+    setIsFaceEditMode(true); // Activate 3D face selection
     console.log(`🎯 Face selection mode activated for index ${faceIndex}`);
   };
 
   const handleConfirmFaceSelection = (faceIndex: number) => {
-    if (pendingFaceSelection !== null && pendingFaceSelection > 0) {
-      // Update the face at the correct array index (faceIndex is the array index, not display number)
-      setSelectedFaces(prev => prev.map((face, idx) => 
-        idx === faceIndex ? { ...face, confirmed: true } : face
-      ));
-      
-      // Display number is array index + 1
-      const displayNumber = faceIndex + 1;
-      
-      // Dispatch event to highlight the face in 3D scene
-      const event = new CustomEvent('highlightConfirmedFace', {
-        detail: {
-          shapeId: editedShape.id,
-          faceIndex: Math.floor(Math.random() * 6), // Random face index for demo (0-5 for a cube)
-          faceNumber: displayNumber,
-          color: 0xff6b35, // Orange color
-          confirmed: true,
-          faceListIndex: faceIndex // Pass the face list index for tracking
-        }
-      });
-      window.dispatchEvent(event);
-      
-      setPendingFaceSelection(null);
-      setIsFaceEditMode(false);
-      console.log(`🎯 Face confirmed with display number ${displayNumber}`);
-    }
+    // This function is no longer used - confirmation only via right-click
+    console.log('🎯 Face confirmation only available via right-click on 3D surface');
   };
 
   const handleClearAllFaceSelections = () => {
@@ -491,9 +505,11 @@ const EditMode: React.FC<EditModeProps> = ({
     console.log('🎯 All face selections cleared');
   };
 
+  // Add data attribute for EditMode identification
   return (
     <div
       ref={panelRef}
+      data-edit-mode="true"
       className={`fixed left-0 z-50 bg-white backdrop-blur-sm border-r border-gray-200 shadow-xl rounded-r-xl flex flex-col transition-all duration-300 ease-in-out group`}
       style={{
         top: panelTop,
@@ -646,6 +662,7 @@ const EditMode: React.FC<EditModeProps> = ({
                 onConfirmFaceSelection={handleConfirmFaceSelection}
                 onClearAllFaceSelections={handleClearAllFaceSelections}
                 pendingFaceSelection={pendingFaceSelection}
+                activeFaceSelectionMode={activeFaceSelectionMode}
               />
             )}
 
