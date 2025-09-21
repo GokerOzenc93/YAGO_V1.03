@@ -430,58 +430,26 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
  * Clear all persistent highlights
  */
 export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
-  console.log(`🎯 ENHANCED: Clearing all persistent highlights`);
-  console.log(`🎯 Current highlights count: ${currentHighlights.length}`);
-  
-  // 🎯 ENHANCED: Clear from both currentHighlights array AND scene objects
-  const persistentHighlights = currentHighlights.filter(highlight => 
-    (highlight.mesh as any).isPersistent
-  );
-  
-  // Remove persistent highlights from currentHighlights array
-  persistentHighlights.forEach(highlight => {
-    // Remove text mesh if exists
-    if ((highlight.mesh as any).textMesh) {
-      scene.remove((highlight.mesh as any).textMesh);
-      (highlight.mesh as any).textMesh.geometry.dispose();
-      (highlight.mesh as any).textMesh.material.dispose();
-    }
-    scene.remove(highlight.mesh);
-    highlight.mesh.geometry.dispose();
-    (highlight.mesh.material as THREE.Material).dispose();
-  });
-  
-  // 🎯 ENHANCED: Also scan scene for any remaining highlight objects with userData
-  const sceneObjectsToRemove: THREE.Object3D[] = [];
-  scene.traverse((object) => {
-    if (object.userData && (object.userData.isPersistent || object.userData.faceNumber !== undefined)) {
-      sceneObjectsToRemove.push(object);
-      console.log(`🎯 Found persistent scene object to remove: rowIndex ${object.userData.rowIndex}, faceIndex ${object.userData.faceIndex}`);
-    }
-  });
-  
-  // Remove scene objects
-  sceneObjectsToRemove.forEach(object => {
-    scene.remove(object);
+    const persistentHighlights = currentHighlights.filter(highlight => 
+        (highlight.mesh as any).isPersistent
+    );
     
-    // Dispose geometry and material if it's a mesh
-    if (object instanceof THREE.Mesh) {
-      if (object.geometry) object.geometry.dispose();
-      if (object.material) {
-        if (Array.isArray(object.material)) {
-          object.material.forEach(mat => mat.dispose());
-        } else {
-          object.material.dispose();
+    persistentHighlights.forEach(highlight => {
+        // Remove text mesh if exists
+        if ((highlight.mesh as any).textMesh) {
+            scene.remove((highlight.mesh as any).textMesh);
+            (highlight.mesh as any).textMesh.geometry.dispose();
+            (highlight.mesh as any).textMesh.material.dispose();
         }
-      }
-    }
-  });
-  
-  // Clear all highlights from array
-  currentHighlights = [];
-  
-  const totalRemoved = persistentHighlights.length + sceneObjectsToRemove.length;
-  console.log(`✅ ENHANCED: Cleared ${totalRemoved} persistent highlight objects`);
+        scene.remove(highlight.mesh);
+        highlight.mesh.geometry.dispose();
+        (highlight.mesh.material as THREE.Material).dispose();
+    });
+    
+    // Clear all highlights
+    currentHighlights = [];
+    
+    console.log(`🎯 Cleared ${persistentHighlights.length} persistent highlights`);
 };
 
 /**
@@ -1056,7 +1024,6 @@ export const addFaceHighlight = (
     isMultiSelectMode = isMultiSelect;
     return newHighlight;
 };
-
 
 /**
  * Raycaster ile yüzey tespiti - tüm intersectionları döndür
