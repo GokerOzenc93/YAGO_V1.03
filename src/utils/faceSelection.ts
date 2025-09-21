@@ -856,27 +856,29 @@ export const highlightFace = (
     faceNumber?: number,
     rowIndex?: number // Satır indeksi parametresi
 ): FaceHighlight | null => {
-    // Yeni yüzey seçildiğinde önceki geçici highlight'ları temizle
-    // Ancak kalıcı (confirmed) highlight'ları koru
+  // 🎯 MULTIPLE HIGHLIGHTS SUPPORT - Sadece faceNumber yoksa geçici highlight'ları temizle
+  if (faceNumber === undefined) {
+    // Sadece geçici highlight'ları temizle (kalıcıları koru)
     const temporaryHighlights = currentHighlights.filter(highlight => 
-        !(highlight.mesh as any).isPersistent
+      !(highlight.mesh as any).isPersistent
     );
     
     temporaryHighlights.forEach(highlight => {
-        if ((highlight.mesh as any).textMesh) {
-            scene.remove((highlight.mesh as any).textMesh);
-            (highlight.mesh as any).textMesh.geometry.dispose();
-            (highlight.mesh as any).textMesh.material.dispose();
-        }
-        scene.remove(highlight.mesh);
-        highlight.mesh.geometry.dispose();
-        (highlight.mesh.material as THREE.Material).dispose();
+      if ((highlight.mesh as any).textMesh) {
+        scene.remove((highlight.mesh as any).textMesh);
+        (highlight.mesh as any).textMesh.geometry.dispose();
+        (highlight.mesh as any).textMesh.material.dispose();
+      }
+      scene.remove(highlight.mesh);
+      highlight.mesh.geometry.dispose();
+      (highlight.mesh.material as THREE.Material).dispose();
     });
     
     // Keep only persistent highlights
     currentHighlights = currentHighlights.filter(highlight => 
-        (highlight.mesh as any).isPersistent
+      (highlight.mesh as any).isPersistent
     );
+  }
     
     if (!hit.face || hit.faceIndex === undefined) return null;
     const mesh = hit.object as THREE.Mesh;

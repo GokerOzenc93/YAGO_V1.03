@@ -274,6 +274,7 @@ const YagoDesignShape: React.FC<Props> = ({
         return;
       }
 
+      // 🎯 MULTIPLE HIGHLIGHTS - Geçici highlight oluştur (kalıcıları etkilemez)
       const highlight = highlightFace(scene, hit, shape, isShiftPressed, 0xff6b35, 0.6);
       if (highlight && onFaceSelect) {
         onFaceSelect(hit.faceIndex);
@@ -317,8 +318,8 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // Clear existing highlights first
-        clearFaceHighlight(scene);
+        // 🎯 MULTIPLE HIGHLIGHTS - Geçici highlight'ları temizle, kalıcıları koru
+        clearTemporaryHighlights(scene);
         
         // Highlight the face with orange color and face number to make it persistent
         const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8, faceIndex + 1);
@@ -376,8 +377,8 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // Clear existing highlights first
-        clearFaceHighlight(scene);
+        // 🎯 MULTIPLE HIGHLIGHTS - Sadece geçici highlight'ları temizle
+        clearTemporaryHighlights(scene);
         
         // Highlight the face with specified color and face number to make it persistent
         const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index
