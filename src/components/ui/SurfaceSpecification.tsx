@@ -44,15 +44,20 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   const handleRemoveFace = (faceListIndex: number) => {
     console.log(`🗑️ Removing face row ${faceListIndex} from UI and 3D scene`);
     
-    // 3D sahneden ilgili satırın highlight'ını temizle
-    const event = new CustomEvent('removeFaceHighlightByRow', {
-      detail: {
-        rowIndex: faceListIndex,
-        displayNumber: faceListIndex + 1,
-        action: 'removeRow'
-      }
-    });
-    window.dispatchEvent(event);
+    // 3D sahneden SADECE bu satırın highlight'ını temizle
+    const faceToRemove = selectedFaces[faceListIndex];
+    if (faceToRemove && faceToRemove.actualFaceIndex !== undefined) {
+      const event = new CustomEvent('removeFaceHighlightByRow', {
+        detail: {
+          rowIndex: faceListIndex,
+          faceIndex: faceToRemove.actualFaceIndex,
+          displayNumber: faceListIndex + 1,
+          action: 'removeSpecificRow'
+        }
+      });
+      window.dispatchEvent(event);
+      console.log(`🎯 Removing specific highlight for row ${faceListIndex}, face ${faceToRemove.actualFaceIndex}`);
+    }
     
     // Arayüzden satırı sil
     onRemoveFaceFromList(faceListIndex);
