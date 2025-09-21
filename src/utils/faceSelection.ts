@@ -430,26 +430,58 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
  * Clear all persistent highlights
  */
 export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
-    const persistentHighlights = currentHighlights.filter(highlight => 
-        (highlight.mesh as any).isPersistent
-    );
+  console.log(`🎯 ENHANCED: Clearing all persistent highlights`);
+  console.log(`🎯 Current highlights count: ${currentHighlights.length}`);
+  
+  // 🎯 ENHANCED: Clear from both currentHighlights array AND scene objects
+  const persistentHighlights = currentHighlights.filter(highlight => 
+    (highlight.mesh as any).isPersistent
+  );
+  
+  // Remove persistent highlights from currentHighlights array
+  persistentHighlights.forEach(highlight => {
+    // Remove text mesh if exists
+    if ((highlight.mesh as any).textMesh) {
+      scene.remove((highlight.mesh as any).textMesh);
+      (highlight.mesh as any).textMesh.geometry.dispose();
+      (highlight.mesh as any).textMesh.material.dispose();
+    }
+    scene.remove(highlight.mesh);
+    highlight.mesh.geometry.dispose();
+    (highlight.mesh.material as THREE.Material).dispose();
+  });
+  
+  // 🎯 ENHANCED: Also scan scene for any remaining highlight objects with userData
+  const sceneObjectsToRemove: THREE.Object3D[] = [];
+  scene.traverse((object) => {
+    if (object.userData && (object.userData.isPersistent || object.userData.faceNumber !== undefined)) {
+      sceneObjectsToRemove.push(object);
+      console.log(`🎯 Found persistent scene object to remove: rowIndex ${object.userData.rowIndex}, faceIndex ${object.userData.faceIndex}`);
+    }
+  });
+  
+  // Remove scene objects
+  sceneObjectsToRemove.forEach(object => {
+    scene.remove(object);
     
-    persistentHighlights.forEach(highlight => {
-        // Remove text mesh if exists
-        if ((highlight.mesh as any).textMesh) {
-            scene.remove((highlight.mesh as any).textMesh);
-            (highlight.mesh as any).textMesh.geometry.dispose();
-            (highlight.mesh as any).textMesh.material.dispose();
+    // Dispose geometry and material if it's a mesh
+    if (object instanceof THREE.Mesh) {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(mat => mat.dispose());
+        } else {
+          object.material.dispose();
         }
-        scene.remove(highlight.mesh);
-        highlight.mesh.geometry.dispose();
-        (highlight.mesh.material as THREE.Material).dispose();
-    });
-    
-    // Clear all highlights
-    currentHighlights = [];
-    
-    console.log(`🎯 Cleared ${persistentHighlights.length} persistent highlights`);
+      }
+    }
+  });
+  
+  // Clear all highlights from array
+  currentHighlights = [];
+  
+  const totalRemoved = persistentHighlights.length + sceneObjectsToRemove.length;
+  console.log(`✅ ENHANCED: Cleared ${totalRemoved} persistent highlight objects`);
 };
 
 /**
@@ -845,47 +877,104 @@ const buildFaceOverlayFromHit = (
 /** ===== End Robust Planar Region Selection ===== **/
 
 
-
-// === BVH Acceleration Optional Usage ===
-// Before heavy selection usage:
-//   (mesh.geometry as any).computeBoundsTree = MeshBVH.prototype.build;
-//   (mesh.geometry as any).disposeBoundsTree = MeshBVH.prototype.dispose;
-//   mesh.geometry.computeBoundsTree();
-// After done:
-//   mesh.geometry.disposeBoundsTree();
-
-export const highlightFace = (
-    scene: THREE.Scene,
-    hit: THREE.Intersection,
-    shape: Shape,
-    isMultiSelect: boolean = false,
-    color: number = 0xff6b35,
-    opacity: number = 0.6,
-    faceNumber?: number,
-    rowIndex?: number // Satır indeksi parametresi
-): FaceHighlight | null => {
-  // 🎯 MULTIPLE HIGHLIGHTS SUPPORT - Sadece faceNumber yoksa geçici highlight'ları temizle
-  if (faceNumber === undefined) {
-    // Sadece geçici highlight'ları temizle (kalıcıları koru)
-    const temporaryHighlights = currentHighlights.filter(highlight => 
-      !(highlight.mesh as any).isPersistent
-    );
+  console.log(`🎯 ENHANCED: Attempting to remove highlights for row ${rowIndex}, specificFaceIndex: ${specificFaceIndex}`);
+  console.log(`🎯 Current highlights count: ${currentHighlights.length}`);
+  
+  // 🎯 ENHANCED: Remove from both currentHighlights array AND scene objects
+  const highlightsToRemove: FaceHighlight[] = [];
+  
+  // Find highlights to remove from currentHighlights array
+  currentHighlights.forEach((highlight, index) => {
+    let shouldRemove = false;
     
-    temporaryHighlights.forEach(highlight => {
+    // Check rowIndex match
+    if (highlight.rowIndex === rowIndex) {
+      shouldRemove = true;
+    }
+    
+    // Additional check for specificFaceIndex if provided
+    if (specificFaceIndex !== undefined && highlight.faceIndex === specificFaceIndex) {
+      shouldRemove = true;
+    }
+    
+    if (shouldRemove) {
+      highlightsToRemove.push(highlight);
+      console.log(`🎯 Found highlight to remove: rowIndex ${highlight.rowIndex}, faceIndex ${highlight.faceIndex}`);
+    }
+  });
+  
+  // 🎯 ENHANCED: Also scan scene objects with userData
+  const sceneObjectsToRemove: THREE.Object3D[] = [];
+  scene.traverse((object) => {
+    if (object.userData && object.userData.rowIndex !== undefined) {
+      let shouldRemove = false;
+      
+      // Check rowIndex match
+      if (object.userData.rowIndex === rowIndex) {
+        shouldRemove = true;
+      }
+      
+      // Additional check for specificFaceIndex if provided
+      if (specificFaceIndex !== undefined && object.userData.faceIndex === specificFaceIndex) {
+        shouldRemove = true;
+      }
+      
+      if (shouldRemove) {
+        sceneObjectsToRemove.push(object);
+        console.log(`🎯 Found scene object to remove: rowIndex ${object.userData.rowIndex}, faceIndex ${object.userData.faceIndex}, isTextMesh: ${object.userData.isTextMesh || false}`);
+      }
+    }
+  });
+  
+  console.log(`🎯 Found ${highlightsToRemove.length} highlights and ${sceneObjectsToRemove.length} scene objects to remove`);
+  
+  // Remove from currentHighlights array
+  highlightsToRemove.forEach(highlight => {
+    const index = currentHighlights.indexOf(highlight);
+    if (index !== -1) {
+      // Remove text mesh if exists
       if ((highlight.mesh as any).textMesh) {
         scene.remove((highlight.mesh as any).textMesh);
         (highlight.mesh as any).textMesh.geometry.dispose();
         (highlight.mesh as any).textMesh.material.dispose();
       }
+      
+      // Remove main mesh
       scene.remove(highlight.mesh);
       highlight.mesh.geometry.dispose();
       (highlight.mesh.material as THREE.Material).dispose();
-    });
+      
+      // Remove from array
+      currentHighlights.splice(index, 1);
+      console.log(`🗑️ Removed highlight from array: rowIndex ${highlight.rowIndex}, faceIndex ${highlight.faceIndex}`);
+    }
+  });
+  
+  // Remove scene objects that might not be in currentHighlights
+  sceneObjectsToRemove.forEach(object => {
+    scene.remove(object);
     
-    // Keep only persistent highlights
-    currentHighlights = currentHighlights.filter(highlight => 
-      (highlight.mesh as any).isPersistent
-    );
+    // Dispose geometry and material if it's a mesh
+    if (object instanceof THREE.Mesh) {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(mat => mat.dispose());
+        } else {
+          object.material.dispose();
+        }
+      }
+    }
+    
+    console.log(`🗑️ Removed scene object: rowIndex ${object.userData.rowIndex}, faceIndex ${object.userData.faceIndex}`);
+  });
+  
+  const totalRemoved = highlightsToRemove.length + sceneObjectsToRemove.length;
+  if (totalRemoved > 0) {
+    console.log(`✅ ENHANCED: ${totalRemoved} highlight objects removed for row: ${rowIndex}`);
+    console.log(`🎯 Remaining highlights count: ${currentHighlights.length}`);
+  } else {
+    console.warn(`⚠️ ENHANCED: No highlights found for row: ${rowIndex}`);
   }
     
     if (!hit.face || hit.faceIndex === undefined) return null;
@@ -916,6 +1005,27 @@ export const highlightFace = (
     if (!overlay) return null;
 
     console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
+    
+    // 🎯 SET USERDATA for proper tracking and deletion
+    overlay.userData = {
+      rowIndex: rowIndex,
+      faceIndex: hit.faceIndex,
+      shapeId: shape.id,
+      faceNumber: faceNumber,
+      isPersistent: faceNumber !== undefined
+    };
+    
+    // Also set userData on text mesh if exists
+    if ((overlay as any).textMesh) {
+      (overlay as any).textMesh.userData = {
+        rowIndex: rowIndex,
+        faceIndex: hit.faceIndex,
+        shapeId: shape.id,
+        faceNumber: faceNumber,
+        isPersistent: faceNumber !== undefined,
+        isTextMesh: true
+      };
+    }
     
     const newHighlight = { 
         mesh: overlay, 
