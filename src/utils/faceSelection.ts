@@ -381,19 +381,23 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
 /**
  * Remove face highlight by row index - satır indeksine göre highlight sil
  */
-export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number) => {
-    // Find ALL highlights with the same faceListIndex and remove them
+export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: number, specificFaceIndex?: number) => {
+    // Find highlights with the same rowIndex and optionally specific faceIndex
     const indicesToRemove: number[] = [];
     currentHighlights.forEach((highlight, index) => {
-        if (highlight.rowIndex === rowIndex) {
+        const matchesRow = highlight.rowIndex === rowIndex;
+        const matchesFace = specificFaceIndex === undefined || highlight.faceIndex === specificFaceIndex;
+        
+        if (matchesRow && matchesFace) {
             indicesToRemove.push(index);
         }
     });
     
-    console.log(`🎯 Removing highlights for row ${rowIndex}:`, {
+    console.log(`🎯 Removing highlights for row ${rowIndex}${specificFaceIndex !== undefined ? `, face ${specificFaceIndex}` : ''}:`, {
         totalHighlights: currentHighlights.length,
         matchingHighlights: indicesToRemove.length,
-        matchingIndices: indicesToRemove
+        matchingIndices: indicesToRemove,
+        specificFaceFilter: specificFaceIndex
     });
     
     // Remove highlights in reverse order to maintain correct indices
@@ -412,9 +416,9 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
     });
     
     if (indicesToRemove.length > 0) {
-        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}`);
+        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}${specificFaceIndex !== undefined ? `, face: ${specificFaceIndex}` : ''}`);
     } else {
-        console.warn(`⚠️ No face highlights found for row: ${rowIndex}`);
+        console.warn(`⚠️ No face highlights found for row: ${rowIndex}${specificFaceIndex !== undefined ? `, face: ${specificFaceIndex}` : ''}`);
     }
 };
 
