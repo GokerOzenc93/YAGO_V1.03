@@ -11,7 +11,7 @@ import {
   detectFaceAtMouse,
   highlightFace,
   clearFaceHighlight,
-  removeFaceHighlightByListIndex,
+  removeFaceHighlightByRowIndex,
   clearTemporaryHighlights
 } from '../utils/faceSelection';
 
@@ -396,7 +396,7 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log(`🎯 Removing face highlight for display number ${displayNumber}`);
       
       // Remove specific highlight by face list index
-      removeFaceHighlightByListIndex(scene, faceListIndex);
+      removeFaceHighlightByRowIndex(scene, faceListIndex);
     };
     
     const handleRightClickConfirmation = (event: CustomEvent) => {
