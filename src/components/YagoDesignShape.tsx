@@ -378,14 +378,14 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        // 🎯 MULTIPLE HIGHLIGHTS - Sadece geçici highlight'ları temizle
+        // Clear temporary highlights before creating persistent one
         clearTemporaryHighlights(scene);
         
-        // Highlight the face with specified color and face number to make it persistent
-        const highlight = addFaceHighlight(scene, mockHit, shape, 0xffb366, 0.7, false, faceNumber, faceListIndex); // Light orange color with face list index
+        // Create persistent highlight with face number and row index
+        const highlight = addFaceHighlight(scene, mockHit, shape, 0xffb366, 0.7, false, faceNumber, faceListIndex);
         
         if (highlight) {
-          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
+          console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} for row ${faceListIndex}`);
         } else {
           console.warn(`❌ Failed to highlight face ${faceIndex}`);
         }

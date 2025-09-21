@@ -390,39 +390,75 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
         shapeId: h.shapeId
     })));
     
-    // Find highlights matching the row index
-    const indicesToRemove: number[] = [];
+    // 🎯 DUAL REMOVAL SYSTEM - Remove from both currentHighlights array AND scene objects
+    const highlightsToRemove: FaceHighlight[] = [];
+    const sceneObjectsToRemove: THREE.Object3D[] = [];
+    
+    // Find highlights to remove from currentHighlights array
     currentHighlights.forEach((highlight, index) => {
         if (highlight.rowIndex === rowIndex) {
-            indicesToRemove.push(index);
-            console.log(`🎯 Found match for removal: rowIndex ${rowIndex}, highlightIndex ${index}`);
+            highlightsToRemove.push(highlight);
+            console.log(`🎯 Found highlight to remove: rowIndex ${highlight.rowIndex}, faceIndex ${highlight.faceIndex}`);
         }
     });
     
-    console.log(`🎯 Found ${indicesToRemove.length} highlights to remove for row ${rowIndex}`);
+    // Also scan scene objects with userData
+    scene.traverse((object) => {
+        if (object.userData && object.userData.rowIndex === rowIndex) {
+            sceneObjectsToRemove.push(object);
+            console.log(`🎯 Found scene object to remove: rowIndex ${object.userData.rowIndex}, faceIndex ${object.userData.faceIndex}, isTextMesh: ${object.userData.isTextMesh || false}`);
+        }
+    });
     
-    // Remove highlights in reverse order to maintain correct indices
-    indicesToRemove.reverse().forEach(index => {
-        const highlight = currentHighlights[index];
-        console.log(`🗑️ Removing highlight at index ${index}: rowIndex ${highlight.rowIndex}, faceIndex ${highlight.faceIndex}`);
+    console.log(`🎯 Found ${highlightsToRemove.length} highlights and ${sceneObjectsToRemove.length} scene objects to remove`);
+    
+    // Remove from currentHighlights array
+    highlightsToRemove.forEach(highlight => {
+        const index = currentHighlights.indexOf(highlight);
+        if (index !== -1) {
+            // Remove text mesh if exists
+            if ((highlight.mesh as any).textMesh) {
+                scene.remove((highlight.mesh as any).textMesh);
+                (highlight.mesh as any).textMesh.geometry.dispose();
+                (highlight.mesh as any).textMesh.material.dispose();
+            }
+            
+            // Remove main mesh
+            scene.remove(highlight.mesh);
+            highlight.mesh.geometry.dispose();
+            (highlight.mesh.material as THREE.Material).dispose();
+            
+            // Remove from array
+            currentHighlights.splice(index, 1);
+            console.log(`🗑️ Removed highlight from array: rowIndex ${highlight.rowIndex}, faceIndex ${highlight.faceIndex}`);
+        }
+    });
+    
+    // Remove scene objects that might not be in currentHighlights
+    sceneObjectsToRemove.forEach(object => {
+        scene.remove(object);
         
-        // Remove text mesh if exists
-        if ((highlight.mesh as any).textMesh) {
-            scene.remove((highlight.mesh as any).textMesh);
-            (highlight.mesh as any).textMesh.geometry.dispose();
-            (highlight.mesh as any).textMesh.material.dispose();
+        // Dispose geometry and material if it's a mesh
+        if (object instanceof THREE.Mesh) {
+            if (object.geometry) object.geometry.dispose();
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(mat => mat.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
         }
-        scene.remove(highlight.mesh);
-        highlight.mesh.geometry.dispose();
-        (highlight.mesh.material as THREE.Material).dispose();
-        currentHighlights.splice(index, 1);
+        
+        console.log(`🗑️ Removed scene object: rowIndex ${object.userData.rowIndex}, faceIndex ${object.userData.faceIndex}`);
     });
     
-    if (indicesToRemove.length > 0) {
-        console.log(`✅ ${indicesToRemove.length} face highlight(s) removed for row: ${rowIndex}`);
+    const totalRemoved = highlightsToRemove.length + sceneObjectsToRemove.length;
+    if (totalRemoved > 0) {
+        console.log(`✅ ${totalRemoved} highlight objects removed for row: ${rowIndex}`);
         console.log(`🎯 Remaining highlights count: ${currentHighlights.length}`);
     } else {
-        console.warn(`⚠️ No face highlights found for row: ${rowIndex}`);
+        console.warn(`⚠️ No highlights found for row: ${rowIndex}`);
     }
 };
 
