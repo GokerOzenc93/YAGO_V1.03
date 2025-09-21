@@ -394,17 +394,16 @@ const YagoDesignShape: React.FC<Props> = ({
     const handleRemoveFaceHighlight = (event: CustomEvent) => {
       const { rowIndex, actualFaceIndex, displayNumber, action } = event.detail;
       
-      console.log(`🎯 Removing face highlight for display number ${displayNumber}, action: ${action}`);
+      console.log(`🎯 Received remove face highlight event:`, {
+        rowIndex,
+        actualFaceIndex,
+        displayNumber,
+        action,
+        shapeId: shape.id
+      });
       
-      if (action === 'removeSpecificRow' && actualFaceIndex !== undefined) {
-        // Sadece belirli bir yüzeyi sil
-        console.log(`🎯 Removing specific face: rowIndex ${rowIndex}, actualFaceIndex ${actualFaceIndex}`);
-        removeFaceHighlightByRowIndex(scene, rowIndex, actualFaceIndex);
-      } else {
-        // Fallback: sadece row index ile sil
-        console.log(`🎯 Removing by row index only: ${rowIndex}`);
-        removeFaceHighlightByRowIndex(scene, rowIndex);
-      }
+      // Remove highlight by row index
+      removeFaceHighlightByRowIndex(scene, rowIndex);
     };
     
     const handleRightClickConfirmation = (event: CustomEvent) => {
