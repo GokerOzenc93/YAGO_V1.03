@@ -9,7 +9,7 @@ import { ViewMode, OrthoMode } from '../store/appStore';
 import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
-  highlightFace,
+  addFaceHighlight,
   clearFaceHighlight,
   removeFaceHighlightByRowIndex,
   clearTemporaryHighlights
@@ -275,7 +275,7 @@ const YagoDesignShape: React.FC<Props> = ({
       }
 
       // 🎯 MULTIPLE HIGHLIGHTS - Geçici highlight oluştur (kalıcıları etkilemez)
-      const highlight = highlightFace(scene, hit, shape, isShiftPressed, 0xff6b35, 0.6);
+      const highlight = addFaceHighlight(scene, hit, shape, 0xff6b35, 0.6, isShiftPressed);
       if (highlight && onFaceSelect) {
         onFaceSelect(hit.faceIndex);
         console.log(`🎯 Face ${hit.faceIndex} selected and highlighted ${isShiftPressed ? '(Multi-select)' : ''}`);
@@ -322,7 +322,7 @@ const YagoDesignShape: React.FC<Props> = ({
         clearTemporaryHighlights(scene);
         
         // Highlight the face with orange color and face number to make it persistent
-        const highlight = highlightFace(scene, mockHit, shape, false, 0xff6b35, 0.8, faceIndex + 1);
+        const highlight = addFaceHighlight(scene, mockHit, shape, 0xff6b35, 0.8, false, faceIndex + 1);
         
         if (highlight) {
           console.log(`🎯 Face ${faceIndex} confirmed and made persistent via right-click`);
@@ -381,7 +381,7 @@ const YagoDesignShape: React.FC<Props> = ({
         clearTemporaryHighlights(scene);
         
         // Highlight the face with specified color and face number to make it persistent
-        const highlight = highlightFace(scene, mockHit, shape, false, 0xffb366, 0.7, faceNumber, faceListIndex); // Light orange color with face list index
+        const highlight = addFaceHighlight(scene, mockHit, shape, 0xffb366, 0.7, false, faceNumber, faceListIndex); // Light orange color with face list index
         
         if (highlight) {
           console.log(`✅ Confirmed face ${faceIndex} highlighted with number ${faceNumber} in green`);
