@@ -12,7 +12,8 @@ import {
   addFaceHighlight,
   clearFaceHighlight,
   removeFaceHighlightByRowIndex,
-  clearTemporaryHighlights
+  clearTemporaryHighlights,
+  clearAllPersistentHighlights
 } from '../utils/faceSelection';
 
 interface Props {
