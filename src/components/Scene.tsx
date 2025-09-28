@@ -69,7 +69,6 @@ interface CameraControllerProps {
 
 const CameraController: React.FC<CameraControllerProps> = ({
   isAddPanelMode,
-  isEditMode,
   editModeWidth,
 }) => {
   const { camera } = useThree();
