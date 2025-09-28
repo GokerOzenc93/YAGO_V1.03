@@ -43,7 +43,6 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             faceIndex,
             rowId: activeRowId,
             color: 0xffb366, // Default orange
-           color,
            opacity: 0.15, // Very transparent
             faceNumber: surfaceRows.length // Use current row count as face number
           }
