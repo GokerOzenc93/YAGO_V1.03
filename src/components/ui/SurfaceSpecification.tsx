@@ -233,13 +233,6 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
               <Plus size={14} />
             </button>
             
-            {/* Add Surface Label */}
-            <span className={`text-sm font-medium ${
-              isSelectionActive ? 'text-orange-600' : 'text-gray-700'
-            }`}>
-              Add Surface
-            </span>
-            
             {/* Exit Selection Button */}
             {isSelectionActive && (
               <button
@@ -250,6 +243,13 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                 <X size={14} />
               </button>
             )}
+            
+            {/* Add Surface Label */}
+            <span className={`text-sm font-medium ${
+              isSelectionActive ? 'text-orange-600' : 'text-gray-700'
+            }`}>
+              Add Surface
+            </span>
           </div>
           
           {isSelectionActive && (
