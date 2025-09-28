@@ -315,8 +315,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     type="text"
                     value={row.formula}
                     onChange={(e) => handleFormulaChange(row.id, e.target.value)}
-                    disabled={!row.confirmed}
-                    placeholder="Açıklama..."
+                    disabled={false}
+                    placeholder="Description..."
                     className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
                   />
                   
