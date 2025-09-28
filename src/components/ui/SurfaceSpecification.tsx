@@ -235,7 +235,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     value={row.role}
                     onChange={(e) => handleRoleChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
-                    className="w-16 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                    className="w-12 text-xs bg-white border border-gray-300 rounded px-1 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
                   >
                     <option value="">Role</option>
                     <option value="left">L</option>
@@ -254,7 +254,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     onChange={(e) => handleFormulaChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
                     placeholder="Formula..."
-                    className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2"
+                    className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
                   />
                   
                   {/* Checkbox */}
@@ -262,7 +262,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     type="checkbox"
                     checked={row.confirmed}
                     disabled={!row.confirmed}
-                    className="flex-shrink-0 w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 disabled:opacity-50"
+                    className="flex-shrink-0 w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 disabled:opacity-50 accent-green-600"
                     title={row.confirmed ? "Surface confirmed" : "Waiting for surface selection"}
                   />
                   
