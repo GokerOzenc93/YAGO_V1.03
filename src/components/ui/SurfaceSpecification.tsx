@@ -118,7 +118,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
         'bottom': 0xffd99f,  // Light orange (açık turuncu) - toolbar tonu
         'front': 0xffd99f,   // Light orange (açık turuncu) - toolbar tonu
         'back': 0xffff00,    // Yellow (sarı) - Ba
-        'door': 0xc1c1e7,    // Blue (mavi) - D
+        'door': 0xceffce,    // Blue (mavi) - D
         '': 0xffb6b6         // Default light orange
       };
       
