@@ -88,7 +88,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
 
   const handleRoleChange = (rowId: string, role: string) => {
     setSurfaceRows(prev => prev.map(row => 
-      row.id === rowId ? { ...row, role } : row
+      row.id === rowId ? { ...row, role, confirmed: false } : row
     ));
     
     const row = surfaceRows.find(r => r.id === rowId);
@@ -140,7 +140,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
 
   const handleFormulaChange = (rowId: string, formula: string) => {
     setSurfaceRows(prev => prev.map(row => 
-      row.id === rowId ? { ...row, formula } : row
+      row.id === rowId ? { ...row, formula, confirmed: false } : row
     ));
     
     console.log(`🎯 Formula updated for row ${rowId}: ${formula}`);
@@ -281,16 +281,12 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     className={`flex-shrink-0 w-4 h-4 rounded border-2 transition-all ${
                       row.confirmed 
                         ? 'bg-green-600 border-green-600 text-white' 
-                        : (!row.role || row.faceIndex === null)
-                          ? 'bg-gray-200 border-gray-300 cursor-not-allowed opacity-50'
-                          : 'bg-white border-gray-400 hover:border-green-500 cursor-pointer'
+                        : 'bg-gray-200 border-gray-300 cursor-pointer hover:border-green-500'
                     }`}
                     title={
                       row.confirmed 
                         ? "Surface confirmed" 
-                        : (!row.role || row.faceIndex === null)
-                          ? "Select role and surface first"
-                          : "Click to confirm surface"
+                        : "Click to confirm surface"
                     }
                   >
                     {row.confirmed && (
