@@ -187,8 +187,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               />
               <button
                 onClick={() => applyDimensionChange('width', inputWidth)}
-                className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
                 title="Apply Width"
+              >
+                <Check size={12} />
+              </button>
+              <button
+                onClick={() => {
+                  // Güncelle functionality will be implemented later
+                  console.log('Update width clicked');
+                }}
+                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
+                title="Update Width"
               >
                 <Check size={12} />
               </button>
@@ -212,8 +222,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               />
               <button
                 onClick={() => applyDimensionChange('height', inputHeight)}
-                className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
                 title="Apply Height"
+              >
+                <Check size={12} />
+              </button>
+              <button
+                onClick={() => {
+                  // Güncelle functionality will be implemented later
+                  console.log('Update height clicked');
+                }}
+                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
+                title="Update Height"
               >
                 <Check size={12} />
               </button>
@@ -237,8 +257,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               />
               <button
                 onClick={() => applyDimensionChange('depth', inputDepth)}
-                className="p-1 bg-violet-700/50 hover:bg-violet-600/70 text-white rounded transition-colors"
+                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
                 title="Apply Depth"
+              >
+                <Check size={12} />
+              </button>
+              <button
+                onClick={() => {
+                  // Güncelle functionality will be implemented later
+                  console.log('Update depth clicked');
+                }}
+                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
+                title="Update Depth"
               >
                 <Check size={12} />
               </button>
