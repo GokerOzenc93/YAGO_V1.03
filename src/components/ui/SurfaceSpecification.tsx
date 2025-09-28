@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MousePointer, Target, X, Plus, Calculator, Check, Edit3 } from 'lucide-react';
+import { ChevronLeft, MousePointer, Target, X, Plus, Calculator, Check, CreditCard as Edit3 } from 'lucide-react';
 
 interface SurfaceRow {
   id: string;
