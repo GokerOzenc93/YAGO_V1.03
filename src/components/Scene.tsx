@@ -64,7 +64,6 @@ interface FaceSelectionPopupProps {
 
 interface CameraControllerProps {
   isAddPanelMode: boolean;
-  isEditMode: boolean;
   editModeWidth: number;
 }
 
@@ -629,7 +628,7 @@ const Scene: React.FC = () => {
         }}
       >
         <CameraPositionUpdater />
-        <CameraController isAddPanelMode={isAddPanelMode} />
+        <CameraController isAddPanelMode={isAddPanelMode} editModeWidth={400} />
         <Stats className="hidden" />
 
         {cameraType === CameraType.PERSPECTIVE ? (
