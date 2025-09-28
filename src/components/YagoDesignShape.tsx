@@ -54,20 +54,21 @@ const YagoDesignShape: React.FC<Props> = ({
   const [isConfirmed, setIsConfirmed] = useState(false);
   
   // Reset confirmation state when face selection is activated
-  useEffect(() => {
-    const handleActivateFaceSelection = (event: CustomEvent) => {
-      const { rowId } = event.detail;
-      if (activeRowId !== rowId) {
-        setIsFaceSelectionActive(true);
-        setActiveRowId(rowId);
-        setCurrentCycleIndex(0);
-        setAvailableFaces([]);
-        setCurrentPreviewFace(null);
-        setIsConfirmed(false); // Reset confirmation state for new selection
-        console.log(`🎯 Face selection activated for row ${rowId} on shape ${shape.id}`);
-      }
-    };
+  const handleActivateFaceSelection = (event: CustomEvent) => {
+    const { rowId } = event.detail;
+    if (activeRowId !== rowId) {
+      setIsFaceSelectionActive(true);
+      setActiveRowId(rowId);
+      setCurrentCycleIndex(0);
+      setAvailableFaces([]);
+      setCurrentPreviewFace(null);
+      setIsConfirmed(false); // Reset confirmation state for new selection
+      console.log(`🎯 Face selection activated for row ${rowId} on shape ${shape.id}`);
+    }
+  };
 
+  // Reset confirmation state when face selection is activated
+  useEffect(() => {
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     
     return () => {
