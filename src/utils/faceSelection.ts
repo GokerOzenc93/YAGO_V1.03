@@ -554,6 +554,54 @@ export const addFaceHighlight = (
     return faceHighlight;
 };
 
+/**
+ * Detect face at mouse position using raycasting
+ */
+export const detectFaceAtMouse = (
+    event: MouseEvent,
+    camera: THREE.Camera,
+    scene: THREE.Scene,
+    canvas: HTMLCanvasElement
+): { hit: THREE.Intersection | null; shape: Shape | null } => {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // Create raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    // Find all meshes in the scene that have shape data
+    const meshes: THREE.Mesh[] = [];
+    const meshToShape = new Map<THREE.Mesh, Shape>();
+
+    scene.traverse((object) => {
+        if (object instanceof THREE.Mesh && object.userData.shape) {
+            meshes.push(object);
+            meshToShape.set(object, object.userData.shape as Shape);
+        }
+    });
+
+    if (meshes.length === 0) {
+        return { hit: null, shape: null };
+    }
+
+    // Perform raycasting
+    const intersects = raycaster.intersectObjects(meshes, false);
+
+    if (intersects.length > 0) {
+        const hit = intersects[0];
+        const shape = meshToShape.get(hit.object as THREE.Mesh) || null;
+        
+        console.log(`🎯 Face detected: face ${hit.faceIndex}, shape ${shape?.id || 'unknown'}`);
+        return { hit, shape };
+    }
+
+    return { hit: null, shape: null };
+};
+
 /** ===== Robust Planar Region Selection (welded + triangulated) ===== **/
 
 type RegionResult = {
