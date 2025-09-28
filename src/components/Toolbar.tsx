@@ -403,12 +403,12 @@ const Toolbar: React.FC = () => {
             onClick={handleOrthoModeToggle}
             className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm transition-colors ${
               orthoMode === OrthoMode.ON
-                ? 'bg-orange-400 text-white shadow-lg'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'bg-stone-200 hover:bg-stone-300 text-slate-800'
             }`}
             title={`Ortho Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
           >
-            <Grid size={10} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-slate-800'} />
+            <Grid size={10} className={orthoMode === OrthoMode.ON ? 'text-orange-800' : 'text-slate-800'} />
             <span className="text-xs font-medium">
               Ortho
             </span>
@@ -526,7 +526,7 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-1.5 rounded-sm transition-all ${
                 activeTool === tool.id
-                  ? 'bg-orange-400 text-white shadow-md'
+                  ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                   : (tool.id === Tool.SELECT || selectedShapeId)
                   ? 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
                   : 'opacity-50 cursor-not-allowed text-stone-400'
@@ -555,7 +555,7 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.ENDPOINT)}
             className={`p-1.5 rounded-sm transition-all ${
               snapSettings[SnapType.ENDPOINT]
-                ? 'bg-orange-400 text-white shadow-md'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Endpoint Snap"
@@ -566,7 +566,7 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
             className={`p-1.5 rounded-sm transition-all ${
               snapSettings[SnapType.MIDPOINT]
-                ? 'bg-orange-400 text-white shadow-md'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Midpoint Snap"
@@ -577,7 +577,7 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.CENTER)}
             className={`p-1.5 rounded-sm transition-all ${
               snapSettings[SnapType.CENTER]
-                ? 'bg-orange-400 text-white shadow-md'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Center Snap"
@@ -588,7 +588,7 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
             className={`p-1.5 rounded-sm transition-all ${
               snapSettings[SnapType.PERPENDICULAR]
-                ? 'bg-orange-400 text-white shadow-md'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Perpendicular Snap"
@@ -599,7 +599,7 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
             className={`p-1.5 rounded-sm transition-all ${
               snapSettings[SnapType.INTERSECTION]
-                ? 'bg-orange-400 text-white shadow-md'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Intersection Snap"
@@ -610,7 +610,7 @@ const Toolbar: React.FC = () => {
             onClick={() => handleSnapToggle(SnapType.NEAREST)}
             className={`p-1.5 rounded-sm transition-all ${
               snapSettings[SnapType.NEAREST]
-                ? 'bg-orange-400 text-white shadow-md'
+                ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Nearest Snap"
@@ -629,7 +629,7 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-1.5 rounded-sm transition-all ${
                 activeTool === tool.id
-                  ? 'bg-orange-400 text-white shadow-md'
+                  ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                   : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
               }`}
               onClick={() => setActiveTool(tool.id)}
@@ -651,7 +651,7 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-1.5 rounded-sm transition-all ${
                 activeTool === tool.id
-                  ? 'bg-orange-400 text-white shadow-md'
+                  ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                   : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
               }`}
               onClick={() => {
@@ -682,7 +682,7 @@ const Toolbar: React.FC = () => {
               key={tool.id}
               className={`p-1.5 rounded-sm transition-all ${
                 activeTool === tool.id
-                  ? 'bg-orange-400 text-white shadow-md'
+                  ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
                   : !selectedShapeId
                   ? 'opacity-50 cursor-not-allowed text-stone-400'
                   : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
