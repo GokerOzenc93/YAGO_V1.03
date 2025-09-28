@@ -491,6 +491,68 @@ export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
 /**
  * Yüzey highlight'ı ekle (Flood-Fill tabanlı)
  */
+export const addFaceHighlight = (
+    scene: THREE.Scene,
+    hit: any,
+    shape: Shape,
+    color: number = 0xff6b35,
+    opacity: number = 0.6,
+    isPersistent: boolean = false,
+    faceNumber?: number,
+    rowId?: string
+): FaceHighlight | null => {
+    if (!hit || hit.faceIndex === undefined) {
+        console.warn('🎯 Invalid hit data for face highlight');
+        return null;
+    }
+
+    console.log(`🎯 Adding face highlight: face ${hit.faceIndex}, shape ${shape.id}, color ${color.toString(16)}`);
+
+    // Get surface vertices using flood-fill
+    const surfaceVertices = getFullSurfaceVertices(shape.geometry, hit.faceIndex);
+    
+    if (surfaceVertices.length === 0) {
+        console.warn('🎯 No surface vertices found');
+        return null;
+    }
+
+    // Create highlight mesh
+    const highlightMesh = createFaceHighlight(
+        surfaceVertices,
+        hit.object.matrixWorld,
+        color,
+        opacity
+    );
+
+    // Mark as persistent if needed
+    (highlightMesh as any).isPersistent = isPersistent;
+
+    // Add to scene
+    scene.add(highlightMesh);
+
+    // Create face highlight object
+    const faceHighlight: FaceHighlight = {
+        mesh: highlightMesh,
+        faceIndex: hit.faceIndex,
+        shapeId: shape.id,
+        rowIndex: rowId ? parseInt(rowId) : undefined
+    };
+
+    // Add to current highlights
+    currentHighlights.push(faceHighlight);
+
+    // Add face number if provided
+    if (faceNumber !== undefined && rowId) {
+        const textMesh = buildFaceOverlayFromHit(hit.faceIndex, shape.id, faceNumber.toString(), parseInt(rowId));
+        if (textMesh) {
+            scene.add(textMesh);
+            (highlightMesh as any).textMesh = textMesh;
+        }
+    }
+
+    console.log(`✅ Face highlight added: face ${hit.faceIndex}, vertices ${surfaceVertices.length}`);
+    return faceHighlight;
+};
 
 /** ===== Robust Planar Region Selection (welded + triangulated) ===== **/
 
