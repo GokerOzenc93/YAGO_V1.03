@@ -274,32 +274,28 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
                   />
                   
-                  {/* Checkbox */}
+                  {/* Apply Button */}
                   <button
                     onClick={() => handleConfirmSurface(row.id)}
                     disabled={!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed}
-                    className={`flex-shrink-0 w-4 h-4 rounded border-2 transition-all ${
+                    className={`flex-shrink-0 px-2 py-1 text-xs rounded transition-all font-medium ${
                       row.confirmed 
-                        ? 'bg-green-600 border-green-600 text-white' 
+                        ? 'bg-green-600 text-white border border-green-600' 
                         : (!row.role || !row.role.trim() || row.faceIndex === null)
-                          ? 'bg-gray-100 border-gray-200 cursor-not-allowed'
-                          : 'bg-gray-200 border-gray-300 cursor-pointer hover:border-green-500'
+                          ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                          : 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
                     }`}
                     title={
                       row.confirmed 
-                        ? "Surface confirmed" 
+                        ? "Applied" 
                         : (!row.role || !row.role.trim())
                           ? "Select a role first"
                           : row.faceIndex === null
                             ? "Select a surface first"
-                            : "Click to confirm surface"
+                            : "Click to apply surface"
                     }
                   >
-                    {row.confirmed && (
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
+                    {row.confirmed ? 'Applied' : 'Apply'}
                   </button>
                   
                   {/* Remove Button */}
