@@ -217,7 +217,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
               {surfaceRows.map((row, index) => (
                 <div 
                   key={row.id} 
-                  className={`flex flex-col gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                  className={`flex items-center gap-2 p-2 rounded-lg border transition-all duration-200 ${
                     row.isActive 
                       ? 'border-orange-300 bg-orange-50/50 shadow-sm' 
                       : row.confirmed 
@@ -225,76 +225,68 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                         : 'border-gray-200 bg-gray-50/50'
                   }`}
                 >
-                  {/* First Row: Number, Status, Remove */}
-                  <div className="flex items-center gap-2">
-                    {/* Surface Number - Turuncu-beyaz tema */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                      {index + 1}
-                    </div>
-                    
-                    {/* Status Info */}
-                    <div className="flex-1 text-xs">
-                      {row.faceIndex !== null ? (
-                        <span className="text-green-600 font-medium px-2 py-0.5 bg-green-100 rounded-full">Selected</span>
-                      ) : (
-                        <span className="text-orange-600 px-2 py-0.5 bg-orange-100 rounded-full animate-pulse">Selecting...</span>
-                      )}
-                    </div>
-                    
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => handleRemoveRow(row.id)}
-                      className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-colors"
-                      title="Remove Surface"
-                    >
-                      <X size={12} />
-                    </button>
+                  {/* Surface Number - Turuncu-beyaz tema */}
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                    {index + 1}
                   </div>
                   
-                  {/* Second Row: Role Selection */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-8">Role:</span>
-                    <select
-                      value={row.role}
-                      onChange={(e) => handleRoleChange(row.id, e.target.value)}
-                      disabled={!row.confirmed}
-                      className="w-16 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
-                    >
-                      <option value="">Role</option>
-                      <option value="left">L - Left</option>
-                      <option value="right">R - Right</option>
-                      <option value="top">T - Top</option>
-                      <option value="bottom">B - Bottom</option>
-                      <option value="front">F - Front</option>
-                      <option value="back">BA - Back</option>
-                      <option value="door">D - Door</option>
-                    </select>
-                    
-                    {/* Show role abbreviation after selection */}
-                    {row.role && (
-                      <span className="text-xs font-medium text-slate-700 bg-gray-100 px-2 py-0.5 rounded">
-                        {row.role === 'left' ? 'L' : 
-                         row.role === 'right' ? 'R' : 
-                         row.role === 'top' ? 'T' : 
-                         row.role === 'bottom' ? 'B' : 
-                         row.role === 'front' ? 'F' : 
-                         row.role === 'back' ? 'BA' : 
-                         row.role === 'door' ? 'D' : ''}
-                      </span>
-                    )}
-                    
-                    <span className="text-xs text-slate-700 font-medium">
-                      Formula:
+                  {/* Role Selection */}
+                  <select
+                    value={row.role}
+                    onChange={(e) => handleRoleChange(row.id, e.target.value)}
+                    disabled={!row.confirmed}
+                    className="w-16 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                  >
+                    <option value="">Role</option>
+                    <option value="left">L - Left</option>
+                    <option value="right">R - Right</option>
+                    <option value="top">T - Top</option>
+                    <option value="bottom">B - Bottom</option>
+                    <option value="front">F - Front</option>
+                    <option value="back">BA - Back</option>
+                    <option value="door">D - Door</option>
+                  </select>
+                  
+                  {/* Show role abbreviation after selection */}
+                  {row.role && (
+                    <span className="text-xs font-medium text-slate-700 bg-gray-100 px-2 py-0.5 rounded">
+                      {row.role === 'left' ? 'L' : 
+                       row.role === 'right' ? 'R' : 
+                       row.role === 'top' ? 'T' : 
+                       row.role === 'bottom' ? 'B' : 
+                       row.role === 'front' ? 'F' : 
+                       row.role === 'back' ? 'BA' : 
+                       row.role === 'door' ? 'D' : ''}
                     </span>
-                    <input
-                      type="text"
-                      value={row.formula}
-                      onChange={(e) => handleFormulaChange(row.id, e.target.value)}
-                      disabled={!row.confirmed}
-                      placeholder="Formula..."
-                      className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400"
-                    />
+                  )}
+                  
+                  {/* Formula Input */}
+                  <input
+                    type="text"
+                    value={row.formula}
+                    onChange={(e) => handleFormulaChange(row.id, e.target.value)}
+                    disabled={!row.confirmed}
+                    placeholder="Formula..."
+                    className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400"
+                  />
+                  
+                  {/* Status Info */}
+                  <div className="flex-shrink-0 text-xs">
+                    {row.faceIndex !== null ? (
+                      <span className="text-green-600 font-medium px-2 py-0.5 bg-green-100 rounded-full">Selected</span>
+                    ) : (
+                      <span className="text-orange-600 px-2 py-0.5 bg-orange-100 rounded-full animate-pulse">Selecting...</span>
+                    )}
                   </div>
+                  
+                  {/* Remove Button */}
+                  <button
+                    onClick={() => handleRemoveRow(row.id)}
+                    className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-colors"
+                    title="Remove Surface"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
               ))}
             </div>
