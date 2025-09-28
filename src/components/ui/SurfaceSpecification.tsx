@@ -238,27 +238,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     className="w-16 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                   >
                     <option value="">Role</option>
-                    <option value="left">L - Left</option>
-                    <option value="right">R - Right</option>
-                    <option value="top">T - Top</option>
-                    <option value="bottom">B - Bottom</option>
-                    <option value="front">F - Front</option>
-                    <option value="back">BA - Back</option>
-                    <option value="door">D - Door</option>
+                    <option value="left">L</option>
+                    <option value="right">R</option>
+                    <option value="top">T</option>
+                    <option value="bottom">B</option>
+                    <option value="front">F</option>
+                    <option value="back">BA</option>
+                    <option value="door">D</option>
                   </select>
-                  
-                  {/* Show role abbreviation after selection */}
-                  {row.role && (
-                    <span className="text-xs font-medium text-slate-700 bg-gray-100 px-2 py-0.5 rounded">
-                      {row.role === 'left' ? 'L' : 
-                       row.role === 'right' ? 'R' : 
-                       row.role === 'top' ? 'T' : 
-                       row.role === 'bottom' ? 'B' : 
-                       row.role === 'front' ? 'F' : 
-                       row.role === 'back' ? 'BA' : 
-                       row.role === 'door' ? 'D' : ''}
-                    </span>
-                  )}
                   
                   {/* Formula Input */}
                   <input
@@ -267,17 +254,17 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     onChange={(e) => handleFormulaChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
                     placeholder="Formula..."
-                    className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400"
+                    className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2"
                   />
                   
-                  {/* Status Info */}
-                  <div className="flex-shrink-0 text-xs">
-                    {row.faceIndex !== null ? (
-                      <span className="text-green-600 font-medium px-2 py-0.5 bg-green-100 rounded-full">Selected</span>
-                    ) : (
-                      <span className="text-orange-600 px-2 py-0.5 bg-orange-100 rounded-full animate-pulse">Selecting...</span>
-                    )}
-                  </div>
+                  {/* Checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={row.confirmed}
+                    disabled={!row.confirmed}
+                    className="flex-shrink-0 w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 disabled:opacity-50"
+                    title={row.confirmed ? "Surface confirmed" : "Waiting for surface selection"}
+                  />
                   
                   {/* Remove Button */}
                   <button
