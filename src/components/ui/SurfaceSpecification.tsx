@@ -121,6 +121,22 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       console.log(`🎯 Role updated for row ${rowId}: ${role}`);
     }
   };
+
+  const handleConfirmSurface = (rowId: string) => {
+    const row = surfaceRows.find(r => r.id === rowId);
+    if (!row || !row.role || row.faceIndex === null) {
+      console.warn('🎯 Cannot confirm surface: missing role or face selection');
+      return;
+    }
+
+    // Mark surface as confirmed
+    setSurfaceRows(prev => prev.map(r => 
+      r.id === rowId ? { ...r, confirmed: true } : r
+    ));
+
+    console.log(`✅ Surface confirmed: row ${rowId}, role: ${row.role}, face: ${row.faceIndex}`);
+  };
+
   const handleFormulaChange = (rowId: string, formula: string) => {
     setSurfaceRows(prev => prev.map(row => 
       row.id === rowId ? { ...row, formula } : row
@@ -258,13 +274,30 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   />
                   
                   {/* Checkbox */}
-                  <input
-                    type="checkbox"
-                    checked={row.confirmed}
-                    disabled={!row.confirmed}
-                    className="flex-shrink-0 w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 disabled:opacity-50 accent-green-600"
-                    title={row.confirmed ? "Surface confirmed" : "Waiting for surface selection"}
-                  />
+                  <button
+                    onClick={() => handleConfirmSurface(row.id)}
+                    disabled={!row.role || row.faceIndex === null || row.confirmed}
+                    className={`flex-shrink-0 w-4 h-4 rounded border-2 transition-all ${
+                      row.confirmed 
+                        ? 'bg-green-600 border-green-600 text-white' 
+                        : (!row.role || row.faceIndex === null)
+                          ? 'bg-gray-200 border-gray-300 cursor-not-allowed opacity-50'
+                          : 'bg-white border-gray-400 hover:border-green-500 cursor-pointer'
+                    }`}
+                    title={
+                      row.confirmed 
+                        ? "Surface confirmed" 
+                        : (!row.role || row.faceIndex === null)
+                          ? "Select role and surface first"
+                          : "Click to confirm surface"
+                    }
+                  >
+                    {row.confirmed && (
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
                   
                   {/* Remove Button */}
                   <button
