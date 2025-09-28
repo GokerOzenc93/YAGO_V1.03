@@ -260,14 +260,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       disabled={!row.confirmed}
                       className="w-16 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                     >
-                      <option value="">Select Role</option>
-                      <option value="left">Left</option>
-                      <option value="right">Right</option>
-                      <option value="top">Top</option>
-                      <option value="bottom">Bottom</option>
-                      <option value="front">Front</option>
-                      <option value="back">Back</option>
-                      <option value="door">Door</option>
+                      <option value="">Role</option>
+                      <option value="left">L - Left</option>
+                      <option value="right">R - Right</option>
+                      <option value="top">T - Top</option>
+                      <option value="bottom">B - Bottom</option>
+                      <option value="front">F - Front</option>
+                      <option value="back">BA - Back</option>
+                      <option value="door">D - Door</option>
                     </select>
                     
                     {/* Show role abbreviation after selection */}
