@@ -315,28 +315,42 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   />
                   
                   {/* Apply Button */}
-                  <button
-                    onClick={() => handleConfirmSurface(row.id)}
-                    disabled={!row.role || !row.role.trim() || row.faceIndex === null}
-                    className={`flex-shrink-0 px-2 py-1 text-xs rounded transition-all font-medium ${
-                      row.confirmed && row.role && row.role.trim()
-                        ? 'bg-green-600 text-white border border-green-600' 
-                        : (!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed)
-                          ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                          : 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
-                    }`}
-                    title={
-                      row.confirmed && row.role && row.role.trim()
-                        ? "Applied" 
-                        : (!row.role || !row.role.trim())
-                          ? "Select a role first"
-                          : row.faceIndex === null
-                            ? "Select a surface first"
-                            : "Click to apply surface"
-                    }
-                  >
-                    {(row.confirmed && row.role && row.role.trim()) ? 'Applied' : 'Apply'}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* Apply/Check Icon */}
+                    <button
+                      onClick={() => handleConfirmSurface(row.id)}
+                      disabled={!row.role || !row.role.trim() || row.faceIndex === null}
+                      className={`flex-shrink-0 p-1 rounded transition-all ${
+                        row.confirmed && row.role && row.role.trim()
+                          ? 'bg-green-600 text-white cursor-default' 
+                          : (!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed)
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                      }`}
+                      title={
+                        row.confirmed && row.role && row.role.trim()
+                          ? "Applied" 
+                          : (!row.role || !row.role.trim())
+                            ? "Select a role first"
+                            : row.faceIndex === null
+                              ? "Select a surface first"
+                              : "Click to apply surface"
+                      }
+                    >
+                      <Check size={12} />
+                    </button>
+                    
+                    {/* Edit Icon - only show when confirmed */}
+                    {row.confirmed && row.role && row.role.trim() && (
+                      <button
+                        onClick={() => handleEditSurface(row.id)}
+                        className="flex-shrink-0 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                        title="Edit Surface"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                    )}
+                  </div>
                   
                   {/* Remove Button */}
                   <button
