@@ -238,7 +238,7 @@ const YagoDesignShape: React.FC<Props> = ({
     };
 
     const handleCreateSurfaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, rowId, color, confirmed } = event.detail;
+      const { shapeId, faceIndex, rowId, color, confirmed, faceNumber } = event.detail;
       
       if (shapeId === shape.id && meshRef.current) {
         // Create highlight mesh for the face
@@ -257,7 +257,7 @@ const YagoDesignShape: React.FC<Props> = ({
           point: new THREE.Vector3()
         };
         
-        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, undefined, undefined);
+        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, faceNumber, rowId);
         
         if (highlight) {
           // Store highlight with rowId for later management

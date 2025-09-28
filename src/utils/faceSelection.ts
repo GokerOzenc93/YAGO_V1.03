@@ -812,67 +812,79 @@ const buildFaceOverlayFromHit = (
         const lightOrange = 0xffb366; // Light orange color
         mat.color.setHex(lightOrange);
         
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (context) {
-            canvas.width = 128;
-            canvas.height = 64;
-            
-            // Clear canvas
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw red circular background
-            context.beginPath();
-            context.arc(canvas.width / 2, canvas.height / 2, 28, 0, 2 * Math.PI);
-            context.fillStyle = '#dc2626'; // Red background
-            context.fill();
-            
-            // Add white border
-            context.strokeStyle = '#ffffff';
-            context.lineWidth = 3;
-            context.stroke();
-            
-            // Set text properties
-            context.font = 'bold 24px Arial';
-            context.fillStyle = '#ffffff';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            
-            // Remove shadow for cleaner look
-            context.shadowColor = 'transparent';
-            context.shadowBlur = 0;
-            context.shadowOffsetX = 0;
-            context.shadowOffsetY = 0;
-            
-            // Draw face number
-            context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
-            
-            // Create texture from canvas
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.needsUpdate = true;
-            
-            // Create text material
-            const textMaterial = new THREE.MeshBasicMaterial({
-                map: texture,
-                transparent: true,
-                depthWrite: false,
-                depthTest: false
-            });
-            
-            // Create text plane geometry
-            const textGeometry = new THREE.PlaneGeometry(100, 50);
-            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            
-            // Position text at surface center, slightly above
-            textMesh.position.copy(surfaceCenter).addScaledVector(n, 2);
-            textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 100));
-            textMesh.renderOrder = 1000;
-            
-            scene.add(textMesh);
-            
-            // Store text mesh reference for cleanup
-            (overlay as any).textMesh = textMesh;
-        }
+        // Create face number text with improved visibility
+        setTimeout(() => {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            if (context) {
+                canvas.width = 128;
+                canvas.height = 128;
+                
+                // Clear canvas
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw red circular background
+                context.beginPath();
+                context.arc(canvas.width / 2, canvas.height / 2, 50, 0, 2 * Math.PI);
+                context.fillStyle = '#dc2626'; // Red background
+                context.fill();
+                
+                // Add white border
+                context.strokeStyle = '#ffffff';
+                context.lineWidth = 4;
+                context.stroke();
+                
+                // Set text properties
+                context.font = 'bold 36px Arial';
+                context.fillStyle = '#ffffff';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                
+                // Draw face number
+                context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
+                
+                // Create texture from canvas
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                
+                // Create text material with better visibility
+                const textMaterial = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    depthWrite: false,
+                    depthTest: false,
+                    alphaTest: 0.1
+                });
+                
+                // Create larger text plane geometry
+                const textGeometry = new THREE.PlaneGeometry(150, 150);
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                
+                // Position text at surface center, well above the surface
+                textMesh.position.copy(surfaceCenter).addScaledVector(n, 10);
+                
+                // Make text always face camera
+                textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 1000));
+                textMesh.renderOrder = 1001; // Higher render order
+                
+                // Set userData for proper tracking
+                textMesh.userData = {
+                    rowIndex: rowIndex,
+                    faceIndex: hit.faceIndex,
+                    shapeId: shape.id,
+                    faceNumber: faceNumber,
+                    isPersistent: true,
+                    isTextMesh: true
+                };
+                
+                scene.add(textMesh);
+                
+                // Store text mesh reference for cleanup
+                (overlay as any).textMesh = textMesh;
+                
+                console.log(`🎯 Face number ${faceNumber} text created at position:`, textMesh.position.toArray());
+            }
+        }, 100); // Small delay to ensure proper rendering
     }
     
     scene.add(overlay);
