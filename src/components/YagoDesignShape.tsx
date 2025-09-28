@@ -45,6 +45,14 @@ const YagoDesignShape: React.FC<Props> = ({
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
+  // New surface selection state - moved to top
+  const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [currentCycleIndex, setCurrentCycleIndex] = useState(0);
+  const [availableFaces, setAvailableFaces] = useState<number[]>([]);
+  const [currentPreviewFace, setCurrentPreviewFace] = useState<number | null>(null);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  
   // Reset confirmation state when face selection is activated
   useEffect(() => {
     const handleActivateFaceSelection = (event: CustomEvent) => {
@@ -66,14 +74,6 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     };
   }, [activeRowId, shape.id]);
-
-  // New surface selection state
-  const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
-  const [activeRowId, setActiveRowId] = useState<string | null>(null);
-  const [currentCycleIndex, setCurrentCycleIndex] = useState(0);
-  const [availableFaces, setAvailableFaces] = useState<number[]>([]);
-  const [currentPreviewFace, setCurrentPreviewFace] = useState<number | null>(null);
-
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
     return shape.geometry;
