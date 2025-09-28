@@ -217,8 +217,9 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       <div className="flex-1 p-4 space-y-4">
         
         {/* Select Surface Button */}
-        <div className="bg-white rounded-lg border border-stone-200 p-4">
-          <div className="flex items-center gap-2">
+        <div className="bg-white rounded-lg border border-stone-200 p-2">
+          <div className="flex items-center justify-between h-8">
+            <div className="flex items-center gap-2">
             {/* Add Surface Button */}
             <button
               onClick={handleSelectSurface}
@@ -250,6 +251,17 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             }`}>
               Add Surface
             </span>
+            </div>
+            
+            {/* Clear All Button - moved to right */}
+            {surfaceRows.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors h-6"
+              >
+                Clear All
+              </button>
+            )}
           </div>
           
           {isSelectionActive && (
@@ -259,15 +271,9 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
 
         {/* Surface Rows */}
         {surfaceRows.length > 0 && (
-          <div className="bg-white rounded-lg border border-stone-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-slate-800 text-sm">Selected Surfaces</h4>
-              <button
-                onClick={handleClearAll}
-                className="text-xs text-red-600 hover:text-red-800 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
-              >
-                Clear All
-              </button>
+          <div className="bg-white rounded-lg border border-stone-200 p-2">
+            <div className="mb-2">
+              <h4 className="font-medium text-slate-800 text-xs">Surfaces</h4>
             </div>
             
             <div className="space-y-2">
