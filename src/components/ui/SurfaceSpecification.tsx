@@ -119,7 +119,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
         'front': 0xffd99f,   // Light orange (açık turuncu) - toolbar tonu
         'back': 0xffff00,    // Yellow (sarı) - Ba
         'door': 0xe1f4d9,    // Blue (mavi) - D
-        '': 0xffd99f         // Default light orange
+        '': 0xffb6b6         // Default light orange
       };
       
       const color = roleColors[role as keyof typeof roleColors] || roleColors[''];
