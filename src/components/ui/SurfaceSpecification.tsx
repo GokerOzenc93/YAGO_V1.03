@@ -92,12 +92,12 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     if (row && row.faceIndex !== null) {
       // Update highlight color based on role
       const roleColors = {
-        'left': 0xff6b6b,    // Red
-        'right': 0x4ecdc4,   // Teal
-        'top': 0x45b7d1,     // Blue
-        'bottom': 0x96ceb4,  // Green
-        'front': 0xfeca57,   // Yellow
-        'back': 0xff9ff3,    // Pink
+        'left': 0x87ceeb,    // Light blue (açık mavi)
+        'right': 0x87ceeb,   // Light blue (açık mavi)
+        'top': 0x90ee90,     // Light green (açık yeşil)
+        'bottom': 0x90ee90,  // Light green (açık yeşil)
+        'front': 0xffff99,   // Light yellow (sarı)
+        'back': 0xffff99,    // Light yellow (sarı)
         'door': 0xf38ba8,    // Rose
         '': 0xffb366         // Default orange
       };
@@ -170,22 +170,22 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           <button
             onClick={handleSelectSurface}
             disabled={isSelectionActive}
-            className={`w-full p-3 rounded-lg border-2 border-dashed transition-all ${
+            className={`w-full p-2 rounded-lg border-2 border-dashed transition-all ${
               isSelectionActive 
                 ? 'border-orange-300 bg-orange-50 text-orange-600 cursor-not-allowed'
                 : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-700 hover:text-orange-700'
             }`}
           >
-            <div className="flex items-center justify-center gap-2">
-              <Target size={20} />
-              <span className="font-medium">
+            <div className="flex items-center justify-center gap-1.5">
+              <Target size={16} />
+              <span className="font-medium text-sm">
                 {isSelectionActive ? 'Click on 3D surface to select...' : 'Select Surface'}
               </span>
             </div>
           </button>
           
           {isSelectionActive && (
-            <div className="mt-2 text-center text-sm text-orange-600">
+            <div className="mt-2 text-center text-xs text-orange-600">
               Click on any surface in the 3D view to select it
             </div>
           )}
@@ -208,25 +208,25 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
               {surfaceRows.map((row, index) => (
                 <div 
                   key={row.id} 
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-200 ${
                     row.isActive 
-                      ? 'border-orange-300 bg-orange-50' 
+                      ? 'border-orange-300 bg-orange-50/50 shadow-sm' 
                       : row.confirmed 
-                        ? 'border-green-300 bg-green-50'
-                        : 'border-gray-200 bg-gray-50'
+                        ? 'border-green-300 bg-green-50/50 shadow-sm'
+                        : 'border-gray-200 bg-gray-50/50'
                   }`}
                 >
                   {/* Surface Number */}
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-600 text-white text-sm font-bold flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-600 text-white text-xs font-bold flex items-center justify-center shadow-sm">
                     {index + 1}
                   </div>
                   
                   {/* Face Info */}
-                  <div className="flex-shrink-0 text-sm">
+                  <div className="flex-shrink-0 text-xs">
                     {row.faceIndex !== null ? (
-                      <span className="text-green-600 font-medium">Face {row.faceIndex}</span>
+                      <span className="text-green-600 font-medium px-1.5 py-0.5 bg-green-100 rounded">Face {row.faceIndex}</span>
                     ) : (
-                      <span className="text-orange-600">Selecting...</span>
+                      <span className="text-orange-600 px-1.5 py-0.5 bg-orange-100 rounded animate-pulse">Selecting...</span>
                     )}
                   </div>
                   
@@ -235,7 +235,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     value={row.role}
                     onChange={(e) => handleRoleChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
-                    className="flex-1 text-sm bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500"
+                    className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
                   >
                     <option value="">Select Role</option>
                     <option value="left">Left</option>
@@ -250,10 +250,10 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   {/* Remove Button */}
                   <button
                     onClick={() => handleRemoveRow(row.id)}
-                    className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded"
+                    className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-colors"
                     title="Remove Surface"
                   >
-                    <X size={16} />
+                    <X size={14} />
                   </button>
                 </div>
               ))}
@@ -263,9 +263,9 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
         
         {/* Empty State */}
         {surfaceRows.length === 0 && (
-          <div className="text-center py-8 text-slate-500">
-            <Target size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">No surfaces selected</p>
+          <div className="text-center py-6 text-slate-500">
+            <Target size={40} className="mx-auto mb-3 opacity-50" />
+            <p className="text-base font-medium mb-2">No surfaces selected</p>
             <p className="text-sm">Click "Select Surface" to start selecting surfaces</p>
           </div>
         )}
