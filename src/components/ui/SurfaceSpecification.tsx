@@ -112,14 +112,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     if (row && row.faceIndex !== null) {
       // Update highlight color based on role
       const roleColors = {
-        'left': 0xff6b6b,    // Red (kırmızı)
-        'right': 0xff6b6b,   // Red (kırmızı)
-        'top': 0xff6b6b,     // Red (kırmızı)
-        'bottom': 0xff6b6b,  // Red (kırmızı)
-        'front': 0xff6b6b,   // Red (kırmızı)
+        'left': 0xfff7ed,    // Light orange (açık turuncu) - toolbar tonu
+        'right': 0xfff7ed,   // Light orange (açık turuncu) - toolbar tonu
+        'top': 0xfff7ed,     // Light orange (açık turuncu) - toolbar tonu
+        'bottom': 0xfff7ed,  // Light orange (açık turuncu) - toolbar tonu
+        'front': 0xfff7ed,   // Light orange (açık turuncu) - toolbar tonu
         'back': 0xffff00,    // Yellow (sarı) - Ba
         'door': 0x4169e1,    // Blue (mavi) - D
-        '': 0xffb366         // Default orange
+        '': 0xfff7ed         // Default light orange
       };
       
       const color = roleColors[role as keyof typeof roleColors] || roleColors[''];
