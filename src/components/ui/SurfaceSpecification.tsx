@@ -339,6 +339,15 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     >
                       <Check size={12} />
                     </button>
+                    
+                    {/* Remove Row Button */}
+                    <button
+                      onClick={() => handleRemoveRow(row.id)}
+                      className="flex-shrink-0 p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded transition-colors"
+                      title="Remove this surface"
+                    >
+                      <X size={12} />
+                    </button>
                 </div>
                 </div>
               ))}
