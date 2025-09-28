@@ -380,20 +380,20 @@ const YagoDesignShape: React.FC<Props> = ({
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
-      const detectionResult = detectFaceAtMouse(
+      const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
         meshRef.current!,
         gl.domElement
       );
 
-      if (!detectionResult.hit) {
+      if (hits.length === 0) {
         console.warn('🎯 No face detected');
         return;
       }
 
-      const hit = detectionResult.hit;
-      if (!hit || hit.faceIndex === undefined) {
+      const hit = hits[0];
+      if (hit.faceIndex === undefined) {
         console.warn('🎯 No face index');
         return;
       }

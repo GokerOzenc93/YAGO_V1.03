@@ -491,116 +491,6 @@ export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
 /**
  * Yüzey highlight'ı ekle (Flood-Fill tabanlı)
  */
-export const addFaceHighlight = (
-    scene: THREE.Scene,
-    hit: any,
-    shape: Shape,
-    color: number = 0xff6b35,
-    opacity: number = 0.6,
-    isPersistent: boolean = false,
-    faceNumber?: number,
-    rowId?: string
-): FaceHighlight | null => {
-    if (!hit || hit.faceIndex === undefined) {
-        console.warn('🎯 Invalid hit data for face highlight');
-        return null;
-    }
-
-    console.log(`🎯 Adding face highlight: face ${hit.faceIndex}, shape ${shape.id}, color ${color.toString(16)}`);
-
-    // Get surface vertices using flood-fill
-    const surfaceVertices = getFullSurfaceVertices(shape.geometry, hit.faceIndex);
-    
-    if (surfaceVertices.length === 0) {
-        console.warn('🎯 No surface vertices found');
-        return null;
-    }
-
-    // Create highlight mesh
-    const highlightMesh = createFaceHighlight(
-        surfaceVertices,
-        hit.object.matrixWorld,
-        color,
-        opacity
-    );
-
-    // Mark as persistent if needed
-    (highlightMesh as any).isPersistent = isPersistent;
-
-    // Add to scene
-    scene.add(highlightMesh);
-
-    // Create face highlight object
-    const faceHighlight: FaceHighlight = {
-        mesh: highlightMesh,
-        faceIndex: hit.faceIndex,
-        shapeId: shape.id,
-        rowIndex: rowId ? parseInt(rowId) : undefined
-    };
-
-    // Add to current highlights
-    currentHighlights.push(faceHighlight);
-
-    // Add face number if provided
-    if (faceNumber !== undefined && rowId) {
-        const textMesh = buildFaceOverlayFromHit(hit.faceIndex, shape.id, faceNumber.toString(), parseInt(rowId));
-        if (textMesh) {
-            scene.add(textMesh);
-            (highlightMesh as any).textMesh = textMesh;
-        }
-    }
-
-    console.log(`✅ Face highlight added: face ${hit.faceIndex}, vertices ${surfaceVertices.length}`);
-    return faceHighlight;
-};
-
-/**
- * Detect face at mouse position using raycasting
- */
-export const detectFaceAtMouse = (
-    event: MouseEvent,
-    camera: THREE.Camera,
-    scene: THREE.Scene,
-    canvas: HTMLCanvasElement
-): { hit: THREE.Intersection | null; shape: Shape | null } => {
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
-    const rect = canvas.getBoundingClientRect();
-    const mouse = new THREE.Vector2();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    // Create raycaster
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-
-    // Find all meshes in the scene that have shape data
-    const meshes: THREE.Mesh[] = [];
-    const meshToShape = new Map<THREE.Mesh, Shape>();
-
-    scene.traverse((object) => {
-        if (object instanceof THREE.Mesh && object.userData.shape) {
-            meshes.push(object);
-            meshToShape.set(object, object.userData.shape as Shape);
-        }
-    });
-
-    if (meshes.length === 0) {
-        return { hit: null, shape: null };
-    }
-
-    // Perform raycasting
-    const intersects = raycaster.intersectObjects(meshes, false);
-
-    if (intersects.length > 0) {
-        const hit = intersects[0];
-        const shape = meshToShape.get(hit.object as THREE.Mesh) || null;
-        
-        console.log(`🎯 Face detected: face ${hit.faceIndex}, shape ${shape?.id || 'unknown'}`);
-        return { hit, shape };
-    }
-
-    return { hit: null, shape: null };
-};
 
 /** ===== Robust Planar Region Selection (welded + triangulated) ===== **/
 
@@ -705,15 +595,427 @@ const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferA
 
 const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
-        mesh, QUANT_EPS);
+        mesh, QUANT_EPS * (() => { const s = new THREE.Vector3(); const p = new THREE.Vector3(); const q = new THREE.Quaternion(); mesh.matrixWorld.decompose(p,q,s); return (Math.abs(s.x)+Math.abs(s.y)+Math.abs(s.z))/3; })()
+    );
 
-    // Implementation would continue here but is cut off in the original file
-    // For now, return a minimal valid result to prevent compilation errors
-    return {
-        triangles: [seedTri],
-        normal: new THREE.Vector3(0, 1, 0),
-        plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-        boundaryLoops: [],
-        weldedToWorld: weldedIdToWorld
+    const svec = new THREE.Vector3(), pvec = new THREE.Vector3(), q = new THREE.Quaternion();
+    mesh.matrixWorld.decompose(pvec, q, svec);
+    const scaleMag = (Math.abs(svec.x)+Math.abs(svec.y)+Math.abs(svec.z))/3;
+    const planeEps = PLANE_EPS * Math.max(1, scaleMag * 2); // increased scale factor for better tolerance
+    const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG * 2)); // increased angle tolerance to 8 degrees
+
+    let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
+    const seedW = triToWelded[seedTri];
+    const seedPoint = weldedIdToWorld.get(seedW[0])!.clone();
+    let plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
+
+    const visited = new Set<number>();
+    const region: number[] = [];
+    const queue: number[] = [seedTri];
+    visited.add(seedTri);
+
+    // Enhanced coplanar detection with vertex analysis
+    const analyzeCoplanarVertices = (triangleIndices: number[]): boolean => {
+        // Get all unique vertices from the triangle
+        const vertices = triangleIndices.map(idx => weldedIdToWorld.get(triToWelded[idx][0])!);
+        
+        // Check if all vertices lie on the same plane within tolerance
+        let coplanarCount = 0;
+        for (const vertex of vertices) {
+            const distanceToPlane = Math.abs(plane.distanceToPoint(vertex));
+            if (distanceToPlane <= planeEps * 1.5) { // increased tolerance for vertex coplanarity
+                coplanarCount++;
+            }
+        }
+        
+        // If majority of vertices are coplanar, consider the triangle coplanar
+        return coplanarCount >= vertices.length * 0.7; // 70% threshold
     };
+    while (queue.length) {
+        const t = queue.shift()!;
+        region.push(t);
+        const neighs = neighbors.get(t) || [];
+        for (const nt of neighs) {
+            if (visited.has(nt)) continue;
+            const n = triNormalWorld(mesh, nt, index, posAttr);
+            
+            // Enhanced normal check with bidirectional tolerance
+            const normalDot = Math.max(n.dot(avgNormal), n.dot(avgNormal.clone().negate()));
+            if (normalDot < angleCos) continue;
+
+            const wids = triToWelded[nt];
+            const pa = weldedIdToWorld.get(wids[0])!;
+            const pb = weldedIdToWorld.get(wids[1])!;
+            const pc = weldedIdToWorld.get(wids[2])!;
+            
+            // Enhanced coplanarity check with adaptive tolerance
+            const distA = Math.abs(plane.distanceToPoint(pa));
+            const distB = Math.abs(plane.distanceToPoint(pb));
+            const distC = Math.abs(plane.distanceToPoint(pc));
+            
+            // Use adaptive tolerance based on triangle size
+            const triangleSize = Math.max(
+                pa.distanceTo(pb),
+                pb.distanceTo(pc),
+                pc.distanceTo(pa)
+            );
+            const adaptiveTolerance = Math.max(planeEps, triangleSize * 0.01); // 1% of triangle size
+            
+            if (distA > adaptiveTolerance || distB > adaptiveTolerance || distC > adaptiveTolerance) {
+                // Additional check: analyze coplanar vertices in the region
+                if (!analyzeCoplanarVertices([t, nt])) {
+                    continue;
+                }
+            }
+
+            visited.add(nt);
+            queue.push(nt);
+            
+            // Weighted normal averaging for better plane estimation
+            const weight = 1.0 / (1.0 + Math.min(distA, distB, distC)); // weight by coplanarity
+            avgNormal.add(n.multiplyScalar(weight)).normalize();
+            plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
+        }
+    }
+
+    // boundary edges (welded) with count==1
+    const edgeCount = new Map<string, number>();
+    for (const t of region) {
+        const [a,b,c] = triToWelded[t];
+        const edges: [number,number][] = [[a,b],[b,c],[c,a]];
+        for (const [u0,v0] of edges) {
+            const u = Math.min(u0, v0), v = Math.max(u0, v0);
+            const ekey = `${u}_${v}`;
+            edgeCount.set(ekey, (edgeCount.get(ekey)||0)+1);
+        }
+    }
+    const boundaryEdges: [number,number][] = [];
+    for (const [ekey, cnt] of edgeCount.entries()) {
+        if (cnt === 1) {
+            const [u,v] = ekey.split('_').map(Number);
+            boundaryEdges.push([u,v]);
+        }
+    }
+
+    // order boundary into loops
+    const adjacency = new Map<number, number[]>();
+    for (const [u,v] of boundaryEdges) {
+        if (!adjacency.has(u)) adjacency.set(u, []);
+        if (!adjacency.has(v)) adjacency.set(v, []);
+        adjacency.get(u)!.push(v);
+        adjacency.get(v)!.push(u);
+    }
+
+    const boundaryLoops: number[][] = [];
+    const used = new Set<string>();
+    const edgeKey = (u:number,v:number)=> u<=v?`${u}_${v}`:`${v}_${u}`;
+
+    for (const [start] of adjacency) {
+        const nbrs = adjacency.get(start)!;
+        let hasUnused = false;
+        for (const nx of nbrs) if (!used.has(edgeKey(start,nx))) { hasUnused = true; break; }
+        if (!hasUnused) continue;
+
+        const loop: number[] = [start];
+        let prev = -1, curr = start;
+        while (true) {
+            const ns = adjacency.get(curr) || [];
+            let next = -1;
+            for (const n of ns) {
+                const e = edgeKey(curr, n);
+                if (used.has(e)) continue;
+                if (n === prev) continue;
+                next = n; used.add(e); break;
+            }
+            if (next === -1) break;
+            if (next === start) { loop.push(next); break; }
+            loop.push(next);
+            prev = curr; curr = next;
+        }
+        if (loop.length > 2) boundaryLoops.push(loop);
+    }
+
+    return { triangles: region, normal: avgNormal.clone(), plane, boundaryLoops, weldedToWorld: weldedIdToWorld };
+};
+
+const buildFaceOverlayFromHit = (
+    scene: THREE.Scene,
+    mesh: THREE.Mesh,
+    seedTri: number,
+    color: number,
+    opacity: number,
+    faceNumber?: number,
+    rowIndex?: number,
+    shapeId?: string
+): THREE.Mesh | null => {
+    const res = growRegion(mesh, seedTri);
+    if (res.boundaryLoops.length === 0) return null;
+
+    const n = res.normal.clone().normalize();
+    const up = Math.abs(n.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+    const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
+    const bitangent = new THREE.Vector3().crossVectors(n, tangent).normalize();
+
+    // Yüzeyin gerçek merkezini hesapla (world space'de)
+    const surfaceCenter = new THREE.Vector3();
+    let totalVertices = 0;
+    for (const wid of res.boundaryLoops[0]) {
+        const p = res.weldedToWorld.get(wid)!;
+        surfaceCenter.add(p);
+        totalVertices++;
+    }
+    surfaceCenter.divideScalar(totalVertices);
+
+    const loops2D: THREE.Vector2[][] = res.boundaryLoops.map(loop => {
+        const arr: THREE.Vector2[] = [];
+        for (const wid of loop) {
+            const p = res.weldedToWorld.get(wid)!;
+            // Yüzey merkezine göre relative koordinatlar
+            const relative = p.clone().sub(surfaceCenter);
+            const x = relative.dot(tangent);
+            const y = relative.dot(bitangent);
+            arr.push(new THREE.Vector2(x, y));
+        }
+        return arr;
+    });
+
+    const outer = loops2D[0];
+    const holes = loops2D.slice(1);
+    const triangles = THREE.ShapeUtils.triangulateShape(outer, holes);
+
+    // 3D reconstruction: yüzey merkezini origin olarak kullan
+    const to3D = (v: THREE.Vector2) => surfaceCenter.clone()
+    .addScaledVector(tangent, v.x)
+    .addScaledVector(bitangent, v.y);
+
+    const verts: number[] = [];
+    const all2D = outer.concat(...holes);
+    for (const v2 of all2D) {
+        // Yüzeyin hemen üstünde konumlandır (daha belirgin offset)
+        const p3 = to3D(v2).addScaledVector(n, 0.5);
+        verts.push(p3.x, p3.y, p3.z);
+    }
+
+    const indices: number[] = [];
+    for (const tri of triangles) for (const i of tri) indices.push(i);
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setIndex(indices);
+    g.computeVertexNormals();
+
+    const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const overlay = new THREE.Mesh(g, mat);
+    overlay.renderOrder = 999;
+    
+    // Add face number text if provided
+    if (faceNumber !== undefined) {
+        // Use lighter orange for confirmed faces
+        const lightOrange = 0xffb366; // Light orange color
+        mat.color.setHex(lightOrange);
+        
+        // Create face number text with improved visibility
+        setTimeout(() => {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            if (context) {
+                canvas.width = 128;
+                canvas.height = 128;
+                
+                // Clear canvas
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw red circular background
+                context.beginPath();
+                context.arc(canvas.width / 2, canvas.height / 2, 50, 0, 2 * Math.PI);
+                context.fillStyle = '#dc2626'; // Red background
+                context.fill();
+                
+                // Add white border
+                context.strokeStyle = '#ffffff';
+                context.lineWidth = 4;
+                context.stroke();
+                
+                // Set text properties
+                context.font = 'bold 36px Arial';
+                context.fillStyle = '#ffffff';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                
+                // Draw face number
+                context.fillText(faceNumber.toString(), canvas.width / 2, canvas.height / 2);
+                
+                // Create texture from canvas
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                
+                // Create text material with better visibility
+                const textMaterial = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    depthWrite: false,
+                    depthTest: false,
+                    alphaTest: 0.1
+                });
+                
+                // Create larger text plane geometry
+                const textGeometry = new THREE.PlaneGeometry(150, 150);
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                
+                // Position text at surface center, well above the surface
+                textMesh.position.copy(surfaceCenter).addScaledVector(n, 10);
+                
+                // Make text always face camera
+                textMesh.lookAt(surfaceCenter.clone().addScaledVector(n, 1000));
+                textMesh.renderOrder = 1001; // Higher render order
+                
+                // Set userData for proper tracking
+                textMesh.userData = {
+                    rowIndex: rowIndex,
+                    faceIndex: seedTri,
+                    shapeId: shapeId,
+                    faceNumber: faceNumber,
+                    isPersistent: true,
+                    isTextMesh: true
+                };
+                
+                scene.add(textMesh);
+                
+                // Store text mesh reference for cleanup
+                (overlay as any).textMesh = textMesh;
+                
+                console.log(`🎯 Face number ${faceNumber} text created at position:`, textMesh.position.toArray());
+            }
+        }, 100); // Small delay to ensure proper rendering
+    }
+    
+    scene.add(overlay);
+    return overlay;
+};
+/** ===== End Robust Planar Region Selection ===== **/
+
+export const addFaceHighlight = (
+    scene: THREE.Scene,
+    hit: THREE.Intersection,
+    shape: Shape,
+    color: number = 0xff6b35,
+    opacity: number = 0.6,
+    isMultiSelect: boolean = false,
+    faceNumber?: number,
+    rowIndex?: number
+): FaceHighlight | null => {
+    if (!hit.face || hit.faceIndex === undefined) return null;
+    const mesh = hit.object as THREE.Mesh;
+    if (!(mesh.geometry as THREE.BufferGeometry).attributes.position) return null;
+
+    console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
+    
+    // Build a SINGLE overlay mesh for the entire planar region with face number
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber, rowIndex, shape.id);
+    if (!overlay) return null;
+
+    console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
+    
+    // 🎯 SET USERDATA for proper tracking and deletion
+    overlay.userData = {
+        rowIndex: rowIndex,
+        faceIndex: hit.faceIndex,
+        shapeId: shape.id,
+        faceNumber: faceNumber,
+        isPersistent: faceNumber !== undefined
+    };
+    
+    // Also set userData on text mesh if exists
+    if ((overlay as any).textMesh) {
+        (overlay as any).textMesh.userData = {
+            rowIndex: rowIndex,
+            faceIndex: hit.faceIndex,
+            shapeId: shape.id,
+            faceNumber: faceNumber,
+            isPersistent: faceNumber !== undefined,
+            isTextMesh: true
+        };
+    }
+    
+    const newHighlight = { 
+        mesh: overlay, 
+        faceIndex: hit.faceIndex, 
+        shapeId: shape.id,
+        rowIndex: rowIndex // Satır indeksini kaydet
+    };
+    currentHighlights.push(newHighlight);
+    
+    // Mark as persistent if it has a face number (confirmed face)
+    if (faceNumber !== undefined) {
+        (overlay as any).isPersistent = true;
+        console.log(`🎯 Face ${hit.faceIndex} marked as PERSISTENT with number ${faceNumber} for row ${rowIndex}`);
+    } else {
+        (overlay as any).isPersistent = false;
+        console.log(`🎯 Face ${hit.faceIndex} marked as TEMPORARY`);
+    }
+    
+    isMultiSelectMode = isMultiSelect;
+    return newHighlight;
+};
+
+/**
+ * Raycaster ile yüzey tespiti - tüm intersectionları döndür
+ */
+export const detectFaceAtMouse = (
+    event: MouseEvent,
+    camera: THREE.Camera,
+    mesh: THREE.Mesh,
+    canvas: HTMLCanvasElement
+): THREE.Intersection[] => {
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    
+    // Mouse koordinatlarını normalize et
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Raycaster oluştur
+    const raycaster = new THREE.Raycaster();
+    
+    // Build BVH lazily for faster and robust raycasting
+    const geom = (mesh.geometry as any);
+    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
+        geom.computeBoundsTree();
+    }
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Intersection test
+    const intersects = raycaster.intersectObject(mesh, false);
+    
+    if (intersects.length > 0) {
+        console.log('🎯 Face detected:', {
+            count: intersects.length,
+            firstFaceIndex: intersects[0].faceIndex,
+            distance: intersects[0].distance.toFixed(2)
+        });
+        return intersects;
+    }
+    
+    return [];
+};
+
+/**
+ * Mevcut highlight'ı al
+ */
+export const getCurrentHighlights = (): FaceHighlight[] => {
+    return [...currentHighlights];
+};
+
+/**
+ * Multi-select mode durumunu al
+ */
+export const isInMultiSelectMode = (): boolean => {
+    return isMultiSelectMode;
+};
+
+/**
+ * Seçili yüzey sayısını al
+ */
+export const getSelectedFaceCount = (): number => {
+    return currentHighlights.length;
 };
