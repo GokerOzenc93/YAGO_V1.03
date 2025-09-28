@@ -155,6 +155,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     console.log(`✅ Surface confirmed: row ${rowId}, role: ${row.role}, face: ${row.faceIndex}`);
   };
 
+  const handleEditSurface = (rowId: string) => {
+    // Make the row editable again
+    setSurfaceRows(prev => prev.map(r => 
+      r.id === rowId ? { ...r, confirmed: false } : r
+    ));
+    
+    console.log(`✏️ Surface row ${rowId} set to editable mode`);
+  };
   const handleFormulaChange = (rowId: string, formula: string) => {
     setSurfaceRows(prev => prev.map(row => 
       row.id === rowId ? { ...row, formula, confirmed: false } : row
@@ -341,6 +349,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       >
                         <Edit3 size={12} />
                       </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
