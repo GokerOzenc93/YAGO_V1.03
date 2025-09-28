@@ -45,36 +45,10 @@ const YagoDesignShape: React.FC<Props> = ({
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
-  // New surface selection state - moved to top
+  // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
-  const [currentCycleIndex, setCurrentCycleIndex] = useState(0);
-  const [availableFaces, setAvailableFaces] = useState<number[]>([]);
-  const [currentPreviewFace, setCurrentPreviewFace] = useState<number | null>(null);
-  const [isConfirmed, setIsConfirmed] = useState(false);
-  
-  // Reset confirmation state when face selection is activated
-  const handleActivateFaceSelection = (event: CustomEvent) => {
-    const { rowId } = event.detail;
-    if (activeRowId !== rowId) {
-      setIsFaceSelectionActive(true);
-      setActiveRowId(rowId);
-      setCurrentCycleIndex(0);
-      setAvailableFaces([]);
-      setCurrentPreviewFace(null);
-      setIsConfirmed(false); // Reset confirmation state for new selection
-      console.log(`🎯 Face selection activated for row ${rowId} on shape ${shape.id}`);
-    }
-  };
 
-  // Reset confirmation state when face selection is activated
-  useEffect(() => {
-    window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
-    
-    return () => {
-      window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
-    };
-  }, [activeRowId, shape.id]);
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
     return shape.geometry;
@@ -256,6 +230,13 @@ const YagoDesignShape: React.FC<Props> = ({
 
   // New surface selection event handlers
   useEffect(() => {
+    const handleActivateFaceSelection = (event: CustomEvent) => {
+      const { rowId } = event.detail;
+      setIsFaceSelectionActive(true);
+      setActiveRowId(rowId);
+      console.log(`🎯 Face selection activated for row ${rowId} on shape ${shape.id}`);
+    };
+
     const handleCreateSurfaceHighlight = (event: CustomEvent) => {
       const { shapeId, faceIndex, rowId, color, confirmed } = event.detail;
       
@@ -510,8 +491,8 @@ const YagoDesignShape: React.FC<Props> = ({
     return center;
   };
   const handleClick = (e: any) => {
-    // Surface selection mode with cycling - only if not confirmed yet
-    if (isFaceSelectionActive && e.nativeEvent.button === 0 && !isConfirmed) {
+    // New surface selection mode
+    if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
       const hits = detectFaceAtMouse(
@@ -526,77 +507,22 @@ const YagoDesignShape: React.FC<Props> = ({
         return;
       }
 
-      // Get all available face indices from hits
-      const faceIndices = hits
-        .map(hit => hit.faceIndex)
-        .filter(index => index !== undefined) as number[];
-      
-      if (faceIndices.length === 0) {
-        console.warn('🎯 No valid face indices');
+      const hit = hits[0];
+      if (hit.faceIndex === undefined) {
+        console.warn('🎯 No face index');
         return;
       }
 
-      // Check if this is a new click location or cycling through same location
-      const isSameLocation = JSON.stringify(faceIndices.sort()) === JSON.stringify(availableFaces.sort());
-      
-      if (!isSameLocation) {
-        // New location - reset cycling
-        setAvailableFaces(faceIndices);
-        setCurrentCycleIndex(0);
-        setCurrentPreviewFace(faceIndices[0]);
-        
-        // Clear previous temporary highlights
-        clearTemporaryHighlights(scene);
-        
-        // Create preview highlight for first face
-        const firstHit = hits.find(hit => hit.faceIndex === faceIndices[0]);
-        if (firstHit) {
-          addFaceHighlight(scene, firstHit, shape, 0xff6b35, 0.5, false); // Orange preview
-        }
-        
-        console.log(`🎯 New location: ${faceIndices.length} faces available, showing face ${faceIndices[0]}`);
-      } else {
-        // Same location - cycle to next face
-        const nextIndex = (currentCycleIndex + 1) % faceIndices.length;
-        setCurrentCycleIndex(nextIndex);
-        setCurrentPreviewFace(faceIndices[nextIndex]);
-        
-        // Clear previous temporary highlights
-        clearTemporaryHighlights(scene);
-        
-        // Create preview highlight for next face
-        const nextHit = hits.find(hit => hit.faceIndex === faceIndices[nextIndex]);
-        if (nextHit) {
-          addFaceHighlight(scene, nextHit, shape, 0xff6b35, 0.5, false); // Orange preview
-        }
-        
-        console.log(`🎯 Cycling: face ${faceIndices[nextIndex]} (${nextIndex + 1}/${faceIndices.length})`);
-      }
-      
-      return;
-    }
-    
-    // Left-click confirmation when in face selection mode
-    if (isFaceSelectionActive && e.nativeEvent.button === 0 && currentPreviewFace !== null) {
-      e.stopPropagation();
-      
-      // Confirm the currently previewed face
+      // Send face selection event
       const faceSelectedEvent = new CustomEvent('faceSelected', {
         detail: {
-          faceIndex: currentPreviewFace,
+          faceIndex: hit.faceIndex,
           shapeId: shape.id
         }
       });
       window.dispatchEvent(faceSelectedEvent);
       
-      // Reset cycling state
-      setIsFaceSelectionActive(false);
-      setActiveRowId(null);
-      setCurrentCycleIndex(0);
-      setAvailableFaces([]);
-      setCurrentPreviewFace(null);
-      
-      console.log(`🎯 Face ${currentPreviewFace} confirmed and selected on shape ${shape.id}`);
+      console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
       return;
     }
     
@@ -609,8 +535,8 @@ const YagoDesignShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Normal context menu - only show for selected shapes and NOT in edit mode
-    if (isSelected && onContextMenuRequest && !isEditMode) {
+    // Normal context menu - only show for selected shapes
+    if (isSelected && onContextMenuRequest) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       onContextMenuRequest(e, shape);
@@ -709,32 +635,6 @@ const YagoDesignShape: React.FC<Props> = ({
         scale={shape.scale}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        onPointerDown={(e) => {
-          // Handle right-click for face confirmation - only if not already confirmed
-          if (isFaceSelectionActive && e.nativeEvent.button === 2 && currentPreviewFace !== null && !isConfirmed) {
-            e.stopPropagation();
-            e.nativeEvent.preventDefault();
-            
-            // Confirm the currently previewed face
-            const faceSelectedEvent = new CustomEvent('faceSelected', {
-              detail: {
-                faceIndex: currentPreviewFace,
-                shapeId: shape.id
-              }
-            });
-            window.dispatchEvent(faceSelectedEvent);
-            
-            // Reset cycling state
-            setIsFaceSelectionActive(false);
-            setActiveRowId(null);
-            setCurrentCycleIndex(0);
-            setAvailableFaces([]);
-            setCurrentPreviewFace(null);
-            setIsConfirmed(true);
-            
-            console.log(`🎯 Face ${currentPreviewFace} confirmed via right-click on shape ${shape.id}`);
-          }
-        }}
         castShadow
         receiveShadow
         visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
