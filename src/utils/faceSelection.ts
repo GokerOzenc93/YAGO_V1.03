@@ -922,26 +922,6 @@ export const detectFaceAtMouse = (
     
     return [];
 };
-    const geom = (mesh.geometry as any);
-    if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
-        geom.computeBoundsTree();
-    }
-    raycaster.setFromCamera(mouse, camera);
-    
-    // Intersection test
-    const intersects = raycaster.intersectObject(mesh, false);
-    
-    if (intersects.length > 0) {
-        console.log('🎯 Face detected:', {
-            count: intersects.length,
-            firstFaceIndex: intersects[0].faceIndex,
-            distance: intersects[0].distance.toFixed(2)
-        });
-        return intersects;
-    }
-    
-    return [];
-};
 
 /**
  * Mevcut highlight'ı al
