@@ -162,23 +162,22 @@ const Terminal: React.FC = () => {
       )}
 
       {/* Terminal */}
-      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30 h-10">
+      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30 h-8">
       <div className="flex items-center h-full px-3">
-        <span className="text-stone-500 font-mono text-sm mr-3">$</span>
         <input
           ref={inputRef}
           type="text"
           value={commandInput}
           onChange={(e) => setCommandInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Enter command or value..."
-          className="flex-1 bg-transparent text-slate-800 font-mono text-sm outline-none placeholder-stone-500"
+          placeholder="Enter commands or value..."
+          className="flex-1 bg-transparent text-slate-800 text-xs font-medium outline-none placeholder-stone-500"
         />
         <button
           onClick={() => executeCommand(commandInput)}
-          className="ml-3 p-2 bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors"
+          className="ml-3 p-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors"
         >
-          <Send className="w-3 h-3" />
+          <Send className="w-2.5 h-2.5" />
         </button>
       </div>
       </div>
