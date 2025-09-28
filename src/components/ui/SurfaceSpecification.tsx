@@ -88,6 +88,21 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     console.log(`🎯 Surface selection activated for row ${newRowId}`);
   };
 
+  const handleAddSurface = () => {
+    // Same as handleSelectSurface but with different styling/approach
+    handleSelectSurface();
+  };
+
+  const handleExitSelection = () => {
+    setIsSelectionActive(false);
+    setActiveRowId(null);
+    
+    // Remove the last incomplete row if it exists
+    setSurfaceRows(prev => prev.filter(row => row.faceIndex !== null || row.confirmed));
+    
+    console.log('🎯 Exited surface selection mode');
+  };
+
   const handleRoleChange = (rowId: string, role: string) => {
     setSurfaceRows(prev => prev.map(row => 
       row.id === rowId ? { ...row, role, confirmed: false } : row
@@ -195,22 +210,42 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
         
         {/* Select Surface Button */}
         <div className="bg-white rounded-lg border border-stone-200 p-4">
-          <button
-            onClick={handleSelectSurface}
-            disabled={isSelectionActive}
-            className={`w-full p-2 rounded-md border-2 border-dashed transition-all text-sm ${
-              isSelectionActive 
-                ? 'border-orange-300 bg-orange-50 text-orange-600 cursor-not-allowed'
-                : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-700 hover:text-orange-700'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-1">
-              <Target size={14} />
-              <span className="font-medium">
-                {isSelectionActive ? 'Click on 3D surface to select...' : 'Select Surface'}
-              </span>
-            </div>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSelectSurface}
+              disabled={isSelectionActive}
+              className={`flex-1 py-1.5 px-3 rounded-md border-2 border-dashed transition-all text-sm ${
+                isSelectionActive 
+                  ? 'border-orange-300 bg-orange-50 text-orange-600 cursor-not-allowed'
+                  : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-700 hover:text-orange-700'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1">
+                <Target size={14} />
+                <span className="font-medium">
+                  {isSelectionActive ? 'Click on 3D surface to select...' : 'Select Surface'}
+                </span>
+              </div>
+            </button>
+            
+            <button
+              onClick={handleAddSurface}
+              className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+              title="Add Surface"
+            >
+              <Plus size={14} />
+            </button>
+            
+            {isSelectionActive && (
+              <button
+                onClick={handleExitSelection}
+                className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+                title="Exit Selection Mode"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
           
           {isSelectionActive && (
             <div></div>
