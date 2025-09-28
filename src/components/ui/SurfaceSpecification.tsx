@@ -258,7 +258,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       value={row.role}
                       onChange={(e) => handleRoleChange(row.id, e.target.value)}
                       disabled={!row.confirmed}
-                      className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                      className="w-16 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                     >
                       <option value="">Select Role</option>
                       <option value="left">Left</option>
@@ -270,8 +270,21 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       <option value="door">Door</option>
                     </select>
                     
-                    <span className="text-xs text-gray-500 flex items-center">
-                      <Calculator size={10} className="text-gray-400" />
+                    {/* Show role abbreviation after selection */}
+                    {row.role && (
+                      <span className="text-xs font-medium text-slate-700 bg-gray-100 px-2 py-0.5 rounded">
+                        {row.role === 'left' ? 'L' : 
+                         row.role === 'right' ? 'R' : 
+                         row.role === 'top' ? 'T' : 
+                         row.role === 'bottom' ? 'B' : 
+                         row.role === 'front' ? 'F' : 
+                         row.role === 'back' ? 'BA' : 
+                         row.role === 'door' ? 'D' : ''}
+                      </span>
+                    )}
+                    
+                    <span className="text-xs text-slate-700 font-medium">
+                      Formula:
                     </span>
                     <input
                       type="text"
