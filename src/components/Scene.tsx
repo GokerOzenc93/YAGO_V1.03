@@ -773,7 +773,7 @@ const Scene: React.FC = () => {
         />
 
         {/* Moved gizmo higher to avoid terminal overlap */}
-        <GizmoHelper alignment="bottom-right" margin={[80, 60]}>
+        <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
           <GizmoViewport
             axisColors={['#f73', '#0af', '#0f3']}
             labelColor="black"
