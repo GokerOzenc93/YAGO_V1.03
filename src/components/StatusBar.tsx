@@ -3,28 +3,28 @@ import { useAppStore, CameraType, MeasurementUnit, ViewMode } from '../store/app
 import { Camera, CameraOff, Eye, Monitor, Square, Circle, Box, ZoomIn, Frame as Wireframe, EyeOff, Cuboid as Cube } from 'lucide-react';
 import { GeometryFactory } from '../lib/geometryFactory';
 
-// Listen for surface selection status
-const [surfaceSelectionStatus, setSurfaceSelectionStatus] = React.useState<string | null>(null);
-
-React.useEffect(() => {
-  const handleActivateFaceSelection = () => {
-    setSurfaceSelectionStatus('Click on any surface in the 3D view to select it');
-  };
-  
-  const handleFaceSelected = () => {
-    setSurfaceSelectionStatus(null);
-  };
-  
-  window.addEventListener('activateFaceSelection', handleActivateFaceSelection);
-  window.addEventListener('faceSelected', handleFaceSelected);
-  
-  return () => {
-    window.removeEventListener('activateFaceSelection', handleActivateFaceSelection);
-    window.removeEventListener('faceSelected', handleFaceSelected);
-  };
-}, []);
-
 const StatusBar: React.FC = () => {
+  // Listen for surface selection status
+  const [surfaceSelectionStatus, setSurfaceSelectionStatus] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const handleActivateFaceSelection = () => {
+      setSurfaceSelectionStatus('Click on any surface in the 3D view to select it');
+    };
+    
+    const handleFaceSelected = () => {
+      setSurfaceSelectionStatus(null);
+    };
+    
+    window.addEventListener('activateFaceSelection', handleActivateFaceSelection);
+    window.addEventListener('faceSelected', handleFaceSelected);
+    
+    return () => {
+      window.removeEventListener('activateFaceSelection', handleActivateFaceSelection);
+      window.removeEventListener('faceSelected', handleFaceSelected);
+    };
+  }, []);
+
   const { 
     activeTool, 
     gridSize, 
