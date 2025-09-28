@@ -59,47 +59,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   
-  // Auto-add surface row when face is selected
-  useEffect(() => {
-    const handleAutoAddSurfaceRow = (event: CustomEvent) => {
-      const { shapeId, faceIndex, confirmed } = event.detail;
-      
-      if (shapeId === editedShape.id && confirmed) {
-        console.log(`🎯 Auto-adding surface row for face ${faceIndex}`);
-        
-        // Add new row to selected faces
-        const newRowIndex = selectedFaces.length;
-        setSelectedFaces(prev => [...prev, { 
-          index: faceIndex, 
-          role: '',
-          confirmed: true,
-          actualFaceIndex: faceIndex
-        }]);
-        
-        // Create persistent highlight with face number
-        const highlightEvent = new CustomEvent('highlightConfirmedFace', {
-          detail: {
-            shapeId: editedShape.id,
-            faceIndex: faceIndex,
-            faceNumber: newRowIndex + 1,
-            color: 0xffb366,
-            confirmed: true,
-            rowIndex: newRowIndex
-          }
-        });
-        window.dispatchEvent(highlightEvent);
-        
-        console.log(`✅ Auto-added row ${newRowIndex + 1} for face ${faceIndex}`);
-      }
-    };
-    
-    window.addEventListener('autoAddSurfaceRow', handleAutoAddSurfaceRow as EventListener);
-    
-    return () => {
-      window.removeEventListener('autoAddSurfaceRow', handleAutoAddSurfaceRow as EventListener);
-    };
-  }, [editedShape.id, selectedFaces]);
-  
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
   };
@@ -279,65 +238,6 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
-  // Listen for right-click face confirmations
-  useEffect(() => {
-    const handleRightClickFaceConfirmation = (event: CustomEvent) => {
-      const { shapeId, faceIndex, confirmed } = event.detail;
-      
-      if (shapeId === editedShape.id && confirmed) {
-        console.log(`🎯 Processing right-click confirmation for face ${faceIndex}`);
-        
-        // Find the pending face selection or first unconfirmed face
-        let targetIndex = -1;
-        
-        if (pendingFaceSelection !== null) {
-          // Use the pending face selection index (1-based to 0-based)
-          targetIndex = pendingFaceSelection - 1;
-        } else {
-          // Find the first unconfirmed face in the list
-          targetIndex = selectedFaces.findIndex(face => !face.confirmed);
-        }
-        
-        if (targetIndex !== -1 && targetIndex < selectedFaces.length) {
-          // Confirm this face and link it
-          setSelectedFaces(prev => prev.map((face, idx) => 
-            idx === targetIndex ? { ...face, confirmed: true, actualFaceIndex: faceIndex } : face
-          ));
-          
-          // Highlight the face in 3D scene with proper linking
-          const displayNumber = targetIndex + 1;
-          const highlightEvent = new CustomEvent('highlightConfirmedFace', {
-            detail: {
-              shapeId: editedShape.id,
-              faceIndex: faceIndex,
-              faceNumber: displayNumber,
-              color: 0xffb366,
-              confirmed: true,
-              rowIndex: targetIndex // Satır indeksi olarak gönder
-            }
-          });
-          window.dispatchEvent(highlightEvent);
-          
-          // Exit face selection mode after confirmation
-          setActiveFaceSelectionMode(false);
-          setPendingFaceSelection(null);
-          setIsFaceEditMode(false);
-          
-          console.log(`🎯 Face confirmed and linked: Row ${targetIndex}, Display number ${displayNumber}, Actual face ${faceIndex}`);
-          console.log(`🎯 Face selection mode deactivated after confirmation`);
-        } else {
-          console.warn('🎯 No unconfirmed faces available to link');
-        }
-      }
-    };
-    
-    window.addEventListener('rightClickFaceConfirmation', handleRightClickFaceConfirmation as EventListener);
-    
-    return () => {
-      window.removeEventListener('rightClickFaceConfirmation', handleRightClickFaceConfirmation as EventListener);
-    };
-  }, [editedShape.id, selectedFaces]);
-  
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
@@ -695,15 +595,6 @@ const EditMode: React.FC<EditModeProps> = ({
             {activeMainSection === 'volume' && activeVolumeSubSection === 'surface' && (
               <SurfaceSpecification
                 onBack={handleBackToMain}
-                selectedFaces={selectedFaces}
-                onAddNewFace={handleAddNewFace}
-                onUpdateFaceRole={updateFaceRole}
-                onRemoveFaceFromList={removeFaceFromList}
-                onFaceSelectionMode={handleFaceSelectionMode}
-                onConfirmFaceSelection={handleConfirmFaceSelection}
-                onClearAllFaceSelections={handleClearAllFaceSelections}
-                pendingFaceSelection={pendingFaceSelection}
-                activeFaceSelectionMode={activeFaceSelectionMode}
               />
             )}
 
