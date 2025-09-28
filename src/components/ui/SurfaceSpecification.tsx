@@ -339,18 +339,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     >
                       <Check size={12} />
                     </button>
-                    
-                    {/* Edit Icon - only show when confirmed */}
-                    {row.confirmed && row.role && row.role.trim() && (
-                      <button
-                        onClick={() => handleEditSurface(row.id)}
-                        className="flex-shrink-0 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                        title="Edit Surface"
-                      >
-                        <Edit3 size={12} />
-                      </button>
-                    )}
-                  </div>
+                </div>
                 </div>
               ))}
             </div>
