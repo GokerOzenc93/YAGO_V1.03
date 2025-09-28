@@ -277,16 +277,22 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   {/* Checkbox */}
                   <button
                     onClick={() => handleConfirmSurface(row.id)}
-                    disabled={!row.role || row.faceIndex === null || row.confirmed}
+                    disabled={!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed}
                     className={`flex-shrink-0 w-4 h-4 rounded border-2 transition-all ${
                       row.confirmed 
                         ? 'bg-green-600 border-green-600 text-white' 
-                        : 'bg-gray-200 border-gray-300 cursor-pointer hover:border-green-500'
+                        : (!row.role || !row.role.trim() || row.faceIndex === null)
+                          ? 'bg-gray-100 border-gray-200 cursor-not-allowed'
+                          : 'bg-gray-200 border-gray-300 cursor-pointer hover:border-green-500'
                     }`}
                     title={
                       row.confirmed 
                         ? "Surface confirmed" 
-                        : "Click to confirm surface"
+                        : (!row.role || !row.role.trim())
+                          ? "Select a role first"
+                          : row.faceIndex === null
+                            ? "Select a surface first"
+                            : "Click to confirm surface"
                     }
                   >
                     {row.confirmed && (
