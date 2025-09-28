@@ -13,95 +13,52 @@ import {
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
 import DrawingPlane from './drawing/DrawingPlane';
+
+// Canvas resize handler component
+const CanvasResizeHandler = ({ isEditMode, editModeWidth }) => {
+  const { gl, camera, size } = useThree();
+  
+  useEffect(() => {
+    const handleResize = () => {
+      const fullWidth = window.innerWidth;
+      const fullHeight = window.innerHeight;
+      const availableWidth = isEditMode ? fullWidth - editModeWidth : fullWidth;
+      
+      // Update renderer size
+      gl.setSize(availableWidth, fullHeight);
+      
+      // Update camera aspect ratio
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.aspect = availableWidth / fullHeight;
+        camera.updateProjectionMatrix();
+      } else if (camera instanceof THREE.OrthographicCamera) {
+        const aspect = availableWidth / fullHeight;
+        const frustumSize = 1000;
+        camera.left = -frustumSize * aspect;
+        camera.right = frustumSize * aspect;
+        camera.top = frustumSize;
+        camera.bottom = -frustumSize;
+        camera.updateProjectionMatrix();
+      }
+      
+      console.log(`🎯 Canvas resized: ${availableWidth}x${fullHeight} (editMode: ${isEditMode})`);
+    };
+    
+    // Immediate resize
+    handleResize();
+    
+    // Listen for window resize
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isEditMode, editModeWidth, gl, camera]);
+  
+  return null;
+};
+
 const CameraPositionUpdater = () => {
-// Canvas resize handler component
-const CanvasResizeHandler = ({ isEditMode, editModeWidth }) => {
-  const { gl, camera, size } = useThree();
-  
-  useEffect(() => {
-    const handleResize = () => {
-      const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - editModeWidth : fullWidth;
-      
-      // Update renderer size
-      gl.setSize(availableWidth, fullHeight);
-      
-      // Update camera aspect ratio
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.aspect = availableWidth / fullHeight;
-        camera.updateProjectionMatrix();
-      } else if (camera instanceof THREE.OrthographicCamera) {
-        const aspect = availableWidth / fullHeight;
-        const frustumSize = 1000;
-        camera.left = -frustumSize * aspect;
-        camera.right = frustumSize * aspect;
-        camera.top = frustumSize;
-        camera.bottom = -frustumSize;
-        camera.updateProjectionMatrix();
-      }
-      
-      console.log(`🎯 Canvas resized: ${availableWidth}x${fullHeight} (editMode: ${isEditMode})`);
-    };
-    
-    // Immediate resize
-    handleResize();
-    
-    // Listen for window resize
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [isEditMode, editModeWidth, gl, camera]);
-  
-  return null;
-};
-
-// Canvas resize handler component
-const CanvasResizeHandler = ({ isEditMode, editModeWidth }) => {
-  const { gl, camera, size } = useThree();
-  
-  useEffect(() => {
-    const handleResize = () => {
-      const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - editModeWidth : fullWidth;
-      
-      // Update renderer size
-      gl.setSize(availableWidth, fullHeight);
-      
-      // Update camera aspect ratio
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.aspect = availableWidth / fullHeight;
-        camera.updateProjectionMatrix();
-      } else if (camera instanceof THREE.OrthographicCamera) {
-        const aspect = availableWidth / fullHeight;
-        const frustumSize = 1000;
-        camera.left = -frustumSize * aspect;
-        camera.right = frustumSize * aspect;
-        camera.top = frustumSize;
-        camera.bottom = -frustumSize;
-        camera.updateProjectionMatrix();
-      }
-      
-      console.log(`🎯 Canvas resized: ${availableWidth}x${fullHeight} (editMode: ${isEditMode})`);
-    };
-    
-    // Immediate resize
-    handleResize();
-    
-    // Listen for window resize
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [isEditMode, editModeWidth, gl, camera]);
-  
-  return null;
-};
-
   const { camera } = useThree();
   const { setCameraPosition } = useAppStore();
 
