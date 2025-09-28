@@ -112,11 +112,11 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     if (row && row.faceIndex !== null) {
       // Update highlight color based on role
       const roleColors = {
-        'left': fae29e,    // Light orange (açık turuncu) - toolbar tonu
-        'right': fae29e,   // Light orange (açık turuncu) - toolbar tonu
-        'top': fae29e,     // Light orange (açık turuncu) - toolbar tonu
-        'bottom': fae29e,  // Light orange (açık turuncu) - toolbar tonu
-        'front': fae29e,   // Light orange (açık turuncu) - toolbar tonu
+        'left': 0xfae29e,    // Light orange (açık turuncu) - toolbar tonu
+        'right': 0xfff7ed,   // Light orange (açık turuncu) - toolbar tonu
+        'top': 0xfff7ed,     // Light orange (açık turuncu) - toolbar tonu
+        'bottom': 0xfff7ed,  // Light orange (açık turuncu) - toolbar tonu
+        'front': 0xfff7ed,   // Light orange (açık turuncu) - toolbar tonu
         'back': 0xffff00,    // Yellow (sarı) - Ba
         'door': 0x4169e1,    // Blue (mavi) - D
         '': 0xfff7ed         // Default light orange
