@@ -162,7 +162,7 @@ const Terminal: React.FC = () => {
       )}
 
       {/* Terminal */}
-      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30" style={{ height: '12mm' }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30 h-10">
       <div className="flex items-center h-full px-3">
         <span className="text-stone-500 font-mono text-sm mr-3">$</span>
         <input
