@@ -263,16 +263,13 @@ const YagoDesignShape: React.FC<Props> = ({
           // Store highlight with rowId for later management
           surfaceHighlights.set(rowId, highlight.mesh);
           
-          // Add 3D text number in the center of the face
-          createFaceNumberText(faceIndex, rowId, 1); // Start with number 1
-          
           console.log(`✅ Surface highlight created for face ${faceIndex}, row ${rowId}`);
         }
       }
     };
 
     const handleUpdateSurfaceHighlight = (event: CustomEvent) => {
-      const { rowId, faceIndex, role, color, faceNumber } = event.detail;
+      const { rowId, faceIndex, role, color } = event.detail;
       
       // Remove old highlight
       const oldHighlight = surfaceHighlights.get(rowId);
@@ -302,9 +299,6 @@ const YagoDesignShape: React.FC<Props> = ({
         if (highlight) {
           surfaceHighlights.set(rowId, highlight.mesh);
           
-          // Update face number text
-          updateFaceNumberText(rowId, faceNumber);
-          
           console.log(`✅ Surface highlight updated for row ${rowId}, role: ${role}`);
         }
       }
@@ -327,7 +321,6 @@ const YagoDesignShape: React.FC<Props> = ({
         surfaceHighlights.delete(rowId);
         
         // Remove face number text
-        removeFaceNumberText(rowId);
         
         console.log(`✅ Surface highlight removed for row ${rowId}`);
       }
@@ -365,75 +358,6 @@ const YagoDesignShape: React.FC<Props> = ({
     };
   }, [scene, camera, gl.domElement, shape]);
 
-  // Face number text management
-  const createFaceNumberText = (faceIndex: number, rowId: string, number: number) => {
-    // Get face center position
-    const faceCenter = getFaceCenterPosition(faceIndex);
-    if (!faceCenter) return;
-    
-    // Create 3D text
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    
-    canvas.width = 128;
-    canvas.height = 128;
-    
-    // Draw number with background
-    context.fillStyle = '#dc2626'; // Red background
-    context.beginPath();
-    context.arc(64, 64, 50, 0, 2 * Math.PI);
-    context.fill();
-    
-    context.fillStyle = '#ffffff'; // White text
-    context.font = 'bold 48px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(number.toString(), 64, 64);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({ map: texture });
-    const sprite = new THREE.Sprite(material);
-    
-    sprite.position.copy(faceCenter);
-    sprite.scale.set(100, 100, 1);
-    sprite.userData = { rowId, type: 'faceNumber' };
-    
-    scene.add(sprite);
-  };
-
-  const updateFaceNumberText = (rowId: string, number: number) => {
-    // Find and update existing text
-    scene.traverse((object) => {
-      if (object.userData?.rowId === rowId && object.userData?.type === 'faceNumber') {
-        const sprite = object as THREE.Sprite;
-        
-        // Update canvas
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (!context) return;
-        
-        canvas.width = 128;
-        canvas.height = 128;
-        
-        context.fillStyle = '#dc2626';
-        context.beginPath();
-        context.arc(64, 64, 50, 0, 2 * Math.PI);
-        context.fill();
-        
-        context.fillStyle = '#ffffff';
-        context.font = 'bold 48px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(number.toString(), 64, 64);
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        sprite.material.map = texture;
-        sprite.material.needsUpdate = true;
-      }
-    });
-  };
-
   const removeFaceNumberText = (rowId: string) => {
     const objectsToRemove: THREE.Object3D[] = [];
     scene.traverse((object) => {
@@ -450,46 +374,7 @@ const YagoDesignShape: React.FC<Props> = ({
       }
     });
   };
-
-  const getFaceCenterPosition = (faceIndex: number): THREE.Vector3 | null => {
-    if (!meshRef.current) return null;
-    
-    const geometry = meshRef.current.geometry;
-    const position = geometry.attributes.position;
-    const index = geometry.index;
-    
-    if (!position || !index) return null;
-    
-    // Get face vertices
-    const a = index.getX(faceIndex * 3);
-    const b = index.getX(faceIndex * 3 + 1);
-    const c = index.getX(faceIndex * 3 + 2);
-    
-    const vA = new THREE.Vector3().fromBufferAttribute(position, a);
-    const vB = new THREE.Vector3().fromBufferAttribute(position, b);
-    const vC = new THREE.Vector3().fromBufferAttribute(position, c);
-    
-    // Calculate face center
-    const center = new THREE.Vector3()
-      .add(vA)
-      .add(vB)
-      .add(vC)
-      .divideScalar(3);
-    
-    // Transform to world space
-    center.applyMatrix4(meshRef.current.matrixWorld);
-    
-    // Move slightly above the surface
-    const normal = new THREE.Vector3()
-      .subVectors(vB, vA)
-      .cross(new THREE.Vector3().subVectors(vC, vA))
-      .normalize();
-    
-    normal.applyMatrix4(meshRef.current.matrixWorld);
-    center.add(normal.multiplyScalar(10));
-    
-    return center;
-  };
+  
   const handleClick = (e: any) => {
     // New surface selection mode
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
@@ -535,8 +420,8 @@ const YagoDesignShape: React.FC<Props> = ({
   };
 
   const handleContextMenu = (e: any) => {
-    // Normal context menu - only show for selected shapes
-    if (isSelected && onContextMenuRequest) {
+    // Normal context menu - only show for selected shapes AND not in edit mode
+    if (isSelected && onContextMenuRequest && !isEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
       onContextMenuRequest(e, shape);

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MousePointer, Target, X, Plus } from 'lucide-react';
+import { ChevronLeft, MousePointer, Target, X, Plus, Calculator } from 'lucide-react';
 
 interface SurfaceRow {
   id: string;
   faceIndex: number | null;
   role: string;
+  formula: string;
   isActive: boolean;
   confirmed: boolean;
 }
@@ -66,6 +67,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       id: newRowId,
       faceIndex: null,
       role: '',
+      formula: '',
       isActive: true,
       confirmed: false
     };
@@ -119,6 +121,13 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       console.log(`🎯 Role updated for row ${rowId}: ${role}`);
     }
   };
+  const handleFormulaChange = (rowId: string, formula: string) => {
+    setSurfaceRows(prev => prev.map(row => 
+      row.id === rowId ? { ...row, formula } : row
+    ));
+    
+    console.log(`🎯 Formula updated for row ${rowId}: ${formula}`);
+  };
 
   const handleRemoveRow = (rowId: string) => {
     // Remove highlight from 3D scene
@@ -170,22 +179,22 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           <button
             onClick={handleSelectSurface}
             disabled={isSelectionActive}
-            className={`w-full p-2 rounded-lg border-2 border-dashed transition-all ${
+            className={`w-full p-2 rounded-md border-2 border-dashed transition-all text-sm ${
               isSelectionActive 
                 ? 'border-orange-300 bg-orange-50 text-orange-600 cursor-not-allowed'
                 : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-700 hover:text-orange-700'
             }`}
           >
-            <div className="flex items-center justify-center gap-1.5">
-              <Target size={16} />
-              <span className="font-medium text-sm">
+            <div className="flex items-center justify-center gap-1">
+              <Target size={14} />
+              <span className="font-medium">
                 {isSelectionActive ? 'Click on 3D surface to select...' : 'Select Surface'}
               </span>
             </div>
           </button>
           
           {isSelectionActive && (
-            <div className="mt-2 text-center text-xs text-orange-600">
+            <div className="mt-1.5 text-center text-xs text-orange-600">
               Click on any surface in the 3D view to select it
             </div>
           )}
@@ -195,10 +204,10 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
         {surfaceRows.length > 0 && (
           <div className="bg-white rounded-lg border border-stone-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-slate-800">Selected Surfaces</h4>
+              <h4 className="font-medium text-slate-800 text-sm">Selected Surfaces</h4>
               <button
                 onClick={handleClearAll}
-                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
+                className="text-xs text-red-600 hover:text-red-800 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
               >
                 Clear All
               </button>
@@ -208,7 +217,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
               {surfaceRows.map((row, index) => (
                 <div 
                   key={row.id} 
-                  className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-200 ${
+                  className={`flex flex-col gap-2 p-3 rounded-lg border transition-all duration-200 ${
                     row.isActive 
                       ? 'border-orange-300 bg-orange-50/50 shadow-sm' 
                       : row.confirmed 
@@ -216,45 +225,66 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                         : 'border-gray-200 bg-gray-50/50'
                   }`}
                 >
-                  {/* Surface Number */}
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-600 text-white text-xs font-bold flex items-center justify-center shadow-sm">
-                    {index + 1}
+                  {/* First Row: Number, Status, Remove */}
+                  <div className="flex items-center gap-2">
+                    {/* Surface Number - Turuncu-beyaz tema */}
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                      {index + 1}
+                    </div>
+                    
+                    {/* Status Info */}
+                    <div className="flex-1 text-xs">
+                      {row.faceIndex !== null ? (
+                        <span className="text-green-600 font-medium px-2 py-0.5 bg-green-100 rounded-full">Selected</span>
+                      ) : (
+                        <span className="text-orange-600 px-2 py-0.5 bg-orange-100 rounded-full animate-pulse">Selecting...</span>
+                      )}
+                    </div>
+                    
+                    {/* Remove Button */}
+                    <button
+                      onClick={() => handleRemoveRow(row.id)}
+                      className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-colors"
+                      title="Remove Surface"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                   
-                  {/* Face Info */}
-                  <div className="flex-shrink-0 text-xs">
-                    {row.faceIndex !== null ? (
-                      <span className="text-green-600 font-medium px-1.5 py-0.5 bg-green-100 rounded">Face {row.faceIndex}</span>
-                    ) : (
-                      <span className="text-orange-600 px-1.5 py-0.5 bg-orange-100 rounded animate-pulse">Selecting...</span>
-                    )}
+                  {/* Second Row: Role Selection */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-8">Role:</span>
+                    <select
+                      value={row.role}
+                      onChange={(e) => handleRoleChange(row.id, e.target.value)}
+                      disabled={!row.confirmed}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                    >
+                      <option value="">Select Role</option>
+                      <option value="left">Left</option>
+                      <option value="right">Right</option>
+                      <option value="top">Top</option>
+                      <option value="bottom">Bottom</option>
+                      <option value="front">Front</option>
+                      <option value="back">Back</option>
+                      <option value="door">Door</option>
+                    </select>
                   </div>
                   
-                  {/* Role Selection */}
-                  <select
-                    value={row.role}
-                    onChange={(e) => handleRoleChange(row.id, e.target.value)}
-                    disabled={!row.confirmed}
-                    className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                  >
-                    <option value="">Select Role</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                    <option value="top">Top</option>
-                    <option value="bottom">Bottom</option>
-                    <option value="front">Front</option>
-                    <option value="back">Back</option>
-                    <option value="door">Door</option>
-                  </select>
-                  
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => handleRemoveRow(row.id)}
-                    className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-colors"
-                    title="Remove Surface"
-                  >
-                    <X size={14} />
-                  </button>
+                  {/* Third Row: Formula Field */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-8 flex items-center">
+                      <Calculator size={10} className="text-gray-400" />
+                    </span>
+                    <input
+                      type="text"
+                      value={row.formula}
+                      onChange={(e) => handleFormulaChange(row.id, e.target.value)}
+                      disabled={!row.confirmed}
+                      placeholder="Enter formula..."
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -264,8 +294,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
         {/* Empty State */}
         {surfaceRows.length === 0 && (
           <div className="text-center py-6 text-slate-500">
-            <Target size={40} className="mx-auto mb-3 opacity-50" />
-            <p className="text-base font-medium mb-2">No surfaces selected</p>
+            <Target size={32} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm font-medium mb-1">No surfaces selected</p>
             <p className="text-sm">Click "Select Surface" to start selecting surfaces</p>
           </div>
         )}
