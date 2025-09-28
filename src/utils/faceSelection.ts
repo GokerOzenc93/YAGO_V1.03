@@ -872,8 +872,8 @@ const buildFaceOverlayFromHit = (
                 // Set userData for proper tracking
                 textMesh.userData = {
                     rowIndex: rowIndex,
-                    faceIndex: hit.faceIndex,
-                    shapeId: shape.id,
+                    faceIndex: seedTri,
+                    shapeId: shapeId,
                     faceNumber: faceNumber,
                     isPersistent: true,
                     isTextMesh: true
