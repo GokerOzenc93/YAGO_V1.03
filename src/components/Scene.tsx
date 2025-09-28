@@ -1,6 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -15,52 +13,50 @@ import {
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
 import DrawingPlane from './drawing/DrawingPlane';
+import ContextMenu from './ContextMenu';
+import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
+import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
+import { clearFaceHighlight } from '../utils/faceSelection';
+import * as THREE from 'three';
+import { createPortal } from 'react-dom';
 
-// Canvas resize handler component
-const CanvasResizeHandler = ({ isEditMode, editModeWidth }) => {
-  const { gl, camera, size } = useThree();
-  
-  useEffect(() => {
-    const handleResize = () => {
+// Helper function to adjust camera for edit mode panel
+const adjustCameraForEditMode = (camera: THREE.Camera, isEditMode: boolean, panelWidth: number = 400) => {
+  if (camera instanceof THREE.PerspectiveCamera) {
+    // For perspective camera, adjust aspect ratio
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
       const fullWidth = window.innerWidth;
       const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - editModeWidth : fullWidth;
+      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
       
-      // Update renderer size
-      gl.setSize(availableWidth, fullHeight);
+      camera.aspect = availableWidth / fullHeight;
+      camera.updateProjectionMatrix();
       
-      // Update camera aspect ratio
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.aspect = availableWidth / fullHeight;
-        camera.updateProjectionMatrix();
-      } else if (camera instanceof THREE.OrthographicCamera) {
-        const aspect = availableWidth / fullHeight;
-        const frustumSize = 1000;
-        camera.left = -frustumSize * aspect;
-        camera.right = frustumSize * aspect;
-        camera.top = frustumSize;
-        camera.bottom = -frustumSize;
-        camera.updateProjectionMatrix();
-      }
+      console.log(`🎯 Camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport (${availableWidth}x${fullHeight})`);
+    }
+  } else if (camera instanceof THREE.OrthographicCamera) {
+    // For orthographic camera, adjust frustum
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      const fullWidth = window.innerWidth;
+      const fullHeight = window.innerHeight;
+      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
       
-      console.log(`🎯 Canvas resized: ${availableWidth}x${fullHeight} (editMode: ${isEditMode})`);
-    };
-    
-    // Immediate resize
-    handleResize();
-    
-    // Listen for window resize
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [isEditMode, editModeWidth, gl, camera]);
-  
-  return null;
+      const aspect = availableWidth / fullHeight;
+      const frustumSize = 1000; // Base frustum size
+      
+      camera.left = -frustumSize * aspect;
+      camera.right = frustumSize * aspect;
+      camera.top = frustumSize;
+      camera.bottom = -frustumSize;
+      camera.updateProjectionMatrix();
+      
+      console.log(`🎯 Orthographic camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport`);
+    }
+  }
 };
-
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
   const { setCameraPosition } = useAppStore();
@@ -602,17 +598,6 @@ const Scene: React.FC = () => {
   // Scene referansını al
   const [sceneRef, setSceneRef] = useState(null);
 
-  // Define edit mode width constant
-  const editModeWidth = 400;
-
-  // Force canvas resize when edit mode changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [isEditMode]);
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
@@ -658,13 +643,11 @@ const Scene: React.FC = () => {
           (window as any).currentScene = scene;
         }}
         style={{
-          marginLeft: isEditMode ? `${editModeWidth}px` : '0px',
-          width: isEditMode ? `calc(100vw - ${editModeWidth}px)` : '100vw',
+          marginLeft: isEditMode ? '400px' : '0px',
+          width: isEditMode ? 'calc(100vw - 400px)' : '100vw',
           transition: 'margin-left 0.3s ease-in-out, width 0.3s ease-in-out'
         }}
-        resize={{ scroll: false, debounce: { scroll: 50, resize: 50 } }}
       >
-        <CanvasResizeHandler isEditMode={isEditMode} editModeWidth={editModeWidth} />
         <CameraPositionUpdater />
         <CameraController isAddPanelMode={isAddPanelMode} />
         <Stats className="hidden" />
