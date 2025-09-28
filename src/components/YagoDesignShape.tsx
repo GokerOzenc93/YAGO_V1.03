@@ -696,6 +696,31 @@ const YagoDesignShape: React.FC<Props> = ({
         scale={shape.scale}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
+        onPointerDown={(e) => {
+          // Handle right-click for face confirmation
+          if (isFaceSelectionActive && e.nativeEvent.button === 2 && currentPreviewFace !== null) {
+            e.stopPropagation();
+            e.nativeEvent.preventDefault();
+            
+            // Confirm the currently previewed face
+            const faceSelectedEvent = new CustomEvent('faceSelected', {
+              detail: {
+                faceIndex: currentPreviewFace,
+                shapeId: shape.id
+              }
+            });
+            window.dispatchEvent(faceSelectedEvent);
+            
+            // Reset cycling state
+            setIsFaceSelectionActive(false);
+            setActiveRowId(null);
+            setCurrentCycleIndex(0);
+            setAvailableFaces([]);
+            setCurrentPreviewFace(null);
+            
+            console.log(`🎯 Face ${currentPreviewFace} confirmed via right-click on shape ${shape.id}`);
+          }
+        }}
         castShadow
         receiveShadow
         visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
