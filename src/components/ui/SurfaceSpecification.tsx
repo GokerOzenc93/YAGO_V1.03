@@ -211,9 +211,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           </button>
           
           {isSelectionActive && (
-            <div className="mt-1.5 text-center text-xs text-orange-600">
-              Click on any surface in the 3D view to select it
-            </div>
+            <div></div>
           )}
         </div>
 
