@@ -80,7 +80,7 @@ const StatusBar: React.FC = () => {
   };
   
   return (
-    <div className="flex items-center justify-between h-5 px-2 text-xs bg-gray-800/80 backdrop-blur-sm border-t border-gray-700/50">
+    <div className="flex items-center justify-between h-4 px-2 text-xs bg-gray-800/80 backdrop-blur-sm border-t border-gray-700/50">
       <div className="flex items-center gap-4">
         <div id="fps-container" className="flex items-center">
           <span className="text-gray-400 mr-1">FPS:</span>
@@ -91,43 +91,43 @@ const StatusBar: React.FC = () => {
         {/* Camera Type Toggle */}
         <button
           onClick={handleCameraToggle}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors"
+          className="flex items-center gap-1 px-1 py-0.5 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors"
           title={`Switch to ${cameraType === CameraType.PERSPECTIVE ? 'Orthographic' : 'Perspective'} Camera (C)`}
         >
           {cameraType === CameraType.PERSPECTIVE ? (
-            <Camera size={12} className="text-blue-400" />
+            <Camera size={10} className="text-blue-400" />
           ) : (
-            <CameraOff size={12} className="text-gray-400" />
+            <CameraOff size={10} className="text-gray-400" />
           )}
-          <span className="text-xs">{cameraType === CameraType.PERSPECTIVE ? 'Persp' : 'Ortho'}</span>
+          <span className="text-xs font-medium">{cameraType === CameraType.PERSPECTIVE ? 'Persp' : 'Ortho'}</span>
         </button>
 
         {/* 🎯 NEW: View Mode Toggle */}
         <button
           onClick={handleViewModeToggle}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors"
+          className="flex items-center gap-1 px-1 py-0.5 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors"
           title={`Current: ${getViewModeLabel()} View - Click to cycle (1/2/3)`}
         >
           {getViewModeIcon()}
-          <span className="text-xs">{getViewModeLabel()}</span>
+          <span className="text-xs font-medium">{getViewModeLabel()}</span>
         </button>
 
         {/* Zoom Fit Button */}
         <button
           onClick={handleZoomFit}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-600/90 hover:bg-green-500 transition-colors"
+          className="flex items-center gap-1 px-1 py-0.5 rounded bg-green-600/90 hover:bg-green-500 transition-colors"
           title="Zoom Fit - Fit all objects to view (Z)"
         >
-          <ZoomIn size={12} className="text-white" />
-          <span className="text-xs text-white font-medium">Fit</span>
+          <ZoomIn size={10} className="text-white" />
+          <span className="text-xs text-white font-semibold">Fit</span>
         </button>
 
         {/* View Shortcuts */}
         <div className="flex items-center gap-1">
-          <span className="text-gray-400 text-xs">Views:</span>
+          <span className="text-gray-400 text-xs font-medium">Views:</span>
           <div className="flex items-center gap-0.5">
             <button
-              className="px-1 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
+              className="px-0.5 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
               title="Top View (T)"
               onClick={() => {
                 // This will be handled by the Scene component's keyboard listener
@@ -135,43 +135,43 @@ const StatusBar: React.FC = () => {
                 window.dispatchEvent(event);
               }}
             >
-              <Square size={10} />
+              <Square size={8} />
             </button>
             <button
-              className="px-1 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
+              className="px-0.5 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
               title="Front View (F)"
               onClick={() => {
                 const event = new KeyboardEvent('keydown', { key: 'f' });
                 window.dispatchEvent(event);
               }}
             >
-              <Circle size={10} />
+              <Circle size={8} />
             </button>
             <button
-              className="px-1 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
+              className="px-0.5 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
               title="Right View (R)"
               onClick={() => {
                 const event = new KeyboardEvent('keydown', { key: 'r' });
                 window.dispatchEvent(event);
               }}
             >
-              <Box size={10} />
+              <Box size={8} />
             </button>
             <button
-              className="px-1 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
+              className="px-0.5 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
               title="Isometric View (I)"
               onClick={() => {
                 const event = new KeyboardEvent('keydown', { key: 'i' });
                 window.dispatchEvent(event);
               }}
             >
-              <Monitor size={10} />
+              <Monitor size={8} />
             </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-gray-400">Grid:</span>
+          <span className="text-gray-400 font-medium">Grid:</span>
           <input
             type="number"
             value={gridSize}
@@ -179,15 +179,15 @@ const StatusBar: React.FC = () => {
             min={0.5}
             max={1000}
             step={0.5}
-            className="w-16 bg-gray-700/50 border border-gray-600/50 rounded text-xs px-1.5 py-0 h-4"
+            className="w-12 bg-gray-700/50 border border-gray-600/50 rounded text-xs px-1 py-0 h-4"
           />
-          <span className="text-gray-400">mm</span>
+          <span className="text-gray-400 font-medium">mm</span>
         </div>
         
         {/* Geometry Mode Indicator */}
         <div className="flex items-center gap-2">
-          <span className="text-gray-400">Engine:</span>
-          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+          <span className="text-gray-400 font-medium">Engine:</span>
+          <span className={`text-xs font-medium px-1 py-0.5 rounded ${
             geometryMode === 'OpenCascade.js' 
               ? 'bg-green-600/20 text-green-400' 
               : 'bg-blue-600/20 text-blue-400'
@@ -197,11 +197,11 @@ const StatusBar: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-gray-400">Unit:</span>
+          <span className="text-gray-400 font-medium">Unit:</span>
           <select
             value={measurementUnit}
             onChange={(e) => setMeasurementUnit(e.target.value as MeasurementUnit)}
-            className="bg-gray-700/50 border border-gray-600/50 rounded text-xs px-1.5 py-0 h-4"
+            className="bg-gray-700/50 border border-gray-600/50 rounded text-xs px-1 py-0 h-4"
           >
             <option value={MeasurementUnit.MM}>mm</option>
             <option value={MeasurementUnit.CM}>cm</option>
