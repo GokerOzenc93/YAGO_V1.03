@@ -13,50 +13,6 @@ import {
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
 import DrawingPlane from './drawing/DrawingPlane';
-import ContextMenu from './ContextMenu';
-import EditMode from './ui/EditMode';
-import { DimensionsManager } from './drawing/dimensionsSystem';
-import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
-import { clearFaceHighlight } from '../utils/faceSelection';
-import * as THREE from 'three';
-import { createPortal } from 'react-dom';
-
-// Helper function to adjust camera for edit mode panel
-const adjustCameraForEditMode = (camera: THREE.Camera, isEditMode: boolean, panelWidth: number = 400) => {
-  if (camera instanceof THREE.PerspectiveCamera) {
-    // For perspective camera, adjust aspect ratio
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
-      
-      camera.aspect = availableWidth / fullHeight;
-      camera.updateProjectionMatrix();
-      
-      console.log(`🎯 Camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport (${availableWidth}x${fullHeight})`);
-    }
-  } else if (camera instanceof THREE.OrthographicCamera) {
-    // For orthographic camera, adjust frustum
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
-      
-      const aspect = availableWidth / fullHeight;
-      const frustumSize = 1000; // Base frustum size
-      
-      camera.left = -frustumSize * aspect;
-      camera.right = frustumSize * aspect;
-      camera.top = frustumSize;
-      camera.bottom = -frustumSize;
-      camera.updateProjectionMatrix();
-      
-      console.log(`🎯 Orthographic camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport`);
-    }
-  }
-};
 const CameraPositionUpdater = () => {
 // Canvas resize handler component
 const CanvasResizeHandler = ({ isEditMode, editModeWidth }) => {
