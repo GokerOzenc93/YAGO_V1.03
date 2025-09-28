@@ -269,11 +269,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       <option value="back">Back</option>
                       <option value="door">Door</option>
                     </select>
-                  </div>
-                  
-                  {/* Third Row: Formula Field */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-8 flex items-center">
+                    
+                    <span className="text-xs text-gray-500 flex items-center">
                       <Calculator size={10} className="text-gray-400" />
                     </span>
                     <input
@@ -281,7 +278,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       value={row.formula}
                       onChange={(e) => handleFormulaChange(row.id, e.target.value)}
                       disabled={!row.confirmed}
-                      placeholder="Enter formula..."
+                      placeholder="Formula..."
                       className="flex-1 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400"
                     />
                   </div>
