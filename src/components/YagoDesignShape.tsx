@@ -48,6 +48,9 @@ const YagoDesignShape: React.FC<Props> = ({
   // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [currentCycleIndex, setCurrentCycleIndex] = useState(0);
+  const [availableFaces, setAvailableFaces] = useState<number[]>([]);
+  const [currentPreviewFace, setCurrentPreviewFace] = useState<number | null>(null);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -234,6 +237,9 @@ const YagoDesignShape: React.FC<Props> = ({
       const { rowId } = event.detail;
       setIsFaceSelectionActive(true);
       setActiveRowId(rowId);
+      setCurrentCycleIndex(0);
+      setAvailableFaces([]);
+      setCurrentPreviewFace(null);
       console.log(`🎯 Face selection activated for row ${rowId} on shape ${shape.id}`);
     };
 
@@ -491,7 +497,7 @@ const YagoDesignShape: React.FC<Props> = ({
     return center;
   };
   const handleClick = (e: any) => {
-    // New surface selection mode
+    // Surface selection mode with cycling
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
       
@@ -507,22 +513,77 @@ const YagoDesignShape: React.FC<Props> = ({
         return;
       }
 
-      const hit = hits[0];
-      if (hit.faceIndex === undefined) {
-        console.warn('🎯 No face index');
+      // Get all available face indices from hits
+      const faceIndices = hits
+        .map(hit => hit.faceIndex)
+        .filter(index => index !== undefined) as number[];
+      
+      if (faceIndices.length === 0) {
+        console.warn('🎯 No valid face indices');
         return;
       }
 
-      // Send face selection event
+      // Check if this is a new click location or cycling through same location
+      const isSameLocation = JSON.stringify(faceIndices.sort()) === JSON.stringify(availableFaces.sort());
+      
+      if (!isSameLocation) {
+        // New location - reset cycling
+        setAvailableFaces(faceIndices);
+        setCurrentCycleIndex(0);
+        setCurrentPreviewFace(faceIndices[0]);
+        
+        // Clear previous temporary highlights
+        clearTemporaryHighlights(scene);
+        
+        // Create preview highlight for first face
+        const firstHit = hits.find(hit => hit.faceIndex === faceIndices[0]);
+        if (firstHit) {
+          addFaceHighlight(scene, firstHit, shape, 0xff6b35, 0.5, false); // Orange preview
+        }
+        
+        console.log(`🎯 New location: ${faceIndices.length} faces available, showing face ${faceIndices[0]}`);
+      } else {
+        // Same location - cycle to next face
+        const nextIndex = (currentCycleIndex + 1) % faceIndices.length;
+        setCurrentCycleIndex(nextIndex);
+        setCurrentPreviewFace(faceIndices[nextIndex]);
+        
+        // Clear previous temporary highlights
+        clearTemporaryHighlights(scene);
+        
+        // Create preview highlight for next face
+        const nextHit = hits.find(hit => hit.faceIndex === faceIndices[nextIndex]);
+        if (nextHit) {
+          addFaceHighlight(scene, nextHit, shape, 0xff6b35, 0.5, false); // Orange preview
+        }
+        
+        console.log(`🎯 Cycling: face ${faceIndices[nextIndex]} (${nextIndex + 1}/${faceIndices.length})`);
+      }
+      
+      return;
+    }
+    
+    // Left-click confirmation when in face selection mode
+    if (isFaceSelectionActive && e.nativeEvent.button === 0 && currentPreviewFace !== null) {
+      e.stopPropagation();
+      
+      // Confirm the currently previewed face
       const faceSelectedEvent = new CustomEvent('faceSelected', {
         detail: {
-          faceIndex: hit.faceIndex,
+          faceIndex: currentPreviewFace,
           shapeId: shape.id
         }
       });
       window.dispatchEvent(faceSelectedEvent);
       
-      console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
+      // Reset cycling state
+      setIsFaceSelectionActive(false);
+      setActiveRowId(null);
+      setCurrentCycleIndex(0);
+      setAvailableFaces([]);
+      setCurrentPreviewFace(null);
+      
+      console.log(`🎯 Face ${currentPreviewFace} confirmed and selected on shape ${shape.id}`);
       return;
     }
     
