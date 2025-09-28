@@ -21,6 +21,42 @@ import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
 
+// Helper function to adjust camera for edit mode panel
+const adjustCameraForEditMode = (camera: THREE.Camera, isEditMode: boolean, panelWidth: number = 400) => {
+  if (camera instanceof THREE.PerspectiveCamera) {
+    // For perspective camera, adjust aspect ratio
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      const fullWidth = window.innerWidth;
+      const fullHeight = window.innerHeight;
+      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
+      
+      camera.aspect = availableWidth / fullHeight;
+      camera.updateProjectionMatrix();
+      
+      console.log(`🎯 Camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport (${availableWidth}x${fullHeight})`);
+    }
+  } else if (camera instanceof THREE.OrthographicCamera) {
+    // For orthographic camera, adjust frustum
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      const fullWidth = window.innerWidth;
+      const fullHeight = window.innerHeight;
+      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
+      
+      const aspect = availableWidth / fullHeight;
+      const frustumSize = 1000; // Base frustum size
+      
+      camera.left = -frustumSize * aspect;
+      camera.right = frustumSize * aspect;
+      camera.top = frustumSize;
+      camera.bottom = -frustumSize;
+      camera.updateProjectionMatrix();
+      
+      console.log(`🎯 Orthographic camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport`);
+    }
+  }
+};
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
   const { setCameraPosition } = useAppStore();
@@ -605,6 +641,11 @@ const Scene: React.FC = () => {
           setSceneRef(scene);
           // Make scene globally accessible for face selection
           (window as any).currentScene = scene;
+        }}
+        style={{
+          marginLeft: isEditMode ? '400px' : '0px',
+          width: isEditMode ? 'calc(100vw - 400px)' : '100vw',
+          transition: 'margin-left 0.3s ease-in-out, width 0.3s ease-in-out'
         }}
       >
         <CameraPositionUpdater />
