@@ -434,6 +434,47 @@ const YagoDesignShape: React.FC<Props> = ({
       clearAllPersistentHighlights(scene);
     };
     
+    const handleUpdateFaceHighlight = (event: CustomEvent) => {
+      const { rowIndex, faceIndex, role, faceNumber } = event.detail;
+      
+      console.log(`🎯 Updating face highlight for row ${rowIndex}, role: ${role}`);
+      
+      // Find existing highlight and update its appearance
+      // For now, we'll recreate the highlight with updated styling
+      if (meshRef.current) {
+        // Remove old highlight for this row
+        removeFaceHighlightByRowIndex(scene, rowIndex);
+        
+        // Create new highlight with role-based styling
+        const mockHit = {
+          faceIndex: faceIndex,
+          object: meshRef.current,
+          face: { a: 0, b: 1, c: 2 },
+          point: new THREE.Vector3()
+        };
+        
+        // Role-based colors
+        const roleColors = {
+          'left': 0xff6b6b,    // Red
+          'right': 0x4ecdc4,   // Teal
+          'top': 0x45b7d1,     // Blue
+          'bottom': 0x96ceb4,  // Green
+          'front': 0xfeca57,   // Yellow
+          'back': 0xff9ff3,    // Pink
+          'door': 0xf38ba8,    // Rose
+          '': 0xffb366         // Default orange
+        };
+        
+        const color = roleColors[role] || roleColors[''];
+        
+        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, faceNumber, rowIndex);
+        
+        if (highlight) {
+          console.log(`✅ Face highlight updated with role color for ${role}`);
+        }
+      }
+    };
+    
     window.addEventListener('highlightConfirmedFace', handleConfirmedFaceHighlight as EventListener);
     window.addEventListener('removeFaceHighlightByRow', handleRemoveFaceHighlight as EventListener);
     window.addEventListener('confirmFaceSelection', handleRightClickConfirmation as EventListener);

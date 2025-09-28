@@ -59,6 +59,47 @@ const EditMode: React.FC<EditModeProps> = ({
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   
+  // Auto-add surface row when face is selected
+  useEffect(() => {
+    const handleAutoAddSurfaceRow = (event: CustomEvent) => {
+      const { shapeId, faceIndex, confirmed } = event.detail;
+      
+      if (shapeId === editedShape.id && confirmed) {
+        console.log(`🎯 Auto-adding surface row for face ${faceIndex}`);
+        
+        // Add new row to selected faces
+        const newRowIndex = selectedFaces.length;
+        setSelectedFaces(prev => [...prev, { 
+          index: faceIndex, 
+          role: '',
+          confirmed: true,
+          actualFaceIndex: faceIndex
+        }]);
+        
+        // Create persistent highlight with face number
+        const highlightEvent = new CustomEvent('highlightConfirmedFace', {
+          detail: {
+            shapeId: editedShape.id,
+            faceIndex: faceIndex,
+            faceNumber: newRowIndex + 1,
+            color: 0xffb366,
+            confirmed: true,
+            rowIndex: newRowIndex
+          }
+        });
+        window.dispatchEvent(highlightEvent);
+        
+        console.log(`✅ Auto-added row ${newRowIndex + 1} for face ${faceIndex}`);
+      }
+    };
+    
+    window.addEventListener('autoAddSurfaceRow', handleAutoAddSurfaceRow as EventListener);
+    
+    return () => {
+      window.removeEventListener('autoAddSurfaceRow', handleAutoAddSurfaceRow as EventListener);
+    };
+  }, [editedShape.id, selectedFaces]);
+  
   const handleVolumeNameChange = (name: string) => {
     setVolumeName(name);
   };

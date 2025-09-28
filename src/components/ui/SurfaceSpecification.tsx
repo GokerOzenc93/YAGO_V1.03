@@ -107,7 +107,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   </div>
                   <select
                     value={face.role}
-                    onChange={(e) => onUpdateFaceRole(index, e.target.value)}
+                    onChange={(e) => handleRoleUpdate(index, e.target.value)}
                     className="flex-1 text-xs bg-white border border-gray-300 rounded px-1.5 py-0.5 text-slate-800"
                   >
                     <option value="" className="text-slate-600">Select Role</option>
