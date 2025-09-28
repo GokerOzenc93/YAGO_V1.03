@@ -744,7 +744,8 @@ const buildFaceOverlayFromHit = (
     seedTri: number,
     color: number,
     opacity: number,
-    faceNumber?: number
+    faceNumber?: number,
+    rowIndex?: number
 ): THREE.Mesh | null => {
     const res = growRegion(mesh, seedTri);
     if (res.boundaryLoops.length === 0) return null;
@@ -909,7 +910,7 @@ export const addFaceHighlight = (
     console.log(`🎯 Enhanced face selection started for face ${hit.faceIndex}`);
     
     // Build a SINGLE overlay mesh for the entire planar region with face number
-    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber);
+    const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, faceNumber, rowIndex);
     if (!overlay) return null;
 
     console.log(`✅ Enhanced coplanar face selection completed - single unified surface selected`);
