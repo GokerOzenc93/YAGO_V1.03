@@ -275,16 +275,16 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                   {/* Apply Button */}
                   <button
                     onClick={() => handleConfirmSurface(row.id)}
-                    disabled={!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed}
+                    disabled={!row.role || !row.role.trim() || row.faceIndex === null}
                     className={`flex-shrink-0 px-2 py-1 text-xs rounded transition-all font-medium ${
-                      row.confirmed 
+                      row.confirmed && row.role && row.role.trim()
                         ? 'bg-green-600 text-white border border-green-600' 
-                        : (!row.role || !row.role.trim() || row.faceIndex === null)
+                        : (!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed)
                           ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
                           : 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
                     }`}
                     title={
-                      row.confirmed 
+                      row.confirmed && row.role && row.role.trim()
                         ? "Applied" 
                         : (!row.role || !row.role.trim())
                           ? "Select a role first"
@@ -293,7 +293,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                             : "Click to apply surface"
                     }
                   >
-                    {row.confirmed ? 'Applied' : 'Apply'}
+                    {(row.confirmed && row.role && row.role.trim()) ? 'Applied' : 'Apply'}
                   </button>
                   
                   {/* Remove Button */}
