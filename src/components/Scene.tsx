@@ -14,6 +14,7 @@ import {
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
 import DrawingPlane from './drawing/DrawingPlane';
+import { DimensionsManager } from './drawing/dimensionsSystem';
 
 // Canvas resize handler component
 const CanvasResizeHandler = ({ isEditMode, editModeWidth }) => {
