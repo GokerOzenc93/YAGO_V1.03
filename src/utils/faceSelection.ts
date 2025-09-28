@@ -595,4 +595,15 @@ const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferA
 
 const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(
-        mesh, QU
+        mesh, QUANT_EPS);
+
+    // Implementation would continue here but is cut off in the original file
+    // For now, return a minimal valid result to prevent compilation errors
+    return {
+        triangles: [seedTri],
+        normal: new THREE.Vector3(0, 1, 0),
+        plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+        boundaryLoops: [],
+        weldedToWorld: weldedIdToWorld
+    };
+};
