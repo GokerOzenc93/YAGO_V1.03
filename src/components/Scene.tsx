@@ -20,43 +20,6 @@ import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
-
-// Helper function to adjust camera for edit mode panel
-const adjustCameraForEditMode = (camera: THREE.Camera, isEditMode: boolean, panelWidth: number = 400) => {
-  if (camera instanceof THREE.PerspectiveCamera) {
-    // For perspective camera, adjust aspect ratio
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
-      
-      camera.aspect = availableWidth / fullHeight;
-      camera.updateProjectionMatrix();
-      
-      console.log(`🎯 Camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport (${availableWidth}x${fullHeight})`);
-    }
-  } else if (camera instanceof THREE.OrthographicCamera) {
-    // For orthographic camera, adjust frustum
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight;
-      const availableWidth = isEditMode ? fullWidth - panelWidth : fullWidth;
-      
-      const aspect = availableWidth / fullHeight;
-      const frustumSize = 1000; // Base frustum size
-      
-      camera.left = -frustumSize * aspect;
-      camera.right = frustumSize * aspect;
-      camera.top = frustumSize;
-      camera.bottom = -frustumSize;
-      camera.updateProjectionMatrix();
-      
-      console.log(`🎯 Orthographic camera adjusted for edit mode: ${isEditMode ? 'reduced' : 'full'} viewport`);
-    }
-  }
-};
 const CameraPositionUpdater = () => {
   const { camera } = useThree();
   const { setCameraPosition } = useAppStore();
@@ -101,15 +64,37 @@ interface FaceSelectionPopupProps {
 
 interface CameraControllerProps {
   isAddPanelMode: boolean;
+  isEditMode: boolean;
+  editModeWidth: number;
 }
 
 const CameraController: React.FC<CameraControllerProps> = ({
   isAddPanelMode,
+  isEditMode,
+  editModeWidth,
 }) => {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const { shapes, cameraType, isEditMode, editingShapeId, hiddenShapeIds } =
     useAppStore();
+  
+  // Edit mode camera pan effect
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    
+    const controls = controlsRef.current;
+    const panAmount = isEditMode ? editModeWidth / 2 : 0; // Pan by half the panel width
+    
+    // Get current target and pan it to the right
+    const currentTarget = controls.target.clone();
+    const newTarget = new THREE.Vector3(currentTarget.x + panAmount, currentTarget.y, currentTarget.z);
+    
+    // Smoothly animate to new target
+    controls.target.copy(newTarget);
+    controls.update();
+    
+    console.log(`🎯 Camera panned for edit mode: ${isEditMode ? 'right' : 'center'} by ${panAmount}px`);
+  }, [isEditMode, editModeWidth]);
 
   // Handle zoom fit events
   useEffect(() => {
@@ -641,11 +626,6 @@ const Scene: React.FC = () => {
           setSceneRef(scene);
           // Make scene globally accessible for face selection
           (window as any).currentScene = scene;
-        }}
-        style={{
-          marginLeft: isEditMode ? '400px' : '0px',
-          width: isEditMode ? 'calc(100vw - 400px)' : '100vw',
-          transition: 'margin-left 0.3s ease-in-out, width 0.3s ease-in-out'
         }}
       >
         <CameraPositionUpdater />
