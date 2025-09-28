@@ -21,8 +21,10 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
   const [isSelectionActive, setIsSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
 
-  // Listen for face selection events from 3D scene
+  // Listen for face selection events from 3D scene - only when selection is active
   useEffect(() => {
+    if (!isSelectionActive) return;
+    
     const handleFaceSelected = (event: CustomEvent) => {
       const { faceIndex, shapeId } = event.detail;
       
@@ -59,7 +61,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     return () => {
       window.removeEventListener('faceSelected', handleFaceSelected as EventListener);
     };
-  }, [activeRowId]);
+  }, [activeRowId, isSelectionActive, surfaceRows.length]);
 
   const handleSelectSurface = () => {
     // Create new row
