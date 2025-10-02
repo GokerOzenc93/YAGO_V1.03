@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Pin, PinOff, Edit3, Save } from 'lucide-react';
+import { X, Pin, PinOff, CreditCard as Edit3, Save } from 'lucide-react';
 
 interface EditModeHeaderProps {
   volumeName: string;
