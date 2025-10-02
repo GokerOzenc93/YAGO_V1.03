@@ -680,7 +680,7 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
       if (loop.length > 2) boundaryLoops.push(loop);
   }
 
-  return { triangles: region, normal: avgNormal.clone(), plane, boundaryLoops, weldedToWorld };
+  return { triangles: region, normal: avgNormal.clone(), plane, boundaryLoops, weldedToWorld: weldedIdToWorld };
 };
 
 
@@ -711,7 +711,7 @@ const buildFaceOverlayFromHit = (
   const bitangent = new THREE.Vector3().crossVectors(n, tangent).normalize();
 
   const project = (p: THREE.Vector3) => new THREE.Vector2(p.dot(tangent), p.dot(bitangent));
-  
+
   const loops2D = res.boundaryLoops.map(loop => loop.map(wid => project(res.weldedToWorld.get(wid)!)));
 
   // 3. `THREE.ShapeUtils.triangulateShape` kullanarak 2D çokgeni (ve varsa içindeki delikleri) üçgenle.
