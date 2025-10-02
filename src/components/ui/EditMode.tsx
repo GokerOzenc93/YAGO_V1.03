@@ -487,36 +487,34 @@ const EditMode: React.FC<EditModeProps> = ({
           
           <div className="flex-1 flex flex-col overflow-hidden">
             {!activeMainSection && (
-              <div className="flex-1 p-4 space-y-3">
+              <div className="flex-1 p-4 space-y-2">
                 <button
                   onClick={() => handleMainSectionClick('volume')}
-                  className="w-full p-4 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                  className="w-full h-10 px-3 bg-white rounded-md border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                      <Puzzle size={20} className="text-orange-600" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 bg-orange-100 rounded flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                      <Puzzle size={14} className="text-orange-600" />
                     </div>
                     <div className="flex-1 text-left">
-                      <h3 className="font-semibold text-slate-800 group-hover:text-orange-700">Volume</h3>
-                      <p className="text-sm text-slate-600">Manage volume properties and library</p>
+                      <h3 className="text-xs font-medium text-slate-800 group-hover:text-orange-700">Volume</h3>
                     </div>
-                    <ChevronRight size={16} className="text-slate-400 group-hover:text-orange-600" />
+                    <ChevronRight size={11} className="text-slate-400 group-hover:text-orange-600" />
                   </div>
                 </button>
 
                 <button
                   onClick={() => handleMainSectionClick('panel')}
-                  className="w-full p-4 bg-white rounded-lg border border-stone-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
+                  className="w-full h-10 px-3 bg-white rounded-md border border-stone-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                      <PanelLeft size={20} className="text-blue-600" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 bg-blue-100 rounded flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                      <PanelLeft size={14} className="text-blue-600" />
                     </div>
                     <div className="flex-1 text-left">
-                      <h3 className="font-semibold text-slate-800 group-hover:text-blue-700">Panel</h3>
-                      <p className="text-sm text-slate-600">Panel management and configuration</p>
+                      <h3 className="text-xs font-medium text-slate-800 group-hover:text-blue-700">Panel</h3>
                     </div>
-                    <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-600" />
+                    <ChevronRight size={11} className="text-slate-400 group-hover:text-blue-600" />
                   </div>
                 </button>
               </div>
@@ -524,59 +522,56 @@ const EditMode: React.FC<EditModeProps> = ({
 
             {activeMainSection === 'volume' && !activeVolumeSubSection && (
               <div className="flex-1 flex flex-col">
-                <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
+                <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleBackToMain}
-                      className="p-1 hover:bg-orange-200 rounded transition-colors"
+                      className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
                     >
-                      <ChevronLeft size={16} className="text-orange-600" />
+                      <ChevronLeft size={11} className="text-orange-600" />
                     </button>
-                    <Puzzle size={16} className="text-orange-600" />
-                    <span className="font-semibold text-orange-800">Volume</span>
+                    <Puzzle size={11} className="text-orange-600" />
+                    <span className="text-xs font-medium text-orange-800">Volume</span>
                   </div>
                 </div>
 
-                <div className="flex-1 p-4 space-y-3">
+                <div className="flex-1 p-4 space-y-2">
                   <button
                     onClick={() => handleVolumeSubSectionClick('library')}
-                    className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                    className="w-full h-10 px-3 bg-white rounded-md border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
                   >
-                    <div className="flex items-center gap-3">
-                      <Archive size={16} className="text-orange-600" />
+                    <div className="flex items-center gap-2">
+                      <Archive size={11} className="text-orange-600" />
                       <div className="flex-1 text-left">
-                        <h4 className="font-medium text-slate-800">Volume Library</h4>
-                        <p className="text-xs text-slate-600">Saved volumes and templates</p>
+                        <h4 className="text-xs font-medium text-slate-800">Volume Library</h4>
                       </div>
-                      <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600" />
+                      <ChevronRight size={11} className="text-slate-400 group-hover:text-orange-600" />
                     </div>
                   </button>
 
                   <button
                     onClick={() => handleVolumeSubSectionClick('surface')}
-                    className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                    className="w-full h-10 px-3 bg-white rounded-md border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
                   >
-                    <div className="flex items-center gap-3">
-                      <MousePointer size={16} className="text-orange-600" />
+                    <div className="flex items-center gap-2">
+                      <MousePointer size={11} className="text-orange-600" />
                       <div className="flex-1 text-left">
-                        <h4 className="font-medium text-slate-800">Surface Specification</h4>
-                        <p className="text-xs text-slate-600">Select and edit surfaces</p>
+                        <h4 className="text-xs font-medium text-slate-800">Surface Specification</h4>
                       </div>
-                      <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600" />
+                      <ChevronRight size={11} className="text-slate-400 group-hover:text-orange-600" />
                     </div>
                   </button>
 
                   <button
                     onClick={() => handleVolumeSubSectionClick('parameters')}
-                    className="w-full p-3 bg-white rounded-lg border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
+                    className="w-full h-10 px-3 bg-white rounded-md border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
                   >
-                    <div className="flex items-center gap-3">
-                      <Ruler size={16} className="text-orange-600" />
+                    <div className="flex items-center gap-2">
+                      <Ruler size={11} className="text-orange-600" />
                       <div className="flex-1 text-left">
-                        <h4 className="font-medium text-slate-800">Volume Parameters</h4>
-                        <p className="text-xs text-slate-600">Dimensions and properties</p>
+                        <h4 className="text-xs font-medium text-slate-800">Volume Parameters</h4>
                       </div>
-                      <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600" />
+                      <ChevronRight size={11} className="text-slate-400 group-hover:text-orange-600" />
                     </div>
                   </button>
                 </div>
@@ -604,24 +599,24 @@ const EditMode: React.FC<EditModeProps> = ({
 
             {activeMainSection === 'panel' && (
               <div className="flex-1 flex flex-col">
-                <div className="flex items-center justify-between p-3 bg-blue-50 border-b border-blue-200">
+                <div className="flex items-center justify-between h-10 px-3 bg-blue-50 border-b border-blue-200">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleBackToMain}
-                      className="p-1 hover:bg-blue-200 rounded transition-colors"
+                      className="p-1.5 hover:bg-blue-200 rounded-sm transition-colors"
                     >
-                      <ChevronLeft size={16} className="text-blue-600" />
+                      <ChevronLeft size={11} className="text-blue-600" />
                     </button>
-                    <PanelLeft size={16} className="text-blue-600" />
-                    <span className="font-semibold text-blue-800">Panel</span>
+                    <PanelLeft size={11} className="text-blue-600" />
+                    <span className="text-xs font-medium text-blue-800">Panel</span>
                   </div>
                 </div>
 
                 <div className="flex-1 p-4">
                   <div className="bg-white rounded-lg border border-stone-200 p-4 text-center">
                     <PanelLeft size={32} className="mx-auto mb-2 text-blue-400" />
-                    <h4 className="font-medium text-slate-800 mb-2">Panel Management</h4>
-                    <p className="text-sm text-slate-600">Panel features will be implemented here</p>
+                    <h4 className="text-xs font-medium text-slate-800 mb-2">Panel Management</h4>
+                    <p className="text-xs text-slate-600">Panel features will be implemented here</p>
                   </div>
                 </div>
               </div>

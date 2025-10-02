@@ -150,32 +150,27 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
   return (
     <>
-      <div className="flex items-center justify-between px-3 py-2 bg-violet-600/20 border-b border-violet-500/30">
+      <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 bg-violet-600/30 rounded">
-            <Puzzle size={12} className="text-violet-300" />
-          </div>
-          <span className="text-white font-medium text-sm">Volume Parameters</span>
+          <Puzzle size={11} className="text-orange-600" />
+          <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+          className="text-stone-600 hover:text-orange-600 p-1.5 rounded-sm transition-colors"
           title="Back"
         >
-          <X size={12} />
+          <X size={11} />
         </button>
       </div>
 
-      <div className="flex-1 p-3 space-y-3">
-        <div className="h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent mb-3"></div>
-
+      <div className="flex-1 p-4 space-y-2">
         <div className="space-y-2">
-          {/* Genişlik */}
           {canEditWidth && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">W:</span>
+            <div className="flex items-center gap-2 h-10">
+              <span className="text-slate-700 text-xs font-medium w-4">W:</span>
               <input
-                type="text" // Metin girişi olarak ayarlandı
+                type="text"
                 value={inputWidth}
                 onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
                 onKeyDown={(e) => {
@@ -183,34 +178,23 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     applyDimensionChange('width', inputWidth);
                   }
                 }}
-                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="flex-1 h-6 bg-white text-slate-800 text-xs font-medium px-2 rounded-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
                 onClick={() => applyDimensionChange('width', inputWidth)}
-                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
+                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
                 title="Apply Width"
               >
-                <Check size={12} />
-              </button>
-              <button
-                onClick={() => {
-                  // Güncelle functionality will be implemented later
-                  console.log('Update width clicked');
-                }}
-                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
-                title="Update Width"
-              >
-                <Check size={12} />
+                <Check size={11} />
               </button>
             </div>
           )}
 
-          {/* Yükseklik */}
           {canEditHeight && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">H:</span>
+            <div className="flex items-center gap-2 h-10">
+              <span className="text-slate-700 text-xs font-medium w-4">H:</span>
               <input
-                type="text" // Metin girişi olarak ayarlandı
+                type="text"
                 value={inputHeight}
                 onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
                 onKeyDown={(e) => {
@@ -218,34 +202,23 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     applyDimensionChange('height', inputHeight);
                   }
                 }}
-                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="flex-1 h-6 bg-white text-slate-800 text-xs font-medium px-2 rounded-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
                 onClick={() => applyDimensionChange('height', inputHeight)}
-                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
+                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
                 title="Apply Height"
               >
-                <Check size={12} />
-              </button>
-              <button
-                onClick={() => {
-                  // Güncelle functionality will be implemented later
-                  console.log('Update height clicked');
-                }}
-                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
-                title="Update Height"
-              >
-                <Check size={12} />
+                <Check size={11} />
               </button>
             </div>
           )}
 
-          {/* Derinlik */}
           {canEditDepth && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">D:</span>
+            <div className="flex items-center gap-2 h-10">
+              <span className="text-slate-700 text-xs font-medium w-4">D:</span>
               <input
-                type="text" // Metin girişi olarak ayarlandı
+                type="text"
                 value={inputDepth}
                 onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
                 onKeyDown={(e) => {
@@ -253,38 +226,26 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     applyDimensionChange('depth', inputDepth);
                   }
                 }}
-                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="flex-1 h-6 bg-white text-slate-800 text-xs font-medium px-2 rounded-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
                 onClick={() => applyDimensionChange('depth', inputDepth)}
-                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
+                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
                 title="Apply Depth"
               >
-                <Check size={12} />
-              </button>
-              <button
-                onClick={() => {
-                  // Güncelle functionality will be implemented later
-                  console.log('Update depth clicked');
-                }}
-                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
-                title="Update Depth"
-              >
-                <Check size={12} />
+                <Check size={11} />
               </button>
             </div>
           )}
 
-          {/* Bilgi mesajı - sadece cylinder için */}
           {editedShape.type === 'cylinder' && (
-            <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
+            <div className="text-xs text-slate-600 mt-2 p-2 bg-orange-50 rounded-sm">
               Cylinder: Only height can be edited
             </div>
           )}
 
-          {/* Bilgi mesajı - circle2d için */}
           {editedShape.type === 'circle2d' && (
-            <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
+            <div className="text-xs text-slate-600 mt-2 p-2 bg-orange-50 rounded-sm">
               Circle: Only height can be edited
             </div>
           )}
