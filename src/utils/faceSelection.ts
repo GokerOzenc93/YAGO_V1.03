@@ -61,7 +61,6 @@ export interface FaceHighlight {
 
 // Aktif olan tüm yüzey vurgularını saklayan global bir dizi.
 let currentHighlights: FaceHighlight[] = [];
-
 // Çoklu seçim modunun (örn. Shift tuşuna basılı tutarak) aktif olup olmadığını belirten global değişken.
 let isMultiSelectMode = false;
 
@@ -157,12 +156,12 @@ export const getFaceArea = (vertices: THREE.Vector3[]): number => {
  */
 const EPSILON = 1e-4; // Kabul edilebilir küçük hata payı
 const verticesEqual = (v1: THREE.Vector3, v2: THREE.Vector3): boolean => {
-  return v1.distanceToSquared(v2) < EPSILON; // Kareli mesafe kontrolü daha hızlıdır.
+  return v1.distanceToSquared(v2) < EPSILON; // Kareli mesafe kontrolü (sqrt olmadan) daha hızlıdır.
 };
 
 /**
  * Belirli bir yüzeye komşu olan (en az bir kenarı paylaşan) diğer yüzeyleri bulur.
- * Bu eski bir yöntemdir, daha gelişmiş olan `buildNeighborsWithWeld` fonksiyonu tercih edilir.
+ * NOT: Bu eski bir yöntemdir, daha gelişmiş olan `buildNeighborsWithWeld` fonksiyonu tercih edilir.
  * @param geometry - Geometri verisi.
  * @param faceIndex - Komşuları bulunacak olan yüzeyin indeksi.
  * @returns {number[]} Komşu yüzeylerin indekslerini içeren bir dizi.
@@ -210,18 +209,72 @@ const getNeighborFaces = (geometry: THREE.BufferGeometry, faceIndex: number): nu
 export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFaceIndex: number): THREE.Vector3[] => {
   // Bu fonksiyon `growRegion` adlı daha modern ve sağlam bir versiyonla değiştirilmiştir.
   // Ancak referans olarak kodda tutulmaktadır.
+  const pos = geometry.attributes.position;
+  if (!pos) return [];
+
+  const visited = new Set<number>();
+  const surfaceFaces: number[] = [];
+  const queue = [startFaceIndex];
   
-  // ... (Bu fonksiyonun içi artık aktif olarak kullanılmadığından detaylı açıklama atlanmıştır) ...
-  return [];
+  const startVertices = getFaceVertices(geometry, startFaceIndex);
+  const startNormal = getFaceNormal(startVertices);
+  const startCenter = getFaceCenter(startVertices);
+
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(startNormal, startCenter);
+  const NORMAL_TOLERANCE = 0.1; // Açı toleransı yerine dot product toleransı
+  const DISTANCE_TOLERANCE = 3.0;
+
+  while (queue.length > 0) {
+      const faceIndex = queue.shift()!;
+      if (visited.has(faceIndex)) continue;
+      visited.add(faceIndex);
+      surfaceFaces.push(faceIndex);
+
+      const neighbors = getNeighborFaces(geometry, faceIndex);
+      for (const neighborIndex of neighbors) {
+          if (visited.has(neighborIndex)) continue;
+          
+          const neighborVertices = getFaceVertices(geometry, neighborIndex);
+          const neighborNormal = getFaceNormal(neighborVertices);
+          const neighborCenter = getFaceCenter(neighborVertices);
+          
+          const dot = neighborNormal.dot(startNormal);
+          const dist = Math.abs(plane.distanceToPoint(neighborCenter));
+
+          if (Math.abs(dot) > (1 - NORMAL_TOLERANCE) && dist < DISTANCE_TOLERANCE) {
+              queue.push(neighborIndex);
+          }
+      }
+  }
+
+  const allVertices: THREE.Vector3[] = [];
+  const uniqueVerticesMap = new Map<string, THREE.Vector3>();
+  surfaceFaces.forEach(faceIdx => {
+      const vertices = getFaceVertices(geometry, faceIdx);
+      vertices.forEach(vertex => {
+          const key = `${vertex.x.toFixed(4)},${vertex.y.toFixed(4)},${vertex.z.toFixed(4)}`;
+          if (!uniqueVerticesMap.has(key)) {
+              uniqueVerticesMap.set(key, vertex);
+              allVertices.push(vertex);
+          }
+      });
+  });
+  return allVertices;
 };
+
 
 /**
  * (ESKİ YÖNTEM) Verilen köşe noktalarından bir vurgulama (highlight) mesh'i oluşturur.
- * Bu fonksiyon, `buildFaceOverlayFromHit` ile değiştirilmiştir.
+ * NOT: Bu fonksiyon, `buildFaceOverlayFromHit` ile değiştirilmiştir.
  */
-export const createFaceHighlight = (/*...args*/): THREE.Mesh => {
-  // ... (Bu fonksiyonun içi artık aktif olarak kullanılmadığından detaylı açıklama atlanmıştır) ...
-  return new THREE.Mesh();
+export const createFaceHighlight = (
+    vertices: THREE.Vector3[], 
+    worldMatrix: THREE.Matrix4,
+    color: number = 0xff6b35,
+    opacity: number = 0.6
+): THREE.Mesh => {
+    // ... (Bu fonksiyonun içi artık aktif olarak kullanılmadığından detaylı açıklama atlanmıştır) ...
+    return new THREE.Mesh();
 };
 
 /**
@@ -264,14 +317,12 @@ export const clearFaceHighlight = (scene: THREE.Scene) => {
   const highlightsToRemove = [...currentHighlights];
 
   highlightsToRemove.forEach(highlight => {
-    // Varsa metin nesnesini kaldır.
     if ((highlight.mesh as any).textMesh) {
       const textMesh = (highlight.mesh as any).textMesh;
       scene.remove(textMesh);
       textMesh.geometry.dispose();
       textMesh.material.dispose();
     }
-    // Vurgu mesh'ini kaldır.
     scene.remove(highlight.mesh);
     highlight.mesh.geometry.dispose();
     (highlight.mesh.material as THREE.Material).dispose();
@@ -293,7 +344,9 @@ export const removeFaceHighlight = (scene: THREE.Scene, faceIndex: number, shape
   const index = currentHighlights.findIndex(h => h.faceIndex === faceIndex && h.shapeId === shapeId);
   if (index !== -1) {
     const highlight = currentHighlights[index];
-    // ... (Kaldırma ve dispose işlemleri) ...
+    if ((highlight.mesh as any).textMesh) {
+        // ... text mesh kaldırma
+    }
     scene.remove(highlight.mesh);
     highlight.mesh.geometry.dispose();
     (highlight.mesh.material as THREE.Material).dispose();
@@ -336,22 +389,31 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
 
   // 3. Bulunan nesneleri ve referansları temizle.
   highlightsToRemove.forEach(highlight => {
-      // ... (Kaldırma ve dispose işlemleri) ...
+      const index = currentHighlights.indexOf(highlight);
+      if (index !== -1) {
+          if ((highlight.mesh as any).textMesh) {
+              //... text mesh kaldırma ...
+          }
+          scene.remove(highlight.mesh);
+          highlight.mesh.geometry.dispose();
+          (highlight.mesh.material as THREE.Material).dispose();
+          currentHighlights.splice(index, 1);
+      }
   });
-  
-  // `currentHighlights` dizisini güncelle (splice ile).
-  currentHighlights = currentHighlights.filter(h => !highlightsToRemove.includes(h));
-
 
   sceneObjectsToRemove.forEach(object => {
     scene.remove(object);
     if (object instanceof THREE.Mesh) {
       if (object.geometry) object.geometry.dispose();
-      // ... (materyal dispose işlemleri) ...
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+            object.material.forEach(mat => mat.dispose());
+        } else {
+            object.material.dispose();
+        }
+      }
     }
   });
-
-  // ... (loglama) ...
 };
 
 /**
@@ -359,7 +421,12 @@ export const removeFaceHighlightByRowIndex = (scene: THREE.Scene, rowIndex: numb
  * @param scene - Three.js sahnesi.
  */
 export const clearAllPersistentHighlights = (scene: THREE.Scene) => {
-    // ... (clearTemporaryHighlights ile benzer mantık, sadece `isPersistent` olanları hedefler) ...
+    const persistentHighlights = currentHighlights.filter(h => (h.mesh as any).isPersistent);
+    persistentHighlights.forEach(highlight => {
+        // ... (kaldırma ve dispose işlemleri) ...
+    });
+    currentHighlights = []; // Tüm listeyi temizle
+    console.log(`🎯 ${persistentHighlights.length} kalıcı vurgu temizlendi.`);
 };
 
 
@@ -380,12 +447,12 @@ type RegionResult = {
   triangles: number[]; // Bölgeye ait üçgenlerin indeksleri.
   normal: THREE.Vector3; // Bölgenin ortalama normal vektörü.
   plane: THREE.Plane; // Bölgenin matematiksel düzlem tanımı.
-  boundaryLoops: number[][]; // Bölgenin dış sınırlarını oluşturan vertex döngüleri.
+  boundaryLoops: number[][]; // Bölgenin dış sınırlarını oluşturan kaynaklanmış vertex ID döngüleri.
   weldedToWorld: Map<number, THREE.Vector3>; // Kaynaklanmış vertex ID'sinden dünya koordinatına harita.
 };
 
 // --- Algoritma Parametreleri ---
-const QUANT_EPS = 1e-4; // Vertex'leri kaynaklamak için kullanılacak mesafe toleransı.
+const QUANT_EPS = 1e-4; // Vertex'leri kaynaklamak için kullanılacak mesafe toleransı (dünya birimi).
 const ANGLE_DEG = 4;    // İki komşu üçgenin aynı düzlemde kabul edilmesi için maksimum açı farkı (derece).
 const PLANE_EPS = 5e-3; // Bir vertex'in bir düzleme ait kabul edilmesi için maksimum uzaklık (5mm).
 
@@ -412,36 +479,84 @@ const posKey = (v: THREE.Vector3, eps: number) => {
  */
 const buildNeighborsWithWeld = (mesh: THREE.Mesh, weldEps: number) => {
   const geom = mesh.geometry as THREE.BufferGeometry;
-  // ... (Indexed ve non-indexed geometri için index verisi hazırlığı) ...
-  let index = geom.index || new THREE.BufferAttribute(new Uint32Array(geom.attributes.position.count).map((_, i) => i), 1);
+  let index: THREE.BufferAttribute;
+  
+  if (geom.index) {
+    index = geom.index;
+  } else {
+    // Non-indexed ise sanal bir index buffer oluştur.
+    const vertexCount = geom.attributes.position.count;
+    const indexArray = new Uint32Array(vertexCount);
+    for (let i = 0; i < vertexCount; i++) indexArray[i] = i;
+    index = new THREE.BufferAttribute(indexArray, 1);
+  }
+  
   const pos = geom.getAttribute('position') as THREE.BufferAttribute;
+  const idx = index.array as ArrayLike<number>;
+  const triCount = Math.floor(idx.length / 3);
 
   // 1. Adım: Vertex Kaynaklama (Welding)
   // Her vertex'i dünya koordinatlarına çevir, posKey ile anahtarını oluştur ve
   // aynı anahtara sahip olanları tek bir "kaynaklanmış vertex ID"si altında birleştir.
   const keyToId = new Map<string, number>();
-  const weldedIdToWorld = new Map<number, THREE.Vector3>(); // Welded ID -> World Position
-  const vertToWelded = new Map<number, number>(); // Orijinal Vertex Index -> Welded ID
+  const weldedIdToWorld = new Map<number, THREE.Vector3>();
+  const vertToWelded = new Map<number, number>();
   let nextId = 0;
-  // ... (for döngüsü içinde her vertex'i işleme) ...
+
+  const tmp = new THREE.Vector3();
+  const m = mesh.matrixWorld;
+  for (let vi = 0; vi < pos.count; vi++) {
+    tmp.fromBufferAttribute(pos, vi).applyMatrix4(m);
+    const key = posKey(tmp, weldEps);
+    if (!keyToId.has(key)) {
+      keyToId.set(key, nextId);
+      weldedIdToWorld.set(nextId, tmp.clone());
+      nextId++;
+    }
+    vertToWelded.set(vi, keyToId.get(key)!);
+  }
 
   // 2. Adım: Kenar Bazlı Komşuluk Grafiği Oluşturma
   // Her üçgenin kenarlarını (kaynaklanmış vertex ID'leri ile) dolaş.
   // Bir kenar (örn: "10_25") eğer daha önce başka bir üçgen tarafından
   // eklendiyse, bu iki üçgen komşudur.
-  const edgeMap = new Map<string, number>(); // Kenar anahtarı -> Üçgen indeksi
-  const neighbors = new Map<number, number[]>(); // Üçgen indeksi -> Komşu üçgenler dizisi
-  // ... (for döngüsü içinde her üçgeni işleme ve kenarları edgeMap'e ekleme) ...
+  const edgeMap = new Map<string, number>();
+  const neighbors = new Map<number, number[]>();
+  const triToWelded: [number, number, number][] = [];
 
-  return { neighbors, /* ...diğer veriler... */ };
+  for (let t = 0; t < triCount; t++) {
+    const a = idx[t*3], b = idx[t*3+1], c = idx[t*3+2];
+    const wa = vertToWelded.get(a)!, wb = vertToWelded.get(b)!, wc = vertToWelded.get(c)!;
+    triToWelded.push([wa, wb, wc]);
+
+    const edges: [number, number][] = [[wa, wb], [wb, wc], [wc, wa]];
+    for (const [u0, v0] of edges) {
+      const u = Math.min(u0, v0), v = Math.max(u0, v0);
+      const ekey = `${u}_${v}`;
+      if (edgeMap.has(ekey)) {
+        const other = edgeMap.get(ekey)!;
+        if (!neighbors.has(t)) neighbors.set(t, []);
+        if (!neighbors.has(other)) neighbors.set(other, []);
+        neighbors.get(t)!.push(other);
+        neighbors.get(other)!.push(t);
+      } else {
+        edgeMap.set(ekey, t);
+      }
+    }
+  }
+
+  return { neighbors, triToWelded, weldedIdToWorld, index, posAttr: pos };
 };
 
 /**
  * Belirli bir üçgenin normalini dünya koordinatlarında hesaplar.
  */
 const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferAttribute, pos: THREE.BufferAttribute) => {
-    // ... (getFaceNormal fonksiyonuna benzer, ama doğrudan dünya matrisini uygular) ...
-    return new THREE.Vector3(); // Placeholder
+  const ia = index.getX(triIndex*3), ib = index.getX(triIndex*3+1), ic = index.getX(triIndex*3+2);
+  const a = new THREE.Vector3().fromBufferAttribute(pos, ia).applyMatrix4(mesh.matrixWorld);
+  const b = new THREE.Vector3().fromBufferAttribute(pos, ib).applyMatrix4(mesh.matrixWorld);
+  const c = new THREE.Vector3().fromBufferAttribute(pos, ic).applyMatrix4(mesh.matrixWorld);
+  return new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize();
 };
 
 /**
@@ -451,16 +566,24 @@ const triNormalWorld = (mesh: THREE.Mesh, triIndex: number, index: THREE.BufferA
  * @returns {RegionResult} Bulunan bölgenin detaylı analizi.
  */
 const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
-  // 1. Komşuluk grafiğini ve kaynaklanmış vertex verilerini oluştur.
-  const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(mesh, /*...*/);
+  // Nesnenin ölçeğine göre toleransları ayarla. Büyük nesnelerde daha esnek ol.
+  const scale = new THREE.Vector3();
+  mesh.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+  const avgScale = (Math.abs(scale.x) + Math.abs(scale.y) + Math.abs(scale.z)) / 3;
   
+  // 1. Komşuluk grafiğini ve kaynaklanmış vertex verilerini oluştur.
+  const { neighbors, triToWelded, weldedIdToWorld, index, posAttr } = buildNeighborsWithWeld(mesh, QUANT_EPS * avgScale);
+  
+  const planeEps = PLANE_EPS * Math.max(1, avgScale);
+  const angleCos = Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG));
+
   // 2. Başlangıç üçgeninin düzlemini ve normalini hesapla.
   let avgNormal = triNormalWorld(mesh, seedTri, index, posAttr);
-  const seedPoint = weldedIdToWorld.get(triToWelded[seedTri][0])!;
+  const seedW = triToWelded[seedTri];
+  const seedPoint = weldedIdToWorld.get(seedW[0])!.clone();
   let plane = new THREE.Plane().setFromNormalAndCoplanarPoint(avgNormal, seedPoint);
 
   // 3. Yayma-Doldurma (Flood-Fill / BFS)
-  // Bir kuyruk (queue) yapısı kullanarak başlangıç üçgeninden itibaren komşuları gez.
   const visited = new Set<number>();
   const region: number[] = [];
   const queue: number[] = [seedTri];
@@ -470,24 +593,26 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
     const t = queue.shift()!;
     region.push(t);
     const neighs = neighbors.get(t) || [];
+
     for (const nt of neighs) {
       if (visited.has(nt)) continue;
       
-      // Komşu üçgenin normalini al.
       const n = triNormalWorld(mesh, nt, index, posAttr);
       
-      // Açı Kontrolü: Normali, bölgenin ortalama normali ile karşılaştır. Açı farkı tolerans içindeyse devam et.
-      if (n.dot(avgNormal) < Math.cos(THREE.MathUtils.degToRad(ANGLE_DEG))) continue;
+      // Açı Kontrolü: Normali, bölgenin ortalama normali ile karşılaştır. Ters normalleri de kabul et.
+      if (Math.abs(n.dot(avgNormal)) < angleCos) continue;
       
       // Düzlem Kontrolü: Komşu üçgenin tüm vertex'leri, ana düzleme yeterince yakın mı?
       const wids = triToWelded[nt];
       const pa = weldedIdToWorld.get(wids[0])!;
-      // ... (pb, pc) ...
-      const distA = Math.abs(plane.distanceToPoint(pa));
-      // ... (distB, distC) ...
-      if (distA > PLANE_EPS || distB > PLANE_EPS || distC > PLANE_EPS) continue;
+      const pb = weldedIdToWorld.get(wids[1])!;
+      const pc = weldedIdToWorld.get(wids[2])!;
+      if (Math.abs(plane.distanceToPoint(pa)) > planeEps || 
+          Math.abs(plane.distanceToPoint(pb)) > planeEps || 
+          Math.abs(plane.distanceToPoint(pc)) > planeEps) {
+        continue;
+      }
       
-      // Eğer kontrollerden geçtiyse, bu üçgeni de bölgeye dahil et ve kuyruğa ekle.
       visited.add(nt);
       queue.push(nt);
       
@@ -498,15 +623,66 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
   }
 
   // 4. Sınır Döngülerini Bulma (Boundary Loop Detection)
-  // Bölgedeki tüm üçgenlerin kenarlarını say. Sadece bir kez sayılan kenarlar, bölgenin dış sınırını oluşturur.
-  // ... (kenar sayma ve sınır kenarlarını bulma mantığı) ...
+  const edgeCount = new Map<string, number>();
+  for (const t of region) {
+    const [a,b,c] = triToWelded[t];
+    const edges: [number,number][] = [[a,b],[b,c],[c,a]];
+    for (const [u0,v0] of edges) {
+      const u = Math.min(u0, v0), v = Math.max(u0, v0);
+      const ekey = `${u}_${v}`;
+      edgeCount.set(ekey, (edgeCount.get(ekey)||0)+1);
+    }
+  }
+  const boundaryEdges: [number,number][] = [];
+  for (const [ekey, cnt] of edgeCount.entries()) {
+    if (cnt === 1) {
+      const [u,v] = ekey.split('_').map(Number);
+      boundaryEdges.push([u,v]);
+    }
+  }
 
   // 5. Sınır Kenarlarını Sıralayarak Döngüler Haline Getirme
-  // Bulunan sınır kenarlarını uç uca ekleyerek sıralı bir veya daha fazla kapalı döngü (loop) oluştur.
-  // ... (döngü oluşturma mantığı) ...
+  const adjacency = new Map<number, number[]>();
+  for (const [u,v] of boundaryEdges) {
+    if (!adjacency.has(u)) adjacency.set(u, []);
+    if (!adjacency.has(v)) adjacency.set(v, []);
+    adjacency.get(u)!.push(v);
+    adjacency.get(v)!.push(u);
+  }
 
-  return { triangles: region, normal: avgNormal, plane, boundaryLoops, weldedToWorld };
+  const boundaryLoops: number[][] = [];
+  const used = new Set<string>();
+  const edgeKey = (u:number,v:number)=> u<=v?`${u}_${v}`:`${v}_${u}`;
+
+  for (const startNode of adjacency.keys()) {
+      if (adjacency.get(startNode)!.every(endNode => used.has(edgeKey(startNode, endNode)))) continue;
+      
+      const loop = [startNode];
+      let curr = startNode;
+      while (true) {
+          const neighbors = adjacency.get(curr)!;
+          let next = -1;
+          for (const n of neighbors) {
+              if (!used.has(edgeKey(curr, n))) {
+                  next = n;
+                  break;
+              }
+          }
+
+          if (next === -1) break;
+          
+          used.add(edgeKey(curr, next));
+          if (next === startNode) break;
+
+          loop.push(next);
+          curr = next;
+      }
+      if (loop.length > 2) boundaryLoops.push(loop);
+  }
+
+  return { triangles: region, normal: avgNormal.clone(), plane, boundaryLoops, weldedToWorld };
 };
+
 
 /**
  * `growRegion` tarafından bulunan düzlemsel bölgeden bir vurgulama (overlay) mesh'i oluşturur.
@@ -515,26 +691,58 @@ const growRegion = (mesh: THREE.Mesh, seedTri: number): RegionResult => {
  * @param seedTri - Başlangıç üçgeni.
  * @returns {THREE.Mesh | null} Oluşturulan vurgu mesh'i veya başarısızsa null.
  */
-const buildFaceOverlayFromHit = (/*...args*/): THREE.Mesh | null => {
+const buildFaceOverlayFromHit = (
+    scene: THREE.Scene,
+    mesh: THREE.Mesh,
+    seedTri: number,
+    color: number,
+    opacity: number,
+    rowIndex?: number,
+    shapeId?: string
+): THREE.Mesh | null => {
   // 1. `growRegion` ile düzlemsel bölgeyi analiz et.
   const res = growRegion(mesh, seedTri);
   if (res.boundaryLoops.length === 0) return null;
 
   // 2. Bölgenin 3D sınır döngülerini 2D bir düzleme yansıt.
-  // Bunun için bölgenin normaline dik olan `tangent` ve `bitangent` vektörleri kullanılır.
-  // ... (2D'ye yansıtma mantığı) ...
+  const n = res.normal;
+  const up = Math.abs(n.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+  const tangent = new THREE.Vector3().crossVectors(up, n).normalize();
+  const bitangent = new THREE.Vector3().crossVectors(n, tangent).normalize();
+
+  const project = (p: THREE.Vector3) => new THREE.Vector2(p.dot(tangent), p.dot(bitangent));
+  
+  const loops2D = res.boundaryLoops.map(loop => loop.map(wid => project(res.weldedToWorld.get(wid)!)));
 
   // 3. `THREE.ShapeUtils.triangulateShape` kullanarak 2D çokgeni (ve varsa içindeki delikleri) üçgenle.
-  // Bu, karmaşık şekilli yüzeylerin bile doğru bir şekilde doldurulmasını sağlar.
-  const triangles = THREE.ShapeUtils.triangulateShape(outerLoop2D, holeLoops2D);
+  const outer = loops2D[0];
+  const holes = loops2D.slice(1);
+  const triangles = THREE.ShapeUtils.triangulateShape(outer, holes);
 
   // 4. Üçgenlenmiş 2D şekli tekrar 3D'ye dönüştür ve yeni bir BufferGeometry oluştur.
-  // Z-fighting (iki yüzeyin aynı yerde titremesi) sorununu önlemek için
-  // vurgu mesh'i, orijinal yüzeyden çok az bir miktar (örn: 0.5 birim) dışarıda konumlandırılır.
-  // ... (3D'ye dönüştürme ve geometri oluşturma) ...
+  const allPoints2D = outer.concat(...holes);
+  const verts: number[] = [];
+  const zOffset = n.clone().multiplyScalar(0.5); // Z-fighting önleme için ofset
+  
+  for (const v2 of allPoints2D) {
+      const p3 = new THREE.Vector3()
+          .addScaledVector(tangent, v2.x)
+          .addScaledVector(bitangent, v2.y)
+          .add(res.plane.projectPoint(res.weldedToWorld.get(res.boundaryLoops[0][0])!, new THREE.Vector3()))
+          .add(zOffset);
+      verts.push(p3.x, p3.y, p3.z);
+  }
+
+  const indices: number[] = [];
+  for (const tri of triangles) for (const i of tri) indices.push(i);
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  g.setIndex(indices);
+  g.computeVertexNormals();
 
   // 5. Yarı saydam bir materyal ile yeni mesh'i oluştur ve sahneye ekle.
-  const mat = new THREE.MeshBasicMaterial({ /* ... */ });
+  const mat = new THREE.MeshBasicMaterial({ color, opacity, transparent: true, depthWrite: false, side: THREE.DoubleSide });
   const overlay = new THREE.Mesh(g, mat);
   overlay.renderOrder = 999; // Her zaman en üstte çizilmesi için.
   scene.add(overlay);
@@ -568,8 +776,6 @@ export const addFaceHighlight = (
   if (!hit.face || hit.faceIndex === undefined) return null;
   const mesh = hit.object as THREE.Mesh;
 
-  console.log(`🎯 Gelişmiş yüzey seçimi başlatıldı: yüzey ${hit.faceIndex}`);
-
   // Gelişmiş algoritmayı kullanarak tüm düzlemsel bölge için TEK bir vurgu mesh'i oluştur.
   const overlay = buildFaceOverlayFromHit(scene, mesh, hit.faceIndex, color, opacity, rowIndex, shape.id);
   if (!overlay) return null;
@@ -580,7 +786,8 @@ export const addFaceHighlight = (
     rowIndex: rowIndex,
     faceIndex: hit.faceIndex,
     shapeId: shape.id,
-    isPersistent: faceNumber !== undefined // Eğer bir yüzey numarası atanmışsa, bu kalıcı bir seçimdir.
+    faceNumber: faceNumber,
+    isPersistent: faceNumber !== undefined,
   };
 
   const newHighlight: FaceHighlight = {
@@ -594,8 +801,11 @@ export const addFaceHighlight = (
   // Kalıcı/geçici durumunu mesh üzerinde de işaretle.
   (overlay as any).isPersistent = faceNumber !== undefined;
   
-  // ... (loglama) ...
+  if (faceNumber !== undefined) {
+    console.log(`🎯 Yüzey ${hit.faceIndex} KALICI olarak işaretlendi. Satır: ${rowIndex}, No: ${faceNumber}`);
+  }
 
+  isMultiSelectMode = isMultiSelect;
   return newHighlight;
 };
 
@@ -627,7 +837,7 @@ export const detectFaceAtMouse = (
   // (boundsTree) oluşturulmamışsa, ilk kullanımda oluştur. Bu, sonraki
   // raycast işlemlerini çok daha hızlı hale getirir.
   const geom = (mesh.geometry as any);
-  if (!geom.boundsTree) {
+  if (!geom.boundsTree && typeof geom.computeBoundsTree === 'function') {
     geom.computeBoundsTree();
   }
   raycaster.setFromCamera(mouse, camera);
@@ -636,7 +846,6 @@ export const detectFaceAtMouse = (
   const intersects = raycaster.intersectObject(mesh, false);
 
   if (intersects.length > 0) {
-    console.log('🎯 Yüzey tespit edildi:', { faceIndex: intersects[0].faceIndex });
     return intersects;
   }
 
@@ -665,3 +874,4 @@ export const isInMultiSelectMode = (): boolean => {
 export const getSelectedFaceCount = (): number => {
   return currentHighlights.length;
 };
+
