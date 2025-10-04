@@ -35,6 +35,8 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
   const [edge2, setEdge2] = useState(initialEdge2);
   const [distance, setDistance] = useState(initialDistance);
   const [frameCount, setFrameCount] = useState(0);
+  const [lastGeometryVersion1, setLastGeometryVersion1] = useState<number>(0);
+  const [lastGeometryVersion2, setLastGeometryVersion2] = useState<number>(0);
 
   const convertToDisplayUnit = (value: number): number => {
     if (measurementUnit === 'mm') return value;
@@ -66,6 +68,19 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
     const mesh2 = shape2.children?.find((child: any) => child.isMesh) || (shape2.isMesh ? shape2 : null);
 
     if (!mesh1 || !mesh2) return;
+
+    const currentGeometryVersion1 = mesh1.geometry?.uuid || 0;
+    const currentGeometryVersion2 = mesh2.geometry?.uuid || 0;
+
+    const geometryChanged1 = currentGeometryVersion1 !== lastGeometryVersion1;
+    const geometryChanged2 = currentGeometryVersion2 !== lastGeometryVersion2;
+
+    if (geometryChanged1) {
+      setLastGeometryVersion1(currentGeometryVersion1);
+    }
+    if (geometryChanged2) {
+      setLastGeometryVersion2(currentGeometryVersion2);
+    }
 
     const getEdgeFromIndices = (mesh: THREE.Mesh, edgeInfo: any) => {
       const geometry = mesh.geometry;
@@ -147,14 +162,21 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
       return closestEdge;
     };
 
-    const newEdge1 = getEdgeFromIndices(mesh1, initialEdge1);
-    const newEdge2 = getEdgeFromIndices(mesh2, initialEdge2);
+    const shouldRecalculate = geometryChanged1 || geometryChanged2;
+
+    const edgeInfoToUse1 = shouldRecalculate ? edge1 : initialEdge1;
+    const edgeInfoToUse2 = shouldRecalculate ? edge2 : initialEdge2;
+
+    const newEdge1 = getEdgeFromIndices(mesh1, edgeInfoToUse1);
+    const newEdge2 = getEdgeFromIndices(mesh2, edgeInfoToUse2);
 
     if (newEdge1 && newEdge2) {
       const newDistance = newEdge1.midpoint.distanceTo(newEdge2.midpoint);
       const displayDistance = convertToDisplayUnit(newDistance).toFixed(2);
 
-      if (displayDistance !== distance) {
+      const shouldUpdate = shouldRecalculate || displayDistance !== distance;
+
+      if (shouldUpdate) {
         setEdge1({ ...newEdge1, shapeId: initialEdge1.shapeId });
         setEdge2({ ...newEdge2, shapeId: initialEdge2.shapeId });
         setDistance(displayDistance);
