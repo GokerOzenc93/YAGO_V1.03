@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check, Plus } from 'lucide-react';
+import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -205,18 +205,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   };
 
   return (
-    <>
+    <div className="flex-1 flex flex-col">
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <Puzzle size={11} className="text-orange-600" />
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
+          >
+            <ChevronLeft size={11} className="text-orange-600" />
+          </button>
+          <Ruler size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
-        >
-          <X size={11} className="text-orange-600" />
-        </button>
       </div>
 
       <div className="flex-1 p-4 space-y-4">
@@ -524,7 +524,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 };
 
