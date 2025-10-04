@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Line, Html } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { detectEdgeFromIntersection } from '../utils/edgeSelection';
 
 interface MeasurementLineProps {
   edge1: {
@@ -35,6 +34,7 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
   const [edge1, setEdge1] = useState(initialEdge1);
   const [edge2, setEdge2] = useState(initialEdge2);
   const [distance, setDistance] = useState(initialDistance);
+  const [frameCount, setFrameCount] = useState(0);
 
   const convertToDisplayUnit = (value: number): number => {
     if (measurementUnit === 'mm') return value;
@@ -44,13 +44,26 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
   };
 
   useFrame(() => {
-    const shape1 = scene.children.find((obj: any) => obj.userData?.shapeId === initialEdge1.shapeId);
-    const shape2 = scene.children.find((obj: any) => obj.userData?.shapeId === initialEdge2.shapeId);
+    setFrameCount(prev => prev + 1);
+    if (frameCount % 5 !== 0) return;
+    if (!initialEdge1?.shapeId || !initialEdge2?.shapeId) return;
+
+    let shape1 = null;
+    let shape2 = null;
+
+    scene.traverse((obj: any) => {
+      if (obj.userData?.shapeId === initialEdge1.shapeId) {
+        shape1 = obj;
+      }
+      if (obj.userData?.shapeId === initialEdge2.shapeId) {
+        shape2 = obj;
+      }
+    });
 
     if (!shape1 || !shape2) return;
 
-    const mesh1 = shape1.children.find((child: any) => child.isMesh);
-    const mesh2 = shape2.children.find((child: any) => child.isMesh);
+    const mesh1 = shape1.children?.find((child: any) => child.isMesh) || (shape1.isMesh ? shape1 : null);
+    const mesh2 = shape2.children?.find((child: any) => child.isMesh) || (shape2.isMesh ? shape2 : null);
 
     if (!mesh1 || !mesh2) return;
 
@@ -112,17 +125,19 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
     const newEdge2 = findClosestEdge(mesh2, initialEdge2.midpoint);
 
     if (newEdge1 && newEdge2) {
-      setEdge1({ ...newEdge1, shapeId: initialEdge1.shapeId });
-      setEdge2({ ...newEdge2, shapeId: initialEdge2.shapeId });
-
       const newDistance = newEdge1.midpoint.distanceTo(newEdge2.midpoint);
       const displayDistance = convertToDisplayUnit(newDistance).toFixed(2);
-      setDistance(displayDistance);
 
-      const updateEvent = new CustomEvent('updateMeasurementValue', {
-        detail: { rowId, value: displayDistance }
-      });
-      window.dispatchEvent(updateEvent);
+      if (displayDistance !== distance) {
+        setEdge1({ ...newEdge1, shapeId: initialEdge1.shapeId });
+        setEdge2({ ...newEdge2, shapeId: initialEdge2.shapeId });
+        setDistance(displayDistance);
+
+        const updateEvent = new CustomEvent('updateMeasurementValue', {
+          detail: { rowId, value: displayDistance }
+        });
+        window.dispatchEvent(updateEvent);
+      }
     }
   });
 
