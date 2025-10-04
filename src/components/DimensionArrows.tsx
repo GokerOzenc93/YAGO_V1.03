@@ -60,8 +60,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={2}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Line
             points={[
@@ -72,8 +72,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={1}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Line
             points={[
@@ -84,8 +84,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={1}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Html
             position={[dimensions.center.x, dimensions.min.y - offset - 20, dimensions.min.z]}
@@ -109,8 +109,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={2}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Line
             points={[
@@ -121,8 +121,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={1}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Line
             points={[
@@ -133,8 +133,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={1}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Html
             position={[dimensions.max.x + offset + 20, dimensions.center.y, dimensions.min.z]}
@@ -158,8 +158,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={2}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Line
             points={[
@@ -170,8 +170,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={1}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Line
             points={[
@@ -182,8 +182,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             lineWidth={1}
             dashed
             dashScale={1}
-            dashSize={3}
-            gapSize={2}
+            dashSize={8}
+            gapSize={4}
           />
           <Html
             position={[dimensions.max.x + offset + 20, dimensions.min.y, dimensions.center.z]}
