@@ -60,7 +60,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
-    const regex = /^[0-9+\-*/().\s]*$/;
+    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
     if (regex.test(value) || value === '') {
       setter(value);
     }
@@ -68,7 +68,16 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
   const evaluateExpression = (expression: string): number | null => {
     try {
-      const result = eval(expression);
+      let processedExpression = expression;
+
+      customParameters.forEach(param => {
+        if (param.description && param.result) {
+          const regex = new RegExp(param.description, 'g');
+          processedExpression = processedExpression.replace(regex, param.result);
+        }
+      });
+
+      const result = eval(processedExpression);
       if (typeof result === 'number' && isFinite(result)) {
         return result;
       }
@@ -145,7 +154,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   };
 
   const handleParameterValueChange = (id: string, value: string) => {
-    const regex = /^[0-9+\-*/().\s]*$/;
+    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
     if (regex.test(value) || value === '') {
       setCustomParameters(prev => prev.map(param =>
         param.id === id ? { ...param, value, result: null } : param
@@ -157,12 +166,24 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     const param = customParameters.find(p => p.id === id);
     if (!param || !param.value.trim()) return;
 
-    const evaluatedValue = evaluateExpression(param.value);
-    if (evaluatedValue === null || isNaN(evaluatedValue)) {
+    if (!param.description || !param.description.trim()) {
+      alert('Please enter a code name for this parameter');
       return;
     }
 
-    const displayValue = convertToDisplayUnit(evaluatedValue).toFixed(2);
+    const codeRegex = /^[a-zA-Z][a-zA-Z0-9]*$/;
+    if (!codeRegex.test(param.description)) {
+      alert('Code must start with a letter and contain only letters and numbers');
+      return;
+    }
+
+    const evaluatedValue = evaluateExpression(param.value);
+    if (evaluatedValue === null || isNaN(evaluatedValue)) {
+      alert('Invalid formula. Check if all referenced parameters have been applied.');
+      return;
+    }
+
+    const displayValue = evaluatedValue.toFixed(2);
     setCustomParameters(prev => prev.map(p =>
       p.id === id ? { ...p, result: displayValue } : p
     ));
