@@ -228,10 +228,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           )}
           <button
             onClick={handleAddParameter}
-            className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
             title="Add Custom Parameter"
           >
-            <Plus size={11} />
+            <Plus size={14} />
           </button>
         </div>
       </div>
@@ -281,7 +281,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!inputWidth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       inputWidth.trim()
-                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Width"
@@ -343,7 +343,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       inputHeight.trim()
-                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Height"
@@ -405,7 +405,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!inputDepth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       inputDepth.trim()
-                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Depth"
@@ -471,7 +471,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!param.value.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       param.value.trim()
-                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Parameter"
