@@ -70,9 +70,13 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     try {
       let processedExpression = expression;
 
+      processedExpression = processedExpression.replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString());
+      processedExpression = processedExpression.replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString());
+      processedExpression = processedExpression.replace(/\bD\b/g, convertToDisplayUnit(currentDepth).toString());
+
       customParameters.forEach(param => {
         if (param.description && param.result) {
-          const regex = new RegExp(param.description, 'g');
+          const regex = new RegExp(`\\b${param.description}\\b`, 'g');
           processedExpression = processedExpression.replace(regex, param.result);
         }
       });
