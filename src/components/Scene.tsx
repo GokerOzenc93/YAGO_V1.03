@@ -17,7 +17,6 @@ import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
-import MeasurementLine from './MeasurementLine';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -218,14 +217,6 @@ const Scene: React.FC = () => {
   // Face selection state
   const [selectedFaceIndex, setSelectedFaceIndex] = useState(null);
 
-  // Measurement line state
-  const [measurementLineData, setMeasurementLineData] = useState<{
-    edge1: any;
-    edge2: any;
-    distance: string;
-    parameterLabel: string;
-  } | null>(null);
-
   // Disable rotation when drawing polylines OR when panel mode is active
   const isDrawingPolyline = activeTool === 'Polyline';
   const isAddPanelMode = false; // Panel mode removed, always false
@@ -240,29 +231,11 @@ const Scene: React.FC = () => {
         if (isEditMode) {
           exitEditMode();
         }
-        // Clear measurement line
-        setMeasurementLineData(null);
-        // Clear edge highlights
-        const clearHighlightsEvent = new CustomEvent('clearEdgeHighlights');
-        window.dispatchEvent(clearHighlightsEvent);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectShape, isEditMode]);
-
-  useEffect(() => {
-    const handleCreateDimensionLine = (event: CustomEvent) => {
-      const { edge1, edge2, distance, parameterLabel } = event.detail;
-      setMeasurementLineData({ edge1, edge2, distance, parameterLabel });
-      console.log(`📏 Dimension line created: ${distance} (${parameterLabel})`);
-    };
-
-    window.addEventListener('createDimensionLine', handleCreateDimensionLine as EventListener);
-    return () => {
-      window.removeEventListener('createDimensionLine', handleCreateDimensionLine as EventListener);
-    };
-  }, []);
 
   useEffect(() => {
     const handleDoubleClick = (e) => {
@@ -762,17 +735,6 @@ const Scene: React.FC = () => {
 
         {/* Dimension Arrows - Seçili ölçüler için oklar */}
         {editedShape && <DimensionArrows shape={editedShape} />}
-
-        {/* Measurement Line - Ruler tool measurement */}
-        {measurementLineData && (
-          <MeasurementLine
-            edge1={measurementLineData.edge1}
-            edge2={measurementLineData.edge2}
-            distance={measurementLineData.distance}
-            measurementUnit={measurementUnit}
-            parameterLabel={measurementLineData.parameterLabel}
-          />
-        )}
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
