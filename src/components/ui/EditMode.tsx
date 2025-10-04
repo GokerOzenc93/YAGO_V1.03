@@ -48,7 +48,7 @@ const EditMode: React.FC<EditModeProps> = ({
   
   const MIN_WIDTH_PX = 170;
   const MAX_WIDTH_PX = 453;
-  const [panelWidth, setPanelWidth] = useState(400);
+  const [panelWidth, setPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
