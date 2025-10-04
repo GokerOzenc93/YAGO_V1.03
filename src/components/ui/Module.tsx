@@ -134,6 +134,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     setCustomParameters(prev => prev.filter(param => param.id !== id));
   };
 
+  const handleClearAllParameters = () => {
+    setCustomParameters([]);
+  };
+
   const handleParameterDescriptionChange = (id: string, description: string) => {
     setCustomParameters(prev => prev.map(param =>
       param.id === id ? { ...param, description } : param
@@ -193,6 +197,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               </button>
               <span className="text-xs font-medium text-gray-700">Add Parameter</span>
             </div>
+
+            {customParameters.length > 0 && (
+              <button
+                onClick={handleClearAllParameters}
+                className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
+              >
+                Clear All
+              </button>
+            )}
           </div>
         </div>
 
