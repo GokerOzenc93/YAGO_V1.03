@@ -207,18 +207,18 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
     const arrowTip1 = lineStart.clone().add(direction.clone().multiplyScalar(arrowSize));
     const arrowLeft1 = lineStart.clone()
       .add(direction.clone().multiplyScalar(arrowSize))
-      .add(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+      .add(perpendicular.clone().multiplyScalar(arrowSize * 5.3));
     const arrowRight1 = lineStart.clone()
       .add(direction.clone().multiplyScalar(arrowSize))
-      .sub(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+      .sub(perpendicular.clone().multiplyScalar(arrowSize * 5.3));
 
     const arrowTip2 = lineEnd.clone().sub(direction.clone().multiplyScalar(arrowSize));
     const arrowLeft2 = lineEnd.clone()
       .sub(direction.clone().multiplyScalar(arrowSize))
-      .add(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+      .add(perpendicular.clone().multiplyScalar(arrowSize * 5.3));
     const arrowRight2 = lineEnd.clone()
       .sub(direction.clone().multiplyScalar(arrowSize))
-      .sub(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+      .sub(perpendicular.clone().multiplyScalar(arrowSize * 5.3));
 
     return {
       lineStart,
