@@ -76,6 +76,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const evaluateExpression = (expression: string): number | null => {
     try {
       let processedExpression = expression;
+      const originalExpression = expression;
 
       processedExpression = processedExpression.replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString());
       processedExpression = processedExpression.replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString());
@@ -87,6 +88,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           processedExpression = processedExpression.replace(regex, param.result);
         }
       });
+
+      const undefinedParams = processedExpression.match(/\b[a-zA-Z][a-zA-Z0-9]*\b/g);
+      if (undefinedParams && undefinedParams.length > 0) {
+        const validFunctions = ['abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor', 'log', 'max', 'min', 'pow', 'random', 'round', 'sin', 'sqrt', 'tan'];
+        const invalidParams = undefinedParams.filter(param => !validFunctions.includes(param.toLowerCase()));
+
+        if (invalidParams.length > 0) {
+          alert(`Undefined parameter(s): ${invalidParams.join(', ')}\n\nPlease define these parameters first or check for typos.`);
+          return null;
+        }
+      }
 
       const result = eval(processedExpression);
       if (typeof result === 'number' && isFinite(result)) {
