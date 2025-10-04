@@ -35,8 +35,8 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
   const [edge2, setEdge2] = useState(initialEdge2);
   const [distance, setDistance] = useState(initialDistance);
   const [frameCount, setFrameCount] = useState(0);
-  const [lastGeometryVersion1, setLastGeometryVersion1] = useState<string>('');
-  const [lastGeometryVersion2, setLastGeometryVersion2] = useState<string>('');
+  const [lastMatrix1, setLastMatrix1] = useState<string>('');
+  const [lastMatrix2, setLastMatrix2] = useState<string>('');
 
   const convertToDisplayUnit = (value: number): number => {
     if (measurementUnit === 'mm') return value;
@@ -69,17 +69,20 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
 
     if (!mesh1 || !mesh2) return;
 
-    const currentVersion1 = `${mesh1.geometry?.uuid || ''}_${mesh1.scale.x}_${mesh1.scale.y}_${mesh1.scale.z}`;
-    const currentVersion2 = `${mesh2.geometry?.uuid || ''}_${mesh2.scale.x}_${mesh2.scale.y}_${mesh2.scale.z}`;
+    mesh1.updateMatrixWorld();
+    mesh2.updateMatrixWorld();
 
-    const versionChanged1 = currentVersion1 !== lastGeometryVersion1;
-    const versionChanged2 = currentVersion2 !== lastGeometryVersion2;
+    const matrixString1 = mesh1.matrixWorld.elements.join(',');
+    const matrixString2 = mesh2.matrixWorld.elements.join(',');
 
-    if (versionChanged1) {
-      setLastGeometryVersion1(currentVersion1);
+    const matrixChanged1 = matrixString1 !== lastMatrix1;
+    const matrixChanged2 = matrixString2 !== lastMatrix2;
+
+    if (matrixChanged1) {
+      setLastMatrix1(matrixString1);
     }
-    if (versionChanged2) {
-      setLastGeometryVersion2(currentVersion2);
+    if (matrixChanged2) {
+      setLastMatrix2(matrixString2);
     }
 
     const getEdgeFromIndices = (mesh: THREE.Mesh, edgeInfo: any) => {
@@ -162,7 +165,7 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
       return closestEdge;
     };
 
-    const shouldRecalculate = versionChanged1 || versionChanged2;
+    const shouldRecalculate = matrixChanged1 || matrixChanged2;
 
     const edgeInfoToUse1 = shouldRecalculate ? edge1 : initialEdge1;
     const edgeInfoToUse2 = shouldRecalculate ? edge2 : initialEdge2;
