@@ -154,36 +154,43 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
-    // Sol arka alt köşe world space'de sabit kalacak şekilde position hesapla
-    // Geometry'nin bbox.min noktası local space'de anchor noktamız
+    // 🎯 Sol arka alt köşeyi (min corner) world space'de sabit tut
     const currentPosition = new THREE.Vector3(...editedShape.position);
 
-    // Scale değişikliği için position offset hesapla
-    // bbox.min genellikle negatif (örn: -250 for 500mm cube)
-    // Scale arttığında, bu negatif değer daha negatif olur
-    // Position'ı bu farkı telafi edecek şekilde ayarlamalıyız
-    const positionOffset = new THREE.Vector3(
-      bbox.min.x * (newScale[0] - originalScale.x),
-      bbox.min.y * (newScale[1] - originalScale.y),
-      bbox.min.z * (newScale[2] - originalScale.z)
+    // Mevcut sol alt köşenin world position'ı
+    const currentMinCornerWorld = new THREE.Vector3(
+      currentPosition.x + (bbox.min.x * originalScale.x),
+      currentPosition.y + (bbox.min.y * originalScale.y),
+      currentPosition.z + (bbox.min.z * originalScale.z)
     );
 
-    // Offset'i position'dan çıkar (çünkü min negatif, ve biz pozitif yönde büyütüyoruz)
-    const newPosition = currentPosition.clone().sub(positionOffset);
+    // Yeni scale ile sol alt köşenin local offset'i
+    const newMinCornerLocal = new THREE.Vector3(
+      bbox.min.x * newScale[0],
+      bbox.min.y * newScale[1],
+      bbox.min.z * newScale[2]
+    );
+
+    // Sol alt köşe sabit kalacak, yeni position hesapla
+    const newPosition = new THREE.Vector3(
+      currentMinCornerWorld.x - newMinCornerLocal.x,
+      currentMinCornerWorld.y - newMinCornerLocal.y,
+      currentMinCornerWorld.z - newMinCornerLocal.z
+    );
 
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
       position: newPosition.toArray() as [number, number, number],
     });
 
-    console.log(`🎯 Dimension ${dimension} updated with fixed anchor (min corner):`, {
+    console.log(`🎯 Volume parameter ${dimension} changed - anchor fixed at min corner:`, {
       dimension,
-      originalScale: originalScale.toArray(),
+      bbox: { min: [bbox.min.x, bbox.min.y, bbox.min.z], max: [bbox.max.x, bbox.max.y, bbox.max.z] },
+      oldScale: originalScale.toArray(),
       newScale,
-      bboxMin: [bbox.min.x, bbox.min.y, bbox.min.z],
-      positionOffset: positionOffset.toArray(),
-      oldPosition: editedShape.position,
-      newPosition: newPosition.toArray()
+      oldPosition: currentPosition.toArray(),
+      newPosition: newPosition.toArray(),
+      minCornerWorld: currentMinCornerWorld.toArray()
     });
   };
 
