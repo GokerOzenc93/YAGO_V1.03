@@ -257,8 +257,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="space-y-2">
             {canEditWidth && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   1
                 </div>
@@ -327,8 +327,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditHeight && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   2
                 </div>
@@ -397,8 +397,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditDepth && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   3
                 </div>
@@ -469,9 +469,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {customParameters.map((param, index) => (
               <div
                 key={param.id}
-                className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
+                className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
               >
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   {index + 4}
                 </div>
