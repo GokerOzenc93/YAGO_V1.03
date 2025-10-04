@@ -61,6 +61,11 @@ export class GeometryFactory {
     // Three.js fallback
     console.log('🎯 Creating Three.js box geometry');
     const geometry = new THREE.BoxGeometry(width, height, depth);
+
+    // 🎯 CRITICAL: Translate geometry so that min corner is at origin (0,0,0)
+    // This makes scale operations work from the min corner instead of center
+    geometry.translate(width / 2, height / 2, depth / 2);
+
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     return geometry;
@@ -86,6 +91,11 @@ export class GeometryFactory {
     // Three.js fallback
     console.log('🎯 Creating Three.js cylinder geometry');
     const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+
+    // 🎯 CRITICAL: Translate geometry so that bottom center is at origin
+    // Cylinder is centered vertically, so translate up by height/2
+    geometry.translate(0, height / 2, 0);
+
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     return geometry;

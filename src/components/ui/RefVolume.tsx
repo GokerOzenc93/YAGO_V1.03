@@ -11,12 +11,12 @@ interface CustomParameter {
   result: string | null;
 }
 
-interface ModuleProps {
+interface RefVolumeProps {
   editedShape: Shape;
   onClose: () => void;
 }
 
-const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
+const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const { convertToDisplayUnit, convertToBaseUnit, updateShape, setVisibleDimensions } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
@@ -154,43 +154,20 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
-    // 🎯 Sol arka alt köşeyi (min corner) world space'de sabit tut
-    const currentPosition = new THREE.Vector3(...editedShape.position);
-
-    // Mevcut sol alt köşenin world position'ı
-    const currentMinCornerWorld = new THREE.Vector3(
-      currentPosition.x + (bbox.min.x * originalScale.x),
-      currentPosition.y + (bbox.min.y * originalScale.y),
-      currentPosition.z + (bbox.min.z * originalScale.z)
-    );
-
-    // Yeni scale ile sol alt köşenin local offset'i
-    const newMinCornerLocal = new THREE.Vector3(
-      bbox.min.x * newScale[0],
-      bbox.min.y * newScale[1],
-      bbox.min.z * newScale[2]
-    );
-
-    // Sol alt köşe sabit kalacak, yeni position hesapla
-    const newPosition = new THREE.Vector3(
-      currentMinCornerWorld.x - newMinCornerLocal.x,
-      currentMinCornerWorld.y - newMinCornerLocal.y,
-      currentMinCornerWorld.z - newMinCornerLocal.z
-    );
+    // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
+    // This means when we scale, it naturally grows in X+, Y+, Z+ directions!
+    // We DON'T need to adjust position because the geometry's origin IS the min corner
 
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
-      position: newPosition.toArray() as [number, number, number],
     });
 
-    console.log(`🎯 Volume parameter ${dimension} changed - anchor fixed at min corner:`, {
+    console.log(`🎯 RefVolume: ${dimension} changed, geometry scales from origin (min corner):`, {
       dimension,
       bbox: { min: [bbox.min.x, bbox.min.y, bbox.min.z], max: [bbox.max.x, bbox.max.y, bbox.max.z] },
       oldScale: originalScale.toArray(),
       newScale,
-      oldPosition: currentPosition.toArray(),
-      newPosition: newPosition.toArray(),
-      minCornerWorld: currentMinCornerWorld.toArray()
+      position: editedShape.position
     });
   };
 
@@ -667,4 +644,4 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   );
 };
 
-export default Module;
+export default RefVolume;
