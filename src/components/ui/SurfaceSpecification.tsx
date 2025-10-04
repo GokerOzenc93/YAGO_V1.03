@@ -6,6 +6,7 @@ interface SurfaceRow {
   faceIndex: number | null;
   role: string;
   formula: string;
+  result: string;
   isActive: boolean;
   confirmed: boolean;
 }
@@ -71,6 +72,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       faceIndex: null,
       role: '',
       formula: '',
+      result: '',
       isActive: true,
       confirmed: false
     };
@@ -147,12 +149,25 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       return;
     }
 
-    // Mark surface as confirmed
-    setSurfaceRows(prev => prev.map(r => 
-      r.id === rowId ? { ...r, confirmed: true } : r
+    // Calculate result from formula (if it's a numeric formula)
+    let calculatedResult = '';
+    if (row.formula && row.formula.trim()) {
+      // If formula contains numbers or operators, try to evaluate
+      const numericValue = parseFloat(row.formula);
+      if (!isNaN(numericValue)) {
+        calculatedResult = numericValue.toFixed(2);
+      } else {
+        // Keep formula as-is in result if not numeric
+        calculatedResult = row.formula;
+      }
+    }
+
+    // Mark surface as confirmed and set result
+    setSurfaceRows(prev => prev.map(r =>
+      r.id === rowId ? { ...r, confirmed: true, result: calculatedResult } : r
     ));
 
-    console.log(`✅ Surface confirmed: row ${rowId}, role: ${row.role}, face: ${row.faceIndex}`);
+    console.log(`✅ Surface confirmed: row ${rowId}, role: ${row.role}, face: ${row.faceIndex}, result: ${calculatedResult}`);
   };
 
   const handleEditSurface = (rowId: string) => {
@@ -271,7 +286,15 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     onChange={(e) => handleFormulaChange(row.id, e.target.value)}
                     disabled={false}
                     placeholder="Description..."
-                    className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                    className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  />
+
+                  <input
+                    type="text"
+                    value={row.result}
+                    readOnly
+                    className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                    placeholder="Result"
                   />
 
                   <div className="flex items-center gap-1">
