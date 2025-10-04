@@ -261,7 +261,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value="W"
                   readOnly
-                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                 />
 
                 <input
@@ -274,14 +274,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ minWidth: '120px' }}
                 />
 
                 <input
                   type="text"
                   value={resultWidth}
                   readOnly
-                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -320,7 +321,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value="H"
                   readOnly
-                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                 />
 
                 <input
@@ -333,14 +334,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ minWidth: '120px' }}
                 />
 
                 <input
                   type="text"
                   value={resultHeight}
                   readOnly
-                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -379,7 +381,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value="D"
                   readOnly
-                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                 />
 
                 <input
@@ -392,14 +394,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ minWidth: '120px' }}
                 />
 
                 <input
                   type="text"
                   value={resultDepth}
                   readOnly
-                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -455,14 +458,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ minWidth: '120px' }}
                 />
 
                 <input
                   type="text"
                   value={param.result || ''}
                   readOnly
-                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
