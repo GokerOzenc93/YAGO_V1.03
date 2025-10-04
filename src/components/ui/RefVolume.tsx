@@ -43,9 +43,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     };
   }, [editedShape.geometry, editedShape.scale]);
 
-  const [inputWidth, setInputWidth] = useState('95');
-  const [inputHeight, setInputHeight] = useState('95');
-  const [inputDepth, setInputDepth] = useState('95');
+  const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
+  const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
+  const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
 
   const [resultWidth, setResultWidth] = useState<string>('');
   const [resultHeight, setResultHeight] = useState<string>('');
@@ -125,9 +125,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    if (dimension === 'width') setResultWidth(evaluatedValue.toFixed(1));
-    if (dimension === 'height') setResultHeight(evaluatedValue.toFixed(1));
-    if (dimension === 'depth') setResultDepth(evaluatedValue.toFixed(1));
+    if (dimension === 'width') setResultWidth(evaluatedValue.toFixed(2));
+    if (dimension === 'height') setResultHeight(evaluatedValue.toFixed(2));
+    if (dimension === 'depth') setResultDepth(evaluatedValue.toFixed(2));
 
     const newValue = convertToBaseUnit(evaluatedValue);
 
@@ -225,7 +225,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    const displayValue = evaluatedValue.toFixed(1);
+    const displayValue = evaluatedValue.toFixed(2);
     setCustomParameters(prev => prev.map(p =>
       p.id === id ? { ...p, result: displayValue } : p
     ));
@@ -322,7 +322,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={resultWidth}
                   readOnly
-                  className="flex-shrink-0 w-20 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -409,7 +409,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={resultHeight}
                   readOnly
-                  className="flex-shrink-0 w-20 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -496,7 +496,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={resultDepth}
                   readOnly
-                  className="flex-shrink-0 w-20 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -588,7 +588,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={param.result || ''}
                   readOnly
-                  className="flex-shrink-0 w-20 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
