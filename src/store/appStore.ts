@@ -276,6 +276,9 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Dimension visibility
+  visibleDimensions: Set<string>;
+  setVisibleDimensions: (dimensions: Set<string>) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -395,9 +398,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Panel mode states
   isAddPanelMode: false,
   setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
-  
+
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+
+  // Dimension visibility
+  visibleDimensions: new Set<string>(),
+  setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
   
   // Snap settings - all enabled by default
   snapSettings: {

@@ -17,7 +17,7 @@ interface ModuleProps {
 }
 
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape, setVisibleDimensions } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -52,6 +52,11 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [resultDepth, setResultDepth] = useState<string>('');
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
+  const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setVisibleDimensions(selectedDimensions);
+  }, [selectedDimensions, setVisibleDimensions]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -259,9 +264,26 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditWidth && (
               <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('width')) {
+                        newSet.delete('width');
+                      } else {
+                        newSet.add('width');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('width')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   1
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -329,9 +351,26 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditHeight && (
               <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('height')) {
+                        newSet.delete('height');
+                      } else {
+                        newSet.add('height');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('height')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   2
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -399,9 +438,26 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditDepth && (
               <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('depth')) {
+                        newSet.delete('depth');
+                      } else {
+                        newSet.add('depth');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('depth')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   3
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -472,9 +528,27 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      const paramKey = `param-${param.id}`;
+                      if (newSet.has(paramKey)) {
+                        newSet.delete(paramKey);
+                      } else {
+                        newSet.add(paramKey);
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has(`param-${param.id}`)
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   {index + 4}
-                </div>
+                </button>
 
                 <input
                   type="text"

@@ -16,6 +16,7 @@ import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
+import DimensionArrows from './DimensionArrows';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -731,6 +732,9 @@ const Scene: React.FC = () => {
           completedShapes={[]}
           shapes={visibleShapes}
         />
+
+        {/* Dimension Arrows - Seçili ölçüler için oklar */}
+        {editedShape && <DimensionArrows shape={editedShape} />}
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
