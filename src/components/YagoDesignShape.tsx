@@ -15,6 +15,7 @@ import {
   clearTemporaryHighlights,
   clearAllPersistentHighlights
 } from '../utils/faceSelection';
+import { detectEdgeFromIntersection } from '../utils/edgeSelection';
 
 // New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
@@ -48,6 +49,8 @@ const YagoDesignShape: React.FC<Props> = ({
   // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [isEdgeSelectionActive, setIsEdgeSelectionActive] = useState(false);
+  const [activeEdgeRowId, setActiveEdgeRowId] = useState<string | null>(null);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -343,11 +346,19 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log('✅ All surface highlights cleared');
     };
 
+    const handleActivateEdgeSelection = (event: CustomEvent) => {
+      const { rowId } = event.detail;
+      setIsEdgeSelectionActive(true);
+      setActiveEdgeRowId(rowId);
+      console.log(`📏 Edge selection activated for row ${rowId}`);
+    };
+
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     window.addEventListener('createSurfaceHighlight', handleCreateSurfaceHighlight as EventListener);
     window.addEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
     window.addEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
     window.addEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+    window.addEventListener('activateEdgeSelection', handleActivateEdgeSelection as EventListener);
 
     return () => {
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
@@ -355,6 +366,7 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
       window.removeEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+      window.removeEventListener('activateEdgeSelection', handleActivateEdgeSelection as EventListener);
     };
   }, [scene, camera, gl.domElement, shape]);
 
@@ -376,10 +388,42 @@ const YagoDesignShape: React.FC<Props> = ({
   };
   
   const handleClick = (e: any) => {
+    // Edge selection mode for ruler
+    if (isEdgeSelectionActive && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      const rect = gl.domElement.getBoundingClientRect();
+      mouse.x = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(meshRef.current!);
+
+      if (intersects.length > 0) {
+        const edgeInfo = detectEdgeFromIntersection(intersects[0], shape.id);
+
+        if (edgeInfo) {
+          const edgeSelectedEvent = new CustomEvent('edgeSelected', {
+            detail: { edgeInfo }
+          });
+          window.dispatchEvent(edgeSelectedEvent);
+
+          console.log(`📏 Edge selected: length ${edgeInfo.length.toFixed(2)}`);
+          return;
+        }
+      }
+
+      console.warn('📏 No edge detected');
+      return;
+    }
+
     // New surface selection mode
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
-      
+
       const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -406,11 +450,11 @@ const YagoDesignShape: React.FC<Props> = ({
         }
       });
       window.dispatchEvent(faceSelectedEvent);
-      
+
       console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
       return;
     }
-    
+
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();

@@ -53,6 +53,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
+  const [isRulerMode, setIsRulerMode] = useState(false);
+  const [activeRulerRowId, setActiveRulerRowId] = useState<string | null>(null);
+  const [selectedEdgesForRuler, setSelectedEdgesForRuler] = useState<any[]>([]);
 
   useEffect(() => {
     setVisibleDimensions(selectedDimensions);
@@ -191,6 +194,71 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     }
   };
 
+  const handleRulerClick = (rowId: string, rowType: 'width' | 'height' | 'depth' | 'custom') => {
+    setIsRulerMode(true);
+    setActiveRulerRowId(rowId);
+    setSelectedEdgesForRuler([]);
+
+    const activateEvent = new CustomEvent('activateEdgeSelection', {
+      detail: { rowId, rowType }
+    });
+    window.dispatchEvent(activateEvent);
+
+    console.log(`📏 Ruler mode activated for row ${rowId}`);
+  };
+
+  useEffect(() => {
+    if (!isRulerMode) return;
+
+    const handleEdgeSelected = (event: CustomEvent) => {
+      const { edgeInfo } = event.detail;
+
+      setSelectedEdgesForRuler(prev => {
+        const newEdges = [...prev, edgeInfo];
+
+        if (newEdges.length === 2) {
+          const distance = newEdges[0].midpoint.distanceTo(newEdges[1].midpoint);
+          const displayDistance = convertToDisplayUnit(distance).toFixed(2);
+
+          if (activeRulerRowId) {
+            if (activeRulerRowId === 'width') {
+              setInputWidth(displayDistance);
+            } else if (activeRulerRowId === 'height') {
+              setInputHeight(displayDistance);
+            } else if (activeRulerRowId === 'depth') {
+              setInputDepth(displayDistance);
+            } else {
+              setCustomParameters(params => params.map(p =>
+                p.id === activeRulerRowId ? { ...p, value: displayDistance } : p
+              ));
+            }
+          }
+
+          const dimensionLineEvent = new CustomEvent('createDimensionLine', {
+            detail: {
+              edge1: newEdges[0],
+              edge2: newEdges[1],
+              distance: displayDistance
+            }
+          });
+          window.dispatchEvent(dimensionLineEvent);
+
+          setIsRulerMode(false);
+          setActiveRulerRowId(null);
+          return [];
+        }
+
+        return newEdges;
+      });
+    };
+
+    window.addEventListener('edgeSelected', handleEdgeSelected as EventListener);
+
+    return () => {
+      window.removeEventListener('edgeSelected', handleEdgeSelected as EventListener);
+    };
+  }, [isRulerMode, activeRulerRowId, convertToDisplayUnit]);
+
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
     if (!param || !param.value.trim()) return;
@@ -315,8 +383,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    onClick={() => handleRulerClick('width', 'width')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isRulerMode && activeRulerRowId === 'width'
+                        ? 'bg-blue-200 text-blue-700'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
@@ -402,8 +474,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    onClick={() => handleRulerClick('height', 'height')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isRulerMode && activeRulerRowId === 'height'
+                        ? 'bg-blue-200 text-blue-700'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
@@ -489,8 +565,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    onClick={() => handleRulerClick('depth', 'depth')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isRulerMode && activeRulerRowId === 'depth'
+                        ? 'bg-blue-200 text-blue-700'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
@@ -581,8 +661,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    onClick={() => handleRulerClick(param.id, 'custom')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isRulerMode && activeRulerRowId === param.id
+                        ? 'bg-blue-200 text-blue-700'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
