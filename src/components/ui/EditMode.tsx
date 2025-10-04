@@ -55,15 +55,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Notify camera when edit mode opens
-  useEffect(() => {
-    if (!isCollapsed) {
-      window.dispatchEvent(new CustomEvent('editModePanelResize', {
-        detail: { width: panelWidth }
-      }));
-    }
-  }, []);
-  
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
@@ -252,11 +243,6 @@ const EditMode: React.FC<EditModeProps> = ({
       if (!isResizing || !panelRef.current) return;
       const newWidth = Math.max(MIN_WIDTH_PX, Math.min(startWidth.current + (e.clientX - startX.current), MAX_WIDTH_PX));
       setPanelWidth(newWidth);
-
-      // Notify camera to update pan based on new width
-      window.dispatchEvent(new CustomEvent('editModePanelResize', {
-        detail: { width: newWidth }
-      }));
     };
 
     const handleMouseUp = () => {
@@ -382,18 +368,10 @@ const EditMode: React.FC<EditModeProps> = ({
 
   const handleCollapse = () => {
     setIsCollapsed(true);
-    // Notify camera that panel is collapsed
-    window.dispatchEvent(new CustomEvent('editModePanelResize', {
-      detail: { width: 0 }
-    }));
   };
   
   const handleExpand = () => {
     setIsCollapsed(false);
-    // Notify camera that panel is expanded
-    window.dispatchEvent(new CustomEvent('editModePanelResize', {
-      detail: { width: panelWidth }
-    }));
   };
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
