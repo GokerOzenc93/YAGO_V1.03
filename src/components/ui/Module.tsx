@@ -1,8 +1,15 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check } from 'lucide-react';
+import { X, Puzzle, Check, Plus } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
+
+interface CustomParameter {
+  id: string;
+  description: string;
+  value: string;
+  result: string | null;
+}
 
 interface ModuleProps {
   editedShape: Shape;
@@ -61,6 +68,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
+
+  // Custom parameters state
+  const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
 
   // Shape tipine göre hangi boyutların düzenlenebilir olduğunu belirle
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
@@ -148,6 +158,53 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     });
   };
 
+  const handleAddParameter = () => {
+    const newParam: CustomParameter = {
+      id: `param_${Date.now()}`,
+      description: '',
+      value: '',
+      result: null
+    };
+    setCustomParameters(prev => [...prev, newParam]);
+  };
+
+  const handleRemoveParameter = (id: string) => {
+    setCustomParameters(prev => prev.filter(param => param.id !== id));
+  };
+
+  const handleParameterDescriptionChange = (id: string, description: string) => {
+    setCustomParameters(prev => prev.map(param =>
+      param.id === id ? { ...param, description } : param
+    ));
+  };
+
+  const handleParameterValueChange = (id: string, value: string) => {
+    const regex = /^[0-9+\-*/().\s]*$/;
+    if (regex.test(value) || value === '') {
+      setCustomParameters(prev => prev.map(param =>
+        param.id === id ? { ...param, value, result: null } : param
+      ));
+    }
+  };
+
+  const handleApplyParameter = (id: string) => {
+    const param = customParameters.find(p => p.id === id);
+    if (!param || !param.value.trim()) return;
+
+    const evaluatedValue = evaluateExpression(param.value);
+    if (evaluatedValue === null || isNaN(evaluatedValue)) {
+      console.warn(`Invalid expression for parameter ${id}: ${param.value}`);
+      return;
+    }
+
+    const displayValue = convertToDisplayUnit(evaluatedValue).toFixed(2);
+    setCustomParameters(prev => prev.map(p =>
+      p.id === id ? { ...p, result: displayValue } : p
+    ));
+
+    console.log(`✅ Parameter applied: ${param.description} = ${param.value} = ${displayValue}`);
+  };
+
   return (
     <>
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
@@ -166,6 +223,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
       <div className="flex-1 p-4 space-y-2">
         <div className="space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-700">Basic Dimensions</span>
+            <button
+              onClick={handleAddParameter}
+              className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+              title="Add Custom Parameter"
+            >
+              <Plus size={11} />
+            </button>
+          </div>
+
           {canEditWidth && (
             <div className="flex items-center gap-2 h-10">
               <span className="text-slate-700 text-xs font-medium w-4">W:</span>
@@ -250,6 +318,66 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             </div>
           )}
         </div>
+
+        {customParameters.length > 0 && (
+          <div className="space-y-2 mt-4 pt-4 border-t border-gray-200">
+            <span className="text-xs font-medium text-slate-700">Custom Parameters</span>
+            {customParameters.map((param) => (
+              <div
+                key={param.id}
+                className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
+              >
+                <input
+                  type="text"
+                  value={param.description}
+                  onChange={(e) => handleParameterDescriptionChange(param.id, e.target.value)}
+                  placeholder="Description..."
+                  className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={param.value}
+                  onChange={(e) => handleParameterValueChange(param.id, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyParameter(param.id);
+                    }
+                  }}
+                  placeholder="Value..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                {param.result && (
+                  <span className="text-xs font-medium text-green-600 whitespace-nowrap">
+                    = {param.result}
+                  </span>
+                )}
+
+                <button
+                  onClick={() => handleApplyParameter(param.id)}
+                  disabled={!param.value.trim()}
+                  className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                    param.value.trim()
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title="Apply Parameter"
+                >
+                  <Check size={11} />
+                </button>
+
+                <button
+                  onClick={() => handleRemoveParameter(param.id)}
+                  className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
+                  title="Remove Parameter"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
