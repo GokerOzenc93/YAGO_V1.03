@@ -76,23 +76,72 @@ const CameraController: React.FC<CameraControllerProps> = ({
   const { shapes, cameraType, isEditMode, editingShapeId, hiddenShapeIds } =
     useAppStore();
   
+  // Store previous pan amount for smooth transitions
+  const previousPanRef = useRef<number>(0);
+
   // Edit mode camera pan effect
   useEffect(() => {
     if (!controlsRef.current) return;
-    
+
     const controls = controlsRef.current;
-    const panAmount = isEditMode ? editModeWidth / 2 : 0; // Pan by half the panel width
-    
-    // Get current target and pan it to the right
+    const worldToScreenScale = 0.001; // Convert pixels to world units
+    const panAmount = isEditMode ? (editModeWidth / 2) * worldToScreenScale : 0;
+
+    // Calculate delta from previous pan
+    const panDelta = panAmount - previousPanRef.current;
+
+    // Get current target and pan it by the delta
     const currentTarget = controls.target.clone();
-    const newTarget = new THREE.Vector3(currentTarget.x + panAmount, currentTarget.y, currentTarget.z);
-    
+    const newTarget = new THREE.Vector3(
+      currentTarget.x + panDelta,
+      currentTarget.y,
+      currentTarget.z
+    );
+
     // Smoothly animate to new target
     controls.target.copy(newTarget);
     controls.update();
-    
-    console.log(`🎯 Camera panned for edit mode: ${isEditMode ? 'right' : 'center'} by ${panAmount}px`);
+
+    // Store current pan amount for next update
+    previousPanRef.current = panAmount;
+
+    console.log(`🎯 Camera panned: delta=${panDelta.toFixed(3)}, total=${panAmount.toFixed(3)}`);
   }, [isEditMode, editModeWidth]);
+
+  // Listen for dynamic panel resize events
+  useEffect(() => {
+    const handlePanelResize = (event: any) => {
+      if (!controlsRef.current || !isEditMode) return;
+
+      const controls = controlsRef.current;
+      const newWidth = event.detail.width;
+      const worldToScreenScale = 0.001;
+      const panAmount = (newWidth / 2) * worldToScreenScale;
+
+      // Calculate delta from previous pan
+      const panDelta = panAmount - previousPanRef.current;
+
+      // Get current target and pan it by the delta
+      const currentTarget = controls.target.clone();
+      const newTarget = new THREE.Vector3(
+        currentTarget.x + panDelta,
+        currentTarget.y,
+        currentTarget.z
+      );
+
+      // Update target
+      controls.target.copy(newTarget);
+      controls.update();
+
+      // Store current pan amount
+      previousPanRef.current = panAmount;
+
+      console.log(`🎯 Dynamic resize: width=${newWidth}px, delta=${panDelta.toFixed(3)}`);
+    };
+
+    window.addEventListener('editModePanelResize', handlePanelResize);
+    return () => window.removeEventListener('editModePanelResize', handlePanelResize);
+  }, [isEditMode]);
 
   // Handle zoom fit events
   useEffect(() => {
