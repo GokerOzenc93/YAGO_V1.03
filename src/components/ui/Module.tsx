@@ -224,7 +224,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       <div className="flex-1 p-4 space-y-2">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-700">Basic Dimensions</span>
+            <span className="text-xs font-medium text-slate-700">Parameters</span>
             <button
               onClick={handleAddParameter}
               className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
@@ -240,7 +240,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 type="text"
                 value="W"
                 disabled
-                className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium text-center"
+                className="w-24 h-6 text-xs bg-gray-800 border border-gray-600 rounded-sm px-2 text-green-400 font-mono font-medium text-center"
               />
               <input
                 type="text"
@@ -286,7 +286,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 type="text"
                 value="H"
                 disabled
-                className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium text-center"
+                className="w-24 h-6 text-xs bg-gray-800 border border-gray-600 rounded-sm px-2 text-green-400 font-mono font-medium text-center"
               />
               <input
                 type="text"
@@ -332,7 +332,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 type="text"
                 value="D"
                 disabled
-                className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium text-center"
+                className="w-24 h-6 text-xs bg-gray-800 border border-gray-600 rounded-sm px-2 text-green-400 font-mono font-medium text-center"
               />
               <input
                 type="text"
@@ -372,47 +372,31 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             </div>
           )}
 
-          {editedShape.type === 'cylinder' && (
-            <div className="text-xs text-slate-600 mt-2 p-2 bg-orange-50 rounded-sm">
-              Cylinder: Only height can be edited
-            </div>
-          )}
+          {customParameters.map((param) => (
+            <div
+              key={param.id}
+              className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
+            >
+              <input
+                type="text"
+                value={param.description}
+                onChange={(e) => handleParameterDescriptionChange(param.id, e.target.value)}
+                placeholder="Code..."
+                className="w-24 h-6 text-xs bg-gray-800 border border-gray-600 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-green-500/20 focus:border-green-400 placeholder-gray-500 text-green-400 font-mono font-medium"
+              />
 
-          {editedShape.type === 'circle2d' && (
-            <div className="text-xs text-slate-600 mt-2 p-2 bg-orange-50 rounded-sm">
-              Circle: Only height can be edited
-            </div>
-          )}
-        </div>
-
-        {customParameters.length > 0 && (
-          <div className="space-y-2 mt-4 pt-4 border-t border-gray-200">
-            <span className="text-xs font-medium text-slate-700">Custom Parameters</span>
-            {customParameters.map((param) => (
-              <div
-                key={param.id}
-                className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
-              >
-                <input
-                  type="text"
-                  value={param.description}
-                  onChange={(e) => handleParameterDescriptionChange(param.id, e.target.value)}
-                  placeholder="Description..."
-                  className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                />
-
-                <input
-                  type="text"
-                  value={param.value}
-                  onChange={(e) => handleParameterValueChange(param.id, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleApplyParameter(param.id);
-                    }
-                  }}
-                  placeholder="Value..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                />
+              <input
+                type="text"
+                value={param.value}
+                onChange={(e) => handleParameterValueChange(param.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleApplyParameter(param.id);
+                  }
+                }}
+                placeholder="Formula..."
+                className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+              />
 
                 {param.result && (
                   <span className="text-xs font-medium text-green-600 whitespace-nowrap">
@@ -433,17 +417,28 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   <Check size={11} />
                 </button>
 
-                <button
-                  onClick={() => handleRemoveParameter(param.id)}
-                  className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
-                  title="Remove Parameter"
-                >
-                  <X size={11} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+              <button
+                onClick={() => handleRemoveParameter(param.id)}
+                className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
+                title="Remove Parameter"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+
+          {editedShape.type === 'cylinder' && (
+            <div className="text-xs text-slate-600 mt-2 p-2 bg-orange-50 rounded-sm">
+              Cylinder: Only height can be edited
+            </div>
+          )}
+
+          {editedShape.type === 'circle2d' && (
+            <div className="text-xs text-slate-600 mt-2 p-2 bg-orange-50 rounded-sm">
+              Circle: Only height can be edited
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
