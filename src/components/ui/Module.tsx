@@ -47,6 +47,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
 
+  const [resultWidth, setResultWidth] = useState<string>('');
+  const [resultHeight, setResultHeight] = useState<string>('');
+  const [resultDepth, setResultDepth] = useState<string>('');
+
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
@@ -57,6 +61,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
     setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
     setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
+    setResultWidth(convertToDisplayUnit(currentWidth).toFixed(2));
+    setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
+    setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
@@ -103,6 +110,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
       return;
     }
+
+    if (dimension === 'width') setResultWidth(evaluatedValue.toFixed(2));
+    if (dimension === 'height') setResultHeight(evaluatedValue.toFixed(2));
+    if (dimension === 'depth') setResultDepth(evaluatedValue.toFixed(2));
 
     const newValue = convertToBaseUnit(evaluatedValue);
 
@@ -263,10 +274,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
-                <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={resultWidth}
+                  readOnly
+                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 ml-2">
                   <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
@@ -314,10 +333,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
-                <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={resultHeight}
+                  readOnly
+                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 ml-2">
                   <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
@@ -365,10 +392,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
-                <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={resultDepth}
+                  readOnly
+                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 ml-2">
                   <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
@@ -420,10 +455,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
-                <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={param.result || ''}
+                  readOnly
+                  className="w-20 h-6 text-xs bg-blue-50 border border-blue-200 rounded-sm px-2 text-blue-900 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 ml-2">
                   <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
