@@ -222,11 +222,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           <button
             onClick={handleSelectSurface}
             disabled={isSelectionActive}
-            className={`p-1.5 rounded-sm transition-colors ${
-              isSelectionActive
-                ? 'bg-orange-200 text-orange-800 cursor-not-allowed'
-                : 'hover:bg-orange-100 text-orange-600'
-            }`}
+            className="p-1.5 rounded-sm transition-colors hover:bg-orange-100 text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Add Surface"
           >
             <Plus size={14} />
