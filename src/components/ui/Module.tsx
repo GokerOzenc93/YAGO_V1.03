@@ -254,7 +254,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditWidth && (
               <div className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden">
                 <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
-                <div className="flex items-center gap-2 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   1
                 </div>
@@ -263,7 +263,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value="W"
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                 />
 
                 <input
@@ -276,19 +276,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '80px' }}
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
                 <input
                   type="text"
                   value={resultWidth}
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
@@ -318,7 +317,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditHeight && (
               <div className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden">
                 <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
-                <div className="flex items-center gap-2 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   2
                 </div>
@@ -327,7 +326,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value="H"
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                 />
 
                 <input
@@ -340,19 +339,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '80px' }}
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
                 <input
                   type="text"
                   value={resultHeight}
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
@@ -382,7 +380,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditDepth && (
               <div className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden">
                 <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
-                <div className="flex items-center gap-2 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   3
                 </div>
@@ -391,7 +389,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value="D"
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                 />
 
                 <input
@@ -404,19 +402,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '80px' }}
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
                 <input
                   type="text"
                   value={resultDepth}
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
@@ -449,7 +446,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden"
               >
                 <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
-                <div className="flex items-center gap-2 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   {index + 4}
                 </div>
@@ -472,19 +469,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '80px' }}
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
                 <input
                   type="text"
                   value={param.result || ''}
                   readOnly
-                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
