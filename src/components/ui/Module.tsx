@@ -222,7 +222,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       <div className="flex-1 p-4 space-y-4">
 
         <div className="bg-white rounded-md border border-stone-200 p-2">
-          <div className="flex items-center justify-between h-10">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-medium text-slate-800">Parameters</h4>
+
             <div className="flex items-center gap-2">
               <button
                 onClick={handleAddParameter}
@@ -231,23 +233,16 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               >
                 <Plus size={11} />
               </button>
-              <span className="text-xs font-medium text-gray-700">Add Parameter</span>
+
+              {customParameters.length > 0 && (
+                <button
+                  onClick={handleClearAllParameters}
+                  className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
-
-            {customParameters.length > 0 && (
-              <button
-                onClick={handleClearAllParameters}
-                className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-md border border-stone-200 p-2">
-          <div className="mb-2">
-            <h4 className="text-xs font-medium text-slate-800">Parameters</h4>
           </div>
 
           <div className="space-y-2">
