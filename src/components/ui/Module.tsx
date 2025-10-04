@@ -58,9 +58,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const canEditDepth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
 
   useEffect(() => {
-    setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
-    setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
-    setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
+    if (!inputWidth) setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
+    if (!inputHeight) setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
+    if (!inputDepth) setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
     setResultWidth(convertToDisplayUnit(currentWidth).toFixed(2));
     setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
@@ -105,9 +105,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     const evaluatedValue = evaluateExpression(value);
 
     if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
-      if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
-      if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
-      if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
       return;
     }
 
