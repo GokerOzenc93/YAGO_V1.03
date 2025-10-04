@@ -67,7 +67,7 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
 
     if (!mesh1 || !mesh2) return;
 
-    const findClosestEdge = (mesh: THREE.Mesh, targetMidpoint: THREE.Vector3) => {
+    const getEdgeFromIndices = (mesh: THREE.Mesh, edgeInfo: any) => {
       const geometry = mesh.geometry;
       if (!geometry || !geometry.isBufferGeometry) return null;
 
@@ -75,8 +75,34 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
       if (!positionAttribute) return null;
 
       const worldMatrix = mesh.matrixWorld;
-      const vertices: THREE.Vector3[] = [];
 
+      if (edgeInfo.vertexIndex1 !== undefined && edgeInfo.vertexIndex2 !== undefined) {
+        const idx1 = edgeInfo.vertexIndex1;
+        const idx2 = edgeInfo.vertexIndex2;
+
+        if (idx1 < positionAttribute.count && idx2 < positionAttribute.count) {
+          const v1 = new THREE.Vector3(
+            positionAttribute.getX(idx1),
+            positionAttribute.getY(idx1),
+            positionAttribute.getZ(idx1)
+          ).applyMatrix4(worldMatrix);
+
+          const v2 = new THREE.Vector3(
+            positionAttribute.getX(idx2),
+            positionAttribute.getY(idx2),
+            positionAttribute.getZ(idx2)
+          ).applyMatrix4(worldMatrix);
+
+          return {
+            start: v1,
+            end: v2,
+            midpoint: new THREE.Vector3().lerpVectors(v1, v2, 0.5),
+            length: v1.distanceTo(v2)
+          };
+        }
+      }
+
+      const vertices: THREE.Vector3[] = [];
       for (let i = 0; i < positionAttribute.count; i++) {
         const vertex = new THREE.Vector3(
           positionAttribute.getX(i),
@@ -93,7 +119,7 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
 
       const processEdge = (v1: THREE.Vector3, v2: THREE.Vector3) => {
         const edgeMidpoint = new THREE.Vector3().lerpVectors(v1, v2, 0.5);
-        const dist = edgeMidpoint.distanceTo(targetMidpoint);
+        const dist = edgeMidpoint.distanceTo(edgeInfo.midpoint);
 
         if (dist < minDistance) {
           minDistance = dist;
@@ -121,8 +147,8 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
       return closestEdge;
     };
 
-    const newEdge1 = findClosestEdge(mesh1, initialEdge1.midpoint);
-    const newEdge2 = findClosestEdge(mesh2, initialEdge2.midpoint);
+    const newEdge1 = getEdgeFromIndices(mesh1, initialEdge1);
+    const newEdge2 = getEdgeFromIndices(mesh2, initialEdge2);
 
     if (newEdge1 && newEdge2) {
       const newDistance = newEdge1.midpoint.distanceTo(newEdge2.midpoint);
