@@ -210,65 +210,42 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           <MousePointer size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Surface Specification</span>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 space-y-4">
-        
-        <div className="bg-white rounded-md border border-stone-200 p-2">
-          <div className="flex items-center justify-between h-10">
-            <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {surfaceRows.length > 0 && (
             <button
-              onClick={handleSelectSurface}
-              disabled={isSelectionActive}
-              className={`p-1.5 rounded-sm transition-colors ${
-                isSelectionActive
-                  ? 'bg-orange-50 text-orange-800 border border-orange-200 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
-              }`}
-              title="Add Surface"
+              onClick={handleClearAll}
+              className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
             >
-              <Plus size={11} />
+              Clear All
             </button>
-
-            {isSelectionActive && (
-              <button
-                onClick={handleExitSelection}
-                className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-sm transition-colors"
-                title="Exit Surface Selection"
-              >
-                <X size={11} />
-              </button>
-            )}
-
-            <span className={`text-xs font-medium ${
-              isSelectionActive ? 'text-orange-600' : 'text-gray-700'
-            }`}>
-              Add Surface
-            </span>
-            </div>
-
-            {surfaceRows.length > 0 && (
-              <button
-                onClick={handleClearAll}
-                className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-          
+          )}
+          <button
+            onClick={handleSelectSurface}
+            disabled={isSelectionActive}
+            className={`p-1.5 rounded-sm transition-colors ${
+              isSelectionActive
+                ? 'bg-orange-200 text-orange-800 cursor-not-allowed'
+                : 'hover:bg-orange-100 text-orange-600'
+            }`}
+            title="Add Surface"
+          >
+            <Plus size={14} />
+          </button>
           {isSelectionActive && (
-            <div></div>
+            <button
+              onClick={handleExitSelection}
+              className="p-1.5 hover:bg-red-100 text-red-600 rounded-sm transition-colors"
+              title="Exit Surface Selection"
+            >
+              <X size={14} />
+            </button>
           )}
         </div>
+      </div>
 
+      <div className="flex-1 p-4 space-y-2">
         {surfaceRows.length > 0 && (
           <div className="bg-white rounded-md border border-stone-200 p-2">
-            <div className="mb-2">
-              <h4 className="text-xs font-medium text-slate-800">Surfaces</h4>
-            </div>
-
             <div className="space-y-2">
               {surfaceRows.map((row, index) => (
                 <div
@@ -316,10 +293,10 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                       disabled={!row.role || !row.role.trim() || row.faceIndex === null}
                       className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                         row.confirmed && row.role && row.role.trim()
-                          ? 'bg-green-600 text-white cursor-default'
+                          ? 'bg-orange-100 text-orange-600 cursor-default'
                           : (!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed)
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                            : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                       }`}
                       title={
                         row.confirmed && row.role && row.role.trim()
