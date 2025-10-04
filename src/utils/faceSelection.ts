@@ -284,11 +284,10 @@ export const createFaceHighlight = (
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
     
-    // Daha belirgin highlight material
     const material = new THREE.MeshBasicMaterial({
         color: color,
         transparent: true,
-        opacity: Math.min(opacity + 0.2, 0.9), // Daha görünür
+        opacity: Math.min(opacity + 0.2, 0.9),
         side: THREE.DoubleSide,
         depthTest: true,
         depthWrite: false,
@@ -803,12 +802,13 @@ const buildFaceOverlayFromHit = (
     g.setIndex(indices);
     g.computeVertexNormals();
 
-    const mat = new THREE.MeshBasicMaterial({ 
-        color, 
-        opacity, 
-        transparent: true, 
-        depthWrite: false, 
-        side: THREE.DoubleSide 
+    const mat = new THREE.MeshBasicMaterial({
+        color,
+        opacity,
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        side: THREE.DoubleSide
     });
     const overlay = new THREE.Mesh(g, mat);
     overlay.renderOrder = 999;
