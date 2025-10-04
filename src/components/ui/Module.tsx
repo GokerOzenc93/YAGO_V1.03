@@ -268,7 +268,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={resultWidth}
                   readOnly
-                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -330,7 +330,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={resultHeight}
                   readOnly
-                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -392,7 +392,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={resultDepth}
                   readOnly
-                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
@@ -458,7 +458,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   type="text"
                   value={param.result || ''}
                   readOnly
-                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                   placeholder="Result"
                 />
 
