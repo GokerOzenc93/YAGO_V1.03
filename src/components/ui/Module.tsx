@@ -252,7 +252,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
           <div className="space-y-2">
             {canEditWidth && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+              <div className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden">
+                <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
+                <div className="flex items-center gap-2 flex-1 pr-2">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   1
                 </div>
@@ -292,7 +294,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!inputWidth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       inputWidth.trim()
-                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Width"
@@ -301,18 +303,22 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   </button>
 
                   <button
+                    onClick={() => handleRemoveParameter('')}
                     disabled
-                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
                     title="Cannot remove basic dimension"
                   >
                     <X size={11} />
                   </button>
                 </div>
+                </div>
               </div>
             )}
 
             {canEditHeight && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+              <div className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden">
+                <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
+                <div className="flex items-center gap-2 flex-1 pr-2">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   2
                 </div>
@@ -352,7 +358,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       inputHeight.trim()
-                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Height"
@@ -361,18 +367,22 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   </button>
 
                   <button
+                    onClick={() => handleRemoveParameter('')}
                     disabled
-                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
                     title="Cannot remove basic dimension"
                   >
                     <X size={11} />
                   </button>
                 </div>
+                </div>
               </div>
             )}
 
             {canEditDepth && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+              <div className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden">
+                <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
+                <div className="flex items-center gap-2 flex-1 pr-2">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   3
                 </div>
@@ -412,7 +422,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!inputDepth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       inputDepth.trim()
-                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Depth"
@@ -421,12 +431,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                   </button>
 
                   <button
+                    onClick={() => handleRemoveParameter('')}
                     disabled
-                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
                     title="Cannot remove basic dimension"
                   >
                     <X size={11} />
                   </button>
+                </div>
                 </div>
               </div>
             )}
@@ -434,8 +446,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {customParameters.map((param, index) => (
               <div
                 key={param.id}
-                className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
+                className="flex items-center gap-2 h-10 rounded-md border border-gray-200 bg-gray-50/50 overflow-hidden"
               >
+                <div className="flex-shrink-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-500"></div>
+                <div className="flex items-center gap-2 flex-1 pr-2">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   {index + 4}
                 </div>
@@ -476,7 +490,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     disabled={!param.value.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
                       param.value.trim()
-                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     }`}
                     title="Apply Parameter"
@@ -486,11 +500,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                   <button
                     onClick={() => handleRemoveParameter(param.id)}
-                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors w-7"
+                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
                     title="Remove Parameter"
                   >
                     <X size={11} />
                   </button>
+                </div>
                 </div>
               </div>
             ))}
