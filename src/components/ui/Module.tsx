@@ -235,8 +235,13 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           </div>
 
           {canEditWidth && (
-            <div className="flex items-center gap-2 h-10">
-              <span className="text-slate-700 text-xs font-medium w-4">W:</span>
+            <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+              <input
+                type="text"
+                value="W"
+                disabled
+                className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium text-center"
+              />
               <input
                 type="text"
                 value={inputWidth}
@@ -246,11 +251,20 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     applyDimensionChange('width', inputWidth);
                   }
                 }}
-                className="flex-1 h-6 bg-white text-slate-800 text-xs font-medium px-2 rounded-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="Formula..."
+                className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
               />
+              <span className="text-xs font-medium text-green-600 whitespace-nowrap">
+                = {inputWidth ? evaluateExpression(inputWidth)?.toFixed(2) || inputWidth : '0'}
+              </span>
               <button
                 onClick={() => applyDimensionChange('width', inputWidth)}
-                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+                disabled={!inputWidth.trim()}
+                className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                  inputWidth.trim()
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
                 title="Apply Width"
               >
                 <Check size={11} />
@@ -259,8 +273,13 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           )}
 
           {canEditHeight && (
-            <div className="flex items-center gap-2 h-10">
-              <span className="text-slate-700 text-xs font-medium w-4">H:</span>
+            <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+              <input
+                type="text"
+                value="H"
+                disabled
+                className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium text-center"
+              />
               <input
                 type="text"
                 value={inputHeight}
@@ -270,11 +289,20 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     applyDimensionChange('height', inputHeight);
                   }
                 }}
-                className="flex-1 h-6 bg-white text-slate-800 text-xs font-medium px-2 rounded-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="Formula..."
+                className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
               />
+              <span className="text-xs font-medium text-green-600 whitespace-nowrap">
+                = {inputHeight ? evaluateExpression(inputHeight)?.toFixed(2) || inputHeight : '0'}
+              </span>
               <button
                 onClick={() => applyDimensionChange('height', inputHeight)}
-                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+                disabled={!inputHeight.trim()}
+                className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                  inputHeight.trim()
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
                 title="Apply Height"
               >
                 <Check size={11} />
@@ -283,8 +311,13 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           )}
 
           {canEditDepth && (
-            <div className="flex items-center gap-2 h-10">
-              <span className="text-slate-700 text-xs font-medium w-4">D:</span>
+            <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+              <input
+                type="text"
+                value="D"
+                disabled
+                className="w-24 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium text-center"
+              />
               <input
                 type="text"
                 value={inputDepth}
@@ -294,11 +327,20 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     applyDimensionChange('depth', inputDepth);
                   }
                 }}
-                className="flex-1 h-6 bg-white text-slate-800 text-xs font-medium px-2 rounded-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="Formula..."
+                className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
               />
+              <span className="text-xs font-medium text-green-600 whitespace-nowrap">
+                = {inputDepth ? evaluateExpression(inputDepth)?.toFixed(2) || inputDepth : '0'}
+              </span>
               <button
                 onClick={() => applyDimensionChange('depth', inputDepth)}
-                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+                disabled={!inputDepth.trim()}
+                className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                  inputDepth.trim()
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
                 title="Apply Depth"
               >
                 <Check size={11} />
