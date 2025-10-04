@@ -217,33 +217,26 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           <Ruler size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
+        <div className="flex items-center gap-2">
+          {customParameters.length > 0 && (
+            <button
+              onClick={handleClearAllParameters}
+              className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
+            >
+              Clear All
+            </button>
+          )}
+          <button
+            onClick={handleAddParameter}
+            className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+            title="Add Custom Parameter"
+          >
+            <Plus size={11} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 p-4 space-y-2">
-
-        <div className="bg-white rounded-md border border-stone-200 p-2">
-          <div className="flex items-center justify-between h-10">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleAddParameter}
-                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
-                title="Add Custom Parameter"
-              >
-                <Plus size={11} />
-              </button>
-              <span className="text-xs font-medium text-gray-700">Add Parameter</span>
-            </div>
-
-            {customParameters.length > 0 && (
-              <button
-                onClick={handleClearAllParameters}
-                className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-        </div>
 
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="space-y-2">
