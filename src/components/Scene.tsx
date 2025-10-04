@@ -223,6 +223,7 @@ const Scene: React.FC = () => {
     edge1: any;
     edge2: any;
     distance: string;
+    parameterLabel: string;
   } | null>(null);
 
   // Disable rotation when drawing polylines OR when panel mode is active
@@ -252,9 +253,9 @@ const Scene: React.FC = () => {
 
   useEffect(() => {
     const handleCreateDimensionLine = (event: CustomEvent) => {
-      const { edge1, edge2, distance } = event.detail;
-      setMeasurementLineData({ edge1, edge2, distance });
-      console.log(`📏 Dimension line created: ${distance}`);
+      const { edge1, edge2, distance, parameterLabel } = event.detail;
+      setMeasurementLineData({ edge1, edge2, distance, parameterLabel });
+      console.log(`📏 Dimension line created: ${distance} (${parameterLabel})`);
     };
 
     window.addEventListener('createDimensionLine', handleCreateDimensionLine as EventListener);
@@ -769,6 +770,7 @@ const Scene: React.FC = () => {
             edge2={measurementLineData.edge2}
             distance={measurementLineData.distance}
             measurementUnit={measurementUnit}
+            parameterLabel={measurementLineData.parameterLabel}
           />
         )}
 

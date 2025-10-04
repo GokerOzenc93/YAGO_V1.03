@@ -220,14 +220,21 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           const distance = newEdges[0].midpoint.distanceTo(newEdges[1].midpoint);
           const displayDistance = convertToDisplayUnit(distance).toFixed(2);
 
+          let parameterLabel = '';
+
           if (activeRulerRowId) {
             if (activeRulerRowId === 'width') {
               setInputWidth(displayDistance);
+              parameterLabel = 'W';
             } else if (activeRulerRowId === 'height') {
               setInputHeight(displayDistance);
+              parameterLabel = 'H';
             } else if (activeRulerRowId === 'depth') {
               setInputDepth(displayDistance);
+              parameterLabel = 'D';
             } else {
+              const param = customParameters.find(p => p.id === activeRulerRowId);
+              parameterLabel = param?.description || 'Param';
               setCustomParameters(params => params.map(p =>
                 p.id === activeRulerRowId ? { ...p, value: displayDistance } : p
               ));
@@ -238,7 +245,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             detail: {
               edge1: newEdges[0],
               edge2: newEdges[1],
-              distance: displayDistance
+              distance: displayDistance,
+              parameterLabel
             }
           });
           window.dispatchEvent(dimensionLineEvent);
@@ -348,7 +356,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     });
                   }}
                   className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has('width')
+                    isRulerMode && activeRulerRowId === 'width'
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : selectedDimensions.has('width')
                       ? 'bg-white text-orange-500 border-orange-300'
                       : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
                   }`}
@@ -439,7 +449,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     });
                   }}
                   className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has('height')
+                    isRulerMode && activeRulerRowId === 'height'
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : selectedDimensions.has('height')
                       ? 'bg-white text-orange-500 border-orange-300'
                       : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
                   }`}
@@ -530,7 +542,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     });
                   }}
                   className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has('depth')
+                    isRulerMode && activeRulerRowId === 'depth'
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : selectedDimensions.has('depth')
                       ? 'bg-white text-orange-500 border-orange-300'
                       : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
                   }`}
@@ -625,7 +639,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     });
                   }}
                   className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has(`param-${param.id}`)
+                    isRulerMode && activeRulerRowId === param.id
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : selectedDimensions.has(`param-${param.id}`)
                       ? 'bg-white text-orange-500 border-orange-300'
                       : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
                   }`}

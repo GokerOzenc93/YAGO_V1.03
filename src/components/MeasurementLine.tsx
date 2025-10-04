@@ -15,13 +15,15 @@ interface MeasurementLineProps {
   };
   distance: string;
   measurementUnit: string;
+  parameterLabel: string;
 }
 
 const MeasurementLine: React.FC<MeasurementLineProps> = ({
   edge1,
   edge2,
   distance,
-  measurementUnit
+  measurementUnit,
+  parameterLabel
 }) => {
   const lineStart = edge1.midpoint;
   const lineEnd = edge2.midpoint;
@@ -73,7 +75,7 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
         center
       >
         <div className="text-gray-800 text-sm font-semibold whitespace-nowrap bg-white px-1">
-          {distance} {measurementUnit}
+          {parameterLabel}: {distance} {measurementUnit}
         </div>
       </Html>
     </group>
