@@ -113,6 +113,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
   }, [camera, shapes, hiddenShapeIds]);
 
   // Auto zoom fit when entering edit mode - IMMEDIATE fit to screen
+  // 🎯 CRITICAL: Only fit when ENTERING edit mode, not when shape changes
   useEffect(() => {
     if (isEditMode && editingShapeId && controlsRef.current) {
       const editedShape = shapes.find((s) => s.id === editingShapeId);
@@ -122,7 +123,8 @@ const CameraController: React.FC<CameraControllerProps> = ({
         console.log('Edit mode: Auto zoom fit applied immediately');
       }
     }
-  }, [isEditMode, editingShapeId, camera, shapes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, editingShapeId]);
 
   // Store controls ref globally for external access
   useEffect(() => {
