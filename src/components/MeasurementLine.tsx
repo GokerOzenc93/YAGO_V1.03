@@ -35,8 +35,8 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
   const [edge2, setEdge2] = useState(initialEdge2);
   const [distance, setDistance] = useState(initialDistance);
   const [frameCount, setFrameCount] = useState(0);
-  const [lastGeometryVersion1, setLastGeometryVersion1] = useState<number>(0);
-  const [lastGeometryVersion2, setLastGeometryVersion2] = useState<number>(0);
+  const [lastGeometryVersion1, setLastGeometryVersion1] = useState<string>('');
+  const [lastGeometryVersion2, setLastGeometryVersion2] = useState<string>('');
 
   const convertToDisplayUnit = (value: number): number => {
     if (measurementUnit === 'mm') return value;
@@ -69,17 +69,17 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
 
     if (!mesh1 || !mesh2) return;
 
-    const currentGeometryVersion1 = mesh1.geometry?.uuid || 0;
-    const currentGeometryVersion2 = mesh2.geometry?.uuid || 0;
+    const currentVersion1 = `${mesh1.geometry?.uuid || ''}_${mesh1.scale.x}_${mesh1.scale.y}_${mesh1.scale.z}`;
+    const currentVersion2 = `${mesh2.geometry?.uuid || ''}_${mesh2.scale.x}_${mesh2.scale.y}_${mesh2.scale.z}`;
 
-    const geometryChanged1 = currentGeometryVersion1 !== lastGeometryVersion1;
-    const geometryChanged2 = currentGeometryVersion2 !== lastGeometryVersion2;
+    const versionChanged1 = currentVersion1 !== lastGeometryVersion1;
+    const versionChanged2 = currentVersion2 !== lastGeometryVersion2;
 
-    if (geometryChanged1) {
-      setLastGeometryVersion1(currentGeometryVersion1);
+    if (versionChanged1) {
+      setLastGeometryVersion1(currentVersion1);
     }
-    if (geometryChanged2) {
-      setLastGeometryVersion2(currentGeometryVersion2);
+    if (versionChanged2) {
+      setLastGeometryVersion2(currentVersion2);
     }
 
     const getEdgeFromIndices = (mesh: THREE.Mesh, edgeInfo: any) => {
@@ -162,7 +162,7 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
       return closestEdge;
     };
 
-    const shouldRecalculate = geometryChanged1 || geometryChanged2;
+    const shouldRecalculate = versionChanged1 || versionChanged2;
 
     const edgeInfoToUse1 = shouldRecalculate ? edge1 : initialEdge1;
     const edgeInfoToUse2 = shouldRecalculate ? edge2 : initialEdge2;
