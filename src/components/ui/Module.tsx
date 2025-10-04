@@ -269,6 +269,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               >
                 <Check size={11} />
               </button>
+
+              <button
+                disabled
+                className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                title="Cannot remove basic dimension"
+              >
+                <X size={11} />
+              </button>
             </div>
           )}
 
@@ -307,6 +315,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               >
                 <Check size={11} />
               </button>
+
+              <button
+                disabled
+                className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                title="Cannot remove basic dimension"
+              >
+                <X size={11} />
+              </button>
             </div>
           )}
 
@@ -344,6 +360,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 title="Apply Depth"
               >
                 <Check size={11} />
+              </button>
+
+              <button
+                disabled
+                className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                title="Cannot remove basic dimension"
+              >
+                <X size={11} />
               </button>
             </div>
           )}
