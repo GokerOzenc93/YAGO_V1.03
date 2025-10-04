@@ -159,13 +159,53 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
       } else if (activeTool === 'Scale') {
         const scale = meshRef.current.scale.toArray() as [number, number, number];
-        
-        // 🎯 UPDATE SHAPE SCALE IN STORE
+
+        // 🎯 SCALE WITH FIXED ORIGIN - Sol arka alt köşe sabit kalır
+        // Scale delta hesapla
+        const scaleDelta = new THREE.Vector3(
+          scale[0] - originalScale.x,
+          scale[1] - originalScale.y,
+          scale[2] - originalScale.z
+        );
+
+        // Geometry bounding box'ı hesapla
+        const geometry = shape.geometry;
+        geometry.computeBoundingBox();
+        const bbox = geometry.boundingBox!;
+
+        // Sol arka alt köşe (min point) - local space
+        const anchorPoint = new THREE.Vector3(
+          bbox.min.x * originalScale.x,
+          bbox.min.y * originalScale.y,
+          bbox.min.z * originalScale.z
+        );
+
+        // Yeni scale sonrası anchor point
+        const newAnchorPoint = new THREE.Vector3(
+          bbox.min.x * scale[0],
+          bbox.min.y * scale[1],
+          bbox.min.z * scale[2]
+        );
+
+        // Anchor point'in world space'deki konumu
+        const anchorOffset = new THREE.Vector3().subVectors(anchorPoint, newAnchorPoint);
+
+        // Position'ı anchor point sabit kalacak şekilde ayarla
+        const newPosition = new THREE.Vector3(...originalPosition).add(anchorOffset);
+
+        meshRef.current.position.copy(newPosition);
+
+        // 🎯 UPDATE SHAPE SCALE AND POSITION IN STORE
         updateShape(shape.id, {
-          scale: scale
+          scale: scale,
+          position: newPosition.toArray() as [number, number, number]
         });
-        
-        console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
+
+        console.log(`🎯 Shape ${shape.id} scale updated with fixed origin:`, {
+          scale,
+          newPosition: newPosition.toArray(),
+          anchorOffset: anchorOffset.toArray()
+        });
       }
     };
     
@@ -194,10 +234,17 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
         const finalScale = meshRef.current.scale.toArray() as [number, number, number];
+        const finalPosition = meshRef.current.position.toArray() as [number, number, number];
+
         updateShape(shape.id, {
-          scale: finalScale
+          scale: finalScale,
+          position: finalPosition
         });
-        console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
+
+        console.log(`🎯 Shape ${shape.id} final scale with fixed origin:`, {
+          scale: finalScale,
+          position: finalPosition
+        });
       }
     };
     
