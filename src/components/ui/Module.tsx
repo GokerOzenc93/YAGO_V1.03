@@ -276,8 +276,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '120px' }}
+                  className="h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ width: '80px', maxWidth: '80px' }}
                 />
 
                 <input
@@ -340,8 +340,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '120px' }}
+                  className="h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ width: '80px', maxWidth: '80px' }}
                 />
 
                 <input
@@ -404,8 +404,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '120px' }}
+                  className="h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ width: '80px', maxWidth: '80px' }}
                 />
 
                 <input
@@ -472,8 +472,8 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                     }
                   }}
                   placeholder="Formula..."
-                  className="flex-1 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  style={{ minWidth: '120px' }}
+                  className="h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  style={{ width: '80px', maxWidth: '80px' }}
                 />
 
                 <input
