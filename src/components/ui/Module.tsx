@@ -135,6 +135,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     const bbox = editedShape.geometry.boundingBox;
 
     const currentScale = [...editedShape.scale];
+    const originalScale = new THREE.Vector3(...currentScale);
     const newScale = [...currentScale];
 
     let originalDimension = 0;
@@ -153,8 +154,32 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
+    const anchorPoint = new THREE.Vector3(
+      bbox.min.x * originalScale.x,
+      bbox.min.y * originalScale.y,
+      bbox.min.z * originalScale.z
+    );
+
+    const newAnchorPoint = new THREE.Vector3(
+      bbox.min.x * newScale[0],
+      bbox.min.y * newScale[1],
+      bbox.min.z * newScale[2]
+    );
+
+    const anchorOffset = new THREE.Vector3().subVectors(anchorPoint, newAnchorPoint);
+
+    const currentPosition = new THREE.Vector3(...editedShape.position);
+    const newPosition = currentPosition.add(anchorOffset);
+
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
+      position: newPosition.toArray() as [number, number, number],
+    });
+
+    console.log(`🎯 Dimension ${dimension} updated with fixed origin:`, {
+      newScale,
+      newPosition: newPosition.toArray(),
+      anchorOffset: anchorOffset.toArray()
     });
   };
 
