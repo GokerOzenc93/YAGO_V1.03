@@ -293,6 +293,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    title="Ruler Tool"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -355,6 +363,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    title="Ruler Tool"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -416,6 +432,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    title="Ruler Tool"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
                   <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
@@ -482,6 +506,14 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
+                    title="Ruler Tool"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
                   <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
