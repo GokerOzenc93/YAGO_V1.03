@@ -289,7 +289,7 @@ export const createFaceHighlight = (
         transparent: true,
         opacity: Math.min(opacity + 0.2, 0.9),
         side: THREE.DoubleSide,
-        depthTest: true,
+        depthTest: false,
         depthWrite: false,
         wireframe: false
     });
@@ -807,7 +807,7 @@ const buildFaceOverlayFromHit = (
         opacity,
         transparent: true,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
         side: THREE.DoubleSide
     });
     const overlay = new THREE.Mesh(g, mat);
