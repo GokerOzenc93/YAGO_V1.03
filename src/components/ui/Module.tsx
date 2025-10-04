@@ -204,12 +204,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           <div className="space-y-2">
             {canEditWidth && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
-                <input
-                  type="text"
-                  value="W"
-                  disabled
-                  className="w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium text-center disabled:bg-gray-100 disabled:text-gray-500"
-                />
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  W
+                </div>
+
                 <input
                   type="text"
                   value={inputWidth}
@@ -239,7 +237,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                   <button
                     disabled
-                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
                     title="Cannot remove basic dimension"
                   >
                     <X size={11} />
@@ -250,12 +248,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
             {canEditHeight && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
-                <input
-                  type="text"
-                  value="H"
-                  disabled
-                  className="w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium text-center disabled:bg-gray-100 disabled:text-gray-500"
-                />
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  H
+                </div>
+
                 <input
                   type="text"
                   value={inputHeight}
@@ -285,7 +281,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                   <button
                     disabled
-                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
                     title="Cannot remove basic dimension"
                   >
                     <X size={11} />
@@ -296,12 +292,10 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
             {canEditDepth && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
-                <input
-                  type="text"
-                  value="D"
-                  disabled
-                  className="w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium text-center disabled:bg-gray-100 disabled:text-gray-500"
-                />
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  D
+                </div>
+
                 <input
                   type="text"
                   value={inputDepth}
@@ -331,7 +325,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                   <button
                     disabled
-                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
                     title="Cannot remove basic dimension"
                   >
                     <X size={11} />
@@ -340,17 +334,21 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               </div>
             )}
 
-            {customParameters.map((param) => (
+            {customParameters.map((param, index) => (
               <div
                 key={param.id}
                 className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
               >
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  {index + 1}
+                </div>
+
                 <input
                   type="text"
                   value={param.description}
                   onChange={(e) => handleParameterDescriptionChange(param.id, e.target.value)}
                   placeholder="Code"
-                  className="w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
                 />
 
                 <input
@@ -382,7 +380,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                   <button
                     onClick={() => handleRemoveParameter(param.id)}
-                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
+                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors w-7"
                     title="Remove Parameter"
                   >
                     <X size={11} />
