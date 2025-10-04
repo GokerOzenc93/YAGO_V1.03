@@ -251,7 +251,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     value={row.role}
                     onChange={(e) => handleRoleChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
-                    className="h-6 w-12 text-xs bg-white border border-gray-300 rounded-sm px-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
+                    className="h-6 w-16 text-xs bg-white border border-gray-300 rounded-sm px-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
                   >
                     <option value="">Role</option>
                     <option value="left">L</option>
