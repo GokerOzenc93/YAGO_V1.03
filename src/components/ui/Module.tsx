@@ -154,32 +154,36 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
-    const anchorPoint = new THREE.Vector3(
-      bbox.min.x * originalScale.x,
-      bbox.min.y * originalScale.y,
-      bbox.min.z * originalScale.z
-    );
-
-    const newAnchorPoint = new THREE.Vector3(
-      bbox.min.x * newScale[0],
-      bbox.min.y * newScale[1],
-      bbox.min.z * newScale[2]
-    );
-
-    const anchorOffset = new THREE.Vector3().subVectors(anchorPoint, newAnchorPoint);
-
+    // Sol arka alt köşe world space'de sabit kalacak şekilde position hesapla
+    // Geometry'nin bbox.min noktası local space'de anchor noktamız
     const currentPosition = new THREE.Vector3(...editedShape.position);
-    const newPosition = currentPosition.add(anchorOffset);
+
+    // Scale değişikliği için position offset hesapla
+    // bbox.min genellikle negatif (örn: -250 for 500mm cube)
+    // Scale arttığında, bu negatif değer daha negatif olur
+    // Position'ı bu farkı telafi edecek şekilde ayarlamalıyız
+    const positionOffset = new THREE.Vector3(
+      bbox.min.x * (newScale[0] - originalScale.x),
+      bbox.min.y * (newScale[1] - originalScale.y),
+      bbox.min.z * (newScale[2] - originalScale.z)
+    );
+
+    // Offset'i position'dan çıkar (çünkü min negatif, ve biz pozitif yönde büyütüyoruz)
+    const newPosition = currentPosition.clone().sub(positionOffset);
 
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
       position: newPosition.toArray() as [number, number, number],
     });
 
-    console.log(`🎯 Dimension ${dimension} updated with fixed origin:`, {
+    console.log(`🎯 Dimension ${dimension} updated with fixed anchor (min corner):`, {
+      dimension,
+      originalScale: originalScale.toArray(),
       newScale,
-      newPosition: newPosition.toArray(),
-      anchorOffset: anchorOffset.toArray()
+      bboxMin: [bbox.min.x, bbox.min.y, bbox.min.z],
+      positionOffset: positionOffset.toArray(),
+      oldPosition: editedShape.position,
+      newPosition: newPosition.toArray()
     });
   };
 
