@@ -42,8 +42,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             shapeId,
             faceIndex,
             rowId: activeRowId,
-            color: 0xffb366, // Default orange
-           opacity: 0.15, // Very transparent
+            color: 0xfff5e6, // Light cream/beige color (very light orange)
+            opacity: 0.3, // More transparent
             faceNumber: surfaceRows.length // Use current row count as face number
           }
         });
@@ -112,14 +112,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     if (row && row.faceIndex !== null) {
       // Update highlight color based on role
       const roleColors = {
-        'left': 0xffd99f,    // Light orange (açık turuncu) - toolbar tonu
-        'right': 0xffd99f,   // Light orange (açık turuncu) - toolbar tonu
-        'top': 0xffd99f,     // Light orange (açık turuncu) - toolbar tonu
-        'bottom': 0xffd99f,  // Light orange (açık turuncu) - toolbar tonu
-        'front': 0xffd99f,   // Light orange (açık turuncu) - toolbar tonu
-        'back': 0xffff00,    // Yellow (sarı) - Ba
-        'door': 0xceffce,    // Blue (mavi) - D
-        '': 0xffb6b6         // Default light orange
+        'left': 0xfff5e6,    // Very light cream/beige
+        'right': 0xfff5e6,   // Very light cream/beige
+        'top': 0xfff5e6,     // Very light cream/beige
+        'bottom': 0xfff5e6,  // Very light cream/beige
+        'front': 0xfff5e6,   // Very light cream/beige
+        'back': 0xffffe6,    // Very light yellow - Ba
+        'door': 0xe6fff2,    // Very light green - D
+        '': 0xfff5e6         // Default very light cream/beige
       };
       
       const color = roleColors[role as keyof typeof roleColors] || roleColors[''];
