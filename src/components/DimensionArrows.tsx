@@ -56,8 +56,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.min.x, dimensions.min.y - offset, dimensions.min.z],
               [dimensions.max.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="#6b7280"
-            lineWidth={2}
+            color="#9ca3af"
+            lineWidth={1.5}
             dashed
             dashScale={1}
             dashSize={8}
@@ -68,7 +68,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.min.x, dimensions.min.y, dimensions.min.z],
               [dimensions.min.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="#6b7280"
+            color="#9ca3af"
             lineWidth={1}
             dashed
             dashScale={1}
@@ -80,7 +80,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="#6b7280"
+            color="#9ca3af"
             lineWidth={1}
             dashed
             dashScale={1}
@@ -105,8 +105,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.max.y, dimensions.min.z]
             ]}
-            color="#6b7280"
-            lineWidth={2}
+            color="#9ca3af"
+            lineWidth={1.5}
             dashed
             dashScale={1}
             dashSize={8}
@@ -117,7 +117,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z]
             ]}
-            color="#6b7280"
+            color="#9ca3af"
             lineWidth={1}
             dashed
             dashScale={1}
@@ -129,7 +129,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.max.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.max.y, dimensions.min.z]
             ]}
-            color="#6b7280"
+            color="#9ca3af"
             lineWidth={1}
             dashed
             dashScale={1}
@@ -154,8 +154,8 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.max.z]
             ]}
-            color="#6b7280"
-            lineWidth={2}
+            color="#9ca3af"
+            lineWidth={1.5}
             dashed
             dashScale={1}
             dashSize={8}
@@ -166,7 +166,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z]
             ]}
-            color="#6b7280"
+            color="#9ca3af"
             lineWidth={1}
             dashed
             dashScale={1}
@@ -178,7 +178,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.max.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.max.z]
             ]}
-            color="#6b7280"
+            color="#9ca3af"
             lineWidth={1}
             dashed
             dashScale={1}
