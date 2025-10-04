@@ -236,6 +236,13 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             </button>
           )}
           <button
+            onClick={() => {}}
+            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
+            title="Ruler Tool"
+          >
+            <Ruler size={14} />
+          </button>
+          <button
             onClick={handleAddParameter}
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
             title="Add Custom Parameter"
