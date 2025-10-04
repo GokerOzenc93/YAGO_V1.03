@@ -222,13 +222,24 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           <button
             onClick={handleSelectSurface}
             disabled={isSelectionActive}
-            className={`p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors ${
-              isSelectionActive ? 'opacity-50 cursor-not-allowed' : ''
+            className={`p-1.5 rounded-sm transition-colors ${
+              isSelectionActive
+                ? 'bg-orange-200 text-orange-800 cursor-not-allowed'
+                : 'hover:bg-orange-100 text-orange-600'
             }`}
             title="Add Surface"
           >
             <Plus size={14} />
           </button>
+          {isSelectionActive && (
+            <button
+              onClick={handleExitSelection}
+              className="p-1.5 hover:bg-red-100 text-red-600 rounded-sm transition-colors"
+              title="Exit Surface Selection"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,11 +258,15 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                         : 'border-gray-200 bg-gray-50/50'
                   }`}
                 >
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                    {index + 1}
+                  </div>
+                  
                   <select
                     value={row.role}
                     onChange={(e) => handleRoleChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
-                    className="h-6 w-16 text-xs bg-white border border-gray-300 rounded-sm px-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
+                    className="h-6 w-12 text-xs bg-white border border-gray-300 rounded-sm px-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
                   >
                     <option value="">Role</option>
                     <option value="left">L</option>
