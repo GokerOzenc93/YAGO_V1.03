@@ -543,6 +543,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           height - radius * 2,
           depth - radius * 2
         );
+        geometry.translate((width - radius * 2) / 2, (height - radius * 2) / 2, (depth - radius * 2) / 2);
 
         newShapes[shapes.indexOf(shape)] = {
           ...shape,
@@ -566,6 +567,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           height - distance * 2,
           depth - distance * 2
         );
+        geometry.translate((width - distance * 2) / 2, (height - distance * 2) / 2, (depth - distance * 2) / 2);
 
         newShapes[shapes.indexOf(shape)] = {
           ...shape,
@@ -582,34 +584,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ shapes: newShapes });
   },
   
-  shapes: [
-    {
-      id: '1',
-      type: 'box',
-      position: [-200, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(500, 500, 500),
-      parameters: {
-        width: 500,
-        height: 500,
-        depth: 500,
+  shapes: (() => {
+    const shape1Geometry = new THREE.BoxGeometry(500, 500, 500);
+    shape1Geometry.translate(250, 250, 250);
+
+    const shape2Geometry = new THREE.BoxGeometry(300, 300, 300);
+    shape2Geometry.translate(150, 150, 150);
+
+    return [
+      {
+        id: '1',
+        type: 'box',
+        position: [-200, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        geometry: shape1Geometry,
+        parameters: {
+          width: 500,
+          height: 500,
+          depth: 500,
+        },
       },
-    },
-    {
-      id: '2',
-      type: 'box',
-      position: [100, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(300, 300, 300),
-      parameters: {
-        width: 300,
-        height: 300,
-        depth: 300,
+      {
+        id: '2',
+        type: 'box',
+        position: [100, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        geometry: shape2Geometry,
+        parameters: {
+          width: 300,
+          height: 300,
+          depth: 300,
+        },
       },
-    },
-  ],
+    ];
+  })(),
   
   addShape: (shape) => 
     set((state) => ({ 

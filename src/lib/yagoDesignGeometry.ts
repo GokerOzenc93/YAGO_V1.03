@@ -5,12 +5,13 @@ import * as THREE from 'three';
  */
 export const yagoShapeToThreeGeometry = (shape: any): THREE.BufferGeometry => {
   console.warn('YagoDesign.js not available, using Three.js fallback geometry');
-  
+
   // Fallback to simple box geometry
   const fallbackGeometry = new THREE.BoxGeometry(100, 100, 100);
+  fallbackGeometry.translate(50, 50, 50);
   fallbackGeometry.computeBoundingBox();
   fallbackGeometry.computeBoundingSphere();
-  
+
   return fallbackGeometry;
 };
 
