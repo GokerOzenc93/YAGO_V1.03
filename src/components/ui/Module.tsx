@@ -432,10 +432,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
               >
                 <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                  {index + 4}
-                </div>
-
                 <input
                   type="text"
                   value={param.description}

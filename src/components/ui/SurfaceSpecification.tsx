@@ -247,10 +247,6 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                         : 'border-gray-200 bg-gray-50/50'
                   }`}
                 >
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                    {index + 1}
-                  </div>
-                  
                   <select
                     value={row.role}
                     onChange={(e) => handleRoleChange(row.id, e.target.value)}
