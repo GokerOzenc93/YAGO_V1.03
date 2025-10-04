@@ -171,6 +171,32 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
   const lineEnd = edge2.midpoint;
   const lineMidpoint = new THREE.Vector3().lerpVectors(lineStart, lineEnd, 0.5);
 
+  const direction = new THREE.Vector3().subVectors(lineEnd, lineStart).normalize();
+  const arrowSize = 10;
+
+  const perpendicular = new THREE.Vector3();
+  if (Math.abs(direction.y) < 0.9) {
+    perpendicular.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+  } else {
+    perpendicular.crossVectors(direction, new THREE.Vector3(1, 0, 0)).normalize();
+  }
+
+  const arrowTip1 = lineStart.clone().add(direction.clone().multiplyScalar(arrowSize));
+  const arrowLeft1 = lineStart.clone()
+    .add(direction.clone().multiplyScalar(arrowSize))
+    .add(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+  const arrowRight1 = lineStart.clone()
+    .add(direction.clone().multiplyScalar(arrowSize))
+    .sub(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+
+  const arrowTip2 = lineEnd.clone().sub(direction.clone().multiplyScalar(arrowSize));
+  const arrowLeft2 = lineEnd.clone()
+    .sub(direction.clone().multiplyScalar(arrowSize))
+    .add(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+  const arrowRight2 = lineEnd.clone()
+    .sub(direction.clone().multiplyScalar(arrowSize))
+    .sub(perpendicular.clone().multiplyScalar(arrowSize * 0.3));
+
   return (
     <group>
       <Line
@@ -189,27 +215,51 @@ const MeasurementLine: React.FC<MeasurementLineProps> = ({
       <Line
         points={[
           [lineStart.x, lineStart.y, lineStart.z],
-          [lineStart.x, lineStart.y, lineStart.z]
+          [arrowTip1.x, arrowTip1.y, arrowTip1.z]
         ]}
         color="#9ca3af"
-        lineWidth={1}
-        dashed
-        dashScale={1}
-        dashSize={8}
-        gapSize={4}
+        lineWidth={2}
+      />
+      <Line
+        points={[
+          [lineStart.x, lineStart.y, lineStart.z],
+          [arrowLeft1.x, arrowLeft1.y, arrowLeft1.z]
+        ]}
+        color="#9ca3af"
+        lineWidth={2}
+      />
+      <Line
+        points={[
+          [lineStart.x, lineStart.y, lineStart.z],
+          [arrowRight1.x, arrowRight1.y, arrowRight1.z]
+        ]}
+        color="#9ca3af"
+        lineWidth={2}
       />
 
       <Line
         points={[
           [lineEnd.x, lineEnd.y, lineEnd.z],
-          [lineEnd.x, lineEnd.y, lineEnd.z]
+          [arrowTip2.x, arrowTip2.y, arrowTip2.z]
         ]}
         color="#9ca3af"
-        lineWidth={1}
-        dashed
-        dashScale={1}
-        dashSize={8}
-        gapSize={4}
+        lineWidth={2}
+      />
+      <Line
+        points={[
+          [lineEnd.x, lineEnd.y, lineEnd.z],
+          [arrowLeft2.x, arrowLeft2.y, arrowLeft2.z]
+        ]}
+        color="#9ca3af"
+        lineWidth={2}
+      />
+      <Line
+        points={[
+          [lineEnd.x, lineEnd.y, lineEnd.z],
+          [arrowRight2.x, arrowRight2.y, arrowRight2.z]
+        ]}
+        color="#9ca3af"
+        lineWidth={2}
       />
 
       <Html
