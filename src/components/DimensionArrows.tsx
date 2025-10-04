@@ -56,42 +56,42 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.min.x, dimensions.min.y - offset, dimensions.min.z],
               [dimensions.max.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={2}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Line
             points={[
               [dimensions.min.x, dimensions.min.y, dimensions.min.z],
               [dimensions.min.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={1}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Line
             points={[
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={1}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Html
             position={[dimensions.center.x, dimensions.min.y - offset - 20, dimensions.min.z]}
             center
           >
-            <div className="text-green-500 text-xs font-medium whitespace-nowrap">
+            <div className="text-gray-800 text-sm font-semibold whitespace-nowrap bg-white px-1">
               W: {convertToDisplayUnit(dimensions.width).toFixed(2)} {measurementUnit}
             </div>
           </Html>
@@ -105,42 +105,42 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.max.y, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={2}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Line
             points={[
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={1}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Line
             points={[
               [dimensions.max.x, dimensions.max.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.max.y, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={1}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Html
             position={[dimensions.max.x + offset + 20, dimensions.center.y, dimensions.min.z]}
             center
           >
-            <div className="text-green-500 text-xs font-medium whitespace-nowrap">
+            <div className="text-gray-800 text-sm font-semibold whitespace-nowrap bg-white px-1">
               H: {convertToDisplayUnit(dimensions.height).toFixed(2)} {measurementUnit}
             </div>
           </Html>
@@ -154,42 +154,42 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.max.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={2}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Line
             points={[
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={1}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Line
             points={[
               [dimensions.max.x, dimensions.min.y, dimensions.max.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.max.z]
             ]}
-            color="#22c55e"
+            color="#6b7280"
             lineWidth={1}
             dashed
-            dashScale={50}
-            dashSize={10}
-            gapSize={5}
+            dashScale={1}
+            dashSize={3}
+            gapSize={2}
           />
           <Html
             position={[dimensions.max.x + offset + 20, dimensions.min.y, dimensions.center.z]}
             center
           >
-            <div className="text-green-500 text-xs font-medium whitespace-nowrap">
+            <div className="text-gray-800 text-sm font-semibold whitespace-nowrap bg-white px-1">
               D: {convertToDisplayUnit(dimensions.depth).toFixed(2)} {measurementUnit}
             </div>
           </Html>
