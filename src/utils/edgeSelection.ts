@@ -6,8 +6,6 @@ export interface EdgeInfo {
   midpoint: THREE.Vector3;
   length: number;
   shapeId: string;
-  vertexIndex1?: number;
-  vertexIndex2?: number;
 }
 
 export function detectEdgeFromIntersection(
@@ -43,7 +41,7 @@ export function detectEdgeFromIntersection(
     vertices.push(vertex);
   }
 
-  const processEdge = (v1: THREE.Vector3, v2: THREE.Vector3, idx1: number, idx2: number) => {
+  const processEdge = (v1: THREE.Vector3, v2: THREE.Vector3) => {
     const edgeVector = new THREE.Vector3().subVectors(v2, v1);
     const edgeLength = edgeVector.length();
 
@@ -66,9 +64,7 @@ export function detectEdgeFromIntersection(
           end: v2.clone(),
           midpoint: new THREE.Vector3().lerpVectors(v1, v2, 0.5),
           length: edgeLength,
-          shapeId,
-          vertexIndex1: idx1,
-          vertexIndex2: idx2
+          shapeId
         };
       }
     }
@@ -80,16 +76,16 @@ export function detectEdgeFromIntersection(
       const b = index.getX(i + 1);
       const c = index.getX(i + 2);
 
-      processEdge(vertices[a], vertices[b], a, b);
-      processEdge(vertices[b], vertices[c], b, c);
-      processEdge(vertices[c], vertices[a], c, a);
+      processEdge(vertices[a], vertices[b]);
+      processEdge(vertices[b], vertices[c]);
+      processEdge(vertices[c], vertices[a]);
     }
   } else {
     for (let i = 0; i < vertices.length; i += 3) {
       if (i + 2 < vertices.length) {
-        processEdge(vertices[i], vertices[i + 1], i, i + 1);
-        processEdge(vertices[i + 1], vertices[i + 2], i + 1, i + 2);
-        processEdge(vertices[i + 2], vertices[i], i + 2, i);
+        processEdge(vertices[i], vertices[i + 1]);
+        processEdge(vertices[i + 1], vertices[i + 2]);
+        processEdge(vertices[i + 2], vertices[i]);
       }
     }
   }

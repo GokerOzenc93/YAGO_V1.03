@@ -246,8 +246,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               edge1: newEdges[0],
               edge2: newEdges[1],
               distance: displayDistance,
-              parameterLabel,
-              rowId: activeRulerRowId
+              parameterLabel
             }
           });
           window.dispatchEvent(dimensionLineEvent);
@@ -270,30 +269,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       window.removeEventListener('edgeSelected', handleEdgeSelected as EventListener);
     };
   }, [isRulerMode, activeRulerRowId, convertToDisplayUnit]);
-
-  useEffect(() => {
-    const handleUpdateMeasurementValue = (event: CustomEvent) => {
-      const { rowId, value } = event.detail;
-
-      if (rowId === 'width') {
-        setInputWidth(value);
-      } else if (rowId === 'height') {
-        setInputHeight(value);
-      } else if (rowId === 'depth') {
-        setInputDepth(value);
-      } else {
-        setCustomParameters(params => params.map(p =>
-          p.id === rowId ? { ...p, value } : p
-        ));
-      }
-    };
-
-    window.addEventListener('updateMeasurementValue', handleUpdateMeasurementValue as EventListener);
-
-    return () => {
-      window.removeEventListener('updateMeasurementValue', handleUpdateMeasurementValue as EventListener);
-    };
-  }, []);
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
