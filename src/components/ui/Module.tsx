@@ -243,8 +243,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditWidth && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                  W
+                  1
                 </div>
+
+                <input
+                  type="text"
+                  value="W"
+                  readOnly
+                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
 
                 <input
                   type="text"
@@ -287,8 +294,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditHeight && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                  H
+                  2
                 </div>
+
+                <input
+                  type="text"
+                  value="H"
+                  readOnly
+                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
 
                 <input
                   type="text"
@@ -331,8 +345,15 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {canEditDepth && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                  D
+                  3
                 </div>
+
+                <input
+                  type="text"
+                  value="D"
+                  readOnly
+                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
 
                 <input
                   type="text"
@@ -378,7 +399,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
               >
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
-                  {index + 1}
+                  {index + 4}
                 </div>
 
                 <input
