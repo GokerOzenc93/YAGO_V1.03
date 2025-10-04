@@ -219,7 +219,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         </div>
       </div>
 
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 p-4 space-y-2">
 
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="flex items-center justify-between h-10">
@@ -246,10 +246,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         </div>
 
         <div className="bg-white rounded-md border border-stone-200 p-2">
-          <div className="mb-2">
-            <h4 className="text-xs font-medium text-slate-800">Parameters</h4>
-          </div>
-
           <div className="space-y-2">
             {canEditWidth && (
               <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
