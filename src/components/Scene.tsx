@@ -79,69 +79,97 @@ const CameraController: React.FC<CameraControllerProps> = ({
   // Store previous pan amount for smooth transitions
   const previousPanRef = useRef<number>(0);
 
+  // Calculate world units from pixel offset
+  const calculateWorldOffset = (pixelWidth: number) => {
+    if (!camera) return 0;
+
+    // Get camera distance from target
+    const distance = camera.position.distanceTo(controlsRef.current?.target || new THREE.Vector3());
+
+    // Calculate visible width at target distance
+    let visibleWidth: number;
+    if (cameraType === CameraType.PERSPECTIVE) {
+      const fov = (camera as THREE.PerspectiveCamera).fov;
+      const aspect = window.innerWidth / window.innerHeight;
+      visibleWidth = 2 * Math.tan((fov * Math.PI) / 360) * distance * aspect;
+    } else {
+      // Orthographic camera
+      const orthoCamera = camera as THREE.OrthographicCamera;
+      visibleWidth = orthoCamera.right - orthoCamera.left;
+    }
+
+    // Convert pixel width to world units
+    const pixelToWorld = visibleWidth / window.innerWidth;
+    return (pixelWidth / 2) * pixelToWorld; // Divide by 2 for half panel width offset
+  };
+
   // Edit mode camera pan effect
   useEffect(() => {
-    if (!controlsRef.current) return;
+    if (!controlsRef.current || !camera) return;
 
     const controls = controlsRef.current;
-    const worldToScreenScale = 0.001; // Convert pixels to world units
-    const panAmount = isEditMode ? (editModeWidth / 2) * worldToScreenScale : 0;
+    const panAmount = isEditMode ? calculateWorldOffset(editModeWidth) : 0;
 
     // Calculate delta from previous pan
     const panDelta = panAmount - previousPanRef.current;
 
-    // Get current target and pan it by the delta
+    // Get current target and pan it to the right
     const currentTarget = controls.target.clone();
-    const newTarget = new THREE.Vector3(
-      currentTarget.x + panDelta,
-      currentTarget.y,
-      currentTarget.z
-    );
+    const cameraRight = new THREE.Vector3();
+    camera.getWorldDirection(cameraRight);
+    cameraRight.cross(camera.up).normalize();
 
-    // Smoothly animate to new target
-    controls.target.copy(newTarget);
+    // Apply pan delta
+    currentTarget.add(cameraRight.multiplyScalar(panDelta));
+
+    // Update target and camera position together
+    const cameraOffset = camera.position.clone().sub(controls.target);
+    controls.target.copy(currentTarget);
+    camera.position.copy(currentTarget).add(cameraOffset);
     controls.update();
 
     // Store current pan amount for next update
     previousPanRef.current = panAmount;
 
-    console.log(`🎯 Camera panned: delta=${panDelta.toFixed(3)}, total=${panAmount.toFixed(3)}`);
-  }, [isEditMode, editModeWidth]);
+    console.log(`🎯 Camera panned: delta=${panDelta.toFixed(3)}, panAmount=${panAmount.toFixed(3)}, editModeWidth=${editModeWidth}`);
+  }, [isEditMode, editModeWidth, camera, cameraType]);
 
   // Listen for dynamic panel resize events
   useEffect(() => {
     const handlePanelResize = (event: any) => {
-      if (!controlsRef.current || !isEditMode) return;
+      if (!controlsRef.current || !camera || !isEditMode) return;
 
       const controls = controlsRef.current;
       const newWidth = event.detail.width;
-      const worldToScreenScale = 0.001;
-      const panAmount = (newWidth / 2) * worldToScreenScale;
+      const panAmount = calculateWorldOffset(newWidth);
 
       // Calculate delta from previous pan
       const panDelta = panAmount - previousPanRef.current;
 
-      // Get current target and pan it by the delta
+      // Get current target and pan it to the right
       const currentTarget = controls.target.clone();
-      const newTarget = new THREE.Vector3(
-        currentTarget.x + panDelta,
-        currentTarget.y,
-        currentTarget.z
-      );
+      const cameraRight = new THREE.Vector3();
+      camera.getWorldDirection(cameraRight);
+      cameraRight.cross(camera.up).normalize();
 
-      // Update target
-      controls.target.copy(newTarget);
+      // Apply pan delta
+      currentTarget.add(cameraRight.multiplyScalar(panDelta));
+
+      // Update target and camera position together
+      const cameraOffset = camera.position.clone().sub(controls.target);
+      controls.target.copy(currentTarget);
+      camera.position.copy(currentTarget).add(cameraOffset);
       controls.update();
 
       // Store current pan amount
       previousPanRef.current = panAmount;
 
-      console.log(`🎯 Dynamic resize: width=${newWidth}px, delta=${panDelta.toFixed(3)}`);
+      console.log(`🎯 Dynamic resize: width=${newWidth}px, delta=${panDelta.toFixed(3)}, panAmount=${panAmount.toFixed(3)}`);
     };
 
     window.addEventListener('editModePanelResize', handlePanelResize);
     return () => window.removeEventListener('editModePanelResize', handlePanelResize);
-  }, [isEditMode]);
+  }, [isEditMode, camera, cameraType]);
 
   // Handle zoom fit events
   useEffect(() => {
