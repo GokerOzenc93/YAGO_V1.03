@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Pin, PinOff, CreditCard as Edit3, Save } from 'lucide-react';
+import { X, Pin, PinOff, CreditCard as Edit3, Save, ChevronLeft } from 'lucide-react';
 
 interface EditModeHeaderProps {
   volumeName: string;
@@ -103,9 +103,9 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
             <button
               onClick={onCollapse}
               className="text-stone-600 hover:text-orange-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-orange-50 flex-shrink-0"
-              title="Arayüzü Küçült"
+              title="Paneli Sola Gizle"
             >
-              <X size={11} />
+              <ChevronLeft size={11} />
             </button>
           )}
 
