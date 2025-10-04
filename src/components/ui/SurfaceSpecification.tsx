@@ -222,24 +222,13 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
           <button
             onClick={handleSelectSurface}
             disabled={isSelectionActive}
-            className={`p-1.5 rounded-sm transition-colors ${
-              isSelectionActive
-                ? 'bg-orange-200 text-orange-800 cursor-not-allowed'
-                : 'hover:bg-orange-100 text-orange-600'
+            className={`p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors ${
+              isSelectionActive ? 'opacity-50 cursor-not-allowed' : ''
             }`}
             title="Add Surface"
           >
             <Plus size={14} />
           </button>
-          {isSelectionActive && (
-            <button
-              onClick={handleExitSelection}
-              className="p-1.5 hover:bg-red-100 text-red-600 rounded-sm transition-colors"
-              title="Exit Surface Selection"
-            >
-              <X size={14} />
-            </button>
-          )}
         </div>
       </div>
 
