@@ -56,7 +56,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.min.x, dimensions.min.y - offset, dimensions.min.z],
               [dimensions.max.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={2}
           />
           <Line
@@ -64,7 +64,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.min.x, dimensions.min.y, dimensions.min.z],
               [dimensions.min.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={1}
           />
           <Line
@@ -72,14 +72,14 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x, dimensions.min.y - offset, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={1}
           />
           <Html
             position={[dimensions.center.x, dimensions.min.y - offset - 20, dimensions.min.z]}
             center
           >
-            <div className="bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+            <div className="text-green-500 text-xs font-medium whitespace-nowrap">
               W: {convertToDisplayUnit(dimensions.width).toFixed(2)} {measurementUnit}
             </div>
           </Html>
@@ -93,7 +93,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.max.y, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={2}
           />
           <Line
@@ -101,7 +101,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={1}
           />
           <Line
@@ -109,14 +109,14 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.max.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.max.y, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={1}
           />
           <Html
             position={[dimensions.max.x + offset + 20, dimensions.center.y, dimensions.min.z]}
             center
           >
-            <div className="bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+            <div className="text-green-500 text-xs font-medium whitespace-nowrap">
               H: {convertToDisplayUnit(dimensions.height).toFixed(2)} {measurementUnit}
             </div>
           </Html>
@@ -130,7 +130,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.max.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={2}
           />
           <Line
@@ -138,7 +138,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.min.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.min.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={1}
           />
           <Line
@@ -146,14 +146,14 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
               [dimensions.max.x, dimensions.min.y, dimensions.max.z],
               [dimensions.max.x + offset, dimensions.min.y, dimensions.max.z]
             ]}
-            color="orange"
+            color="#22c55e"
             lineWidth={1}
           />
           <Html
             position={[dimensions.max.x + offset + 20, dimensions.min.y, dimensions.center.z]}
             center
           >
-            <div className="bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+            <div className="text-green-500 text-xs font-medium whitespace-nowrap">
               D: {convertToDisplayUnit(dimensions.depth).toFixed(2)} {measurementUnit}
             </div>
           </Html>
