@@ -241,6 +241,9 @@ const Scene: React.FC = () => {
         }
         // Clear measurement line
         setMeasurementLineData(null);
+        // Clear edge highlights
+        const clearHighlightsEvent = new CustomEvent('clearEdgeHighlights');
+        window.dispatchEvent(clearHighlightsEvent);
       }
     };
     window.addEventListener('keydown', handleKeyDown);

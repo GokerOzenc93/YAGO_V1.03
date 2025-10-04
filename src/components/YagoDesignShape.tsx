@@ -353,12 +353,40 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log(`📏 Edge selection activated for row ${rowId}`);
     };
 
+    const handleClearEdgeHighlights = () => {
+      const objectsToRemove: THREE.Object3D[] = [];
+      scene.traverse((object) => {
+        if (object.userData?.isEdgeHighlight) {
+          objectsToRemove.push(object);
+        }
+      });
+
+      objectsToRemove.forEach(object => {
+        scene.remove(object);
+        if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(mat => mat.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+        }
+      });
+
+      setIsEdgeSelectionActive(false);
+      setActiveEdgeRowId(null);
+      console.log('📏 Edge highlights cleared');
+    };
+
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     window.addEventListener('createSurfaceHighlight', handleCreateSurfaceHighlight as EventListener);
     window.addEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
     window.addEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
     window.addEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
     window.addEventListener('activateEdgeSelection', handleActivateEdgeSelection as EventListener);
+    window.addEventListener('clearEdgeHighlights', handleClearEdgeHighlights as EventListener);
 
     return () => {
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
@@ -367,6 +395,7 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
       window.removeEventListener('activateEdgeSelection', handleActivateEdgeSelection as EventListener);
+      window.removeEventListener('clearEdgeHighlights', handleClearEdgeHighlights as EventListener);
     };
   }, [scene, camera, gl.domElement, shape]);
 
@@ -393,6 +422,7 @@ const YagoDesignShape: React.FC<Props> = ({
       e.stopPropagation();
 
       const raycaster = new THREE.Raycaster();
+      raycaster.params.Line = { threshold: 10 };
       const mouse = new THREE.Vector2();
 
       const rect = gl.domElement.getBoundingClientRect();
@@ -406,6 +436,38 @@ const YagoDesignShape: React.FC<Props> = ({
         const edgeInfo = detectEdgeFromIntersection(intersects[0], shape.id);
 
         if (edgeInfo) {
+          const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+            edgeInfo.start,
+            edgeInfo.end
+          ]);
+          const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0x3b82f6,
+            linewidth: 3,
+            depthTest: false
+          });
+          const line = new THREE.Line(lineGeometry, lineMaterial);
+          line.userData.isEdgeHighlight = true;
+          line.renderOrder = 999;
+          scene.add(line);
+
+          const sphereGeometry = new THREE.SphereGeometry(5, 16, 16);
+          const sphereMaterial = new THREE.MeshBasicMaterial({
+            color: 0x3b82f6,
+            depthTest: false
+          });
+
+          const startSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          startSphere.position.copy(edgeInfo.start);
+          startSphere.userData.isEdgeHighlight = true;
+          startSphere.renderOrder = 999;
+          scene.add(startSphere);
+
+          const endSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          endSphere.position.copy(edgeInfo.end);
+          endSphere.userData.isEdgeHighlight = true;
+          endSphere.renderOrder = 999;
+          scene.add(endSphere);
+
           const edgeSelectedEvent = new CustomEvent('edgeSelected', {
             detail: { edgeInfo }
           });

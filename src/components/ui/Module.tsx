@@ -243,6 +243,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           });
           window.dispatchEvent(dimensionLineEvent);
 
+          const clearHighlightsEvent = new CustomEvent('clearEdgeHighlights');
+          window.dispatchEvent(clearHighlightsEvent);
+
           setIsRulerMode(false);
           setActiveRulerRowId(null);
           return [];

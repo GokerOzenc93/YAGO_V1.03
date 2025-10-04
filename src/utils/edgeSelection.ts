@@ -26,7 +26,7 @@ export function detectEdgeFromIntersection(
 
   let closestEdge: EdgeInfo | null = null;
   let minDistance = Infinity;
-  const threshold = 5;
+  const threshold = 20;
 
   const index = geometry.index;
   const vertices: THREE.Vector3[] = [];
