@@ -1,12 +1,12 @@
 import React from 'react';
 import { useEffect } from 'react';
-import Layout from './ui/Layout';
+import Layout from './components/Layout';
 import Scene from './components/Scene';
-import Toolbar from './ui/Toolbar';
-import StatusBar from './ui/StatusBar';
-import Terminal from './ui/Terminal';
-import { GeometryFactory } from './core/geometryFactory';
-import { useAppStore } from './core/appStore';
+import Toolbar from './components/Toolbar';
+import StatusBar from './components/StatusBar';
+import Terminal from './components/Terminal';
+import { GeometryFactory } from './lib/geometryFactory';
+import { useAppStore } from './store/appStore';
 
 function App() {
   const { setYagoDesignInitialized, setGeometryMode } = useAppStore();

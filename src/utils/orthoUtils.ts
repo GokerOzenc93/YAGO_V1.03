@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrthoMode } from './appStore';
+import { OrthoMode } from '../store/appStore';
 
 /**
  * Ortho mode constraint function - hareket vektörünü dominant eksene kısıtlar

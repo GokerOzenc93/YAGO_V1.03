@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppStore } from './appStore';
+import { useAppStore } from '../store/appStore';
 
 export const useOcWorker = () => {
   const { setInitialized } = useAppStore();

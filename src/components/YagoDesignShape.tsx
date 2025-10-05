@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
-import { useAppStore } from '../core/appStore';
+import { useAppStore } from '../store/appStore';
 import { TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Shape } from '../core/shapes';
-import { SHAPE_COLORS } from '../core/shapes';
-import { ViewMode, OrthoMode } from '../core/appStore';
-import { applyOrthoConstraint } from '../core/orthoUtils';
+import { Shape } from '../types/shapes';
+import { SHAPE_COLORS } from '../types/shapes';
+import { ViewMode, OrthoMode } from '../store/appStore';
+import { applyOrthoConstraint } from '../utils/orthoUtils';
 import {
   detectFaceAtMouse,
   addFaceHighlight,
@@ -14,7 +14,7 @@ import {
   removeFaceHighlightByRowIndex,
   clearTemporaryHighlights,
   clearAllPersistentHighlights
-} from '../core/faceSelection';
+} from '../utils/faceSelection';
 
 // New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();

@@ -1,15 +1,15 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
-import { useAppStore, Tool, CameraType, SnapType, OrthoMode } from '../core/appStore';
+import { useAppStore, Tool, CameraType, SnapType, OrthoMode } from '../../store/appStore';
 import * as THREE from 'three';
 import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { snapToGrid } from './utils';
-import { findSnapPoints, SnapPointIndicators } from './snapSystem';
+import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { DimensionsManager } from './dimensionsSystem';
-import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from '../core/orthoUtils';
+import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from '../../utils/orthoUtils';
 import { CompletedShapesRenderer } from './CompletedShapesRenderer';
 import { createKeyboardHandler } from './keyboardHandlers';
 

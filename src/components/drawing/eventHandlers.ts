@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { CompletedShape, DrawingState } from './types';
-import { Tool } from '../core/appStore';
+import { Tool } from '../../store/appStore';
 import { createRectanglePoints, createCirclePoints, calculateDimensions, snapToGrid } from './utils';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
-import { Shape } from '../core/shapes';
+import { Shape } from '../../types/shapes';
 
 interface EventHandlerProps {
   activeTool: Tool;

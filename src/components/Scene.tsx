@@ -10,15 +10,15 @@ import {
   PerspectiveCamera,
   OrthographicCamera,
 } from '@react-three/drei';
-import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../core/appStore';
+import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
-import DrawingPlane from './DrawingPlane';
-import ContextMenu from '../ui/ContextMenu';
-import EditMode from '../ui/EditMode';
-import { DimensionsManager } from './dimensionsSystem';
+import DrawingPlane from './drawing/DrawingPlane';
+import ContextMenu from './ContextMenu';
+import EditMode from './ui/EditMode';
+import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
-import { fitCameraToShapes, fitCameraToShape } from '../core/cameraUtils';
-import { clearFaceHighlight } from '../core/faceSelection';
+import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
+import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
 const CameraPositionUpdater = () => {

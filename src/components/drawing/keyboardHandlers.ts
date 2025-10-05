@@ -1,4 +1,4 @@
-import { Tool } from '../core/appStore';
+import { Tool } from '../../store/appStore';
 import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { convertTo3DShape } from './shapeConverter';
 
