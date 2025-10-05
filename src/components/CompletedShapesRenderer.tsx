@@ -1,6 +1,6 @@
 import React from 'react';
 import * as THREE from 'three';
-import { Tool } from '../../core/appStore';
+import { Tool } from '../core/appStore';
 import { CompletedShape } from './types';
 import { convertTo3DShape } from './shapeConverter';
 

@@ -12,10 +12,10 @@ import {
 } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../core/appStore';
 import YagoDesignShape from './YagoDesignShape';
-import DrawingPlane from './drawing/DrawingPlane';
-import ContextMenu from './ContextMenu';
-import EditMode from './EditMode';
-import { DimensionsManager } from './drawing/dimensionsSystem';
+import DrawingPlane from './DrawingPlane';
+import ContextMenu from '../ui/ContextMenu';
+import EditMode from '../ui/EditMode';
+import { DimensionsManager } from './dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
 import { fitCameraToShapes, fitCameraToShape } from '../core/cameraUtils';
 import { clearFaceHighlight } from '../core/faceSelection';

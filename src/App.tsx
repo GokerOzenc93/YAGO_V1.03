@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect } from 'react';
 import Layout from './ui/Layout';
-import Scene from './ui/Scene';
+import Scene from './components/Scene';
 import Toolbar from './ui/Toolbar';
 import StatusBar from './ui/StatusBar';
 import Terminal from './ui/Terminal';
