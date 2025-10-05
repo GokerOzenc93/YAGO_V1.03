@@ -938,9 +938,10 @@ const focusTerminalForMeasurement = () => {
                 quaternion={quaternion}
                 onPointerOver={() => setHoveredShapeId(shape.id)}
                 onPointerOut={() => setHoveredShapeId(null)}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  setHoveredShapeId(shape.id);
+                  await convertTo3DShape(shape, addShape, selectShape, gridSize);
+                  setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
                 }}
               >
                 <cylinderGeometry args={[gridSize * 0.5, gridSize * 0.5, length, 8]} />
