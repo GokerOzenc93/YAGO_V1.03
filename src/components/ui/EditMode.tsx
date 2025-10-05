@@ -567,6 +567,7 @@ const EditMode: React.FC<EditModeProps> = ({
                     className="w-full h-10 px-3 bg-white rounded-md border border-stone-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 group"
                   >
                     <div className="flex items-center gap-2">
+                      <Ruler size={11} className="text-orange-600" />
                       <div className="flex-1 text-left">
                         <h4 className="text-xs font-medium text-slate-800">Volume Parameters</h4>
                       </div>
