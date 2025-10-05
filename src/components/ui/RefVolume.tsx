@@ -26,7 +26,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setIsRulerMode,
     selectedLines,
     addSelectedLine,
-    removeSelectedLine
+    removeSelectedLine,
+    updateSelectedLineValue,
+    shapes
   } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
@@ -63,6 +65,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [editingLineValue, setEditingLineValue] = useState<string>('');
 
   useEffect(() => {
     setVisibleDimensions(selectedDimensions);
@@ -193,6 +197,72 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const handleRemoveParameter = (id: string) => {
     setCustomParameters(prev => prev.filter(param => param.id !== id));
+  };
+
+  const handleLineValueChange = (lineId: string, newValueStr: string) => {
+    const newValue = parseFloat(newValueStr);
+    if (isNaN(newValue) || newValue <= 0) return;
+
+    const line = selectedLines.find(l => l.id === lineId);
+    if (!line) return;
+
+    const shape = shapes.find(s => s.id === line.shapeId);
+    if (!shape || !shape.geometry) return;
+
+    const oldLength = Math.sqrt(
+      Math.pow(line.endVertex[0] - line.startVertex[0], 2) +
+      Math.pow(line.endVertex[1] - line.startVertex[1], 2) +
+      Math.pow(line.endVertex[2] - line.startVertex[2], 2)
+    );
+
+    const newLengthInBase = convertToBaseUnit(newValue);
+    const scaleFactor = newLengthInBase / oldLength;
+
+    const direction = new THREE.Vector3(
+      line.endVertex[0] - line.startVertex[0],
+      line.endVertex[1] - line.startVertex[1],
+      line.endVertex[2] - line.startVertex[2]
+    ).normalize();
+
+    const newEndVertex = new THREE.Vector3(
+      line.startVertex[0] + direction.x * newLengthInBase,
+      line.startVertex[1] + direction.y * newLengthInBase,
+      line.startVertex[2] + direction.z * newLengthInBase
+    );
+
+    const positionAttr = shape.geometry.attributes.position;
+    const positions = positionAttr.array;
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const vx = positions[i];
+      const vy = positions[i + 1];
+      const vz = positions[i + 2];
+
+      const distToEnd = Math.sqrt(
+        Math.pow(vx - line.endVertex[0], 2) +
+        Math.pow(vy - line.endVertex[1], 2) +
+        Math.pow(vz - line.endVertex[2], 2)
+      );
+
+      if (distToEnd < 0.001) {
+        positions[i] = newEndVertex.x;
+        positions[i + 1] = newEndVertex.y;
+        positions[i + 2] = newEndVertex.z;
+      }
+    }
+
+    positionAttr.needsUpdate = true;
+    shape.geometry.computeBoundingBox();
+    shape.geometry.computeVertexNormals();
+
+    updateShape(shape.id, {
+      geometry: shape.geometry
+    });
+
+    updateSelectedLineValue(lineId, newValue);
+
+    setEditingLineId(null);
+    setEditingLineValue('');
   };
 
   const handleClearAllParameters = () => {
@@ -643,10 +713,41 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                     <input
                       type="text"
-                      value={line.value.toFixed(2)}
-                      readOnly
-                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                      value={editingLineId === line.id ? editingLineValue : line.value.toFixed(2)}
+                      onChange={(e) => {
+                        if (editingLineId === line.id) {
+                          setEditingLineValue(e.target.value);
+                        }
+                      }}
+                      onFocus={() => {
+                        setEditingLineId(line.id);
+                        setEditingLineValue(line.value.toFixed(2));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && editingLineId === line.id) {
+                          handleLineValueChange(line.id, editingLineValue);
+                        } else if (e.key === 'Escape') {
+                          setEditingLineId(null);
+                          setEditingLineValue('');
+                        }
+                      }}
+                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
                     />
+
+                    {editingLineId === line.id && (
+                      <button
+                        onClick={() => handleLineValueChange(line.id, editingLineValue)}
+                        disabled={!editingLineValue.trim()}
+                        className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                          editingLineValue.trim()
+                            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                        title="Apply Line Change"
+                      >
+                        <Check size={11} />
+                      </button>
+                    )}
 
                     <button
                       onClick={() => removeSelectedLine(line.id)}

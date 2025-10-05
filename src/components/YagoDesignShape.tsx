@@ -485,6 +485,10 @@ const YagoDesignShape: React.FC<Props> = ({
       id: `${shape.id}-edge-${hoveredEdge}-${Date.now()}`,
       value: displayLength,
       label: `Edge ${hoveredEdge + 1} (${shape.type})`,
+      shapeId: shape.id,
+      edgeIndex: hoveredEdge,
+      startVertex: segment.start.toArray() as [number, number, number],
+      endVertex: segment.end.toArray() as [number, number, number]
     });
 
     console.log(`✅ Line selected: ${displayLength.toFixed(2)} units`);

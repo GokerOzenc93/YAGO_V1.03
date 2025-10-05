@@ -282,8 +282,9 @@ interface AppState {
   // Ruler mode
   isRulerMode: boolean;
   setIsRulerMode: (enabled: boolean) => void;
-  selectedLines: Array<{ id: string; value: number; label: string }>;
-  addSelectedLine: (line: { id: string; value: number; label: string }) => void;
+  selectedLines: Array<{ id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number] }>;
+  addSelectedLine: (line: { id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number] }) => void;
+  updateSelectedLineValue: (id: string, newValue: number) => void;
   removeSelectedLine: (id: string) => void;
   clearSelectedLines: () => void;
   history: {
@@ -430,6 +431,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     selectedLines: state.selectedLines.filter(l => l.id !== id)
   })),
   clearSelectedLines: () => set({ selectedLines: [] }),
+  updateSelectedLineValue: (id, newValue) => set((state) => ({
+    selectedLines: state.selectedLines.map(l =>
+      l.id === id ? { ...l, value: newValue } : l
+    )
+  })),
   
   // Snap settings - all enabled by default
   snapSettings: {
