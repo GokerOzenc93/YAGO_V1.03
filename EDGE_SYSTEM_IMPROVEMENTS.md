@@ -5,6 +5,24 @@ This document outlines the improvements made to the edge dynamic update system t
 
 ## Problems Solved
 
+### 0. State Synchronization Race Condition ✅ **[CRITICAL FIX]**
+**Problem:** Edge formulas were "one step behind" - updates only took effect on the next formula change.
+
+**Root Cause:** Two separate `useEffect` hooks created a race condition where variable updates and calculations happened asynchronously without guaranteed order.
+
+**Solution:**
+- Created `syncFormulaVariables()` function to synchronously update all variables
+- Call `syncFormulaVariables()` BEFORE every calculation
+- Single `useEffect` that syncs then calculates
+- Added `clearVariables()` to prevent ghost variables
+- Used `requestAnimationFrame()` for post-state-update calculations
+
+**Result:** Formulas now react immediately with correct values!
+
+See [SYNC_FIX.md](./SYNC_FIX.md) for detailed explanation.
+
+---
+
 ### 1. Batch Update System ✅
 **Problem:** Geometry updates were applied immediately, causing cascading issues when multiple edges needed updates.
 

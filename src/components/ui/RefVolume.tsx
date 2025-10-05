@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
@@ -80,8 +80,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  useEffect(() => {
+  const syncFormulaVariables = useCallback(() => {
     const evaluator = formulaEvaluatorRef.current;
+
+    evaluator.clearVariables();
 
     evaluator.setVariable('W', convertToDisplayUnit(currentWidth));
     evaluator.setVariable('H', convertToDisplayUnit(currentHeight));
@@ -98,11 +100,14 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         evaluator.setVariable(line.label, line.value);
       }
     });
+
+    console.log('🔄 Formula variables synced:', evaluator.getAllVariables().map(v => `${v.name}=${v.value}`).join(', '));
   }, [currentWidth, currentHeight, currentDepth, customParameters, selectedLines, convertToDisplayUnit]);
 
   useEffect(() => {
+    syncFormulaVariables();
     recalculateAllParameters();
-  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
+  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), syncFormulaVariables]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -135,7 +140,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     return formulaEvaluatorRef.current.evaluateOrNull(expression, debugLabel);
   };
 
-  const recalculateAllParameters = () => {
+  const recalculateAllParameters = useCallback(() => {
+    syncFormulaVariables();
+
     const updatedParams = customParameters.map(param => {
       if (!param.value.trim()) return param;
       const evaluated = evaluateExpression(param.value, `param-${param.description}`);
@@ -364,7 +371,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     } else if (iteration > 1) {
       console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
     }
-  };
+  }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables]);
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
     const evaluated = evaluateExpression(value);
@@ -416,7 +423,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    const evaluated = evaluateExpression(param.value);
+    syncFormulaVariables();
+
+    const evaluated = evaluateExpression(param.value, `param-${param.description}`);
     if (evaluated === null || isNaN(evaluated)) {
       alert('Invalid formula');
       return;
@@ -425,14 +434,29 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setCustomParameters(prev => prev.map(p =>
       p.id === id ? { ...p, result: evaluated.toFixed(2) } : p
     ));
+
+    requestAnimationFrame(() => {
+      syncFormulaVariables();
+      recalculateAllParameters();
+    });
   };
 
   const handleEdgeApply = (lineId: string, formula: string) => {
-    const evaluated = evaluateExpression(formula);
-    if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
+    syncFormulaVariables();
+
+    const evaluated = evaluateExpression(formula, `edge-${lineId}`);
+    if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
+      console.warn(`⚠️ Invalid formula for edge ${lineId}: ${formula}`);
+      return;
+    }
 
     updateSelectedLineFormula(lineId, formula);
-    setTimeout(() => recalculateAllParameters(), 0);
+
+    requestAnimationFrame(() => {
+      syncFormulaVariables();
+      recalculateAllParameters();
+    });
+
     setEditingLineId(null);
     setEditingLineValue('');
   };
