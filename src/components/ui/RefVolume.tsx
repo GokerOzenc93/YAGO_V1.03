@@ -1089,7 +1089,13 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                     <input
                       type="text"
-                      value={line.value.toFixed(2)}
+                      value={(() => {
+                        if (line.formula && line.formula.trim()) {
+                          const evaluated = evaluateExpression(line.formula);
+                          return evaluated !== null && !isNaN(evaluated) ? evaluated.toFixed(2) : line.value.toFixed(2);
+                        }
+                        return line.value.toFixed(2);
+                      })()}
                       readOnly
                       className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
                       placeholder="Result"
