@@ -198,44 +198,29 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               line.endVertex[1] - line.startVertex[1],
               line.endVertex[2] - line.startVertex[2]
             );
-            const edgeDirection = edgeVector.normalize();
 
-            const currentLength = convertToDisplayUnit(new THREE.Vector3(...line.startVertex).distanceTo(new THREE.Vector3(...line.endVertex)));
-            const lengthDiff = convertToBaseUnit(newDisplayValue - currentLength);
+            let newWidth = shape.parameters.width || 0;
+            let newHeight = shape.parameters.height || 0;
+            let newDepth = shape.parameters.depth || 0;
 
-            const newMovingVertex = new THREE.Vector3(...line.endVertex).add(edgeDirection.multiplyScalar(lengthDiff));
+            if (Math.abs(edgeVector.x) > 0.1) {
+              newWidth = convertToBaseUnit(newDisplayValue);
+            } else if (Math.abs(edgeVector.y) > 0.1) {
+              newHeight = convertToBaseUnit(newDisplayValue);
+            } else if (Math.abs(edgeVector.z) > 0.1) {
+              newDepth = convertToBaseUnit(newDisplayValue);
+            }
 
-            const newWidth = Math.abs(line.endVertex[0] - line.startVertex[0]) > 0.1
-              ? convertToDisplayUnit(Math.abs(newMovingVertex.x - line.startVertex[0]))
-              : convertToDisplayUnit(shape.parameters.width || 0);
-
-            const newHeight = Math.abs(line.endVertex[1] - line.startVertex[1]) > 0.1
-              ? convertToDisplayUnit(Math.abs(newMovingVertex.y - line.startVertex[1]))
-              : convertToDisplayUnit(shape.parameters.height || 0);
-
-            const newDepth = Math.abs(line.endVertex[2] - line.startVertex[2]) > 0.1
-              ? convertToDisplayUnit(Math.abs(newMovingVertex.z - line.startVertex[2]))
-              : convertToDisplayUnit(shape.parameters.depth || 0);
-
-            const newGeometry = new THREE.BoxGeometry(
-              convertToBaseUnit(newWidth),
-              convertToBaseUnit(newHeight),
-              convertToBaseUnit(newDepth)
-            );
-
-            newGeometry.translate(
-              convertToBaseUnit(newWidth) / 2,
-              convertToBaseUnit(newHeight) / 2,
-              convertToBaseUnit(newDepth) / 2
-            );
+            const newGeometry = new THREE.BoxGeometry(newWidth, newHeight, newDepth);
+            newGeometry.translate(newWidth / 2, newHeight / 2, newDepth / 2);
 
             updateShape(line.shapeId, {
               geometry: newGeometry,
               parameters: {
                 ...shape.parameters,
-                width: convertToBaseUnit(newWidth),
-                height: convertToBaseUnit(newHeight),
-                depth: convertToBaseUnit(newDepth)
+                width: newWidth,
+                height: newHeight,
+                depth: newDepth
               }
             });
 
