@@ -147,102 +147,180 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       setCustomParameters(updatedParams);
     }
 
-    const vertexMovesByShape = new Map<string, Array<{
-      oldVertex: [number, number, number];
-      newVertex: [number, number, number];
-      lineId: string;
-      newValue: number;
-    }>>();
+    const MAX_ITERATIONS = 10;
+    let iteration = 0;
+    let hasChanges = true;
+    const processedLines = new Set<string>();
 
-    selectedLines.forEach(line => {
-      if (!line.formula?.trim()) return;
+    while (hasChanges && iteration < MAX_ITERATIONS) {
+      hasChanges = false;
+      iteration++;
 
-      const evaluated = evaluateExpression(line.formula);
-      if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
+      const vertexMovesByShape = new Map<string, Array<{
+        oldVertex: [number, number, number];
+        newVertex: [number, number, number];
+        lineId: string;
+        newValue: number;
+      }>>();
 
-      const currentVal = parseFloat(line.value.toFixed(2));
-      const newVal = parseFloat(evaluated.toFixed(2));
+      selectedLines.forEach(line => {
+        if (!line.formula?.trim()) return;
 
-      if (Math.abs(currentVal - newVal) <= 0.01) return;
+        const evaluated = evaluateExpression(line.formula);
+        if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
 
-      const shape = shapes.find(s => s.id === line.shapeId);
-      if (!shape?.geometry) return;
+        const currentVal = parseFloat(line.value.toFixed(2));
+        const newVal = parseFloat(evaluated.toFixed(2));
 
-      const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
-      const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
-      const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
+        if (Math.abs(currentVal - newVal) <= 0.01) return;
 
-      let fixedVertex: [number, number, number], movingVertex: [number, number, number];
+        const shape = shapes.find(s => s.id === line.shapeId);
+        if (!shape?.geometry) return;
 
-      if (dy > dx && dy > dz) {
-        [fixedVertex, movingVertex] = line.startVertex[1] < line.endVertex[1]
-          ? [line.startVertex, line.endVertex]
-          : [line.endVertex, line.startVertex];
-      } else if (dx > dy && dx > dz) {
-        [fixedVertex, movingVertex] = line.startVertex[0] > line.endVertex[0]
-          ? [line.startVertex, line.endVertex]
-          : [line.endVertex, line.startVertex];
-      } else {
-        [fixedVertex, movingVertex] = line.startVertex[2] < line.endVertex[2]
-          ? [line.startVertex, line.endVertex]
-          : [line.endVertex, line.startVertex];
-      }
+        const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
+        const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
+        const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
 
-      const newLength = convertToBaseUnit(newVal);
-      const direction = new THREE.Vector3(
-        movingVertex[0] - fixedVertex[0],
-        movingVertex[1] - fixedVertex[1],
-        movingVertex[2] - fixedVertex[2]
-      ).normalize();
+        let fixedVertex: [number, number, number], movingVertex: [number, number, number];
 
-      const newMovingVertex: [number, number, number] = [
-        fixedVertex[0] + direction.x * newLength,
-        fixedVertex[1] + direction.y * newLength,
-        fixedVertex[2] + direction.z * newLength
-      ];
+        if (dy > dx && dy > dz) {
+          [fixedVertex, movingVertex] = line.startVertex[1] < line.endVertex[1]
+            ? [line.startVertex, line.endVertex]
+            : [line.endVertex, line.startVertex];
+        } else if (dx > dy && dx > dz) {
+          [fixedVertex, movingVertex] = line.startVertex[0] > line.endVertex[0]
+            ? [line.startVertex, line.endVertex]
+            : [line.endVertex, line.startVertex];
+        } else {
+          [fixedVertex, movingVertex] = line.startVertex[2] < line.endVertex[2]
+            ? [line.startVertex, line.endVertex]
+            : [line.endVertex, line.startVertex];
+        }
 
-      if (!vertexMovesByShape.has(line.shapeId)) {
-        vertexMovesByShape.set(line.shapeId, []);
-      }
+        const newLength = convertToBaseUnit(newVal);
+        const direction = new THREE.Vector3(
+          movingVertex[0] - fixedVertex[0],
+          movingVertex[1] - fixedVertex[1],
+          movingVertex[2] - fixedVertex[2]
+        ).normalize();
 
-      vertexMovesByShape.get(line.shapeId)!.push({
-        oldVertex: movingVertex,
-        newVertex: newMovingVertex,
-        lineId: line.id,
-        newValue: newVal
+        const newMovingVertex: [number, number, number] = [
+          fixedVertex[0] + direction.x * newLength,
+          fixedVertex[1] + direction.y * newLength,
+          fixedVertex[2] + direction.z * newLength
+        ];
+
+        if (!vertexMovesByShape.has(line.shapeId)) {
+          vertexMovesByShape.set(line.shapeId, []);
+        }
+
+        vertexMovesByShape.get(line.shapeId)!.push({
+          oldVertex: movingVertex,
+          newVertex: newMovingVertex,
+          lineId: line.id,
+          newValue: newVal
+        });
+
+        hasChanges = true;
+        processedLines.add(line.id);
       });
-    });
 
-    vertexMovesByShape.forEach((moves, shapeId) => {
-      const shape = shapes.find(s => s.id === shapeId);
-      if (!shape?.geometry) return;
+      if (!hasChanges) break;
 
-      const newGeometry = shape.geometry.clone();
-      const positions = newGeometry.attributes.position.array;
+      vertexMovesByShape.forEach((moves, shapeId) => {
+        const shape = shapes.find(s => s.id === shapeId);
+        if (!shape?.geometry) return;
 
-      moves.forEach(move => {
+        const newGeometry = shape.geometry.clone();
+        const positions = newGeometry.attributes.position.array;
+
+        moves.forEach(move => {
+          for (let i = 0; i < positions.length; i += 3) {
+            const dist = Math.sqrt(
+              Math.pow(positions[i] - move.oldVertex[0], 2) +
+              Math.pow(positions[i + 1] - move.oldVertex[1], 2) +
+              Math.pow(positions[i + 2] - move.oldVertex[2], 2)
+            );
+
+            if (dist < 0.01) {
+              positions[i] = move.newVertex[0];
+              positions[i + 1] = move.newVertex[1];
+              positions[i + 2] = move.newVertex[2];
+            }
+          }
+          updateSelectedLineValue(move.lineId, move.newValue);
+          updateSelectedLineVertices(move.lineId, move.newVertex);
+        });
+
+        newGeometry.attributes.position.needsUpdate = true;
+        newGeometry.computeBoundingBox();
+        newGeometry.computeVertexNormals();
+        updateShape(shapeId, { geometry: newGeometry });
+      });
+
+      selectedLines.forEach(line => {
+        if (processedLines.has(line.id)) return;
+
+        const shape = shapes.find(s => s.id === line.shapeId);
+        if (!shape?.geometry) return;
+
+        shape.geometry.computeBoundingBox();
+        const bbox = shape.geometry.boundingBox;
+        if (!bbox) return;
+
+        const positions = shape.geometry.attributes.position.array;
+        let closestStart = null;
+        let closestEnd = null;
+        let minDistStart = Infinity;
+        let minDistEnd = Infinity;
+
         for (let i = 0; i < positions.length; i += 3) {
-          const dist = Math.sqrt(
-            Math.pow(positions[i] - move.oldVertex[0], 2) +
-            Math.pow(positions[i + 1] - move.oldVertex[1], 2) +
-            Math.pow(positions[i + 2] - move.oldVertex[2], 2)
+          const v = [positions[i], positions[i + 1], positions[i + 2]];
+          const distToStart = Math.sqrt(
+            Math.pow(v[0] - line.startVertex[0], 2) +
+            Math.pow(v[1] - line.startVertex[1], 2) +
+            Math.pow(v[2] - line.startVertex[2], 2)
+          );
+          const distToEnd = Math.sqrt(
+            Math.pow(v[0] - line.endVertex[0], 2) +
+            Math.pow(v[1] - line.endVertex[1], 2) +
+            Math.pow(v[2] - line.endVertex[2], 2)
           );
 
-          if (dist < 0.01) {
-            positions[i] = move.newVertex[0];
-            positions[i + 1] = move.newVertex[1];
-            positions[i + 2] = move.newVertex[2];
+          if (distToStart < minDistStart) {
+            minDistStart = distToStart;
+            closestStart = v;
+          }
+          if (distToEnd < minDistEnd) {
+            minDistEnd = distToEnd;
+            closestEnd = v;
           }
         }
-        updateSelectedLineValue(move.lineId, move.newValue);
-        updateSelectedLineVertices(move.lineId, move.newVertex);
-      });
 
-      newGeometry.attributes.position.needsUpdate = true;
-      newGeometry.computeBoundingBox();
-      newGeometry.computeVertexNormals();
-      updateShape(shapeId, { geometry: newGeometry });
-    });
+        if (closestStart && closestEnd) {
+          const newLength = Math.sqrt(
+            Math.pow(closestEnd[0] - closestStart[0], 2) +
+            Math.pow(closestEnd[1] - closestStart[1], 2) +
+            Math.pow(closestEnd[2] - closestStart[2], 2)
+          );
+
+          const displayLength = convertToDisplayUnit(newLength);
+          const currentVal = parseFloat(line.value.toFixed(2));
+
+          if (Math.abs(displayLength - currentVal) > 0.01) {
+            updateSelectedLineValue(line.id, displayLength);
+            updateSelectedLineVertices(line.id, closestEnd as [number, number, number]);
+            hasChanges = true;
+          }
+        }
+      });
+    }
+
+    if (iteration >= MAX_ITERATIONS) {
+      console.warn('🔄 Edge recalculation reached maximum iterations - possible circular dependency');
+    } else if (iteration > 1) {
+      console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
+    }
   };
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
