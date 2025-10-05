@@ -623,7 +623,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
         {selectedLines.length > 0 && (
           <div className="bg-white rounded-md border border-stone-200 p-2 mt-2">
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
               {selectedLines.map((line, index) => (
                 <div
                   key={line.id}
