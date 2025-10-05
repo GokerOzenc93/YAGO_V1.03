@@ -413,7 +413,7 @@ const YagoDesignShape: React.FC<Props> = ({
     });
   };
   
-  // Handle edge hover for ruler mode with hybrid 3D + 2D detection
+  // Handle edge hover for ruler mode with 3D raycasting
   const handleEdgePointerMove = (e: any) => {
     if (!isRulerMode || !meshRef.current) {
       if (hoveredEdge !== null) setHoveredEdge(null);
@@ -428,11 +428,8 @@ const YagoDesignShape: React.FC<Props> = ({
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
     let closestEdge: number | null = null;
-    let minScore = Infinity;
+    let minDistance = 2.0;
 
     lineSegments.forEach((segment, idx) => {
       const worldStart = segment.start.clone().applyMatrix4(meshRef.current!.matrixWorld);
@@ -463,31 +460,10 @@ const YagoDesignShape: React.FC<Props> = ({
 
       const closestPointOnRay = rayOrigin.clone().addScaledVector(rayDir, sc);
       const closestPointOnLine = worldStart.clone().addScaledVector(lineDir, tc);
-      const distance3D = closestPointOnRay.distanceTo(closestPointOnLine);
+      const distance = closestPointOnRay.distanceTo(closestPointOnLine);
 
-      const screenStart = worldStart.project(camera);
-      const screenEnd = worldEnd.project(camera);
-
-      const startX = (screenStart.x * 0.5 + 0.5) * rect.width;
-      const startY = (-screenStart.y * 0.5 + 0.5) * rect.height;
-      const endX = (screenEnd.x * 0.5 + 0.5) * rect.width;
-      const endY = (-screenEnd.y * 0.5 + 0.5) * rect.height;
-
-      const dx = endX - startX;
-      const dy = endY - startY;
-      const screenLineLength = Math.sqrt(dx * dx + dy * dy);
-
-      if (screenLineLength < 1) return;
-
-      const t = Math.max(0, Math.min(1, ((mouseX - startX) * dx + (mouseY - startY) * dy) / (screenLineLength * screenLineLength)));
-      const closestX = startX + t * dx;
-      const closestY = startY + t * dy;
-      const distance2D = Math.sqrt(Math.pow(mouseX - closestX, 2) + Math.pow(mouseY - closestY, 2));
-
-      const score = distance3D * 0.3 + distance2D * 0.7;
-
-      if (distance3D < 5.0 && distance2D < 50 && score < minScore) {
-        minScore = score;
+      if (distance < minDistance) {
+        minDistance = distance;
         closestEdge = idx;
       }
     });
@@ -702,48 +678,30 @@ const YagoDesignShape: React.FC<Props> = ({
         </lineSegments>
       )}
 
-      {/* 🎯 RULER MODE - Individual edge rendering with hover effect using mesh tubes */}
+      {/* 🎯 RULER MODE - Individual edge rendering with hover effect */}
       {isRulerMode && (
         <>
           {lineSegments.map((segment, idx) => {
             const isHovered = hoveredEdge === idx;
-            const direction = new THREE.Vector3().subVectors(segment.end, segment.start);
-            const length = direction.length();
-            const center = new THREE.Vector3().addVectors(segment.start, segment.end).multiplyScalar(0.5);
-
-            const cylinderGeometry = new THREE.CylinderGeometry(
-              isHovered ? 0.08 : 0.04,
-              isHovered ? 0.08 : 0.04,
-              length,
-              8
-            );
-
-            const quaternion = new THREE.Quaternion();
-            quaternion.setFromUnitVectors(
-              new THREE.Vector3(0, 1, 0),
-              direction.clone().normalize()
-            );
+            const points = [segment.start, segment.end];
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
 
             return (
-              <mesh
+              <lineSegments
                 key={idx}
-                geometry={cylinderGeometry}
-                position={[
-                  shape.position[0] + center.x * shape.scale[0],
-                  shape.position[1] + center.y * shape.scale[1],
-                  shape.position[2] + center.z * shape.scale[2]
-                ]}
-                quaternion={quaternion}
-                renderOrder={999}
+                geometry={lineGeometry}
+                position={shape.position}
+                rotation={shape.rotation}
+                scale={shape.scale}
               >
-                <meshBasicMaterial
-                  color={isHovered ? '#ff0000' : '#1a1a1a'}
+                <lineBasicMaterial
+                  color={isHovered ? '#ff0000' : '#000000'}
                   transparent
-                  opacity={isHovered ? 1.0 : 0.8}
-                  depthTest={true}
-                  depthWrite={false}
+                  opacity={1}
+                  linewidth={isHovered ? 5 : 2}
+                  depthTest={false}
                 />
-              </mesh>
+              </lineSegments>
             );
           })}
         </>
