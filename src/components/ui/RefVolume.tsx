@@ -631,7 +631,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border bg-gradient-to-br from-blue-400 to-blue-500 text-white border-blue-300">
-                      {index + 4}
+                      {index + 1}
                     </div>
 
                     <input
