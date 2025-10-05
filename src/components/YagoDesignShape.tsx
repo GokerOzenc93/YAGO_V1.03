@@ -413,7 +413,7 @@ const YagoDesignShape: React.FC<Props> = ({
     });
   };
   
-  // Handle edge hover for ruler mode
+  // Handle edge hover for ruler mode with 3D raycasting
   const handleEdgePointerMove = (e: any) => {
     if (!isRulerMode || !meshRef.current) {
       if (hoveredEdge !== null) setHoveredEdge(null);
@@ -421,44 +421,46 @@ const YagoDesignShape: React.FC<Props> = ({
     }
 
     const rect = gl.domElement.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const mouse = new THREE.Vector2();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
 
     let closestEdge: number | null = null;
-    let minDistance = 25;
+    let minDistance = 2.0;
 
     lineSegments.forEach((segment, idx) => {
       const worldStart = segment.start.clone().applyMatrix4(meshRef.current!.matrixWorld);
       const worldEnd = segment.end.clone().applyMatrix4(meshRef.current!.matrixWorld);
 
-      const screenStart = worldStart.project(camera);
-      const screenEnd = worldEnd.project(camera);
+      const lineDir = new THREE.Vector3().subVectors(worldEnd, worldStart);
+      const lineLength = lineDir.length();
+      lineDir.normalize();
 
-      const startX = (screenStart.x * 0.5 + 0.5) * rect.width;
-      const startY = (-screenStart.y * 0.5 + 0.5) * rect.height;
-      const endX = (screenEnd.x * 0.5 + 0.5) * rect.width;
-      const endY = (-screenEnd.y * 0.5 + 0.5) * rect.height;
+      const ray = raycaster.ray;
+      const rayDir = ray.direction;
+      const rayOrigin = ray.origin;
 
-      const dx = endX - startX;
-      const dy = endY - startY;
-      const lineLength = Math.sqrt(dx * dx + dy * dy);
+      const w = new THREE.Vector3().subVectors(rayOrigin, worldStart);
+      const a = rayDir.dot(rayDir);
+      const b = rayDir.dot(lineDir);
+      const c = lineDir.dot(lineDir);
+      const d = rayDir.dot(w);
+      const e = lineDir.dot(w);
+      const denominator = a * c - b * b;
 
-      if (lineLength < 1) return;
+      if (Math.abs(denominator) < 0.0001) return;
 
-      const t = Math.max(
-        0,
-        Math.min(
-          1,
-          ((mouseX - startX) * dx + (mouseY - startY) * dy) / (lineLength * lineLength)
-        )
-      );
+      const sc = (b * e - c * d) / denominator;
+      const tc = (a * e - b * d) / denominator;
 
-      const closestX = startX + t * dx;
-      const closestY = startY + t * dy;
+      if (tc < 0 || tc > lineLength) return;
 
-      const distance = Math.sqrt(
-        Math.pow(mouseX - closestX, 2) + Math.pow(mouseY - closestY, 2)
-      );
+      const closestPointOnRay = rayOrigin.clone().addScaledVector(rayDir, sc);
+      const closestPointOnLine = worldStart.clone().addScaledVector(lineDir, tc);
+      const distance = closestPointOnRay.distanceTo(closestPointOnLine);
 
       if (distance < minDistance) {
         minDistance = distance;
