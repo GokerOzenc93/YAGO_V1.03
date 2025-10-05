@@ -52,6 +52,8 @@ const YagoDesignShape: React.FC<Props> = ({
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [isRulerMode, setIsRulerMode] = useState(false);
+  const [hoveredEdgeIndex, setHoveredEdgeIndex] = useState<number | null>(null);
+  const highlightedEdgesRef = useRef<THREE.LineSegments | null>(null);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -388,6 +390,61 @@ const YagoDesignShape: React.FC<Props> = ({
     };
   }, [scene, camera, gl.domElement, shape]);
 
+  useEffect(() => {
+    if (highlightedEdgesRef.current) {
+      scene.remove(highlightedEdgesRef.current);
+      highlightedEdgesRef.current.geometry.dispose();
+      (highlightedEdgesRef.current.material as THREE.Material).dispose();
+      highlightedEdgesRef.current = null;
+    }
+
+    if (hoveredEdgeIndex !== null && meshRef.current) {
+      const edges = new THREE.EdgesGeometry(shapeGeometry);
+      const edgePositions = edges.getAttribute('position');
+
+      const startIdx = hoveredEdgeIndex * 2;
+      const endIdx = startIdx + 1;
+
+      if (startIdx < edgePositions.count && endIdx < edgePositions.count) {
+        const start = new THREE.Vector3(
+          edgePositions.getX(startIdx),
+          edgePositions.getY(startIdx),
+          edgePositions.getZ(startIdx)
+        );
+        const end = new THREE.Vector3(
+          edgePositions.getX(endIdx),
+          edgePositions.getY(endIdx),
+          edgePositions.getZ(endIdx)
+        );
+
+        const highlightGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+        const highlightMaterial = new THREE.LineBasicMaterial({
+          color: 0xff0000,
+          linewidth: 3,
+          depthTest: false
+        });
+
+        const highlightLine = new THREE.LineSegments(highlightGeometry, highlightMaterial);
+        highlightLine.position.copy(meshRef.current.position);
+        highlightLine.rotation.copy(meshRef.current.rotation);
+        highlightLine.scale.copy(meshRef.current.scale);
+        highlightLine.renderOrder = 1001;
+
+        scene.add(highlightLine);
+        highlightedEdgesRef.current = highlightLine;
+      }
+    }
+
+    return () => {
+      if (highlightedEdgesRef.current) {
+        scene.remove(highlightedEdgesRef.current);
+        highlightedEdgesRef.current.geometry.dispose();
+        (highlightedEdgesRef.current.material as THREE.Material).dispose();
+        highlightedEdgesRef.current = null;
+      }
+    };
+  }, [hoveredEdgeIndex, scene, shapeGeometry, shape.position, shape.rotation, shape.scale]);
+
   const removeFaceNumberText = (rowId: string) => {
     const objectsToRemove: THREE.Object3D[] = [];
     scene.traverse((object) => {
@@ -488,8 +545,33 @@ const YagoDesignShape: React.FC<Props> = ({
     }
   };
 
+  const handlePointerMove = (e: any) => {
+    if (!isRulerMode || !meshRef.current) return;
+
+    const rect = gl.domElement.getBoundingClientRect();
+    const mouseX = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
+    const mouseY = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
+    const mousePosition = new THREE.Vector2(mouseX, mouseY);
+
+    const worldMatrix = meshRef.current.matrixWorld;
+    const edgePoint = findClosestEdgePoint(
+      mousePosition,
+      camera,
+      shapeGeometry,
+      worldMatrix,
+      0.08
+    );
+
+    if (edgePoint) {
+      setHoveredEdgeIndex(edgePoint.edgeIndex);
+      gl.domElement.style.cursor = 'crosshair';
+    } else {
+      setHoveredEdgeIndex(null);
+      gl.domElement.style.cursor = 'default';
+    }
+  };
+
   const handleContextMenu = (e: any) => {
-    // Normal context menu - only show for selected shapes AND not in edit mode
     if (isSelected && onContextMenuRequest && !isEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
@@ -592,10 +674,11 @@ const YagoDesignShape: React.FC<Props> = ({
         rotation={shape.rotation}
         scale={shape.scale}
         onClick={handleClick}
+        onPointerMove={handlePointerMove}
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
+        visible={true}
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
