@@ -186,22 +186,32 @@ const Scene: React.FC = () => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
-    viewMode, // 🎯 NEW: Get current view mode
+    viewMode,
+    isRulerMode,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Prevent if user is typing in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (isRulerMode) {
+      document.body.style.cursor = 'crosshair';
+    } else {
+      document.body.style.cursor = 'default';
+    }
+    return () => {
+      document.body.style.cursor = 'default';
+    };
+  }, [isRulerMode]);
 
   const [measurementOverlay, setMeasurementOverlay] =
     useState(null);
