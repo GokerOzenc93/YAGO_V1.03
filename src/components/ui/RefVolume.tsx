@@ -180,6 +180,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       setCustomParameters(updatedParams);
     }
 
+    const shapeUpdates = new Map<string, { width?: number; height?: number; depth?: number }>();
+    const lineValueUpdates: Array<{ id: string; value: number }> = [];
+
     selectedLines.forEach(line => {
       if (line.formula && line.formula.trim()) {
         const evaluatedValue = evaluateExpression(line.formula);
@@ -188,10 +191,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
 
           if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
-            console.log(`🔄 Updating edge ${line.label} geometry from ${currentDisplayValue} to ${newDisplayValue}`);
-
-            const shape = shapes.find(s => s.id === line.shapeId);
-            if (!shape || shape.type !== 'box') return;
+            console.log(`🔄 Edge ${line.label}: ${currentDisplayValue} → ${newDisplayValue}`);
 
             const edgeVector = new THREE.Vector3(
               line.endVertex[0] - line.startVertex[0],
@@ -199,35 +199,52 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               line.endVertex[2] - line.startVertex[2]
             );
 
-            let newWidth = shape.parameters.width || 0;
-            let newHeight = shape.parameters.height || 0;
-            let newDepth = shape.parameters.depth || 0;
+            const updates = shapeUpdates.get(line.shapeId) || {};
 
             if (Math.abs(edgeVector.x) > 0.1) {
-              newWidth = convertToBaseUnit(newDisplayValue);
+              updates.width = convertToBaseUnit(newDisplayValue);
+              console.log(`  → Width: ${newDisplayValue}mm`);
             } else if (Math.abs(edgeVector.y) > 0.1) {
-              newHeight = convertToBaseUnit(newDisplayValue);
+              updates.height = convertToBaseUnit(newDisplayValue);
+              console.log(`  → Height: ${newDisplayValue}mm`);
             } else if (Math.abs(edgeVector.z) > 0.1) {
-              newDepth = convertToBaseUnit(newDisplayValue);
+              updates.depth = convertToBaseUnit(newDisplayValue);
+              console.log(`  → Depth: ${newDisplayValue}mm`);
             }
 
-            const newGeometry = new THREE.BoxGeometry(newWidth, newHeight, newDepth);
-            newGeometry.translate(newWidth / 2, newHeight / 2, newDepth / 2);
-
-            updateShape(line.shapeId, {
-              geometry: newGeometry,
-              parameters: {
-                ...shape.parameters,
-                width: newWidth,
-                height: newHeight,
-                depth: newDepth
-              }
-            });
-
-            updateSelectedLineValue(line.id, newDisplayValue);
+            shapeUpdates.set(line.shapeId, updates);
+            lineValueUpdates.push({ id: line.id, value: newDisplayValue });
           }
         }
       }
+    });
+
+    shapeUpdates.forEach((updates, shapeId) => {
+      const shape = shapes.find(s => s.id === shapeId);
+      if (!shape || shape.type !== 'box') return;
+
+      const newWidth = updates.width ?? shape.parameters.width ?? 0;
+      const newHeight = updates.height ?? shape.parameters.height ?? 0;
+      const newDepth = updates.depth ?? shape.parameters.depth ?? 0;
+
+      console.log(`📦 Updating shape geometry: W=${convertToDisplayUnit(newWidth).toFixed(2)} H=${convertToDisplayUnit(newHeight).toFixed(2)} D=${convertToDisplayUnit(newDepth).toFixed(2)}`);
+
+      const newGeometry = new THREE.BoxGeometry(newWidth, newHeight, newDepth);
+      newGeometry.translate(newWidth / 2, newHeight / 2, newDepth / 2);
+
+      updateShape(shapeId, {
+        geometry: newGeometry,
+        parameters: {
+          ...shape.parameters,
+          width: newWidth,
+          height: newHeight,
+          depth: newDepth
+        }
+      });
+    });
+
+    lineValueUpdates.forEach(({ id, value }) => {
+      updateSelectedLineValue(id, value);
     });
 
     if (inputWidth && (inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
