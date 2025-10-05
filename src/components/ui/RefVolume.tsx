@@ -621,36 +621,39 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           </div>
         )}
 
-        {isRulerMode && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-            <div className="text-xs font-medium text-blue-800 mb-2">
-              Ruler Mode Active - Hover over lines to select
-            </div>
-            <div className="text-xs text-blue-600">
-              Click on highlighted lines to add them to the list below
-            </div>
-          </div>
-        )}
-
         {selectedLines.length > 0 && (
-          <div className="mt-4 bg-white rounded-md border border-stone-200 p-3">
-            <div className="text-xs font-medium text-slate-800 mb-2">Selected Lines</div>
-            <div className="space-y-1">
-              {selectedLines.map((line) => (
+          <div className="bg-white rounded-md border border-stone-200 p-2 mt-2">
+            <div className="space-y-2">
+              {selectedLines.map((line, index) => (
                 <div
                   key={line.id}
-                  className="flex items-center justify-between h-8 px-2 bg-gray-50 rounded-sm border border-gray-200"
+                  className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
                 >
-                  <span className="text-xs text-slate-700">{line.label}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-slate-900">
-                      {line.value.toFixed(2)}
-                    </span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border bg-gradient-to-br from-blue-400 to-blue-500 text-white border-blue-300">
+                      {index + 4}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={line.label}
+                      readOnly
+                      className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium cursor-default"
+                    />
+
+                    <input
+                      type="text"
+                      value={line.value.toFixed(2)}
+                      readOnly
+                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                    />
+
                     <button
                       onClick={() => removeSelectedLine(line.id)}
-                      className="p-1 hover:bg-red-100 text-red-600 rounded-sm transition-colors"
+                      className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
+                      title="Remove Line"
                     >
-                      <X size={10} />
+                      <X size={11} />
                     </button>
                   </div>
                 </div>
