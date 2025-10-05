@@ -937,6 +937,7 @@ const focusTerminalForMeasurement = () => {
                 position={center}
                 quaternion={quaternion}
                 userData={{ shapeId: shape.id, isPolylineSegment: true }}
+                renderOrder={999}
                 onPointerOver={(e) => {
                   e.stopPropagation();
                   setHoveredShapeId(shape.id);
@@ -947,13 +948,19 @@ const focusTerminalForMeasurement = () => {
                 }}
                 onPointerDown={async (e) => {
                   e.stopPropagation();
-                  console.log(`Clicked on segment ${index} of shape ${shape.id}`);
+                  console.log(`✓ Clicked on segment ${index} of shape ${shape.id}`);
+                  await convertTo3DShape(shape, addShape, selectShape, gridSize);
+                  setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
+                }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  console.log(`✓ onClick triggered on segment ${index} of shape ${shape.id}`);
                   await convertTo3DShape(shape, addShape, selectShape, gridSize);
                   setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
                 }}
               >
-                <cylinderGeometry args={[gridSize * 2, gridSize * 2, length, 32]} />
-                <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} />
+                <cylinderGeometry args={[gridSize * 3, gridSize * 3, length, 32]} />
+                <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
               </mesh>
             );
           })}
