@@ -164,6 +164,14 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   }, [resultDepth]);
 
   const recalculateAllParameters = () => {
+    console.log('🔄 Recalculating all parameters...');
+    console.log('📋 Current selectedLines:', selectedLines.map(l => ({
+      id: l.id,
+      label: l.label,
+      value: l.value,
+      formula: l.formula
+    })));
+
     const updatedParams = customParameters.map(param => {
       if (!param.value.trim()) return param;
       const evaluatedValue = evaluateExpression(param.value);
@@ -190,8 +198,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           const currentDisplayValue = parseFloat(line.value.toFixed(2));
           const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
 
+          console.log(`🔍 Checking edge ${line.label}:`, {
+            currentValue: currentDisplayValue,
+            evaluatedValue: newDisplayValue,
+            formula: line.formula,
+            willUpdate: Math.abs(currentDisplayValue - newDisplayValue) > 0.01
+          });
+
           if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
-            console.log(`🔄 Edge ${line.label}: ${currentDisplayValue} → ${newDisplayValue}`);
+            console.log(`🔄 Updating Edge ${line.label}: ${currentDisplayValue} → ${newDisplayValue}`);
 
             const shape = shapes.find(s => s.id === line.shapeId);
             if (!shape || !shape.geometry) return;
@@ -284,10 +299,20 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
             updateSelectedLineValue(line.id, newDisplayValue);
             updateSelectedLineVertices(line.id, updatedEndVertex);
+
+            console.log(`✅ Updated edge ${line.label}`, {
+              newValue: newDisplayValue,
+              newEndVertex: updatedEndVertex,
+              geometryCached: geometryCache.has(line.shapeId)
+            });
           }
         }
       }
     });
+
+    console.log('🏁 Recalculation complete. Updated edges:',
+      selectedLines.filter(l => l.formula).map(l => l.label)
+    );
 
     if (inputWidth && (inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
         customParameters.some(p => p.description && inputWidth.includes(p.description)) ||
