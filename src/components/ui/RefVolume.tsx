@@ -163,13 +163,37 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     }
   }, [resultDepth]);
 
+  const getEdgeVerticesFromGeometry = (geometry: THREE.BufferGeometry, edgeIndex: number): { start: [number, number, number], end: [number, number, number] } | null => {
+    const edges = new THREE.EdgesGeometry(geometry);
+    const positions = edges.attributes.position;
+
+    if (edgeIndex * 2 + 1 >= positions.count) {
+      return null;
+    }
+
+    const start: [number, number, number] = [
+      positions.getX(edgeIndex * 2),
+      positions.getY(edgeIndex * 2),
+      positions.getZ(edgeIndex * 2)
+    ];
+
+    const end: [number, number, number] = [
+      positions.getX(edgeIndex * 2 + 1),
+      positions.getY(edgeIndex * 2 + 1),
+      positions.getZ(edgeIndex * 2 + 1)
+    ];
+
+    return { start, end };
+  };
+
   const recalculateAllParameters = () => {
     console.log('🔄 Recalculating all parameters...');
     console.log('📋 Current selectedLines:', selectedLines.map(l => ({
       id: l.id,
       label: l.label,
       value: l.value,
-      formula: l.formula
+      formula: l.formula,
+      edgeIndex: l.edgeIndex
     })));
 
     const updatedParams = customParameters.map(param => {
@@ -194,6 +218,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       newVertex: [number, number, number];
       lineId: string;
       newValue: number;
+      updatedStartVertex: [number, number, number];
+      updatedEndVertex: [number, number, number];
     };
 
     const vertexMovesByShape = new Map<string, VertexMove[]>();
@@ -218,36 +244,52 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             const shape = shapes.find(s => s.id === line.shapeId);
             if (!shape || !shape.geometry) return;
 
-            const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
-            const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
-            const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
+            const currentEdgeVertices = getEdgeVerticesFromGeometry(shape.geometry, line.edgeIndex);
+            if (!currentEdgeVertices) {
+              console.error(`❌ Could not get edge vertices for edge index ${line.edgeIndex}`);
+              return;
+            }
+
+            console.log(`📐 Edge ${line.label} current vertices from geometry:`, {
+              start: currentEdgeVertices.start,
+              end: currentEdgeVertices.end,
+              storedStart: line.startVertex,
+              storedEnd: line.endVertex
+            });
+
+            const startVertex = currentEdgeVertices.start;
+            const endVertex = currentEdgeVertices.end;
+
+            const dx = Math.abs(endVertex[0] - startVertex[0]);
+            const dy = Math.abs(endVertex[1] - startVertex[1]);
+            const dz = Math.abs(endVertex[2] - startVertex[2]);
 
             let fixedVertex: [number, number, number];
             let movingVertex: [number, number, number];
 
             if (dy > dx && dy > dz) {
-              if (line.startVertex[1] < line.endVertex[1]) {
-                fixedVertex = line.startVertex;
-                movingVertex = line.endVertex;
+              if (startVertex[1] < endVertex[1]) {
+                fixedVertex = startVertex;
+                movingVertex = endVertex;
               } else {
-                fixedVertex = line.endVertex;
-                movingVertex = line.startVertex;
+                fixedVertex = endVertex;
+                movingVertex = startVertex;
               }
             } else if (dx > dy && dx > dz) {
-              if (line.startVertex[0] > line.endVertex[0]) {
-                fixedVertex = line.startVertex;
-                movingVertex = line.endVertex;
+              if (startVertex[0] > endVertex[0]) {
+                fixedVertex = startVertex;
+                movingVertex = endVertex;
               } else {
-                fixedVertex = line.endVertex;
-                movingVertex = line.startVertex;
+                fixedVertex = endVertex;
+                movingVertex = startVertex;
               }
             } else {
-              if (line.startVertex[2] < line.endVertex[2]) {
-                fixedVertex = line.startVertex;
-                movingVertex = line.endVertex;
+              if (startVertex[2] < endVertex[2]) {
+                fixedVertex = startVertex;
+                movingVertex = endVertex;
               } else {
-                fixedVertex = line.endVertex;
-                movingVertex = line.startVertex;
+                fixedVertex = endVertex;
+                movingVertex = startVertex;
               }
             }
 
@@ -272,12 +314,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               oldVertex: movingVertex,
               newVertex: newMovingVertex,
               lineId: line.id,
-              newValue: newDisplayValue
+              newValue: newDisplayValue,
+              updatedStartVertex: startVertex,
+              updatedEndVertex: endVertex
             });
 
             console.log(`📝 Queued vertex move for ${line.label}:`, {
               from: movingVertex,
-              to: newMovingVertex
+              to: newMovingVertex,
+              fixed: fixedVertex
             });
           }
         }
@@ -337,7 +382,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         }
 
         updateSelectedLineValue(move.lineId, move.newValue);
-        updateSelectedLineVertices(move.lineId, move.newVertex);
+
+        const isEndVertexMoving =
+          Math.abs(move.oldVertex[0] - move.updatedEndVertex[0]) < 0.01 &&
+          Math.abs(move.oldVertex[1] - move.updatedEndVertex[1]) < 0.01 &&
+          Math.abs(move.oldVertex[2] - move.updatedEndVertex[2]) < 0.01;
+
+        if (isEndVertexMoving) {
+          updateSelectedLineVertices(move.lineId, move.newVertex);
+        }
       });
 
       positionAttr.needsUpdate = true;
