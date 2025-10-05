@@ -56,6 +56,8 @@ const YagoDesignShape: React.FC<Props> = ({
   const [selectedEdges, setSelectedEdges] = useState<number[]>([]);
   const highlightedEdgesRef = useRef<THREE.LineSegments | null>(null);
   const selectedEdgesRef = useRef<THREE.LineSegments[]>([]);
+  const selectedPointsRef = useRef<THREE.Vector3[]>([]);
+  const dimensionLineRef = useRef<THREE.Group | null>(null);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -366,24 +368,34 @@ const YagoDesignShape: React.FC<Props> = ({
     const handleActivateRulerMode = () => {
       setIsRulerMode(true);
       setSelectedEdges([]);
+      selectedPointsRef.current = [];
       selectedEdgesRef.current.forEach(line => {
         scene.remove(line);
         line.geometry.dispose();
         (line.material as THREE.Material).dispose();
       });
       selectedEdgesRef.current = [];
+      if (dimensionLineRef.current) {
+        scene.remove(dimensionLineRef.current);
+        dimensionLineRef.current = null;
+      }
       console.log(`🎯 Ruler mode activated on shape ${shape.id}`);
     };
 
     const handleClearRulerPoints = () => {
       clearRulerPointMarkers(scene);
       setSelectedEdges([]);
+      selectedPointsRef.current = [];
       selectedEdgesRef.current.forEach(line => {
         scene.remove(line);
         line.geometry.dispose();
         (line.material as THREE.Material).dispose();
       });
       selectedEdgesRef.current = [];
+      if (dimensionLineRef.current) {
+        scene.remove(dimensionLineRef.current);
+        dimensionLineRef.current = null;
+      }
       console.log('🎯 Ruler points cleared');
     };
 
@@ -461,6 +473,101 @@ const YagoDesignShape: React.FC<Props> = ({
     };
   }, [hoveredEdgeIndex, scene, shapeGeometry, shape.position, shape.rotation, shape.scale]);
 
+  const createDimensionLine = (point1: THREE.Vector3, point2: THREE.Vector3, distance: number) => {
+    if (dimensionLineRef.current) {
+      scene.remove(dimensionLineRef.current);
+      dimensionLineRef.current.traverse((child) => {
+        if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+          child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+      dimensionLineRef.current = null;
+    }
+
+    const group = new THREE.Group();
+
+    const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
+    const offset = new THREE.Vector3().crossVectors(direction, camera.position.clone().sub(point1).normalize()).normalize().multiplyScalar(0.3);
+
+    const offsetPoint1 = point1.clone().add(offset);
+    const offsetPoint2 = point2.clone().add(offset);
+
+    const mainLineGeometry = new THREE.BufferGeometry().setFromPoints([offsetPoint1, offsetPoint2]);
+    const mainLineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2, depthTest: false });
+    const mainLine = new THREE.Line(mainLineGeometry, mainLineMaterial);
+    mainLine.renderOrder = 1003;
+    group.add(mainLine);
+
+    const arrowLength = 0.15;
+    const arrowGeometry = new THREE.ConeGeometry(0.03, arrowLength, 8);
+
+    const arrow1 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
+    arrow1.position.copy(offsetPoint1);
+    arrow1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().negate());
+    arrow1.renderOrder = 1003;
+    group.add(arrow1);
+
+    const arrow2 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
+    arrow2.position.copy(offsetPoint2);
+    arrow2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    arrow2.renderOrder = 1003;
+    group.add(arrow2);
+
+    const midPoint = new THREE.Vector3().addVectors(offsetPoint1, offsetPoint2).multiplyScalar(0.5);
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+
+    if (context) {
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.font = 'bold 32px Arial';
+      context.fillStyle = 'black';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(`${distance.toFixed(1)} cm`, canvas.width / 2, canvas.height / 2);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.position.copy(midPoint);
+    sprite.scale.set(0.5, 0.125, 1);
+    sprite.renderOrder = 1004;
+    group.add(sprite);
+
+    scene.add(group);
+    dimensionLineRef.current = group;
+
+    setTimeout(() => {
+      if (dimensionLineRef.current) {
+        scene.remove(dimensionLineRef.current);
+        dimensionLineRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+            child.geometry.dispose();
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+        });
+        dimensionLineRef.current = null;
+      }
+    }, 3000);
+  };
+
   const removeFaceNumberText = (rowId: string) => {
     const objectsToRemove: THREE.Object3D[] = [];
     scene.traverse((object) => {
@@ -505,6 +612,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
         const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
 
+        selectedPointsRef.current.push(midPoint);
         setSelectedEdges(prev => [...prev, hoveredEdgeIndex]);
 
         const selectedGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
@@ -530,6 +638,11 @@ const YagoDesignShape: React.FC<Props> = ({
 
         console.log(`🎯 Edge selected (${selectedEdges.length + 1}/2):`, midPoint);
 
+        if (selectedEdges.length === 1 && selectedPointsRef.current.length === 2) {
+          const distance = selectedPointsRef.current[0].distanceTo(selectedPointsRef.current[1]);
+          createDimensionLine(selectedPointsRef.current[0], selectedPointsRef.current[1], distance);
+        }
+
         if (selectedEdges.length === 1) {
           setIsRulerMode(false);
           setSelectedEdges([]);
@@ -549,6 +662,7 @@ const YagoDesignShape: React.FC<Props> = ({
               (line.material as THREE.Material).dispose();
             });
             selectedEdgesRef.current = [];
+            selectedPointsRef.current = [];
           }, 500);
         }
       }
