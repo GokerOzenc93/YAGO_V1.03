@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
+import { X, Puzzle, Check, Plus, ChevronLeft } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -241,7 +241,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           >
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
-          <Ruler size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
         <div className="flex items-center gap-2">
@@ -253,13 +252,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               Clear All
             </button>
           )}
-          <button
-            onClick={() => {}}
-            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
-            title="Ruler Tool"
-          >
-            <Ruler size={14} />
-          </button>
           <button
             onClick={handleAddParameter}
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
@@ -327,14 +319,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
@@ -415,14 +399,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
-                  <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -501,14 +477,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
@@ -593,14 +561,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
