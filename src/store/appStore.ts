@@ -417,9 +417,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   isRulerMode: false,
   setIsRulerMode: (enabled) => set({ isRulerMode: enabled }),
   selectedLines: [],
-  addSelectedLine: (line) => set((state) => ({
-    selectedLines: [...state.selectedLines, line]
-  })),
+  addSelectedLine: (line) => set((state) => {
+    const exists = state.selectedLines.some(l => l.id === line.id);
+    if (exists) {
+      return state;
+    }
+    return {
+      selectedLines: [...state.selectedLines, line]
+    };
+  }),
   removeSelectedLine: (id) => set((state) => ({
     selectedLines: state.selectedLines.filter(l => l.id !== id)
   })),
