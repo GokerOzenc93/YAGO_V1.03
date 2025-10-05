@@ -444,6 +444,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const handleLineValueChange = (lineId: string, newValueStr: string) => {
     const newValue = parseFloat(newValueStr);
+    console.log('🔧 handleLineValueChange called:', { lineId, newValueStr, newValue });
+
     if (isNaN(newValue) || newValue <= 0) {
       console.log('❌ Invalid value:', newValueStr);
       return;
@@ -461,12 +463,13 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    console.log('🔧 Manual value change:', {
+    console.log('✅ Found line and shape:', {
       lineId,
       oldValue: line.value,
       newValue,
       startVertex: line.startVertex,
-      endVertex: line.endVertex
+      endVertex: line.endVertex,
+      hasGeometry: !!shape.geometry
     });
 
     const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
@@ -1075,8 +1078,20 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                         if (e.key === 'Enter' && editingLineId === line.id) {
                           const evaluatedValue = evaluateExpression(editingLineValue);
                           if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+                            console.log('⌨️ Edge Enter Key:', {
+                              lineId: line.id,
+                              formula: editingLineValue,
+                              evaluatedValue
+                            });
+
                             updateSelectedLineFormula(line.id, editingLineValue);
-                            handleLineValueChange(line.id, evaluatedValue.toString());
+
+                            setTimeout(() => {
+                              recalculateAllParameters();
+                            }, 0);
+
+                            setEditingLineId(null);
+                            setEditingLineValue('');
                           }
                         } else if (e.key === 'Escape') {
                           setEditingLineId(null);
@@ -1107,8 +1122,19 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                           if (editingLineId === line.id && editingLineValue.trim()) {
                             const evaluatedValue = evaluateExpression(editingLineValue);
                             if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+                              console.log('🎯 Edge Apply Button:', {
+                                lineId: line.id,
+                                formula: editingLineValue,
+                                evaluatedValue,
+                                currentLineValue: line.value
+                              });
+
                               updateSelectedLineFormula(line.id, editingLineValue);
-                              handleLineValueChange(line.id, evaluatedValue.toString());
+
+                              setTimeout(() => {
+                                recalculateAllParameters();
+                              }, 0);
+
                               setEditingLineId(null);
                               setEditingLineValue('');
                             }
