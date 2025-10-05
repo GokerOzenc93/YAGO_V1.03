@@ -13,7 +13,10 @@ import {
   clearFaceHighlight,
   removeFaceHighlightByRowIndex,
   clearTemporaryHighlights,
-  clearAllPersistentHighlights
+  clearAllPersistentHighlights,
+  getFaceVertices,
+  getFaceNormal,
+  getFaceCenter
 } from '../utils/faceSelection';
 import {
   findClosestEdgePoint,
@@ -482,6 +485,141 @@ const YagoDesignShape: React.FC<Props> = ({
     };
   }, [hoveredEdgeIndex, scene, shapeGeometry, shape.position, shape.rotation, shape.scale]);
 
+  const createFaceDimensionLines = (faceIndex: number) => {
+    if (!meshRef.current) return;
+
+    const geometry = shapeGeometry;
+    const worldMatrix = meshRef.current.matrixWorld;
+
+    const vertices = getFaceVertices(geometry, faceIndex);
+    if (vertices.length < 3) return;
+
+    const worldVertices = vertices.map(v => v.clone().applyMatrix4(worldMatrix));
+
+    const normal = getFaceNormal(vertices).applyMatrix4(
+      new THREE.Matrix4().extractRotation(worldMatrix)
+    ).normalize();
+
+    const center = getFaceCenter(vertices).applyMatrix4(worldMatrix);
+
+    const up = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    const tangent = new THREE.Vector3().crossVectors(up, normal).normalize();
+    const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+
+    const projected2D = worldVertices.map(v => {
+      const rel = v.clone().sub(center);
+      return new THREE.Vector2(rel.dot(tangent), rel.dot(bitangent));
+    });
+
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    projected2D.forEach(p => {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    });
+
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    const to3D = (x: number, y: number) => {
+      return center.clone()
+        .addScaledVector(tangent, x)
+        .addScaledVector(bitangent, y)
+        .addScaledVector(normal, 0.5);
+    };
+
+    const bottomLeft = to3D(minX, minY);
+    const bottomRight = to3D(maxX, minY);
+    const topRight = to3D(maxX, maxY);
+    const topLeft = to3D(minX, maxY);
+
+    const offset = 0.3;
+    const offsetDir1 = tangent.clone();
+    const offsetDir2 = bitangent.clone();
+
+    const widthStart = bottomLeft.clone().sub(offsetDir2.clone().multiplyScalar(offset));
+    const widthEnd = bottomRight.clone().sub(offsetDir2.clone().multiplyScalar(offset));
+
+    const heightStart = bottomRight.clone().add(offsetDir1.clone().multiplyScalar(offset));
+    const heightEnd = topRight.clone().add(offsetDir1.clone().multiplyScalar(offset));
+
+    createDashedDimensionLine(widthStart, widthEnd, width, 'width');
+    createDashedDimensionLine(heightStart, heightEnd, height, 'height');
+  };
+
+  const createDashedDimensionLine = (
+    point1: THREE.Vector3,
+    point2: THREE.Vector3,
+    distance: number,
+    label: string
+  ) => {
+    const group = new THREE.Group();
+
+    const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
+
+    const dashGeometry = new THREE.BufferGeometry().setFromPoints([point1, point2]);
+    const dashMaterial = new THREE.LineDashedMaterial({
+      color: 0x000000,
+      linewidth: 2,
+      dashSize: 0.1,
+      gapSize: 0.05,
+      depthTest: false
+    });
+    const dashLine = new THREE.Line(dashGeometry, dashMaterial);
+    dashLine.computeLineDistances();
+    dashLine.renderOrder = 1003;
+    group.add(dashLine);
+
+    const arrowLength = 0.1;
+    const arrowGeometry = new THREE.ConeGeometry(0.02, arrowLength, 8);
+
+    const arrow1 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
+    arrow1.position.copy(point1);
+    arrow1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().negate());
+    arrow1.renderOrder = 1003;
+    group.add(arrow1);
+
+    const arrow2 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
+    arrow2.position.copy(point2);
+    arrow2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    arrow2.renderOrder = 1003;
+    group.add(arrow2);
+
+    const midPoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+
+    if (context) {
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.font = 'bold 32px Arial';
+      context.fillStyle = 'black';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(`${distance.toFixed(1)} cm`, canvas.width / 2, canvas.height / 2);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.position.copy(midPoint);
+    sprite.scale.set(0.5, 0.125, 1);
+    sprite.renderOrder = 1004;
+    group.add(sprite);
+
+    group.userData.type = 'faceDimensionLine';
+    group.userData.shapeId = shape.id;
+    group.userData.label = label;
+    scene.add(group);
+    dimensionLinesRef.current.push(group);
+  };
+
   const createDimensionLine = (point1: THREE.Vector3, point2: THREE.Vector3, distance: number) => {
     const group = new THREE.Group();
 
@@ -673,6 +811,8 @@ const YagoDesignShape: React.FC<Props> = ({
         }
       });
       window.dispatchEvent(faceSelectedEvent);
+
+      createFaceDimensionLines(hit.faceIndex);
 
       console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
       return;
