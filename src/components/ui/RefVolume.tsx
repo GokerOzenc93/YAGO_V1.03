@@ -189,7 +189,14 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       setCustomParameters(updatedParams);
     }
 
-    const geometryCache = new Map<string, THREE.BufferGeometry>();
+    type VertexMove = {
+      oldVertex: [number, number, number];
+      newVertex: [number, number, number];
+      lineId: string;
+      newValue: number;
+    };
+
+    const vertexMovesByShape = new Map<string, VertexMove[]>();
 
     selectedLines.forEach(line => {
       if (line.formula && line.formula.trim()) {
@@ -206,12 +213,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           });
 
           if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
-            console.log(`🔄 Updating Edge ${line.label}: ${currentDisplayValue} → ${newDisplayValue}`);
+            console.log(`🔄 Planning Edge Update ${line.label}: ${currentDisplayValue} → ${newDisplayValue}`);
 
             const shape = shapes.find(s => s.id === line.shapeId);
             if (!shape || !shape.geometry) return;
-
-            const currentGeometry = geometryCache.get(line.shapeId) || shape.geometry;
 
             const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
             const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
@@ -253,66 +258,79 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               movingVertex[2] - fixedVertex[2]
             ).normalize();
 
-            const newMovingVertex = new THREE.Vector3(
+            const newMovingVertex: [number, number, number] = [
               fixedVertex[0] + direction.x * newLengthInBase,
               fixedVertex[1] + direction.y * newLengthInBase,
               fixedVertex[2] + direction.z * newLengthInBase
-            );
-
-            const newGeometry = currentGeometry.clone();
-            const positionAttr = newGeometry.attributes.position;
-            const positions = positionAttr.array;
-
-            for (let i = 0; i < positions.length; i += 3) {
-              const vx = positions[i];
-              const vy = positions[i + 1];
-              const vz = positions[i + 2];
-
-              const distToMoving = Math.sqrt(
-                Math.pow(vx - movingVertex[0], 2) +
-                Math.pow(vy - movingVertex[1], 2) +
-                Math.pow(vz - movingVertex[2], 2)
-              );
-
-              if (distToMoving < 0.01) {
-                positions[i] = newMovingVertex.x;
-                positions[i + 1] = newMovingVertex.y;
-                positions[i + 2] = newMovingVertex.z;
-              }
-            }
-
-            positionAttr.needsUpdate = true;
-            newGeometry.computeBoundingBox();
-            newGeometry.computeVertexNormals();
-
-            geometryCache.set(line.shapeId, newGeometry);
-
-            updateShape(shape.id, {
-              geometry: newGeometry
-            });
-
-            const updatedEndVertex: [number, number, number] = [
-              newMovingVertex.x,
-              newMovingVertex.y,
-              newMovingVertex.z
             ];
 
-            updateSelectedLineValue(line.id, newDisplayValue);
-            updateSelectedLineVertices(line.id, updatedEndVertex);
+            if (!vertexMovesByShape.has(line.shapeId)) {
+              vertexMovesByShape.set(line.shapeId, []);
+            }
 
-            console.log(`✅ Updated edge ${line.label}`, {
-              newValue: newDisplayValue,
-              newEndVertex: updatedEndVertex,
-              geometryCached: geometryCache.has(line.shapeId)
+            vertexMovesByShape.get(line.shapeId)!.push({
+              oldVertex: movingVertex,
+              newVertex: newMovingVertex,
+              lineId: line.id,
+              newValue: newDisplayValue
+            });
+
+            console.log(`📝 Queued vertex move for ${line.label}:`, {
+              from: movingVertex,
+              to: newMovingVertex
             });
           }
         }
       }
     });
 
-    console.log('🏁 Recalculation complete. Updated edges:',
-      selectedLines.filter(l => l.formula).map(l => l.label)
-    );
+    vertexMovesByShape.forEach((moves, shapeId) => {
+      const shape = shapes.find(s => s.id === shapeId);
+      if (!shape || !shape.geometry) return;
+
+      console.log(`🔨 Applying ${moves.length} vertex moves to shape ${shapeId}`);
+
+      const newGeometry = shape.geometry.clone();
+      const positionAttr = newGeometry.attributes.position;
+      const positions = positionAttr.array;
+
+      moves.forEach(move => {
+        console.log(`  ➜ Moving vertex:`, move.oldVertex, '→', move.newVertex);
+
+        for (let i = 0; i < positions.length; i += 3) {
+          const vx = positions[i];
+          const vy = positions[i + 1];
+          const vz = positions[i + 2];
+
+          const distToOld = Math.sqrt(
+            Math.pow(vx - move.oldVertex[0], 2) +
+            Math.pow(vy - move.oldVertex[1], 2) +
+            Math.pow(vz - move.oldVertex[2], 2)
+          );
+
+          if (distToOld < 0.01) {
+            positions[i] = move.newVertex[0];
+            positions[i + 1] = move.newVertex[1];
+            positions[i + 2] = move.newVertex[2];
+          }
+        }
+
+        updateSelectedLineValue(move.lineId, move.newValue);
+        updateSelectedLineVertices(move.lineId, move.newVertex);
+      });
+
+      positionAttr.needsUpdate = true;
+      newGeometry.computeBoundingBox();
+      newGeometry.computeVertexNormals();
+
+      updateShape(shapeId, {
+        geometry: newGeometry
+      });
+
+      console.log(`✅ Shape ${shapeId} updated with all vertex moves`);
+    });
+
+    console.log('🏁 Recalculation complete. Updated shapes:', vertexMovesByShape.size);
 
     if (inputWidth && (inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
         customParameters.some(p => p.description && inputWidth.includes(p.description)) ||
