@@ -107,7 +107,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   useEffect(() => {
     syncFormulaVariables();
     recalculateAllParameters();
-  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), syncFormulaVariables]);
+  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), JSON.stringify(selectedLines.map(l => ({ id: l.id, formula: l.formula }))), syncFormulaVariables]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -151,8 +151,17 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         : param;
     });
 
-    if (updatedParams.some((p, i) => p.result !== customParameters[i].result)) {
+    const hasParamChanges = updatedParams.some((p, i) => p.result !== customParameters[i].result);
+    if (hasParamChanges) {
       setCustomParameters(updatedParams);
+
+      const evaluator = formulaEvaluatorRef.current;
+      updatedParams.forEach(param => {
+        if (param.description && param.result) {
+          evaluator.setVariable(param.description, parseFloat(param.result));
+          console.log(`🔄 Updated parameter variable: ${param.description}=${param.result}`);
+        }
+      });
     }
 
     const MAX_ITERATIONS = 10;
@@ -436,7 +445,27 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     ));
 
     requestAnimationFrame(() => {
+      const evaluator = formulaEvaluatorRef.current;
+      evaluator.setVariable(param.description, evaluated);
+      console.log(`✅ Parameter applied: ${param.description}=${evaluated}`);
+
       syncFormulaVariables();
+
+      selectedLines.forEach(line => {
+        if (line.formula?.trim()) {
+          const lineEvaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
+          if (lineEvaluated !== null && !isNaN(lineEvaluated) && lineEvaluated > 0) {
+            const currentVal = parseFloat(line.value.toFixed(2));
+            const newVal = parseFloat(lineEvaluated.toFixed(2));
+
+            if (Math.abs(currentVal - newVal) > 0.01) {
+              console.log(`🔄 Forcing edge update: ${line.label || line.id} from ${currentVal} to ${newVal}`);
+              updateSelectedLineValue(line.id, newVal);
+            }
+          }
+        }
+      });
+
       recalculateAllParameters();
     });
   };
