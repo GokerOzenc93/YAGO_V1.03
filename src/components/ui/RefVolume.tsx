@@ -789,7 +789,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       type="text"
                       value={line.label}
                       readOnly
-                      className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-black font-medium cursor-default"
+                      className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
                     />
 
                     <input
@@ -812,15 +812,28 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                           setEditingLineValue('');
                         }
                       }}
-                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
+                      placeholder="Formula..."
+                      className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-400 text-black font-medium"
                     />
 
-                    {editingLineId === line.id && (
+                    <input
+                      type="text"
+                      value={line.value.toFixed(2)}
+                      readOnly
+                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                      placeholder="Result"
+                    />
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={() => handleLineValueChange(line.id, editingLineValue)}
-                        disabled={!editingLineValue.trim()}
+                        onClick={() => {
+                          if (editingLineId === line.id && editingLineValue.trim()) {
+                            handleLineValueChange(line.id, editingLineValue);
+                          }
+                        }}
+                        disabled={editingLineId !== line.id || !editingLineValue.trim()}
                         className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
-                          editingLineValue.trim()
+                          editingLineId === line.id && editingLineValue.trim()
                             ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
@@ -828,15 +841,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       >
                         <Check size={11} />
                       </button>
-                    )}
 
-                    <button
-                      onClick={() => removeSelectedLine(line.id)}
-                      className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
-                      title="Remove Line"
-                    >
-                      <X size={11} />
-                    </button>
+                      <button
+                        onClick={() => removeSelectedLine(line.id)}
+                        className="flex-shrink-0 p-1.5 bg-orange-100 text-orange-600 hover:bg-orange-200 rounded-sm transition-colors"
+                        title="Remove Line"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
