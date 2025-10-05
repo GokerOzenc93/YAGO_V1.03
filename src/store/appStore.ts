@@ -3,6 +3,7 @@ import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
 import { GeometryFactory } from '../lib/geometryFactory';
+import { FormulaEvaluator, createFormulaEvaluator } from '../utils/formulaEvaluator';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {
@@ -289,6 +290,11 @@ interface AppState {
   updateSelectedLineFormula: (id: string, formula: string) => void;
   updateSelectedLineLabel: (id: string, label: string) => void;
   removeSelectedLine: (id: string) => void;
+  formulaEvaluator: FormulaEvaluator;
+  setParameterVariable: (name: string, value: number) => void;
+  getParameterVariable: (name: string) => number | undefined;
+  evaluateFormula: (formula: string) => number | null;
+  clearParameterVariables: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -452,7 +458,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       l.id === id ? { ...l, label } : l
     )
   })),
-  
+
+  formulaEvaluator: createFormulaEvaluator(),
+
+  setParameterVariable: (name, value) => {
+    const { formulaEvaluator } = get();
+    formulaEvaluator.setVariable(name, value);
+    console.log(`📊 Parameter variable set: ${name} = ${value}`);
+  },
+
+  getParameterVariable: (name) => {
+    const { formulaEvaluator } = get();
+    return formulaEvaluator.getVariable(name);
+  },
+
+  evaluateFormula: (formula) => {
+    const { formulaEvaluator } = get();
+    return formulaEvaluator.evaluateOrNull(formula);
+  },
+
+  clearParameterVariables: () => {
+    const { formulaEvaluator } = get();
+    formulaEvaluator.clearVariables();
+    console.log(`🗑️ All parameter variables cleared`);
+  },
+
   // Snap settings - all enabled by default
   snapSettings: {
     [SnapType.ENDPOINT]: true,

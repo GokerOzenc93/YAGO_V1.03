@@ -1,3 +1,5 @@
+import { create, all, MathJsStatic } from 'mathjs';
+
 export interface FormulaVariable {
   name: string;
   value: number;
@@ -11,9 +13,11 @@ export interface FormulaEvaluationResult {
 
 export class FormulaEvaluator {
   private variables: Map<string, number>;
+  private math: MathJsStatic;
 
   constructor(variables: FormulaVariable[] = []) {
     this.variables = new Map();
+    this.math = create(all, {});
     variables.forEach(v => this.setVariable(v.name, v.value));
   }
 
@@ -23,14 +27,17 @@ export class FormulaEvaluator {
       return;
     }
     this.variables.set(name, value);
+    console.log(`✅ Variable set: ${name} = ${value}`);
   }
 
   removeVariable(name: string): void {
     this.variables.delete(name);
+    console.log(`🗑️ Variable removed: ${name}`);
   }
 
   clearVariables(): void {
     this.variables.clear();
+    console.log(`🗑️ All variables cleared`);
   }
 
   getVariable(name: string): number | undefined {
@@ -46,21 +53,6 @@ export class FormulaEvaluator {
 
   private isValidVariableName(name: string): boolean {
     return /^[a-zA-Z][a-zA-Z0-9_]*$/.test(name);
-  }
-
-  private escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  private replaceVariables(formula: string): string {
-    let processed = formula;
-
-    this.variables.forEach((value, name) => {
-      const regex = new RegExp(`\\b${this.escapeRegExp(name)}\\b`, 'g');
-      processed = processed.replace(regex, value.toString());
-    });
-
-    return processed;
   }
 
   evaluate(formula: string, debugLabel?: string): FormulaEvaluationResult {
@@ -82,17 +74,12 @@ export class FormulaEvaluator {
         };
       }
 
-      const processed = this.replaceVariables(trimmed);
+      const scope: Record<string, number> = {};
+      this.variables.forEach((value, name) => {
+        scope[name] = value;
+      });
 
-      if (!/^[0-9+\-*/().\s]+$/.test(processed)) {
-        return {
-          success: false,
-          value: null,
-          error: `Invalid characters in processed formula: ${processed}`,
-        };
-      }
-
-      const result = eval(processed);
+      const result = this.math.evaluate(trimmed, scope);
 
       if (typeof result !== 'number') {
         return {
@@ -117,6 +104,8 @@ export class FormulaEvaluator {
           error: `Result is negative: ${result}`,
         };
       }
+
+      console.log(`✅ Formula evaluated${debugLabel ? ` (${debugLabel})` : ''}: ${trimmed} = ${result}`);
 
       return {
         success: true,
@@ -148,6 +137,14 @@ export class FormulaEvaluator {
     return result.success && result.value !== null ? result.value : defaultValue;
   }
 
+  hasVariable(name: string): boolean {
+    return this.variables.has(name);
+  }
+
+  evaluateWithFormula(formula: string, debugLabel?: string): FormulaEvaluationResult {
+    return this.evaluate(formula, debugLabel);
+  }
+
   detectCircularDependency(formulas: Map<string, string>): {
     hasCircular: boolean;
     circularChain?: string[];
@@ -157,7 +154,7 @@ export class FormulaEvaluator {
     formulas.forEach((formula, varName) => {
       const dependencies = new Set<string>();
       this.variables.forEach((_, depName) => {
-        const regex = new RegExp(`\\b${this.escapeRegExp(depName)}\\b`);
+        const regex = new RegExp(`\\b${depName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
         if (regex.test(formula)) {
           dependencies.add(depName);
         }

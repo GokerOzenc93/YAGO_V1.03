@@ -31,7 +31,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     updateSelectedLineFormula,
     updateSelectedLineLabel,
     removeSelectedLine,
-    shapes
+    shapes,
+    setParameterVariable,
+    getParameterVariable,
+    evaluateFormula
   } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
@@ -89,20 +92,26 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     evaluator.setVariable('H', convertToDisplayUnit(currentHeight));
     evaluator.setVariable('D', convertToDisplayUnit(currentDepth));
 
+    setParameterVariable('W', convertToDisplayUnit(currentWidth));
+    setParameterVariable('H', convertToDisplayUnit(currentHeight));
+    setParameterVariable('D', convertToDisplayUnit(currentDepth));
+
     customParameters.forEach(param => {
       if (param.description && param.result) {
         evaluator.setVariable(param.description, parseFloat(param.result));
+        setParameterVariable(param.description, parseFloat(param.result));
       }
     });
 
     selectedLines.forEach(line => {
       if (line.label) {
         evaluator.setVariable(line.label, line.value);
+        setParameterVariable(line.label, line.value);
       }
     });
 
     console.log('🔄 Formula variables synced:', evaluator.getAllVariables().map(v => `${v.name}=${v.value}`).join(', '));
-  }, [currentWidth, currentHeight, currentDepth, customParameters, selectedLines, convertToDisplayUnit]);
+  }, [currentWidth, currentHeight, currentDepth, customParameters, selectedLines, convertToDisplayUnit, setParameterVariable]);
 
   useEffect(() => {
     syncFormulaVariables();
@@ -447,6 +456,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     requestAnimationFrame(() => {
       const evaluator = formulaEvaluatorRef.current;
       evaluator.setVariable(param.description, evaluated);
+      setParameterVariable(param.description, evaluated);
       console.log(`✅ Parameter applied: ${param.description}=${evaluated}`);
 
       syncFormulaVariables();
