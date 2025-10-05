@@ -15,8 +15,12 @@ import {
   clearTemporaryHighlights,
   clearAllPersistentHighlights
 } from '../utils/faceSelection';
+import {
+  findClosestEdgePoint,
+  createRulerPointMarker,
+  clearRulerPointMarkers
+} from '../utils/edgeSelection';
 
-// New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
 interface Props {
   shape: Shape;
@@ -45,9 +49,9 @@ const YagoDesignShape: React.FC<Props> = ({
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
-  // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [isRulerMode, setIsRulerMode] = useState(false);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -355,11 +359,23 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log('✅ All surface highlights cleared');
     };
 
+    const handleActivateRulerMode = () => {
+      setIsRulerMode(true);
+      console.log(`🎯 Ruler mode activated on shape ${shape.id}`);
+    };
+
+    const handleClearRulerPoints = () => {
+      clearRulerPointMarkers(scene);
+      console.log('🎯 Ruler points cleared');
+    };
+
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     window.addEventListener('createSurfaceHighlight', handleCreateSurfaceHighlight as EventListener);
     window.addEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
     window.addEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
     window.addEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+    window.addEventListener('activateRulerMode', handleActivateRulerMode);
+    window.addEventListener('clearRulerPoints', handleClearRulerPoints);
 
     return () => {
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
@@ -367,6 +383,8 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
       window.removeEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+      window.removeEventListener('activateRulerMode', handleActivateRulerMode);
+      window.removeEventListener('clearRulerPoints', handleClearRulerPoints);
     };
   }, [scene, camera, gl.domElement, shape]);
 
@@ -388,10 +406,51 @@ const YagoDesignShape: React.FC<Props> = ({
   };
   
   const handleClick = (e: any) => {
-    // New surface selection mode
+    if (isRulerMode && e.nativeEvent.button === 0 && meshRef.current) {
+      e.stopPropagation();
+
+      const rect = gl.domElement.getBoundingClientRect();
+      const mouseX = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
+      const mouseY = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
+      const mousePosition = new THREE.Vector2(mouseX, mouseY);
+
+      const worldMatrix = meshRef.current.matrixWorld;
+      const edgePoint = findClosestEdgePoint(
+        mousePosition,
+        camera,
+        shapeGeometry,
+        worldMatrix,
+        0.05
+      );
+
+      if (edgePoint) {
+        const markerCount = scene.children.filter(
+          child => child.userData.type === 'rulerMarker'
+        ).length;
+
+        createRulerPointMarker(edgePoint.point, scene, markerCount);
+
+        const edgeSelectedEvent = new CustomEvent('edgePointSelected', {
+          detail: {
+            point: edgePoint.point,
+            shapeId: shape.id
+          }
+        });
+        window.dispatchEvent(edgeSelectedEvent);
+
+        console.log(`🎯 Edge point selected:`, edgePoint.point);
+
+        if (markerCount === 1) {
+          setIsRulerMode(false);
+        }
+      }
+
+      return;
+    }
+
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
-      
+
       const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -410,7 +469,6 @@ const YagoDesignShape: React.FC<Props> = ({
         return;
       }
 
-      // Send face selection event
       const faceSelectedEvent = new CustomEvent('faceSelected', {
         detail: {
           faceIndex: hit.faceIndex,
@@ -418,12 +476,11 @@ const YagoDesignShape: React.FC<Props> = ({
         }
       });
       window.dispatchEvent(faceSelectedEvent);
-      
+
       console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
       return;
     }
-    
-    // Normal selection mode - only left click
+
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
       useAppStore.getState().selectShape(shape.id);
