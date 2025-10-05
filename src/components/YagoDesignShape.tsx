@@ -13,17 +13,10 @@ import {
   clearFaceHighlight,
   removeFaceHighlightByRowIndex,
   clearTemporaryHighlights,
-  clearAllPersistentHighlights,
-  getFaceVertices,
-  getFaceNormal,
-  getFaceCenter
+  clearAllPersistentHighlights
 } from '../utils/faceSelection';
-import {
-  findClosestEdgePoint,
-  createRulerPointMarker,
-  clearRulerPointMarkers
-} from '../utils/edgeSelection';
 
+// New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
 interface Props {
   shape: Shape;
@@ -52,15 +45,9 @@ const YagoDesignShape: React.FC<Props> = ({
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
+  // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
-  const [isRulerMode, setIsRulerMode] = useState(false);
-  const [hoveredEdgeIndex, setHoveredEdgeIndex] = useState<number | null>(null);
-  const [selectedEdges, setSelectedEdges] = useState<number[]>([]);
-  const highlightedEdgesRef = useRef<THREE.LineSegments | null>(null);
-  const selectedEdgesRef = useRef<THREE.LineSegments[]>([]);
-  const selectedPointsRef = useRef<THREE.Vector3[]>([]);
-  const dimensionLinesRef = useRef<THREE.Group[]>([]);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -368,60 +355,11 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log('✅ All surface highlights cleared');
     };
 
-    const handleActivateRulerMode = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      const rowId = customEvent.detail?.rowId;
-
-      setIsRulerMode(true);
-      setActiveRowId(rowId || null);
-      setSelectedEdges([]);
-      selectedPointsRef.current = [];
-      selectedEdgesRef.current.forEach(line => {
-        scene.remove(line);
-        line.geometry.dispose();
-        (line.material as THREE.Material).dispose();
-      });
-      selectedEdgesRef.current = [];
-      console.log(`🎯 Ruler mode activated on shape ${shape.id} for rowId: ${rowId}`);
-    };
-
-    const handleClearRulerPoints = () => {
-      clearRulerPointMarkers(scene);
-      setSelectedEdges([]);
-      selectedPointsRef.current = [];
-      selectedEdgesRef.current.forEach(line => {
-        scene.remove(line);
-        line.geometry.dispose();
-        (line.material as THREE.Material).dispose();
-      });
-      selectedEdgesRef.current = [];
-
-      dimensionLinesRef.current.forEach(group => {
-        scene.remove(group);
-        group.traverse((child) => {
-          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
-            child.geometry.dispose();
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(mat => mat.dispose());
-              } else {
-                child.material.dispose();
-              }
-            }
-          }
-        });
-      });
-      dimensionLinesRef.current = [];
-      console.log('🎯 Ruler points cleared');
-    };
-
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     window.addEventListener('createSurfaceHighlight', handleCreateSurfaceHighlight as EventListener);
     window.addEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
     window.addEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
     window.addEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
-    window.addEventListener('activateRulerMode', handleActivateRulerMode);
-    window.addEventListener('clearRulerPoints', handleClearRulerPoints);
 
     return () => {
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
@@ -429,264 +367,8 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
       window.removeEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
-      window.removeEventListener('activateRulerMode', handleActivateRulerMode);
-      window.removeEventListener('clearRulerPoints', handleClearRulerPoints);
     };
   }, [scene, camera, gl.domElement, shape]);
-
-  useEffect(() => {
-    if (highlightedEdgesRef.current) {
-      scene.remove(highlightedEdgesRef.current);
-      highlightedEdgesRef.current.geometry.dispose();
-      (highlightedEdgesRef.current.material as THREE.Material).dispose();
-      highlightedEdgesRef.current = null;
-    }
-
-    if (hoveredEdgeIndex !== null && meshRef.current) {
-      const edges = new THREE.EdgesGeometry(shapeGeometry);
-      const edgePositions = edges.getAttribute('position');
-
-      const startIdx = hoveredEdgeIndex * 2;
-      const endIdx = startIdx + 1;
-
-      if (startIdx < edgePositions.count && endIdx < edgePositions.count) {
-        const start = new THREE.Vector3(
-          edgePositions.getX(startIdx),
-          edgePositions.getY(startIdx),
-          edgePositions.getZ(startIdx)
-        );
-        const end = new THREE.Vector3(
-          edgePositions.getX(endIdx),
-          edgePositions.getY(endIdx),
-          edgePositions.getZ(endIdx)
-        );
-
-        const highlightGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-        const highlightMaterial = new THREE.LineBasicMaterial({
-          color: 0xff0000,
-          linewidth: 3,
-          depthTest: false
-        });
-
-        const highlightLine = new THREE.LineSegments(highlightGeometry, highlightMaterial);
-        highlightLine.position.copy(meshRef.current.position);
-        highlightLine.rotation.copy(meshRef.current.rotation);
-        highlightLine.scale.copy(meshRef.current.scale);
-        highlightLine.renderOrder = 1001;
-
-        scene.add(highlightLine);
-        highlightedEdgesRef.current = highlightLine;
-      }
-    }
-
-    return () => {
-      if (highlightedEdgesRef.current) {
-        scene.remove(highlightedEdgesRef.current);
-        highlightedEdgesRef.current.geometry.dispose();
-        (highlightedEdgesRef.current.material as THREE.Material).dispose();
-        highlightedEdgesRef.current = null;
-      }
-    };
-  }, [hoveredEdgeIndex, scene, shapeGeometry, shape.position, shape.rotation, shape.scale]);
-
-  const createFaceDimensionLines = (faceIndex: number) => {
-    if (!meshRef.current) return;
-
-    const geometry = shapeGeometry;
-    const worldMatrix = meshRef.current.matrixWorld;
-
-    const vertices = getFaceVertices(geometry, faceIndex);
-    if (vertices.length < 3) return;
-
-    const worldVertices = vertices.map(v => v.clone().applyMatrix4(worldMatrix));
-
-    const normal = getFaceNormal(vertices).applyMatrix4(
-      new THREE.Matrix4().extractRotation(worldMatrix)
-    ).normalize();
-
-    const center = getFaceCenter(vertices).applyMatrix4(worldMatrix);
-
-    const up = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-    const tangent = new THREE.Vector3().crossVectors(up, normal).normalize();
-    const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-
-    const projected2D = worldVertices.map(v => {
-      const rel = v.clone().sub(center);
-      return new THREE.Vector2(rel.dot(tangent), rel.dot(bitangent));
-    });
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    projected2D.forEach(p => {
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y);
-      maxY = Math.max(maxY, p.y);
-    });
-
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    const to3D = (x: number, y: number) => {
-      return center.clone()
-        .addScaledVector(tangent, x)
-        .addScaledVector(bitangent, y)
-        .addScaledVector(normal, 0.5);
-    };
-
-    const bottomLeft = to3D(minX, minY);
-    const bottomRight = to3D(maxX, minY);
-    const topRight = to3D(maxX, maxY);
-    const topLeft = to3D(minX, maxY);
-
-    const offset = 0.3;
-    const offsetDir1 = tangent.clone();
-    const offsetDir2 = bitangent.clone();
-
-    const widthStart = bottomLeft.clone().sub(offsetDir2.clone().multiplyScalar(offset));
-    const widthEnd = bottomRight.clone().sub(offsetDir2.clone().multiplyScalar(offset));
-
-    const heightStart = bottomRight.clone().add(offsetDir1.clone().multiplyScalar(offset));
-    const heightEnd = topRight.clone().add(offsetDir1.clone().multiplyScalar(offset));
-
-    createDashedDimensionLine(widthStart, widthEnd, width, 'width');
-    createDashedDimensionLine(heightStart, heightEnd, height, 'height');
-  };
-
-  const createDashedDimensionLine = (
-    point1: THREE.Vector3,
-    point2: THREE.Vector3,
-    distance: number,
-    label: string
-  ) => {
-    const group = new THREE.Group();
-
-    const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
-
-    const dashGeometry = new THREE.BufferGeometry().setFromPoints([point1, point2]);
-    const dashMaterial = new THREE.LineDashedMaterial({
-      color: 0x000000,
-      linewidth: 2,
-      dashSize: 0.1,
-      gapSize: 0.05,
-      depthTest: false
-    });
-    const dashLine = new THREE.Line(dashGeometry, dashMaterial);
-    dashLine.computeLineDistances();
-    dashLine.renderOrder = 1003;
-    group.add(dashLine);
-
-    const arrowLength = 0.1;
-    const arrowGeometry = new THREE.ConeGeometry(0.02, arrowLength, 8);
-
-    const arrow1 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
-    arrow1.position.copy(point1);
-    arrow1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().negate());
-    arrow1.renderOrder = 1003;
-    group.add(arrow1);
-
-    const arrow2 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
-    arrow2.position.copy(point2);
-    arrow2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-    arrow2.renderOrder = 1003;
-    group.add(arrow2);
-
-    const midPoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 256;
-    canvas.height = 64;
-
-    if (context) {
-      context.fillStyle = 'white';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.font = 'bold 32px Arial';
-      context.fillStyle = 'black';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText(`${distance.toFixed(1)} cm`, canvas.width / 2, canvas.height / 2);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.position.copy(midPoint);
-    sprite.scale.set(0.5, 0.125, 1);
-    sprite.renderOrder = 1004;
-    group.add(sprite);
-
-    group.userData.type = 'faceDimensionLine';
-    group.userData.shapeId = shape.id;
-    group.userData.label = label;
-    scene.add(group);
-    dimensionLinesRef.current.push(group);
-  };
-
-  const createDimensionLine = (point1: THREE.Vector3, point2: THREE.Vector3, distance: number, rowId?: string) => {
-    const group = new THREE.Group();
-
-    const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
-    const offset = new THREE.Vector3().crossVectors(direction, camera.position.clone().sub(point1).normalize()).normalize().multiplyScalar(0.3);
-
-    const offsetPoint1 = point1.clone().add(offset);
-    const offsetPoint2 = point2.clone().add(offset);
-
-    const mainLineGeometry = new THREE.BufferGeometry().setFromPoints([offsetPoint1, offsetPoint2]);
-    const mainLineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2, depthTest: false });
-    const mainLine = new THREE.Line(mainLineGeometry, mainLineMaterial);
-    mainLine.renderOrder = 1003;
-    group.add(mainLine);
-
-    const arrowLength = 0.15;
-    const arrowGeometry = new THREE.ConeGeometry(0.03, arrowLength, 8);
-
-    const arrow1 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
-    arrow1.position.copy(offsetPoint1);
-    arrow1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().negate());
-    arrow1.renderOrder = 1003;
-    group.add(arrow1);
-
-    const arrow2 = new THREE.Mesh(arrowGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
-    arrow2.position.copy(offsetPoint2);
-    arrow2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-    arrow2.renderOrder = 1003;
-    group.add(arrow2);
-
-    const midPoint = new THREE.Vector3().addVectors(offsetPoint1, offsetPoint2).multiplyScalar(0.5);
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 256;
-    canvas.height = 64;
-
-    if (context) {
-      context.fillStyle = 'white';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.font = 'bold 32px Arial';
-      context.fillStyle = 'black';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText(`${distance.toFixed(1)} cm`, canvas.width / 2, canvas.height / 2);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.position.copy(midPoint);
-    sprite.scale.set(0.5, 0.125, 1);
-    sprite.renderOrder = 1004;
-    group.add(sprite);
-
-    group.userData.type = 'rulerDimensionLine';
-    group.userData.shapeId = shape.id;
-    group.userData.rowId = rowId || activeRowId;
-    scene.add(group);
-    dimensionLinesRef.current.push(group);
-
-    console.log(`📏 Created ruler dimension line for rowId: ${rowId || activeRowId}, distance: ${distance.toFixed(1)} cm`);
-  };
 
   const removeFaceNumberText = (rowId: string) => {
     const objectsToRemove: THREE.Object3D[] = [];
@@ -706,93 +388,10 @@ const YagoDesignShape: React.FC<Props> = ({
   };
   
   const handleClick = (e: any) => {
-    if (isRulerMode && e.nativeEvent.button === 0 && meshRef.current && hoveredEdgeIndex !== null) {
-      e.stopPropagation();
-
-      const edges = new THREE.EdgesGeometry(shapeGeometry);
-      const edgePositions = edges.getAttribute('position');
-
-      const startIdx = hoveredEdgeIndex * 2;
-      const endIdx = startIdx + 1;
-
-      if (startIdx < edgePositions.count && endIdx < edgePositions.count) {
-        const start = new THREE.Vector3(
-          edgePositions.getX(startIdx),
-          edgePositions.getY(startIdx),
-          edgePositions.getZ(startIdx)
-        );
-        const end = new THREE.Vector3(
-          edgePositions.getX(endIdx),
-          edgePositions.getY(endIdx),
-          edgePositions.getZ(endIdx)
-        );
-
-        start.applyMatrix4(meshRef.current.matrixWorld);
-        end.applyMatrix4(meshRef.current.matrixWorld);
-
-        const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-
-        selectedPointsRef.current.push(midPoint);
-        setSelectedEdges(prev => [...prev, hoveredEdgeIndex]);
-
-        const selectedGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-        const color = selectedEdges.length === 0 ? 0x3b82f6 : 0x10b981;
-        const selectedMaterial = new THREE.LineBasicMaterial({
-          color: color,
-          linewidth: 4,
-          depthTest: false
-        });
-
-        const selectedLine = new THREE.LineSegments(selectedGeometry, selectedMaterial);
-        selectedLine.renderOrder = 1002;
-        scene.add(selectedLine);
-        selectedEdgesRef.current.push(selectedLine);
-
-        const edgeSelectedEvent = new CustomEvent('edgePointSelected', {
-          detail: {
-            point: midPoint,
-            shapeId: shape.id
-          }
-        });
-        window.dispatchEvent(edgeSelectedEvent);
-
-        console.log(`🎯 Edge selected (${selectedEdges.length + 1}/2):`, midPoint);
-
-        if (selectedEdges.length === 1 && selectedPointsRef.current.length === 2) {
-          const distance = selectedPointsRef.current[0].distanceTo(selectedPointsRef.current[1]);
-          createDimensionLine(selectedPointsRef.current[0], selectedPointsRef.current[1], distance, activeRowId || undefined);
-        }
-
-        if (selectedEdges.length === 1) {
-          setIsRulerMode(false);
-          setSelectedEdges([]);
-          setHoveredEdgeIndex(null);
-
-          if (highlightedEdgesRef.current) {
-            scene.remove(highlightedEdgesRef.current);
-            highlightedEdgesRef.current.geometry.dispose();
-            (highlightedEdgesRef.current.material as THREE.Material).dispose();
-            highlightedEdgesRef.current = null;
-          }
-
-          setTimeout(() => {
-            selectedEdgesRef.current.forEach(line => {
-              scene.remove(line);
-              line.geometry.dispose();
-              (line.material as THREE.Material).dispose();
-            });
-            selectedEdgesRef.current = [];
-            selectedPointsRef.current = [];
-          }, 500);
-        }
-      }
-
-      return;
-    }
-
+    // New surface selection mode
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
-
+      
       const hits = detectFaceAtMouse(
         e.nativeEvent,
         camera,
@@ -811,6 +410,7 @@ const YagoDesignShape: React.FC<Props> = ({
         return;
       }
 
+      // Send face selection event
       const faceSelectedEvent = new CustomEvent('faceSelected', {
         detail: {
           faceIndex: hit.faceIndex,
@@ -818,13 +418,12 @@ const YagoDesignShape: React.FC<Props> = ({
         }
       });
       window.dispatchEvent(faceSelectedEvent);
-
-      createFaceDimensionLines(hit.faceIndex);
-
+      
       console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
       return;
     }
-
+    
+    // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
       useAppStore.getState().selectShape(shape.id);
@@ -832,33 +431,8 @@ const YagoDesignShape: React.FC<Props> = ({
     }
   };
 
-  const handlePointerMove = (e: any) => {
-    if (!isRulerMode || !meshRef.current) return;
-
-    const rect = gl.domElement.getBoundingClientRect();
-    const mouseX = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
-    const mouseY = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
-    const mousePosition = new THREE.Vector2(mouseX, mouseY);
-
-    const worldMatrix = meshRef.current.matrixWorld;
-    const edgePoint = findClosestEdgePoint(
-      mousePosition,
-      camera,
-      shapeGeometry,
-      worldMatrix,
-      0.08
-    );
-
-    if (edgePoint) {
-      setHoveredEdgeIndex(edgePoint.edgeIndex);
-      gl.domElement.style.cursor = 'crosshair';
-    } else {
-      setHoveredEdgeIndex(null);
-      gl.domElement.style.cursor = 'default';
-    }
-  };
-
   const handleContextMenu = (e: any) => {
+    // Normal context menu - only show for selected shapes AND not in edit mode
     if (isSelected && onContextMenuRequest && !isEditMode) {
       e.stopPropagation();
       e.nativeEvent.preventDefault();
@@ -961,11 +535,10 @@ const YagoDesignShape: React.FC<Props> = ({
         rotation={shape.rotation}
         scale={shape.scale}
         onClick={handleClick}
-        onPointerMove={handlePointerMove}
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true}
+        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>

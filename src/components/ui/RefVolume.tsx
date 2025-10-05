@@ -17,7 +17,7 @@ interface RefVolumeProps {
 }
 
 const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape, setVisibleDimensions, measurementUnit } = useAppStore();
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape, setVisibleDimensions } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -53,67 +53,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
-  const [isRulerMode, setIsRulerMode] = useState(false);
-  const [activeRulerRow, setActiveRulerRow] = useState<string | null>(null);
-  const [rulerPoints, setRulerPoints] = useState<THREE.Vector3[]>([]);
 
   useEffect(() => {
     setVisibleDimensions(selectedDimensions);
   }, [selectedDimensions, setVisibleDimensions]);
-
-  useEffect(() => {
-    if (!isRulerMode) return;
-
-    const handleEdgeSelected = (event: CustomEvent) => {
-      const { point } = event.detail;
-
-      setRulerPoints(prev => {
-        const newPoints = [...prev, point];
-
-        if (newPoints.length === 2) {
-          const distance = newPoints[0].distanceTo(newPoints[1]);
-          const displayDistance = convertToDisplayUnit(distance).toFixed(2);
-
-          if (activeRulerRow) {
-            if (activeRulerRow === 'width') {
-              setInputWidth(displayDistance);
-              setResultWidth(displayDistance);
-            } else if (activeRulerRow === 'height') {
-              setInputHeight(displayDistance);
-              setResultHeight(displayDistance);
-            } else if (activeRulerRow === 'depth') {
-              setInputDepth(displayDistance);
-              setResultDepth(displayDistance);
-            } else {
-              setCustomParameters(prevParams => prevParams.map(param =>
-                param.id === activeRulerRow
-                  ? { ...param, value: displayDistance, result: displayDistance }
-                  : param
-              ));
-            }
-          }
-
-          setIsRulerMode(false);
-          setActiveRulerRow(null);
-          setRulerPoints([]);
-
-          const clearEvent = new CustomEvent('clearRulerPoints');
-          window.dispatchEvent(clearEvent);
-
-          console.log(`✅ Ruler measurement: ${displayDistance} ${measurementUnit}`);
-          return [];
-        }
-
-        return newPoints;
-      });
-    };
-
-    window.addEventListener('edgePointSelected', handleEdgeSelected as EventListener);
-
-    return () => {
-      window.removeEventListener('edgePointSelected', handleEdgeSelected as EventListener);
-    };
-  }, [isRulerMode, activeRulerRow, convertToDisplayUnit, measurementUnit]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -211,6 +154,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
+    // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
+    // This means when we scale, it naturally grows in X+, Y+, Z+ directions!
+    // We DON'T need to adjust position because the geometry's origin IS the min corner
+
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
     });
@@ -307,19 +254,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             </button>
           )}
           <button
-            onClick={() => {
-              setIsRulerMode(true);
-              setActiveRulerRow(null);
-              setRulerPoints([]);
-              const activateEvent = new CustomEvent('activateRulerMode');
-              window.dispatchEvent(activateEvent);
-              console.log('🎯 Global Ruler mode activated');
-            }}
-            className={`p-1.5 rounded-sm transition-colors ${
-              isRulerMode && !activeRulerRow
-                ? 'bg-blue-100 text-blue-600'
-                : 'hover:bg-orange-100 text-orange-600'
-            }`}
+            onClick={() => {}}
+            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
             title="Ruler Tool"
           >
             <Ruler size={14} />
@@ -392,21 +328,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {
-                      setIsRulerMode(true);
-                      setActiveRulerRow('width');
-                      setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode', {
-                        detail: { rowId: 'width' }
-                      });
-                      window.dispatchEvent(activateEvent);
-                      console.log('🎯 Ruler mode activated for Width');
-                    }}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isRulerMode && activeRulerRow === 'width'
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
@@ -492,21 +415,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {
-                      setIsRulerMode(true);
-                      setActiveRulerRow('height');
-                      setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode', {
-                        detail: { rowId: 'height' }
-                      });
-                      window.dispatchEvent(activateEvent);
-                      console.log('🎯 Ruler mode activated for Height');
-                    }}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isRulerMode && activeRulerRow === 'height'
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
@@ -592,21 +502,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {
-                      setIsRulerMode(true);
-                      setActiveRulerRow('depth');
-                      setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode', {
-                        detail: { rowId: 'depth' }
-                      });
-                      window.dispatchEvent(activateEvent);
-                      console.log('🎯 Ruler mode activated for Depth');
-                    }}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isRulerMode && activeRulerRow === 'depth'
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
@@ -697,21 +594,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {
-                      setIsRulerMode(true);
-                      setActiveRulerRow(param.id);
-                      setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode', {
-                        detail: { rowId: param.id }
-                      });
-                      window.dispatchEvent(activateEvent);
-                      console.log(`🎯 Ruler mode activated for parameter ${param.description}`);
-                    }}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isRulerMode && activeRulerRow === param.id
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
+                    onClick={() => {}}
+                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
                     title="Ruler Tool"
                   >
                     <Ruler size={11} />
