@@ -78,6 +78,7 @@ export const MeasurementHandler = () => {
       const closestEdge = findClosestEdgePoint(clickPoint, edges, 50);
 
       if (closestEdge) {
+        console.log('Edge hovered:', closestEdge.edgeIndex);
         setHoveredEdgeInfo({
           shapeId: shape.id,
           edgeIndex: closestEdge.edgeIndex,
@@ -90,10 +91,17 @@ export const MeasurementHandler = () => {
     };
 
     const handleClick = (event: MouseEvent) => {
+      console.log('Click detected in measurement mode');
+      console.log('Hovered edge info:', hoveredEdgeInfo);
+      console.log('All edges count:', allEdges.length);
+
       if (!hoveredEdgeInfo || allEdges.length === 0) {
-        console.log('No edge hovered');
+        console.log('No edge hovered - cannot click');
         return;
       }
+
+      event.stopPropagation();
+      event.preventDefault();
 
       const canvas = gl.domElement;
       const rect = canvas.getBoundingClientRect();
@@ -205,12 +213,14 @@ export const MeasurementHandler = () => {
 
     const canvas = gl.domElement;
     canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('click', handleClick);
+    canvas.addEventListener('click', handleClick, true);
+    canvas.addEventListener('pointerdown', handleClick, true);
     window.addEventListener('keydown', handleEscape);
 
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('click', handleClick);
+      canvas.removeEventListener('click', handleClick, true);
+      canvas.removeEventListener('pointerdown', handleClick, true);
       window.removeEventListener('keydown', handleEscape);
       gl.domElement.style.cursor = 'default';
     };
