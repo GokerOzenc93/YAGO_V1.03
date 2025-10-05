@@ -162,6 +162,21 @@ export enum OrthoMode {
   ON = 'on'
 }
 
+export interface MeasurementPoint {
+  position: THREE.Vector3;
+  shapeId: string;
+  edgeIndex?: number;
+}
+
+export interface ActiveMeasurement {
+  id: string;
+  point1: MeasurementPoint;
+  point2: MeasurementPoint | null;
+  distance: number;
+  dimension: 'width' | 'height' | 'depth' | 'custom';
+  parameterId?: string;
+}
+
 export interface SnapSettings {
   [SnapType.ENDPOINT]: boolean;
   [SnapType.MIDPOINT]: boolean;
@@ -209,6 +224,15 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
+  // Measurement system
+  isMeasurementMode: boolean;
+  setMeasurementMode: (enabled: boolean) => void;
+  activeMeasurement: ActiveMeasurement | null;
+  setActiveMeasurement: (measurement: ActiveMeasurement | null) => void;
+  measurements: ActiveMeasurement[];
+  addMeasurement: (measurement: ActiveMeasurement) => void;
+  removeMeasurement: (id: string) => void;
+  clearMeasurements: () => void;
   // YagoDesign integration
   isYagoDesignInitialized: boolean;
   setYagoDesignInitialized: (initialized: boolean) => void;
@@ -405,6 +429,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Dimension visibility
   visibleDimensions: new Set<string>(),
   setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
+
+  // Measurement system
+  isMeasurementMode: false,
+  setMeasurementMode: (enabled) => set({ isMeasurementMode: enabled }),
+
+  activeMeasurement: null,
+  setActiveMeasurement: (measurement) => set({ activeMeasurement: measurement }),
+
+  measurements: [],
+  addMeasurement: (measurement) =>
+    set((state) => ({ measurements: [...state.measurements, measurement] })),
+
+  removeMeasurement: (id) =>
+    set((state) => ({
+      measurements: state.measurements.filter(m => m.id !== id),
+      activeMeasurement: state.activeMeasurement?.id === id ? null : state.activeMeasurement
+    })),
+
+  clearMeasurements: () => set({ measurements: [], activeMeasurement: null }),
   
   // Snap settings - all enabled by default
   snapSettings: {

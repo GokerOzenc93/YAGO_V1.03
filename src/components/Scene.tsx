@@ -17,6 +17,8 @@ import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
+import { MeasurementLine } from './MeasurementLine';
+import { MeasurementHandler } from './MeasurementHandler';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -186,7 +188,12 @@ const Scene: React.FC = () => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
-    viewMode, // 🎯 NEW: Get current view mode
+    viewMode,
+    isMeasurementMode,
+    activeMeasurement,
+    setActiveMeasurement,
+    measurements,
+    addMeasurement,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -613,6 +620,7 @@ const Scene: React.FC = () => {
       >
         <CameraPositionUpdater />
         <CameraController isAddPanelMode={isAddPanelMode} editModeWidth={400} />
+        <MeasurementHandler />
         <Stats className="hidden" />
 
         {cameraType === CameraType.PERSPECTIVE ? (
@@ -737,6 +745,14 @@ const Scene: React.FC = () => {
 
         {/* Dimension Arrows - Seçili ölçüler için oklar */}
         {editedShape && <DimensionArrows shape={editedShape} />}
+
+        {/* Measurement Lines */}
+        {measurements.map((measurement) => (
+          <MeasurementLine key={measurement.id} measurement={measurement} />
+        ))}
+        {activeMeasurement && activeMeasurement.point2 && (
+          <MeasurementLine measurement={activeMeasurement} />
+        )}
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
