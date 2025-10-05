@@ -53,7 +53,9 @@ const YagoDesignShape: React.FC<Props> = ({
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [isRulerMode, setIsRulerMode] = useState(false);
   const [hoveredEdgeIndex, setHoveredEdgeIndex] = useState<number | null>(null);
+  const [selectedEdges, setSelectedEdges] = useState<number[]>([]);
   const highlightedEdgesRef = useRef<THREE.LineSegments | null>(null);
+  const selectedEdgesRef = useRef<THREE.LineSegments[]>([]);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -363,11 +365,25 @@ const YagoDesignShape: React.FC<Props> = ({
 
     const handleActivateRulerMode = () => {
       setIsRulerMode(true);
+      setSelectedEdges([]);
+      selectedEdgesRef.current.forEach(line => {
+        scene.remove(line);
+        line.geometry.dispose();
+        (line.material as THREE.Material).dispose();
+      });
+      selectedEdgesRef.current = [];
       console.log(`🎯 Ruler mode activated on shape ${shape.id}`);
     };
 
     const handleClearRulerPoints = () => {
       clearRulerPointMarkers(scene);
+      setSelectedEdges([]);
+      selectedEdgesRef.current.forEach(line => {
+        scene.remove(line);
+        line.geometry.dispose();
+        (line.material as THREE.Material).dispose();
+      });
+      selectedEdgesRef.current = [];
       console.log('🎯 Ruler points cleared');
     };
 
@@ -463,42 +479,67 @@ const YagoDesignShape: React.FC<Props> = ({
   };
   
   const handleClick = (e: any) => {
-    if (isRulerMode && e.nativeEvent.button === 0 && meshRef.current) {
+    if (isRulerMode && e.nativeEvent.button === 0 && meshRef.current && hoveredEdgeIndex !== null) {
       e.stopPropagation();
 
-      const rect = gl.domElement.getBoundingClientRect();
-      const mouseX = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
-      const mouseY = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
-      const mousePosition = new THREE.Vector2(mouseX, mouseY);
+      const edges = new THREE.EdgesGeometry(shapeGeometry);
+      const edgePositions = edges.getAttribute('position');
 
-      const worldMatrix = meshRef.current.matrixWorld;
-      const edgePoint = findClosestEdgePoint(
-        mousePosition,
-        camera,
-        shapeGeometry,
-        worldMatrix,
-        0.05
-      );
+      const startIdx = hoveredEdgeIndex * 2;
+      const endIdx = startIdx + 1;
 
-      if (edgePoint) {
-        const markerCount = scene.children.filter(
-          child => child.userData.type === 'rulerMarker'
-        ).length;
+      if (startIdx < edgePositions.count && endIdx < edgePositions.count) {
+        const start = new THREE.Vector3(
+          edgePositions.getX(startIdx),
+          edgePositions.getY(startIdx),
+          edgePositions.getZ(startIdx)
+        );
+        const end = new THREE.Vector3(
+          edgePositions.getX(endIdx),
+          edgePositions.getY(endIdx),
+          edgePositions.getZ(endIdx)
+        );
 
-        createRulerPointMarker(edgePoint.point, scene, markerCount);
+        start.applyMatrix4(meshRef.current.matrixWorld);
+        end.applyMatrix4(meshRef.current.matrixWorld);
+
+        const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+
+        setSelectedEdges(prev => [...prev, hoveredEdgeIndex]);
+
+        const selectedGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+        const color = selectedEdges.length === 0 ? 0x3b82f6 : 0x10b981;
+        const selectedMaterial = new THREE.LineBasicMaterial({
+          color: color,
+          linewidth: 4,
+          depthTest: false
+        });
+
+        const selectedLine = new THREE.LineSegments(selectedGeometry, selectedMaterial);
+        selectedLine.renderOrder = 1002;
+        scene.add(selectedLine);
+        selectedEdgesRef.current.push(selectedLine);
 
         const edgeSelectedEvent = new CustomEvent('edgePointSelected', {
           detail: {
-            point: edgePoint.point,
+            point: midPoint,
             shapeId: shape.id
           }
         });
         window.dispatchEvent(edgeSelectedEvent);
 
-        console.log(`🎯 Edge point selected:`, edgePoint.point);
+        console.log(`🎯 Edge selected (${selectedEdges.length + 1}/2):`, midPoint);
 
-        if (markerCount === 1) {
+        if (selectedEdges.length === 1) {
           setIsRulerMode(false);
+          setSelectedEdges([]);
+
+          selectedEdgesRef.current.forEach(line => {
+            scene.remove(line);
+            line.geometry.dispose();
+            (line.material as THREE.Material).dispose();
+          });
+          selectedEdgesRef.current = [];
         }
       }
 
