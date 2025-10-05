@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
+import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -17,7 +17,17 @@ interface RefVolumeProps {
 }
 
 const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape, setVisibleDimensions } = useAppStore();
+  const {
+    convertToDisplayUnit,
+    convertToBaseUnit,
+    updateShape,
+    setVisibleDimensions,
+    isRulerMode,
+    setIsRulerMode,
+    selectedLines,
+    addSelectedLine,
+    removeSelectedLine
+  } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -259,6 +269,17 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           >
             <Plus size={14} />
           </button>
+          <button
+            onClick={() => setIsRulerMode(!isRulerMode)}
+            className={`p-1.5 rounded-sm transition-colors ${
+              isRulerMode
+                ? 'bg-orange-500 text-white'
+                : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+            }`}
+            title="Ruler Mode - Select Lines"
+          >
+            <Ruler size={14} />
+          </button>
         </div>
       </div>
 
@@ -319,14 +340,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
@@ -407,14 +420,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
-                  <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -493,14 +498,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
@@ -586,14 +583,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {}}
-                    className="flex-shrink-0 p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-sm transition-colors"
-                    title="Ruler Tool"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
-                  <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -629,6 +618,44 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         {editedShape.type === 'circle2d' && (
           <div className="text-xs text-slate-600 p-2 bg-orange-50 rounded-sm border border-orange-200">
             Circle: Only height can be edited
+          </div>
+        )}
+
+        {isRulerMode && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+            <div className="text-xs font-medium text-blue-800 mb-2">
+              Ruler Mode Active - Hover over lines to select
+            </div>
+            <div className="text-xs text-blue-600">
+              Click on highlighted lines to add them to the list below
+            </div>
+          </div>
+        )}
+
+        {selectedLines.length > 0 && (
+          <div className="mt-4 bg-white rounded-md border border-stone-200 p-3">
+            <div className="text-xs font-medium text-slate-800 mb-2">Selected Lines</div>
+            <div className="space-y-1">
+              {selectedLines.map((line) => (
+                <div
+                  key={line.id}
+                  className="flex items-center justify-between h-8 px-2 bg-gray-50 rounded-sm border border-gray-200"
+                >
+                  <span className="text-xs text-slate-700">{line.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-900">
+                      {line.value.toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => removeSelectedLine(line.id)}
+                      className="p-1 hover:bg-red-100 text-red-600 rounded-sm transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

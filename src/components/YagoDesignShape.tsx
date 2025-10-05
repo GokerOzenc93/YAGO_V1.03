@@ -41,13 +41,17 @@ const YagoDesignShape: React.FC<Props> = ({
     setSelectedObjectPosition,
     viewMode,
     updateShape,
-    orthoMode, // 🎯 NEW: Get ortho mode
+    orthoMode,
+    isRulerMode,
+    addSelectedLine,
+    convertToDisplayUnit,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
   // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [hoveredEdge, setHoveredEdge] = useState<number | null>(null);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -58,6 +62,28 @@ const YagoDesignShape: React.FC<Props> = ({
   const edgesGeometry = useMemo(() => {
     return new THREE.EdgesGeometry(shapeGeometry);
   }, [shapeGeometry]);
+
+  // Create individual line segments for edge detection
+  const lineSegments = useMemo(() => {
+    const positions = edgesGeometry.attributes.position;
+    const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3; index: number }> = [];
+
+    for (let i = 0; i < positions.count; i += 2) {
+      const start = new THREE.Vector3(
+        positions.getX(i),
+        positions.getY(i),
+        positions.getZ(i)
+      );
+      const end = new THREE.Vector3(
+        positions.getX(i + 1),
+        positions.getY(i + 1),
+        positions.getZ(i + 1)
+      );
+      segments.push({ start, end, index: i / 2 });
+    }
+
+    return segments;
+  }, [edgesGeometry]);
 
   // Debug: Log shape information when selected
   useEffect(() => {
@@ -387,7 +413,69 @@ const YagoDesignShape: React.FC<Props> = ({
     });
   };
   
+  // Handle edge hover for ruler mode
+  const handleEdgePointerMove = (e: any) => {
+    if (!isRulerMode || !meshRef.current) return;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Line = { threshold: 10 };
+
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+
+    let closestEdge: number | null = null;
+    let minDistance = 20;
+
+    lineSegments.forEach((segment, idx) => {
+      const worldStart = segment.start.clone().applyMatrix4(meshRef.current!.matrixWorld);
+      const worldEnd = segment.end.clone().applyMatrix4(meshRef.current!.matrixWorld);
+
+      const line = new THREE.Line3(worldStart, worldEnd);
+      const closestPoint = new THREE.Vector3();
+      line.closestPointToPoint(raycaster.ray.origin, true, closestPoint);
+
+      const distance = closestPoint.distanceTo(raycaster.ray.origin);
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestEdge = idx;
+      }
+    });
+
+    setHoveredEdge(closestEdge);
+  };
+
+  const handleEdgeClick = (e: any) => {
+    if (!isRulerMode || hoveredEdge === null || !meshRef.current) return;
+
+    e.stopPropagation();
+
+    const segment = lineSegments[hoveredEdge];
+    const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
+    const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
+
+    const length = worldStart.distanceTo(worldEnd);
+    const displayLength = convertToDisplayUnit(length);
+
+    addSelectedLine({
+      id: `${shape.id}-edge-${hoveredEdge}-${Date.now()}`,
+      value: displayLength,
+      label: `Edge ${hoveredEdge + 1} (${shape.type})`,
+    });
+
+    console.log(`✅ Line selected: ${displayLength.toFixed(2)} units`);
+  };
+
   const handleClick = (e: any) => {
+    // Ruler mode - handle edge selection
+    if (isRulerMode) {
+      handleEdgeClick(e);
+      return;
+    }
+
     // New surface selection mode
     if (isFaceSelectionActive && e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -535,32 +623,58 @@ const YagoDesignShape: React.FC<Props> = ({
         rotation={shape.rotation}
         scale={shape.scale}
         onClick={handleClick}
+        onPointerMove={handleEdgePointerMove}
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
+        visible={true}
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
-      {shouldShowEdges() && (
+      {shouldShowEdges() && !isRulerMode && (
         <lineSegments
           geometry={edgesGeometry}
           position={shape.position}
           rotation={shape.rotation}
           scale={shape.scale}
-          visible={true} // Always show edges
+          visible={true}
         >
           <lineBasicMaterial
             color={getEdgeColor()}
             transparent
             opacity={getEdgeOpacity()}
-            depthTest={viewMode === ViewMode.SOLID} // 🎯 Her yerden görünür
+            depthTest={viewMode === ViewMode.SOLID}
             linewidth={getEdgeLineWidth()}
           />
         </lineSegments>
       )}
+
+      {/* 🎯 RULER MODE - Individual edge rendering with hover effect */}
+      {isRulerMode && lineSegments.map((segment, idx) => {
+        const isHovered = hoveredEdge === idx;
+        const points = [segment.start, segment.end];
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+
+        return (
+          <line
+            key={idx}
+            geometry={lineGeometry}
+            position={shape.position}
+            rotation={shape.rotation}
+            scale={shape.scale}
+          >
+            <lineBasicMaterial
+              color={isHovered ? '#ff0000' : getEdgeColor()}
+              transparent
+              opacity={1}
+              linewidth={isHovered ? 3 : getEdgeLineWidth()}
+              depthTest={false}
+            />
+          </line>
+        );
+      })}
 
       {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
       {isSelected &&

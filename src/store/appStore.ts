@@ -279,6 +279,13 @@ interface AppState {
   // Dimension visibility
   visibleDimensions: Set<string>;
   setVisibleDimensions: (dimensions: Set<string>) => void;
+  // Ruler mode
+  isRulerMode: boolean;
+  setIsRulerMode: (enabled: boolean) => void;
+  selectedLines: Array<{ id: string; value: number; label: string }>;
+  addSelectedLine: (line: { id: string; value: number; label: string }) => void;
+  removeSelectedLine: (id: string) => void;
+  clearSelectedLines: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -405,6 +412,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Dimension visibility
   visibleDimensions: new Set<string>(),
   setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
+
+  // Ruler mode
+  isRulerMode: false,
+  setIsRulerMode: (enabled) => set({ isRulerMode: enabled }),
+  selectedLines: [],
+  addSelectedLine: (line) => set((state) => ({
+    selectedLines: [...state.selectedLines, line]
+  })),
+  removeSelectedLine: (id) => set((state) => ({
+    selectedLines: state.selectedLines.filter(l => l.id !== id)
+  })),
+  clearSelectedLines: () => set({ selectedLines: [] }),
   
   // Snap settings - all enabled by default
   snapSettings: {
