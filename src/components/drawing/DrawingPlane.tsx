@@ -66,6 +66,7 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [drawingState, setDrawingState] = useState<DrawingState>(INITIAL_DRAWING_STATE);
   const [completedShapes, setCompletedShapes] = useState<CompletedShape[]>([]);
   const [hoveredShapeId, setHoveredShapeId] = useState<string | null>(null);
+  const [lastHoverMessageTime, setLastHoverMessageTime] = useState<number>(0);
   const [draggedNodeIndex, setDraggedNodeIndex] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previousCameraType, setPreviousCameraType] = useState<CameraType | null>(null);
@@ -858,25 +859,38 @@ const focusTerminalForMeasurement = () => {
 
   // Keyboard event handlers
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = async (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setDrawingState(INITIAL_DRAWING_STATE);
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
         setIsDragging(false);
         resetPointToPointMove();
+        setHoveredShapeId(null);
         console.log('Drawing cancelled');
       }
-      
+
+      // Handle Space key to convert hovered shape to 3D
+      if (event.key === ' ' && hoveredShapeId && !drawingState.isDrawing && !pendingExtrudeShape) {
+        event.preventDefault();
+        const hoveredShape = completedShapes.find(s => s.id === hoveredShapeId);
+        if (hoveredShape) {
+          console.log(`✓ Space pressed - Converting hovered shape ${hoveredShapeId} to 3D`);
+          await convertTo3DShape(hoveredShape, addShape, selectShape, gridSize);
+          setCompletedShapes(prev => prev.filter(s => s.id !== hoveredShapeId));
+          setHoveredShapeId(null);
+        }
+      }
+
       // Handle Enter key for POLYLINE and POLYGON
       if (event.key === 'Enter' && (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && drawingState.isDrawing && drawingState.points.length >= 2 && !drawingState.waitingForMeasurement) {
       }
-      
+
       // Handle Enter key for pending extrude shape - convert to 2D selectable object
       if (event.key === 'Enter' && pendingExtrudeShape && !drawingState.isDrawing) {
         handleConvertTo2D();
       }
-      
+
       if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
         setEditingPolylineId(null);
         setDraggedNodeIndex(null);
@@ -888,7 +902,7 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTool, drawingState, pendingExtrudeShape, setEditingPolylineId, setActiveTool, addShape, selectShape, gridSize]);
+  }, [activeTool, drawingState, pendingExtrudeShape, hoveredShapeId, completedShapes, setEditingPolylineId, setActiveTool, addShape, selectShape, gridSize]);
 
   return (
     <>
@@ -941,6 +955,11 @@ const focusTerminalForMeasurement = () => {
                 onPointerOver={(e) => {
                   e.stopPropagation();
                   setHoveredShapeId(shape.id);
+                  const now = Date.now();
+                  if (now - lastHoverMessageTime > 2000) {
+                    console.log(`🎯 Çizgi vurgulandı - SPACE tuşuna basarak listeye ekleyin`);
+                    setLastHoverMessageTime(now);
+                  }
                 }}
                 onPointerOut={(e) => {
                   e.stopPropagation();
