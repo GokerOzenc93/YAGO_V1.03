@@ -285,6 +285,7 @@ interface AppState {
   selectedLines: Array<{ id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number]; formula?: string }>;
   addSelectedLine: (line: { id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number]; formula?: string }) => void;
   updateSelectedLineValue: (id: string, newValue: number) => void;
+  updateSelectedLineVertices: (id: string, endVertex: [number, number, number]) => void;
   updateSelectedLineFormula: (id: string, formula: string) => void;
   updateSelectedLineLabel: (id: string, label: string) => void;
   removeSelectedLine: (id: string) => void;
@@ -434,6 +435,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateSelectedLineValue: (id, newValue) => set((state) => ({
     selectedLines: state.selectedLines.map(l =>
       l.id === id ? { ...l, value: newValue } : l
+    )
+  })),
+  updateSelectedLineVertices: (id, endVertex) => set((state) => ({
+    selectedLines: state.selectedLines.map(l =>
+      l.id === id ? { ...l, endVertex } : l
     )
   })),
   updateSelectedLineFormula: (id, formula) => set((state) => ({

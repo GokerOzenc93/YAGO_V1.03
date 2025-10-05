@@ -28,6 +28,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     addSelectedLine,
     removeSelectedLine,
     updateSelectedLineValue,
+    updateSelectedLineVertices,
     updateSelectedLineFormula,
     updateSelectedLineLabel,
     shapes
@@ -180,9 +181,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       setCustomParameters(updatedParams);
     }
 
-    const shapeUpdates = new Map<string, { width?: number; height?: number; depth?: number }>();
-    const lineValueUpdates: Array<{ id: string; value: number }> = [];
-
     selectedLines.forEach(line => {
       if (line.formula && line.formula.trim()) {
         const evaluatedValue = evaluateExpression(line.formula);
@@ -193,58 +191,96 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
             console.log(`🔄 Edge ${line.label}: ${currentDisplayValue} → ${newDisplayValue}`);
 
-            const edgeVector = new THREE.Vector3(
-              line.endVertex[0] - line.startVertex[0],
-              line.endVertex[1] - line.startVertex[1],
-              line.endVertex[2] - line.startVertex[2]
-            );
+            const shape = shapes.find(s => s.id === line.shapeId);
+            if (!shape || !shape.geometry) return;
 
-            const updates = shapeUpdates.get(line.shapeId) || {};
+            const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
+            const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
+            const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
 
-            if (Math.abs(edgeVector.x) > 0.1) {
-              updates.width = convertToBaseUnit(newDisplayValue);
-              console.log(`  → Width: ${newDisplayValue}mm`);
-            } else if (Math.abs(edgeVector.y) > 0.1) {
-              updates.height = convertToBaseUnit(newDisplayValue);
-              console.log(`  → Height: ${newDisplayValue}mm`);
-            } else if (Math.abs(edgeVector.z) > 0.1) {
-              updates.depth = convertToBaseUnit(newDisplayValue);
-              console.log(`  → Depth: ${newDisplayValue}mm`);
+            let fixedVertex: [number, number, number];
+            let movingVertex: [number, number, number];
+
+            if (dy > dx && dy > dz) {
+              if (line.startVertex[1] < line.endVertex[1]) {
+                fixedVertex = line.startVertex;
+                movingVertex = line.endVertex;
+              } else {
+                fixedVertex = line.endVertex;
+                movingVertex = line.startVertex;
+              }
+            } else if (dx > dy && dx > dz) {
+              if (line.startVertex[0] > line.endVertex[0]) {
+                fixedVertex = line.startVertex;
+                movingVertex = line.endVertex;
+              } else {
+                fixedVertex = line.endVertex;
+                movingVertex = line.startVertex;
+              }
+            } else {
+              if (line.startVertex[2] < line.endVertex[2]) {
+                fixedVertex = line.startVertex;
+                movingVertex = line.endVertex;
+              } else {
+                fixedVertex = line.endVertex;
+                movingVertex = line.startVertex;
+              }
             }
 
-            shapeUpdates.set(line.shapeId, updates);
-            lineValueUpdates.push({ id: line.id, value: newDisplayValue });
+            const newLengthInBase = convertToBaseUnit(newDisplayValue);
+            const direction = new THREE.Vector3(
+              movingVertex[0] - fixedVertex[0],
+              movingVertex[1] - fixedVertex[1],
+              movingVertex[2] - fixedVertex[2]
+            ).normalize();
+
+            const newMovingVertex = new THREE.Vector3(
+              fixedVertex[0] + direction.x * newLengthInBase,
+              fixedVertex[1] + direction.y * newLengthInBase,
+              fixedVertex[2] + direction.z * newLengthInBase
+            );
+
+            const newGeometry = shape.geometry.clone();
+            const positionAttr = newGeometry.attributes.position;
+            const positions = positionAttr.array;
+
+            for (let i = 0; i < positions.length; i += 3) {
+              const vx = positions[i];
+              const vy = positions[i + 1];
+              const vz = positions[i + 2];
+
+              const distToMoving = Math.sqrt(
+                Math.pow(vx - movingVertex[0], 2) +
+                Math.pow(vy - movingVertex[1], 2) +
+                Math.pow(vz - movingVertex[2], 2)
+              );
+
+              if (distToMoving < 0.01) {
+                positions[i] = newMovingVertex.x;
+                positions[i + 1] = newMovingVertex.y;
+                positions[i + 2] = newMovingVertex.z;
+              }
+            }
+
+            positionAttr.needsUpdate = true;
+            newGeometry.computeBoundingBox();
+            newGeometry.computeVertexNormals();
+
+            updateShape(shape.id, {
+              geometry: newGeometry
+            });
+
+            const updatedEndVertex: [number, number, number] = [
+              newMovingVertex.x,
+              newMovingVertex.y,
+              newMovingVertex.z
+            ];
+
+            updateSelectedLineValue(line.id, newDisplayValue);
+            updateSelectedLineVertices(line.id, updatedEndVertex);
           }
         }
       }
-    });
-
-    shapeUpdates.forEach((updates, shapeId) => {
-      const shape = shapes.find(s => s.id === shapeId);
-      if (!shape || shape.type !== 'box') return;
-
-      const newWidth = updates.width ?? shape.parameters.width ?? 0;
-      const newHeight = updates.height ?? shape.parameters.height ?? 0;
-      const newDepth = updates.depth ?? shape.parameters.depth ?? 0;
-
-      console.log(`📦 Updating shape geometry: W=${convertToDisplayUnit(newWidth).toFixed(2)} H=${convertToDisplayUnit(newHeight).toFixed(2)} D=${convertToDisplayUnit(newDepth).toFixed(2)}`);
-
-      const newGeometry = new THREE.BoxGeometry(newWidth, newHeight, newDepth);
-      newGeometry.translate(newWidth / 2, newHeight / 2, newDepth / 2);
-
-      updateShape(shapeId, {
-        geometry: newGeometry,
-        parameters: {
-          ...shape.parameters,
-          width: newWidth,
-          height: newHeight,
-          depth: newDepth
-        }
-      });
-    });
-
-    lineValueUpdates.forEach(({ id, value }) => {
-      updateSelectedLineValue(id, value);
     });
 
     if (inputWidth && (inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
