@@ -944,8 +944,8 @@ const focusTerminalForMeasurement = () => {
                   setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
                 }}
               >
-                <cylinderGeometry args={[gridSize * 0.5, gridSize * 0.5, length, 8]} />
-                <meshBasicMaterial transparent opacity={0} />
+                <cylinderGeometry args={[gridSize * 1.5, gridSize * 1.5, length, 16]} />
+                <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} />
               </mesh>
             );
           })}
