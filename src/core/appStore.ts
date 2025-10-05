@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { Shape } from '../types/shapes';
+import { Shape } from './shapes';
 import * as THREE from 'three';
-import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
-import { GeometryFactory } from '../lib/geometryFactory';
+import { performBooleanSubtract, performBooleanUnion } from './booleanOperations';
+import { GeometryFactory } from './geometryFactory';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {

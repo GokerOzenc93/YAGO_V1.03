@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Puzzle, PanelLeft, Archive, MousePointer, Ruler } from 'lucide-react';
-import { Shape } from '../../types/shapes';
+import { Shape } from '../core/shapes';
 import EditModeHeader from './EditModeHeader';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
 import RefVolume from './RefVolume';
-import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
-import { useAppStore } from '../../store/appStore';
-import { GeometryFactory } from '../../lib/geometryFactory';
+import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../core/fileSystem';
+import { useAppStore } from '../core/appStore';
+import { GeometryFactory } from '../core/geometryFactory';
 import * as THREE from 'three';
 
 interface EditModeProps {

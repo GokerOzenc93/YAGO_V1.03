@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape } from '../types/shapes';
+import { Shape } from './shapes';
 
 /**
  * Calculate bounding box for shapes

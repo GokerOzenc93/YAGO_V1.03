@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
-import { useAppStore } from '../../store/appStore';
-import { Shape } from '../../types/shapes';
+import { useAppStore } from '../core/appStore';
+import { Shape } from '../core/shapes';
 import * as THREE from 'three';
 
 interface CustomParameter {

@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { Shape } from '../types/shapes';
-import { useAppStore } from '../store/appStore';
+import { Shape } from '../core/shapes';
+import { useAppStore } from '../core/appStore';
 
 interface DimensionArrowsProps {
   shape: Shape;

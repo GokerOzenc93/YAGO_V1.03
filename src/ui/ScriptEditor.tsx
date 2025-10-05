@@ -1,6 +1,6 @@
 import React from 'react';
 import Editor from '@monaco-editor/react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../core/appStore';
 
 const ScriptEditor: React.FC = () => {
   const { scriptContent, setScriptContent } = useAppStore();

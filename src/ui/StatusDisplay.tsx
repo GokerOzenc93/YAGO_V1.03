@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../core/appStore';
 
 interface StatusDisplayProps {
   polylineStatus?: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tool, useAppStore } from '../store/appStore';
+import { Tool, useAppStore } from '../core/appStore';
 import {
   Layers,
   Settings,

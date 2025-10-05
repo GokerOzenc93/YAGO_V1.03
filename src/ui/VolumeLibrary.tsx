@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, Archive } from 'lucide-react';
-import { getSavedVolumes } from '../../utils/fileSystem';
+import { getSavedVolumes } from '../core/fileSystem';
 
 interface VolumeLibraryProps {
   onBack: () => void;

@@ -1,7 +1,7 @@
 import React from 'react';
-import { useAppStore, CameraType, MeasurementUnit, ViewMode } from '../store/appStore';
+import { useAppStore, CameraType, MeasurementUnit, ViewMode } from '../core/appStore';
 import { Camera, CameraOff, Eye, Monitor, Square, Circle, Box, ZoomIn, Frame as Wireframe, EyeOff, Cuboid as Cube } from 'lucide-react';
-import { GeometryFactory } from '../lib/geometryFactory';
+import { GeometryFactory } from '../core/geometryFactory';
 
 const StatusBar: React.FC = () => {
   // Listen for surface selection status

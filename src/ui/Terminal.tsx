@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
-import { useAppStore, Tool } from '../store/appStore';
+import { useAppStore, Tool } from '../core/appStore';
 
 const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');

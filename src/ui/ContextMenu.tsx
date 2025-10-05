@@ -1,6 +1,6 @@
 import React from 'react';
 import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation } from 'lucide-react';
-import { useAppStore, Tool } from '../store/appStore';
+import { useAppStore, Tool } from '../core/appStore';
 
 interface ContextMenuProps {
   position: { x: number; y: number };
