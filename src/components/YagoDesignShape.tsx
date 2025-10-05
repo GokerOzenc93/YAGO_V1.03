@@ -734,12 +734,14 @@ const YagoDesignShape: React.FC<Props> = ({
                   shape.position[2] + center.z * shape.scale[2]
                 ]}
                 quaternion={quaternion}
+                renderOrder={999}
               >
                 <meshBasicMaterial
                   color={isHovered ? '#ff0000' : '#1a1a1a'}
                   transparent
                   opacity={isHovered ? 1.0 : 0.8}
-                  depthTest={false}
+                  depthTest={true}
+                  depthWrite={false}
                 />
               </mesh>
             );
