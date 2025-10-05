@@ -193,13 +193,14 @@ export const MeasurementHandler = () => {
       }
     };
 
+    const canvas = gl.domElement;
     canvas.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('click', handleClick);
+    canvas.addEventListener('click', handleClick);
     window.addEventListener('keydown', handleEscape);
 
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('click', handleClick);
+      canvas.removeEventListener('click', handleClick);
       window.removeEventListener('keydown', handleEscape);
       gl.domElement.style.cursor = 'default';
     };

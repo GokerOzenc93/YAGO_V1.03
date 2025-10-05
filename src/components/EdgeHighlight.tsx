@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 
 interface EdgeHighlightProps {
   edges: THREE.Vector3[][];
@@ -13,10 +13,8 @@ export const EdgeHighlight: React.FC<EdgeHighlightProps> = ({
   hoveredEdgeIndex,
   selectedEdgeIndices,
 }) => {
-  const groupRef = useRef<THREE.Group>(null);
-
   return (
-    <group ref={groupRef}>
+    <group>
       {edges.map((edge, index) => {
         const isHovered = hoveredEdgeIndex === index;
         const isSelected = selectedEdgeIndices.includes(index);
@@ -24,26 +22,17 @@ export const EdgeHighlight: React.FC<EdgeHighlightProps> = ({
         if (!isHovered && !isSelected) return null;
 
         const [start, end] = edge;
-        const points = [start, end];
 
         return (
-          <line key={`highlight-${index}`}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={points.length}
-                array={new Float32Array(points.flatMap(p => [p.x, p.y, p.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial
-              color="#ff0000"
-              linewidth={4}
-              transparent={false}
-              depthTest={false}
-              depthWrite={false}
-            />
-          </line>
+          <Line
+            key={`highlight-${index}`}
+            points={[start, end]}
+            color="#ff0000"
+            lineWidth={4}
+            depthTest={false}
+            depthWrite={false}
+            renderOrder={999}
+          />
         );
       })}
     </group>
