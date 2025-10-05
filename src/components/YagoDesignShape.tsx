@@ -533,13 +533,23 @@ const YagoDesignShape: React.FC<Props> = ({
         if (selectedEdges.length === 1) {
           setIsRulerMode(false);
           setSelectedEdges([]);
+          setHoveredEdgeIndex(null);
 
-          selectedEdgesRef.current.forEach(line => {
-            scene.remove(line);
-            line.geometry.dispose();
-            (line.material as THREE.Material).dispose();
-          });
-          selectedEdgesRef.current = [];
+          if (highlightedEdgesRef.current) {
+            scene.remove(highlightedEdgesRef.current);
+            highlightedEdgesRef.current.geometry.dispose();
+            (highlightedEdgesRef.current.material as THREE.Material).dispose();
+            highlightedEdgesRef.current = null;
+          }
+
+          setTimeout(() => {
+            selectedEdgesRef.current.forEach(line => {
+              scene.remove(line);
+              line.geometry.dispose();
+              (line.material as THREE.Material).dispose();
+            });
+            selectedEdgesRef.current = [];
+          }, 500);
         }
       }
 
