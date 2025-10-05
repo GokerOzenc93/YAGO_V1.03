@@ -368,8 +368,12 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log('✅ All surface highlights cleared');
     };
 
-    const handleActivateRulerMode = () => {
+    const handleActivateRulerMode = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const rowId = customEvent.detail?.rowId;
+
       setIsRulerMode(true);
+      setActiveRowId(rowId || null);
       setSelectedEdges([]);
       selectedPointsRef.current = [];
       selectedEdgesRef.current.forEach(line => {
@@ -378,7 +382,7 @@ const YagoDesignShape: React.FC<Props> = ({
         (line.material as THREE.Material).dispose();
       });
       selectedEdgesRef.current = [];
-      console.log(`🎯 Ruler mode activated on shape ${shape.id}`);
+      console.log(`🎯 Ruler mode activated on shape ${shape.id} for rowId: ${rowId}`);
     };
 
     const handleClearRulerPoints = () => {
@@ -620,7 +624,7 @@ const YagoDesignShape: React.FC<Props> = ({
     dimensionLinesRef.current.push(group);
   };
 
-  const createDimensionLine = (point1: THREE.Vector3, point2: THREE.Vector3, distance: number) => {
+  const createDimensionLine = (point1: THREE.Vector3, point2: THREE.Vector3, distance: number, rowId?: string) => {
     const group = new THREE.Group();
 
     const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
@@ -675,10 +679,13 @@ const YagoDesignShape: React.FC<Props> = ({
     sprite.renderOrder = 1004;
     group.add(sprite);
 
-    group.userData.type = 'dimensionLine';
+    group.userData.type = 'rulerDimensionLine';
     group.userData.shapeId = shape.id;
+    group.userData.rowId = rowId || activeRowId;
     scene.add(group);
     dimensionLinesRef.current.push(group);
+
+    console.log(`📏 Created ruler dimension line for rowId: ${rowId || activeRowId}, distance: ${distance.toFixed(1)} cm`);
   };
 
   const removeFaceNumberText = (rowId: string) => {
@@ -753,7 +760,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
         if (selectedEdges.length === 1 && selectedPointsRef.current.length === 2) {
           const distance = selectedPointsRef.current[0].distanceTo(selectedPointsRef.current[1]);
-          createDimensionLine(selectedPointsRef.current[0], selectedPointsRef.current[1], distance);
+          createDimensionLine(selectedPointsRef.current[0], selectedPointsRef.current[1], distance, activeRowId || undefined);
         }
 
         if (selectedEdges.length === 1) {

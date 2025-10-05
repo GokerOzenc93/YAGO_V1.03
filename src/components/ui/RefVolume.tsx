@@ -396,7 +396,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       setIsRulerMode(true);
                       setActiveRulerRow('width');
                       setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode');
+                      const activateEvent = new CustomEvent('activateRulerMode', {
+                        detail: { rowId: 'width' }
+                      });
                       window.dispatchEvent(activateEvent);
                       console.log('🎯 Ruler mode activated for Width');
                     }}
@@ -494,7 +496,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       setIsRulerMode(true);
                       setActiveRulerRow('height');
                       setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode');
+                      const activateEvent = new CustomEvent('activateRulerMode', {
+                        detail: { rowId: 'height' }
+                      });
                       window.dispatchEvent(activateEvent);
                       console.log('🎯 Ruler mode activated for Height');
                     }}
@@ -592,7 +596,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       setIsRulerMode(true);
                       setActiveRulerRow('depth');
                       setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode');
+                      const activateEvent = new CustomEvent('activateRulerMode', {
+                        detail: { rowId: 'depth' }
+                      });
                       window.dispatchEvent(activateEvent);
                       console.log('🎯 Ruler mode activated for Depth');
                     }}
@@ -695,7 +701,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       setIsRulerMode(true);
                       setActiveRulerRow(param.id);
                       setRulerPoints([]);
-                      const activateEvent = new CustomEvent('activateRulerMode');
+                      const activateEvent = new CustomEvent('activateRulerMode', {
+                        detail: { rowId: param.id }
+                      });
                       window.dispatchEvent(activateEvent);
                       console.log(`🎯 Ruler mode activated for parameter ${param.description}`);
                     }}
