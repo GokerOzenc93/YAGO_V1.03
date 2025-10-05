@@ -1,4 +1,4 @@
-import { create, all, MathJsStatic } from 'mathjs';
+import * as math from 'mathjs';
 
 export interface FormulaVariable {
   name: string;
@@ -13,11 +13,9 @@ export interface FormulaEvaluationResult {
 
 export class FormulaEvaluator {
   private variables: Map<string, number>;
-  private math: MathJsStatic;
 
   constructor(variables: FormulaVariable[] = []) {
     this.variables = new Map();
-    this.math = create(all, {});
     variables.forEach(v => this.setVariable(v.name, v.value));
   }
 
@@ -79,7 +77,7 @@ export class FormulaEvaluator {
         scope[name] = value;
       });
 
-      const result = this.math.evaluate(trimmed, scope);
+      const result = math.evaluate(trimmed, scope);
 
       if (typeof result !== 'number') {
         return {
