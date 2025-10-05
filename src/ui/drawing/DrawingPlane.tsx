@@ -5,7 +5,7 @@ import { useAppStore, Tool, CameraType, SnapType, OrthoMode } from '../../core/a
 import * as THREE from 'three';
 import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { snapToGrid } from './utils';
-import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
+import { findSnapPoints, SnapPointIndicators } from './snapSystem';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { DimensionsManager } from './dimensionsSystem';
