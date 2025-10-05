@@ -908,14 +908,46 @@ const focusTerminalForMeasurement = () => {
       {completedShapes.map(shape => (
         <group key={shape.id}>
           <line geometry={new THREE.BufferGeometry().setFromPoints(shape.points)}>
-            <lineBasicMaterial 
+            <lineBasicMaterial
               color={
-                editingPolylineId === shape.id ? "#f59e0b" : 
+                editingPolylineId === shape.id ? "#f59e0b" :
                 hoveredShapeId === shape.id ? "#333333" : "#000000"
-              } 
+              }
               linewidth={2}
             />
           </line>
+
+          {/* Invisible clickable tube for line selection */}
+          {shape.points.length >= 2 && shape.points.map((point, index) => {
+            if (index === shape.points.length - 1) return null;
+            const nextPoint = shape.points[index + 1];
+            const direction = new THREE.Vector3().subVectors(nextPoint, point);
+            const length = direction.length();
+            const center = new THREE.Vector3().addVectors(point, nextPoint).multiplyScalar(0.5);
+
+            const quaternion = new THREE.Quaternion();
+            quaternion.setFromUnitVectors(
+              new THREE.Vector3(0, 1, 0),
+              direction.clone().normalize()
+            );
+
+            return (
+              <mesh
+                key={`segment-${index}`}
+                position={center}
+                quaternion={quaternion}
+                onPointerOver={() => setHoveredShapeId(shape.id)}
+                onPointerOut={() => setHoveredShapeId(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setHoveredShapeId(shape.id);
+                }}
+              >
+                <cylinderGeometry args={[gridSize * 0.5, gridSize * 0.5, length, 8]} />
+                <meshBasicMaterial transparent opacity={0} />
+              </mesh>
+            );
+          })}
           
           {/* Polyline Edit Nodes */}
           {activeTool === Tool.POLYLINE_EDIT && (shape.type === 'polyline' || shape.type === 'polygon') && (
