@@ -3,15 +3,13 @@ import { useThree } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
 import { useAppStore, Tool, CameraType, SnapType, OrthoMode } from '../../store/appStore';
 import * as THREE from 'three';
-import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE, EdgeInfo } from './types';
+import { CompletedShape, DrawingState, INITIAL_DRAWING_STATE } from './types';
 import { snapToGrid } from './utils';
 import { findSnapPoints, SnapPointIndicators } from './snapSystem.tsx';
 import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { DimensionsManager } from './dimensionsSystem';
 import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from '../../utils/orthoUtils';
-import { detectEdgeHover, updateEdgeLength } from './edgeSelection';
-import EdgeDimensionEditor from './EdgeDimensionEditor';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
@@ -75,9 +73,6 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [extrudeHeight, setExtrudeHeight] = useState('');
   const [pendingExtrudeShape, setPendingExtrudeShape] = useState<CompletedShape | null>(null);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<EdgeInfo | null>(null);
-  const [hoveredEdge, setHoveredEdge] = useState<EdgeInfo | null>(null);
-  const [showEdgeDimensionEditor, setShowEdgeDimensionEditor] = useState(false);
   
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
@@ -657,46 +652,7 @@ const focusTerminalForMeasurement = () => {
     }
   };
 
-  useEffect(() => {
-    (window as any).applyEdgeLength = (newLength: number) => {
-      if (!selectedEdge) return;
-
-      const shape = completedShapes.find(s => s.id === selectedEdge.shapeId);
-      if (!shape) return;
-
-      const newPoints = updateEdgeLength(shape, selectedEdge.edgeIndex, newLength);
-
-      setCompletedShapes(prev => prev.map(s =>
-        s.id === selectedEdge.shapeId ? { ...s, points: newPoints } : s
-      ));
-
-      console.log(`Edge ${selectedEdge.edgeIndex} length updated to ${newLength}`);
-      setSelectedEdge(null);
-      setHoveredEdge(null);
-    };
-
-    return () => {
-      delete (window as any).applyEdgeLength;
-    };
-  }, [selectedEdge, completedShapes]);
-
   const handlePointerDown = (event: THREE.Event<PointerEvent>) => {
-    // Handle edge selection
-    if (activeTool === Tool.SELECT && hoveredEdge && !drawingState.isDrawing) {
-      if (event.nativeEvent.button === 0) {
-        event.stopPropagation();
-        setSelectedEdge(hoveredEdge);
-        setHoveredEdge(null);
-
-        if ((window as any).setSelectedEdge) {
-          (window as any).setSelectedEdge(hoveredEdge);
-        }
-
-        console.log(`Edge ${hoveredEdge.edgeIndex} selected on shape ${hoveredEdge.shapeId}`);
-        return;
-      }
-    }
-
     // Handle Point to Point Move
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       if (event.nativeEvent.button !== 0) return;
@@ -802,21 +758,21 @@ const focusTerminalForMeasurement = () => {
     if (activeTool === Tool.POINT_TO_POINT_MOVE && pointToPointMoveState.isActive) {
       let point = getIntersectionPoint(event.nativeEvent);
       if (!point) return;
-
+      
       // Snap detection for target point
       const rect = gl.domElement.getBoundingClientRect();
       const mouseScreenPos = new THREE.Vector2(
-        event.nativeEvent.clientX - rect.left,
+        event.nativeEvent.clientX - rect.left, 
         event.nativeEvent.clientY - rect.top
       );
-
+      
       const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 5 : 1);
-
+      
       const snapPoints = findSnapPoints(
         point,
-        completedShapes,
-        shapes,
-        snapSettings,
+        completedShapes, 
+        shapes, 
+        snapSettings, 
         perspectiveTolerance,
         null,
         null,
@@ -824,7 +780,7 @@ const focusTerminalForMeasurement = () => {
         gl.domElement,
         mouseScreenPos
       );
-
+      
       if (snapPoints.length > 0) {
         updateDrawingState({ snapPoint: snapPoints[0] });
       } else {
@@ -832,17 +788,8 @@ const focusTerminalForMeasurement = () => {
       }
       return;
     }
-
-    // Handle edge hover detection
-    let point = getIntersectionPoint(event.nativeEvent);
-    if (!point) return;
-
-    if (!drawingState.isDrawing && activeTool === Tool.SELECT && !selectedEdge) {
-      const edge = detectEdgeHover(point, completedShapes, gridSize);
-      setHoveredEdge(edge);
-    }
-
     // Handle polyline editing mode
+    let point = getIntersectionPoint(event.nativeEvent);
     if (!point) return;
 
     if (activeTool === Tool.POLYLINE_EDIT && isDragging && draggedNodeIndex !== null && editingPolylineId) {
@@ -918,16 +865,6 @@ const focusTerminalForMeasurement = () => {
         setDraggedNodeIndex(null);
         setIsDragging(false);
         resetPointToPointMove();
-
-        if (selectedEdge) {
-          setSelectedEdge(null);
-          setHoveredEdge(null);
-          if ((window as any).setSelectedEdge) {
-            (window as any).setSelectedEdge(null);
-          }
-          console.log('Edge selection cancelled');
-        }
-
         console.log('Drawing cancelled');
       }
       
@@ -951,7 +888,7 @@ const focusTerminalForMeasurement = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTool, drawingState, pendingExtrudeShape, setEditingPolylineId, setActiveTool, addShape, selectShape, gridSize, selectedEdge]);
+  }, [activeTool, drawingState, pendingExtrudeShape, setEditingPolylineId, setActiveTool, addShape, selectShape, gridSize]);
 
   return (
     <>
@@ -1101,42 +1038,6 @@ const focusTerminalForMeasurement = () => {
           <sphereGeometry args={[gridSize / 15]} />
           <meshBasicMaterial color="#2563eb" opacity={0.5} transparent />
         </mesh>
-      )}
-
-      {/* Edge Hover Indicator */}
-      {hoveredEdge && !selectedEdge && (
-        <>
-          <line
-            geometry={new THREE.BufferGeometry().setFromPoints([
-              hoveredEdge.startPoint,
-              hoveredEdge.endPoint
-            ])}
-          >
-            <lineBasicMaterial color="#ef4444" linewidth={3} />
-          </line>
-          <mesh position={hoveredEdge.midPoint}>
-            <sphereGeometry args={[gridSize / 10]} />
-            <meshBasicMaterial color="#ef4444" />
-          </mesh>
-        </>
-      )}
-
-      {/* Selected Edge Indicator */}
-      {selectedEdge && (
-        <>
-          <line
-            geometry={new THREE.BufferGeometry().setFromPoints([
-              selectedEdge.startPoint,
-              selectedEdge.endPoint
-            ])}
-          >
-            <lineBasicMaterial color="#3b82f6" linewidth={4} />
-          </line>
-          <mesh position={selectedEdge.midPoint}>
-            <sphereGeometry args={[gridSize / 8]} />
-            <meshBasicMaterial color="#3b82f6" />
-          </mesh>
-        </>
       )}
 
       {/* Snap Point Indicator */}
