@@ -70,6 +70,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [editingLineValue, setEditingLineValue] = useState<string>('');
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
+  const [isUpdatingEdges, setIsUpdatingEdges] = useState(false);
 
   useEffect(() => {
     setVisibleDimensions(selectedDimensions);
@@ -92,6 +93,21 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   useEffect(() => {
     recalculateAllParameters();
   }, [currentWidth, currentHeight, currentDepth]);
+
+  useEffect(() => {
+    selectedLines.forEach(line => {
+      if (line.formula && line.formula.trim() && !isUpdatingEdges) {
+        const evaluatedValue = evaluateExpression(line.formula);
+        if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+          const currentDisplayValue = parseFloat(line.value.toFixed(2));
+          const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
+          if (Math.abs(currentDisplayValue - newDisplayValue) > 0.1) {
+            updateSelectedLineValue(line.id, newDisplayValue);
+          }
+        }
+      }
+    });
+  }, [customParameters]);
 
   useEffect(() => {
     if (inputWidth && inputWidth !== convertToDisplayUnit(currentWidth).toFixed(0)) {
@@ -160,6 +176,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   }, [resultDepth]);
 
   const recalculateAllParameters = () => {
+    if (isUpdatingEdges) return;
+
     const updatedParams = customParameters.map(param => {
       if (!param.value.trim()) return param;
       const evaluatedValue = evaluateExpression(param.value);
@@ -169,38 +187,55 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return param;
     });
 
-    const hasChanges = updatedParams.some((param, idx) =>
+    const hasParamChanges = updatedParams.some((param, idx) =>
       param.result !== customParameters[idx].result
     );
 
-    if (hasChanges) {
+    if (hasParamChanges) {
       setCustomParameters(updatedParams);
+    }
 
-      if (inputWidth && inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
-          customParameters.some(p => p.description && inputWidth.includes(p.description)) ||
-          selectedLines.some(l => l.label && inputWidth.includes(l.label))) {
-        const evalWidth = evaluateExpression(inputWidth);
-        if (evalWidth !== null && !isNaN(evalWidth) && evalWidth > 0) {
-          setResultWidth(evalWidth.toFixed(2));
+    selectedLines.forEach(line => {
+      if (line.formula && line.formula.trim()) {
+        const evaluatedValue = evaluateExpression(line.formula);
+        if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+          const currentDisplayValue = parseFloat(line.value.toFixed(2));
+          const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
+
+          if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
+            console.log(`🔄 Updating edge ${line.label} from ${currentDisplayValue} to ${newDisplayValue}`);
+            setIsUpdatingEdges(true);
+            handleLineValueChange(line.id, evaluatedValue.toString());
+            setTimeout(() => setIsUpdatingEdges(false), 300);
+          }
         }
       }
+    });
 
-      if (inputHeight && inputHeight.includes('W') || inputHeight.includes('H') || inputHeight.includes('D') ||
-          customParameters.some(p => p.description && inputHeight.includes(p.description)) ||
-          selectedLines.some(l => l.label && inputHeight.includes(l.label))) {
-        const evalHeight = evaluateExpression(inputHeight);
-        if (evalHeight !== null && !isNaN(evalHeight) && evalHeight > 0) {
-          setResultHeight(evalHeight.toFixed(2));
-        }
+    if (inputWidth && (inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
+        customParameters.some(p => p.description && inputWidth.includes(p.description)) ||
+        selectedLines.some(l => l.label && inputWidth.includes(l.label)))) {
+      const evalWidth = evaluateExpression(inputWidth);
+      if (evalWidth !== null && !isNaN(evalWidth) && evalWidth > 0) {
+        setResultWidth(evalWidth.toFixed(2));
       }
+    }
 
-      if (inputDepth && inputDepth.includes('W') || inputDepth.includes('H') || inputDepth.includes('D') ||
-          customParameters.some(p => p.description && inputDepth.includes(p.description)) ||
-          selectedLines.some(l => l.label && inputDepth.includes(l.label))) {
-        const evalDepth = evaluateExpression(inputDepth);
-        if (evalDepth !== null && !isNaN(evalDepth) && evalDepth > 0) {
-          setResultDepth(evalDepth.toFixed(2));
-        }
+    if (inputHeight && (inputHeight.includes('W') || inputHeight.includes('H') || inputHeight.includes('D') ||
+        customParameters.some(p => p.description && inputHeight.includes(p.description)) ||
+        selectedLines.some(l => l.label && inputHeight.includes(l.label)))) {
+      const evalHeight = evaluateExpression(inputHeight);
+      if (evalHeight !== null && !isNaN(evalHeight) && evalHeight > 0) {
+        setResultHeight(evalHeight.toFixed(2));
+      }
+    }
+
+    if (inputDepth && (inputDepth.includes('W') || inputDepth.includes('H') || inputDepth.includes('D') ||
+        customParameters.some(p => p.description && inputDepth.includes(p.description)) ||
+        selectedLines.some(l => l.label && inputDepth.includes(l.label)))) {
+      const evalDepth = evaluateExpression(inputDepth);
+      if (evalDepth !== null && !isNaN(evalDepth) && evalDepth > 0) {
+        setResultDepth(evalDepth.toFixed(2));
       }
     }
   };
