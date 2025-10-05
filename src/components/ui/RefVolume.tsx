@@ -188,7 +188,57 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
 
           if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
-            console.log(`🔄 Updating edge ${line.label} result from ${currentDisplayValue} to ${newDisplayValue}`);
+            console.log(`🔄 Updating edge ${line.label} geometry from ${currentDisplayValue} to ${newDisplayValue}`);
+
+            const shape = shapes.find(s => s.id === line.shapeId);
+            if (!shape || shape.type !== 'box') return;
+
+            const edgeVector = new THREE.Vector3(
+              line.endVertex[0] - line.startVertex[0],
+              line.endVertex[1] - line.startVertex[1],
+              line.endVertex[2] - line.startVertex[2]
+            );
+            const edgeDirection = edgeVector.normalize();
+
+            const currentLength = convertToDisplayUnit(new THREE.Vector3(...line.startVertex).distanceTo(new THREE.Vector3(...line.endVertex)));
+            const lengthDiff = convertToBaseUnit(newDisplayValue - currentLength);
+
+            const newMovingVertex = new THREE.Vector3(...line.endVertex).add(edgeDirection.multiplyScalar(lengthDiff));
+
+            const newWidth = Math.abs(line.endVertex[0] - line.startVertex[0]) > 0.1
+              ? convertToDisplayUnit(Math.abs(newMovingVertex.x - line.startVertex[0]))
+              : convertToDisplayUnit(shape.parameters.width || 0);
+
+            const newHeight = Math.abs(line.endVertex[1] - line.startVertex[1]) > 0.1
+              ? convertToDisplayUnit(Math.abs(newMovingVertex.y - line.startVertex[1]))
+              : convertToDisplayUnit(shape.parameters.height || 0);
+
+            const newDepth = Math.abs(line.endVertex[2] - line.startVertex[2]) > 0.1
+              ? convertToDisplayUnit(Math.abs(newMovingVertex.z - line.startVertex[2]))
+              : convertToDisplayUnit(shape.parameters.depth || 0);
+
+            const newGeometry = new THREE.BoxGeometry(
+              convertToBaseUnit(newWidth),
+              convertToBaseUnit(newHeight),
+              convertToBaseUnit(newDepth)
+            );
+
+            newGeometry.translate(
+              convertToBaseUnit(newWidth) / 2,
+              convertToBaseUnit(newHeight) / 2,
+              convertToBaseUnit(newDepth) / 2
+            );
+
+            updateShape(line.shapeId, {
+              geometry: newGeometry,
+              parameters: {
+                ...shape.parameters,
+                width: convertToBaseUnit(newWidth),
+                height: convertToBaseUnit(newHeight),
+                depth: convertToBaseUnit(newDepth)
+              }
+            });
+
             updateSelectedLineValue(line.id, newDisplayValue);
           }
         }
