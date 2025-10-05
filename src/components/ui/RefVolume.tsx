@@ -181,6 +181,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       setCustomParameters(updatedParams);
     }
 
+    const geometryCache = new Map<string, THREE.BufferGeometry>();
+
     selectedLines.forEach(line => {
       if (line.formula && line.formula.trim()) {
         const evaluatedValue = evaluateExpression(line.formula);
@@ -193,6 +195,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
             const shape = shapes.find(s => s.id === line.shapeId);
             if (!shape || !shape.geometry) return;
+
+            const currentGeometry = geometryCache.get(line.shapeId) || shape.geometry;
 
             const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
             const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
@@ -240,7 +244,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               fixedVertex[2] + direction.z * newLengthInBase
             );
 
-            const newGeometry = shape.geometry.clone();
+            const newGeometry = currentGeometry.clone();
             const positionAttr = newGeometry.attributes.position;
             const positions = positionAttr.array;
 
@@ -265,6 +269,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             positionAttr.needsUpdate = true;
             newGeometry.computeBoundingBox();
             newGeometry.computeVertexNormals();
+
+            geometryCache.set(line.shapeId, newGeometry);
 
             updateShape(shape.id, {
               geometry: newGeometry
@@ -455,12 +461,12 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    console.log('🔧 Updating line:', {
+    console.log('🔧 Manual value change:', {
       lineId,
       oldValue: line.value,
       newValue,
-      shapeId: shape.id,
-      edgeIndex: line.edgeIndex
+      startVertex: line.startVertex,
+      endVertex: line.endVertex
     });
 
     const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
@@ -469,10 +475,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
     let fixedVertex: [number, number, number];
     let movingVertex: [number, number, number];
-    let axis: 'x' | 'y' | 'z';
 
     if (dy > dx && dy > dz) {
-      axis = 'y';
       if (line.startVertex[1] < line.endVertex[1]) {
         fixedVertex = line.startVertex;
         movingVertex = line.endVertex;
@@ -480,9 +484,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         fixedVertex = line.endVertex;
         movingVertex = line.startVertex;
       }
-      console.log('📐 Vertical line (Y-axis): Fixed at bottom, moving top');
+      console.log('📐 Y-axis edge');
     } else if (dx > dy && dx > dz) {
-      axis = 'x';
       if (line.startVertex[0] > line.endVertex[0]) {
         fixedVertex = line.startVertex;
         movingVertex = line.endVertex;
@@ -490,9 +493,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         fixedVertex = line.endVertex;
         movingVertex = line.startVertex;
       }
-      console.log('📐 Horizontal line (X-axis): Fixed at right, moving left');
+      console.log('📐 X-axis edge');
     } else {
-      axis = 'z';
       if (line.startVertex[2] < line.endVertex[2]) {
         fixedVertex = line.startVertex;
         movingVertex = line.endVertex;
@@ -500,7 +502,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         fixedVertex = line.endVertex;
         movingVertex = line.startVertex;
       }
-      console.log('📐 Depth line (Z-axis): Fixed at front, moving back');
+      console.log('📐 Z-axis edge');
     }
 
     const newLengthInBase = convertToBaseUnit(newValue);
@@ -560,19 +562,22 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       geometry: newGeometry
     });
 
-    const updatedLine = {
-      ...line,
-      value: newValue,
-      startVertex: line.startVertex,
-      endVertex: [newMovingVertex.x, newMovingVertex.y, newMovingVertex.z] as [number, number, number]
-    };
+    const updatedEndVertex: [number, number, number] = [
+      newMovingVertex.x,
+      newMovingVertex.y,
+      newMovingVertex.z
+    ];
 
     updateSelectedLineValue(lineId, newValue);
+    updateSelectedLineVertices(lineId, updatedEndVertex);
 
     setEditingLineId(null);
     setEditingLineValue('');
 
-    console.log('✅ Geometry updated successfully');
+    console.log('✅ Geometry updated successfully', {
+      newValue,
+      newEndVertex: updatedEndVertex
+    });
   };
 
   const handleClearAllParameters = () => {
