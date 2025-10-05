@@ -57,7 +57,7 @@ const YagoDesignShape: React.FC<Props> = ({
   const highlightedEdgesRef = useRef<THREE.LineSegments | null>(null);
   const selectedEdgesRef = useRef<THREE.LineSegments[]>([]);
   const selectedPointsRef = useRef<THREE.Vector3[]>([]);
-  const dimensionLineRef = useRef<THREE.Group | null>(null);
+  const dimensionLinesRef = useRef<THREE.Group[]>([]);
 
   // Create geometry from shape
   const shapeGeometry = useMemo(() => {
@@ -375,10 +375,6 @@ const YagoDesignShape: React.FC<Props> = ({
         (line.material as THREE.Material).dispose();
       });
       selectedEdgesRef.current = [];
-      if (dimensionLineRef.current) {
-        scene.remove(dimensionLineRef.current);
-        dimensionLineRef.current = null;
-      }
       console.log(`🎯 Ruler mode activated on shape ${shape.id}`);
     };
 
@@ -392,10 +388,23 @@ const YagoDesignShape: React.FC<Props> = ({
         (line.material as THREE.Material).dispose();
       });
       selectedEdgesRef.current = [];
-      if (dimensionLineRef.current) {
-        scene.remove(dimensionLineRef.current);
-        dimensionLineRef.current = null;
-      }
+
+      dimensionLinesRef.current.forEach(group => {
+        scene.remove(group);
+        group.traverse((child) => {
+          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+            child.geometry.dispose();
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+        });
+      });
+      dimensionLinesRef.current = [];
       console.log('🎯 Ruler points cleared');
     };
 
@@ -474,23 +483,6 @@ const YagoDesignShape: React.FC<Props> = ({
   }, [hoveredEdgeIndex, scene, shapeGeometry, shape.position, shape.rotation, shape.scale]);
 
   const createDimensionLine = (point1: THREE.Vector3, point2: THREE.Vector3, distance: number) => {
-    if (dimensionLineRef.current) {
-      scene.remove(dimensionLineRef.current);
-      dimensionLineRef.current.traverse((child) => {
-        if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
-          child.geometry.dispose();
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach(mat => mat.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        }
-      });
-      dimensionLineRef.current = null;
-    }
-
     const group = new THREE.Group();
 
     const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
@@ -545,27 +537,10 @@ const YagoDesignShape: React.FC<Props> = ({
     sprite.renderOrder = 1004;
     group.add(sprite);
 
+    group.userData.type = 'dimensionLine';
+    group.userData.shapeId = shape.id;
     scene.add(group);
-    dimensionLineRef.current = group;
-
-    setTimeout(() => {
-      if (dimensionLineRef.current) {
-        scene.remove(dimensionLineRef.current);
-        dimensionLineRef.current.traverse((child) => {
-          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
-            child.geometry.dispose();
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(mat => mat.dispose());
-              } else {
-                child.material.dispose();
-              }
-            }
-          }
-        });
-        dimensionLineRef.current = null;
-      }
-    }, 3000);
+    dimensionLinesRef.current.push(group);
   };
 
   const removeFaceNumberText = (rowId: string) => {
