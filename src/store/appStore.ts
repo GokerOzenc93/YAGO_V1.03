@@ -282,9 +282,10 @@ interface AppState {
   // Ruler mode
   isRulerMode: boolean;
   setIsRulerMode: (enabled: boolean) => void;
-  selectedLines: Array<{ id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number] }>;
-  addSelectedLine: (line: { id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number] }) => void;
+  selectedLines: Array<{ id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number]; formula?: string }>;
+  addSelectedLine: (line: { id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number]; formula?: string }) => void;
   updateSelectedLineValue: (id: string, newValue: number) => void;
+  updateSelectedLineFormula: (id: string, formula: string) => void;
   removeSelectedLine: (id: string) => void;
   history: {
     past: AppState[];
@@ -432,6 +433,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateSelectedLineValue: (id, newValue) => set((state) => ({
     selectedLines: state.selectedLines.map(l =>
       l.id === id ? { ...l, value: newValue } : l
+    )
+  })),
+  updateSelectedLineFormula: (id, formula) => set((state) => ({
+    selectedLines: state.selectedLines.map(l =>
+      l.id === id ? { ...l, formula } : l
     )
   })),
   

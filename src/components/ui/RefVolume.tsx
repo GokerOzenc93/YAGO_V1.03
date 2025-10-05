@@ -28,6 +28,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     addSelectedLine,
     removeSelectedLine,
     updateSelectedLineValue,
+    updateSelectedLineFormula,
     shapes
   } = useAppStore();
 
@@ -106,6 +107,13 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         if (param.description && param.result) {
           const regex = new RegExp(`\\b${param.description}\\b`, 'g');
           processedExpression = processedExpression.replace(regex, param.result);
+        }
+      });
+
+      selectedLines.forEach(line => {
+        if (line.label) {
+          const regex = new RegExp(`\\b${line.label}\\b`, 'g');
+          processedExpression = processedExpression.replace(regex, line.value.toString());
         }
       });
 
@@ -780,7 +788,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                     <input
                       type="text"
-                      value={editingLineId === line.id ? editingLineValue : line.value.toFixed(2)}
+                      value={editingLineId === line.id ? editingLineValue : (line.formula || '')}
                       onChange={(e) => {
                         if (editingLineId === line.id) {
                           setEditingLineValue(e.target.value);
@@ -788,11 +796,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       }}
                       onFocus={() => {
                         setEditingLineId(line.id);
-                        setEditingLineValue(line.value.toFixed(2));
+                        setEditingLineValue(line.formula || '');
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && editingLineId === line.id) {
-                          handleLineValueChange(line.id, editingLineValue);
+                          const evaluatedValue = evaluateExpression(editingLineValue);
+                          if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+                            updateSelectedLineFormula(line.id, editingLineValue);
+                            handleLineValueChange(line.id, evaluatedValue.toString());
+                          }
                         } else if (e.key === 'Escape') {
                           setEditingLineId(null);
                           setEditingLineValue('');
@@ -814,7 +826,13 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                       <button
                         onClick={() => {
                           if (editingLineId === line.id && editingLineValue.trim()) {
-                            handleLineValueChange(line.id, editingLineValue);
+                            const evaluatedValue = evaluateExpression(editingLineValue);
+                            if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+                              updateSelectedLineFormula(line.id, editingLineValue);
+                              handleLineValueChange(line.id, evaluatedValue.toString());
+                              setEditingLineId(null);
+                              setEditingLineValue('');
+                            }
                           }
                         }}
                         disabled={editingLineId !== line.id || !editingLineValue.trim()}
