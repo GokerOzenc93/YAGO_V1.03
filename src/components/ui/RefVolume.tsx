@@ -90,24 +90,11 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  useEffect(() => {
-    recalculateAllParameters();
-  }, [currentWidth, currentHeight, currentDepth]);
+  const customParametersStr = JSON.stringify(customParameters.map(p => ({ desc: p.description, val: p.value, res: p.result })));
 
   useEffect(() => {
-    selectedLines.forEach(line => {
-      if (line.formula && line.formula.trim() && !isUpdatingEdges) {
-        const evaluatedValue = evaluateExpression(line.formula);
-        if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
-          const currentDisplayValue = parseFloat(line.value.toFixed(2));
-          const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
-          if (Math.abs(currentDisplayValue - newDisplayValue) > 0.1) {
-            updateSelectedLineValue(line.id, newDisplayValue);
-          }
-        }
-      }
-    });
-  }, [customParameters]);
+    recalculateAllParameters();
+  }, [currentWidth, currentHeight, currentDepth, customParametersStr]);
 
   useEffect(() => {
     if (inputWidth && inputWidth !== convertToDisplayUnit(currentWidth).toFixed(0)) {
@@ -176,8 +163,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   }, [resultDepth]);
 
   const recalculateAllParameters = () => {
-    if (isUpdatingEdges) return;
-
     const updatedParams = customParameters.map(param => {
       if (!param.value.trim()) return param;
       const evaluatedValue = evaluateExpression(param.value);
@@ -203,10 +188,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           const newDisplayValue = parseFloat(evaluatedValue.toFixed(2));
 
           if (Math.abs(currentDisplayValue - newDisplayValue) > 0.01) {
-            console.log(`🔄 Updating edge ${line.label} from ${currentDisplayValue} to ${newDisplayValue}`);
-            setIsUpdatingEdges(true);
-            handleLineValueChange(line.id, evaluatedValue.toString());
-            setTimeout(() => setIsUpdatingEdges(false), 300);
+            console.log(`🔄 Updating edge ${line.label} result from ${currentDisplayValue} to ${newDisplayValue}`);
+            updateSelectedLineValue(line.id, newDisplayValue);
           }
         }
       }
@@ -500,10 +483,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
     setEditingLineId(null);
     setEditingLineValue('');
-
-    setTimeout(() => {
-      recalculateAllParameters();
-    }, 100);
 
     console.log('✅ Geometry updated successfully');
   };
