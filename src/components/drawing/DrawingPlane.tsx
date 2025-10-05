@@ -10,6 +10,8 @@ import { convertTo3DShape, extrudeShape } from './shapeConverter';
 import { createRectanglePoints, createCirclePoints } from './utils';
 import { DimensionsManager } from './dimensionsSystem';
 import { applyPolylineOrthoConstraint, applyRectangleOrthoConstraint } from '../../utils/orthoUtils';
+import { CompletedShapesRenderer } from './CompletedShapesRenderer';
+import { createKeyboardHandler } from './keyboardHandlers';
 
 // Helper function to calculate angle between two vectors
 const calculateAngle = (v1: THREE.Vector3, v2: THREE.Vector3): number => {
@@ -859,46 +861,25 @@ const focusTerminalForMeasurement = () => {
 
   // Keyboard event handlers
   useEffect(() => {
-    const handleKeyDown = async (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setDrawingState(INITIAL_DRAWING_STATE);
-        setEditingPolylineId(null);
-        setDraggedNodeIndex(null);
-        setIsDragging(false);
-        resetPointToPointMove();
-        setHoveredShapeId(null);
-        console.log('Drawing cancelled');
-      }
-
-      // Handle Space key to convert hovered shape to 3D
-      if (event.key === ' ' && hoveredShapeId && !drawingState.isDrawing && !pendingExtrudeShape) {
-        event.preventDefault();
-        const hoveredShape = completedShapes.find(s => s.id === hoveredShapeId);
-        if (hoveredShape) {
-          console.log(`✓ Space pressed - Converting hovered shape ${hoveredShapeId} to 3D`);
-          await convertTo3DShape(hoveredShape, addShape, selectShape, gridSize);
-          setCompletedShapes(prev => prev.filter(s => s.id !== hoveredShapeId));
-          setHoveredShapeId(null);
-        }
-      }
-
-      // Handle Enter key for POLYLINE and POLYGON
-      if (event.key === 'Enter' && (activeTool === Tool.POLYLINE || activeTool === Tool.POLYGON) && drawingState.isDrawing && drawingState.points.length >= 2 && !drawingState.waitingForMeasurement) {
-      }
-
-      // Handle Enter key for pending extrude shape - convert to 2D selectable object
-      if (event.key === 'Enter' && pendingExtrudeShape && !drawingState.isDrawing) {
-        handleConvertTo2D();
-      }
-
-      if (event.key === 'Enter' && activeTool === Tool.POLYLINE_EDIT) {
-        setEditingPolylineId(null);
-        setDraggedNodeIndex(null);
-        setIsDragging(false);
-        setActiveTool(Tool.SELECT);
-        console.log('Exited polyline edit mode with Enter');
-      }
-    };
+    const handleKeyDown = createKeyboardHandler({
+      activeTool,
+      drawingState,
+      pendingExtrudeShape,
+      hoveredShapeId,
+      completedShapes,
+      setDrawingState,
+      setEditingPolylineId,
+      setDraggedNodeIndex,
+      setIsDragging,
+      resetPointToPointMove,
+      setHoveredShapeId,
+      setCompletedShapes,
+      handleConvertTo2D,
+      setActiveTool,
+      addShape,
+      selectShape,
+      gridSize,
+    });
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -918,172 +899,21 @@ const focusTerminalForMeasurement = () => {
         <meshBasicMaterial visible={false} />
       </mesh>
 
-      {/* Completed Shapes - These will be automatically removed when converted to 3D */}
-      {completedShapes.map(shape => (
-        <group key={shape.id}>
-          <line geometry={new THREE.BufferGeometry().setFromPoints(shape.points)}>
-            <lineBasicMaterial
-              color={
-                editingPolylineId === shape.id ? "#f59e0b" :
-                hoveredShapeId === shape.id ? "#333333" : "#000000"
-              }
-              linewidth={2}
-            />
-          </line>
-
-          {/* Invisible clickable tube for line selection */}
-          {shape.points.length >= 2 && shape.points.map((point, index) => {
-            if (index === shape.points.length - 1) return null;
-            const nextPoint = shape.points[index + 1];
-            const direction = new THREE.Vector3().subVectors(nextPoint, point);
-            const length = direction.length();
-            const center = new THREE.Vector3().addVectors(point, nextPoint).multiplyScalar(0.5);
-
-            const quaternion = new THREE.Quaternion();
-            quaternion.setFromUnitVectors(
-              new THREE.Vector3(0, 1, 0),
-              direction.clone().normalize()
-            );
-
-            return (
-              <mesh
-                key={`segment-${shape.id}-${index}`}
-                position={center}
-                quaternion={quaternion}
-                userData={{ shapeId: shape.id, isPolylineSegment: true }}
-                renderOrder={999}
-                onPointerOver={(e) => {
-                  e.stopPropagation();
-                  setHoveredShapeId(shape.id);
-                  const now = Date.now();
-                  if (now - lastHoverMessageTime > 2000) {
-                    console.log(`🎯 Çizgi vurgulandı - SPACE tuşuna basarak listeye ekleyin`);
-                    setLastHoverMessageTime(now);
-                  }
-                }}
-                onPointerOut={(e) => {
-                  e.stopPropagation();
-                  setHoveredShapeId(null);
-                }}
-                onPointerDown={async (e) => {
-                  e.stopPropagation();
-                  console.log(`✓ Clicked on segment ${index} of shape ${shape.id}`);
-                  await convertTo3DShape(shape, addShape, selectShape, gridSize);
-                  setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
-                }}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  console.log(`✓ onClick triggered on segment ${index} of shape ${shape.id}`);
-                  await convertTo3DShape(shape, addShape, selectShape, gridSize);
-                  setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
-                }}
-              >
-                <cylinderGeometry args={[gridSize * 3, gridSize * 3, length, 32]} />
-                <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
-              </mesh>
-            );
-          })}
-          
-          {/* Polyline Edit Nodes */}
-          {activeTool === Tool.POLYLINE_EDIT && (shape.type === 'polyline' || shape.type === 'polygon') && (
-            <>
-              {shape.points.map((point, index) => (
-                <mesh 
-                  key={index} 
-                  position={point}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingPolylineId(shape.id);
-                    setActiveTool(Tool.POLYLINE_EDIT);
-                  }}
-                >
-                  <sphereGeometry args={[gridSize / 8]} />
-                  <meshBasicMaterial 
-                    color={editingPolylineId === shape.id ? "#f59e0b" : "#2563eb"} 
-                  />
-                </mesh>
-              ))}
-              
-              {hoveredShapeId === shape.id && (shape.type === 'polyline' || shape.type === 'polygon') && (
-                <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-                  <mesh
-                    position={[shape.points[0].x, 1, shape.points[0].z]}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingPolylineId(shape.id);
-                      setActiveTool(Tool.POLYLINE_EDIT);
-                    }}
-                  >
-                    <planeGeometry args={[gridSize * 2, gridSize]} />
-                    <meshBasicMaterial color="#f59e0b" />
-                    <Text
-                      position={[0, 0, 0.1]}
-                      fontSize={gridSize / 2}
-                      color="white"
-                      anchorX="center"
-                      anchorY="middle"
-                    >
-                      Edit
-                    </Text>
-                  </mesh>
-                </Billboard>
-              )}
-            </>
-          )}
-          
-          {/* Convert to 3D Button for Closed Shapes */}
-          {false && shape.isClosed && hoveredShapeId === shape.id && activeTool !== Tool.POLYLINE_EDIT && (
-            <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-              <mesh
-                position={[shape.points[0].x, 1, shape.points[0].z]}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  convertTo3DShape(shape, addShape, selectShape, gridSize);
-                  setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
-                }}
-              >
-                <planeGeometry args={[gridSize * 3, gridSize]} />
-                <meshBasicMaterial color="#10b981" />
-                <Text
-                  position={[0, 0, 0.1]}
-                  fontSize={gridSize / 2}
-                  color="white"
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  Select
-                </Text>
-              </mesh>
-            </Billboard>
-          )}
-          
-          {/* Extrude Button for Closed Shapes */}
-          {shape.isClosed && hoveredShapeId === shape.id && activeTool !== Tool.POLYLINE_EDIT && (
-            <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-              <mesh
-                position={[shape.points[0].x + gridSize * 3.5, 1, shape.points[0].z]}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  extrudeShape(shape, addShape, 500, gridSize);
-                  setCompletedShapes(prev => prev.filter(s => s.id !== shape.id));
-                }}
-              >
-                <planeGeometry args={[gridSize * 2, gridSize]} />
-                <meshBasicMaterial color="#2563eb" />
-                <Text
-                  position={[0, 0, 0.1]}
-                  fontSize={gridSize / 2}
-                  color="white"
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  Extrude
-                </Text>
-              </mesh>
-            </Billboard>
-          )}
-        </group>
-      ))}
+      <CompletedShapesRenderer
+        completedShapes={completedShapes}
+        hoveredShapeId={hoveredShapeId}
+        editingPolylineId={editingPolylineId}
+        activeTool={activeTool}
+        gridSize={gridSize}
+        lastHoverMessageTime={lastHoverMessageTime}
+        setHoveredShapeId={setHoveredShapeId}
+        setLastHoverMessageTime={setLastHoverMessageTime}
+        setCompletedShapes={setCompletedShapes}
+        setEditingPolylineId={setEditingPolylineId}
+        setActiveTool={setActiveTool}
+        addShape={addShape}
+        selectShape={selectShape}
+      />
 
       {/* Preview Shape */}
       {previewGeometry && (
