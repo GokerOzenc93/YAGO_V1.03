@@ -69,6 +69,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [editingLineValue, setEditingLineValue] = useState<string>('');
+  const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
   useEffect(() => {
     setVisibleDimensions(selectedDimensions);
@@ -87,6 +88,122 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
+
+  useEffect(() => {
+    recalculateAllParameters();
+  }, [currentWidth, currentHeight, currentDepth]);
+
+  useEffect(() => {
+    if (inputWidth && inputWidth !== convertToDisplayUnit(currentWidth).toFixed(0)) {
+      const evaluatedValue = evaluateExpression(inputWidth);
+      if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+        setResultWidth(evaluatedValue.toFixed(2));
+      }
+    }
+  }, [inputWidth, customParameters, selectedLines]);
+
+  useEffect(() => {
+    if (inputHeight && inputHeight !== convertToDisplayUnit(currentHeight).toFixed(0)) {
+      const evaluatedValue = evaluateExpression(inputHeight);
+      if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+        setResultHeight(evaluatedValue.toFixed(2));
+      }
+    }
+  }, [inputHeight, customParameters, selectedLines]);
+
+  useEffect(() => {
+    if (inputDepth && inputDepth !== convertToDisplayUnit(currentDepth).toFixed(0)) {
+      const evaluatedValue = evaluateExpression(inputDepth);
+      if (evaluatedValue !== null && !isNaN(evaluatedValue) && evaluatedValue > 0) {
+        setResultDepth(evaluatedValue.toFixed(2));
+      }
+    }
+  }, [inputDepth, customParameters, selectedLines]);
+
+  useEffect(() => {
+    if (isApplyingChanges) return;
+    const tolerance = 0.1;
+    if (resultWidth && Math.abs(parseFloat(resultWidth) - convertToDisplayUnit(currentWidth)) > tolerance) {
+      const newWidthValue = parseFloat(resultWidth);
+      if (!isNaN(newWidthValue) && newWidthValue > 0 && canEditWidth) {
+        setIsApplyingChanges(true);
+        applyDimensionChange('width', resultWidth);
+        setTimeout(() => setIsApplyingChanges(false), 200);
+      }
+    }
+  }, [resultWidth]);
+
+  useEffect(() => {
+    if (isApplyingChanges) return;
+    const tolerance = 0.1;
+    if (resultHeight && Math.abs(parseFloat(resultHeight) - convertToDisplayUnit(currentHeight)) > tolerance) {
+      const newHeightValue = parseFloat(resultHeight);
+      if (!isNaN(newHeightValue) && newHeightValue > 0) {
+        setIsApplyingChanges(true);
+        applyDimensionChange('height', resultHeight);
+        setTimeout(() => setIsApplyingChanges(false), 200);
+      }
+    }
+  }, [resultHeight]);
+
+  useEffect(() => {
+    if (isApplyingChanges) return;
+    const tolerance = 0.1;
+    if (resultDepth && Math.abs(parseFloat(resultDepth) - convertToDisplayUnit(currentDepth)) > tolerance) {
+      const newDepthValue = parseFloat(resultDepth);
+      if (!isNaN(newDepthValue) && newDepthValue > 0 && canEditDepth) {
+        setIsApplyingChanges(true);
+        applyDimensionChange('depth', resultDepth);
+        setTimeout(() => setIsApplyingChanges(false), 200);
+      }
+    }
+  }, [resultDepth]);
+
+  const recalculateAllParameters = () => {
+    const updatedParams = customParameters.map(param => {
+      if (!param.value.trim()) return param;
+      const evaluatedValue = evaluateExpression(param.value);
+      if (evaluatedValue !== null && !isNaN(evaluatedValue)) {
+        return { ...param, result: evaluatedValue.toFixed(2) };
+      }
+      return param;
+    });
+
+    const hasChanges = updatedParams.some((param, idx) =>
+      param.result !== customParameters[idx].result
+    );
+
+    if (hasChanges) {
+      setCustomParameters(updatedParams);
+
+      if (inputWidth && inputWidth.includes('W') || inputWidth.includes('H') || inputWidth.includes('D') ||
+          customParameters.some(p => p.description && inputWidth.includes(p.description)) ||
+          selectedLines.some(l => l.label && inputWidth.includes(l.label))) {
+        const evalWidth = evaluateExpression(inputWidth);
+        if (evalWidth !== null && !isNaN(evalWidth) && evalWidth > 0) {
+          setResultWidth(evalWidth.toFixed(2));
+        }
+      }
+
+      if (inputHeight && inputHeight.includes('W') || inputHeight.includes('H') || inputHeight.includes('D') ||
+          customParameters.some(p => p.description && inputHeight.includes(p.description)) ||
+          selectedLines.some(l => l.label && inputHeight.includes(l.label))) {
+        const evalHeight = evaluateExpression(inputHeight);
+        if (evalHeight !== null && !isNaN(evalHeight) && evalHeight > 0) {
+          setResultHeight(evalHeight.toFixed(2));
+        }
+      }
+
+      if (inputDepth && inputDepth.includes('W') || inputDepth.includes('H') || inputDepth.includes('D') ||
+          customParameters.some(p => p.description && inputDepth.includes(p.description)) ||
+          selectedLines.some(l => l.label && inputDepth.includes(l.label))) {
+        const evalDepth = evaluateExpression(inputDepth);
+        if (evalDepth !== null && !isNaN(evalDepth) && evalDepth > 0) {
+          setResultDepth(evalDepth.toFixed(2));
+        }
+      }
+    }
+  };
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
     const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
@@ -182,8 +299,12 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     // This means when we scale, it naturally grows in X+, Y+, Z+ directions!
     // We DON'T need to adjust position because the geometry's origin IS the min corner
 
+    const updatedGeometry = editedShape.geometry.clone();
+    updatedGeometry.computeBoundingBox();
+
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
+      geometry: updatedGeometry,
     });
 
     console.log(`🎯 RefVolume: ${dimension} changed, geometry scales from origin (min corner):`, {
@@ -333,10 +454,21 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       geometry: newGeometry
     });
 
+    const updatedLine = {
+      ...line,
+      value: newValue,
+      startVertex: line.startVertex,
+      endVertex: [newMovingVertex.x, newMovingVertex.y, newMovingVertex.z] as [number, number, number]
+    };
+
     updateSelectedLineValue(lineId, newValue);
 
     setEditingLineId(null);
     setEditingLineValue('');
+
+    setTimeout(() => {
+      recalculateAllParameters();
+    }, 100);
 
     console.log('✅ Geometry updated successfully');
   };
