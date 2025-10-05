@@ -188,7 +188,6 @@ const Scene: React.FC = () => {
     updateShape,
     viewMode,
     isRulerMode,
-    clearSelectedLines,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -449,7 +448,6 @@ const Scene: React.FC = () => {
     setEditingShapeId(null);
     setEditMode(false);
     setActiveTool(Tool.SELECT);
-    clearSelectedLines();
 
     // Reset panel manager state (but keep persistent panels)
     // Reset face edit mode

@@ -28,7 +28,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     addSelectedLine,
     removeSelectedLine,
     updateSelectedLineValue,
-    clearSelectedLines,
     shapes
   } = useAppStore();
 
@@ -73,11 +72,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setVisibleDimensions(selectedDimensions);
   }, [selectedDimensions, setVisibleDimensions]);
 
-  useEffect(() => {
-    return () => {
-      clearSelectedLines();
-    };
-  }, [clearSelectedLines]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -389,10 +383,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              clearSelectedLines();
-              onClose();
-            }}
+            onClick={onClose}
             className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
           >
             <ChevronLeft size={11} className="text-orange-600" />
@@ -416,12 +407,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             <Plus size={14} />
           </button>
           <button
-            onClick={() => {
-              if (isRulerMode) {
-                clearSelectedLines();
-              }
-              setIsRulerMode(!isRulerMode);
-            }}
+            onClick={() => setIsRulerMode(!isRulerMode)}
             className={`p-1.5 rounded-sm transition-colors ${
               isRulerMode
                 ? 'bg-orange-500 text-white'
