@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
+import { FormulaEvaluator, FormulaVariable } from '../../utils/formulaEvaluator';
 
 interface CustomParameter {
   id: string;
@@ -61,6 +62,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [editingLineValue, setEditingLineValue] = useState<string>('');
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
+  const formulaEvaluatorRef = useRef<FormulaEvaluator>(new FormulaEvaluator());
+
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditDepth = canEditWidth;
 
@@ -76,6 +79,26 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
+
+  useEffect(() => {
+    const evaluator = formulaEvaluatorRef.current;
+
+    evaluator.setVariable('W', convertToDisplayUnit(currentWidth));
+    evaluator.setVariable('H', convertToDisplayUnit(currentHeight));
+    evaluator.setVariable('D', convertToDisplayUnit(currentDepth));
+
+    customParameters.forEach(param => {
+      if (param.description && param.result) {
+        evaluator.setVariable(param.description, parseFloat(param.result));
+      }
+    });
+
+    selectedLines.forEach(line => {
+      if (line.label) {
+        evaluator.setVariable(line.label, line.value);
+      }
+    });
+  }, [currentWidth, currentHeight, currentDepth, customParameters, selectedLines, convertToDisplayUnit]);
 
   useEffect(() => {
     recalculateAllParameters();
@@ -108,36 +131,14 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   useEffect(() => applyResultChange('height', resultHeight, currentHeight, true), [resultHeight]);
   useEffect(() => applyResultChange('depth', resultDepth, currentDepth, canEditDepth), [resultDepth]);
 
-  const evaluateExpression = (expression: string): number | null => {
-    try {
-      let processed = expression
-        .replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString())
-        .replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString())
-        .replace(/\bD\b/g, convertToDisplayUnit(currentDepth).toString());
-
-      customParameters.forEach(param => {
-        if (param.description && param.result) {
-          processed = processed.replace(new RegExp(`\\b${param.description}\\b`, 'g'), param.result);
-        }
-      });
-
-      selectedLines.forEach(line => {
-        if (line.label) {
-          processed = processed.replace(new RegExp(`\\b${line.label}\\b`, 'g'), line.value.toString());
-        }
-      });
-
-      const result = eval(processed);
-      return typeof result === 'number' && isFinite(result) ? result : null;
-    } catch {
-      return null;
-    }
+  const evaluateExpression = (expression: string, debugLabel?: string): number | null => {
+    return formulaEvaluatorRef.current.evaluateOrNull(expression, debugLabel);
   };
 
   const recalculateAllParameters = () => {
     const updatedParams = customParameters.map(param => {
       if (!param.value.trim()) return param;
-      const evaluated = evaluateExpression(param.value);
+      const evaluated = evaluateExpression(param.value, `param-${param.description}`);
       return evaluated !== null && !isNaN(evaluated)
         ? { ...param, result: evaluated.toFixed(2) }
         : param;
@@ -150,32 +151,68 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     const MAX_ITERATIONS = 10;
     let iteration = 0;
     let hasChanges = true;
-    const processedLines = new Set<string>();
+    const processedInIteration = new Set<string>();
+    const allProcessedLines = new Set<string>();
+
+    const lineValueHistory = new Map<string, number[]>();
+    selectedLines.forEach(line => {
+      lineValueHistory.set(line.id, [line.value]);
+    });
 
     while (hasChanges && iteration < MAX_ITERATIONS) {
       hasChanges = false;
       iteration++;
+      processedInIteration.clear();
 
-      const vertexMovesByShape = new Map<string, Array<{
-        oldVertex: [number, number, number];
-        newVertex: [number, number, number];
-        lineId: string;
-        newValue: number;
-      }>>();
+      const geometryUpdatesByShape = new Map<string, {
+        geometry: THREE.BufferGeometry;
+        vertexMoves: Array<{
+          oldVertex: [number, number, number];
+          newVertex: [number, number, number];
+        }>;
+        lineUpdates: Array<{
+          lineId: string;
+          newValue: number;
+          newEndVertex: [number, number, number];
+        }>;
+      }>();
 
       selectedLines.forEach(line => {
         if (!line.formula?.trim()) return;
 
-        const evaluated = evaluateExpression(line.formula);
-        if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
+        const evaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
+        if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
+          if (line.formula.trim()) {
+            console.warn(`⚠️ Formula evaluation failed for edge ${line.label || line.id}: ${line.formula}`);
+          }
+          return;
+        }
 
         const currentVal = parseFloat(line.value.toFixed(2));
         const newVal = parseFloat(evaluated.toFixed(2));
 
         if (Math.abs(currentVal - newVal) <= 0.01) return;
 
+        const history = lineValueHistory.get(line.id) || [];
+        if (history.some(val => Math.abs(val - newVal) < 0.01)) {
+          console.warn(`🔄 Circular dependency detected for edge ${line.label || line.id}`);
+          return;
+        }
+        history.push(newVal);
+        lineValueHistory.set(line.id, history);
+
         const shape = shapes.find(s => s.id === line.shapeId);
         if (!shape?.geometry) return;
+
+        if (!geometryUpdatesByShape.has(line.shapeId)) {
+          geometryUpdatesByShape.set(line.shapeId, {
+            geometry: shape.geometry.clone(),
+            vertexMoves: [],
+            lineUpdates: []
+          });
+        }
+
+        const updateData = geometryUpdatesByShape.get(line.shapeId)!;
 
         const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
         const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
@@ -204,37 +241,39 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           movingVertex[2] - fixedVertex[2]
         ).normalize();
 
+        if (direction.length() === 0) {
+          console.warn(`⚠️ Zero-length direction vector for edge ${line.label || line.id}`);
+          return;
+        }
+
         const newMovingVertex: [number, number, number] = [
           fixedVertex[0] + direction.x * newLength,
           fixedVertex[1] + direction.y * newLength,
           fixedVertex[2] + direction.z * newLength
         ];
 
-        if (!vertexMovesByShape.has(line.shapeId)) {
-          vertexMovesByShape.set(line.shapeId, []);
-        }
-
-        vertexMovesByShape.get(line.shapeId)!.push({
+        updateData.vertexMoves.push({
           oldVertex: movingVertex,
-          newVertex: newMovingVertex,
+          newVertex: newMovingVertex
+        });
+
+        updateData.lineUpdates.push({
           lineId: line.id,
-          newValue: newVal
+          newValue: newVal,
+          newEndVertex: newMovingVertex
         });
 
         hasChanges = true;
-        processedLines.add(line.id);
+        processedInIteration.add(line.id);
+        allProcessedLines.add(line.id);
       });
 
       if (!hasChanges) break;
 
-      vertexMovesByShape.forEach((moves, shapeId) => {
-        const shape = shapes.find(s => s.id === shapeId);
-        if (!shape?.geometry) return;
+      geometryUpdatesByShape.forEach((updateData, shapeId) => {
+        const positions = updateData.geometry.attributes.position.array as Float32Array;
 
-        const newGeometry = shape.geometry.clone();
-        const positions = newGeometry.attributes.position.array;
-
-        moves.forEach(move => {
+        updateData.vertexMoves.forEach(move => {
           for (let i = 0; i < positions.length; i += 3) {
             const dist = Math.sqrt(
               Math.pow(positions[i] - move.oldVertex[0], 2) +
@@ -248,18 +287,22 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               positions[i + 2] = move.newVertex[2];
             }
           }
-          updateSelectedLineValue(move.lineId, move.newValue);
-          updateSelectedLineVertices(move.lineId, move.newVertex);
         });
 
-        newGeometry.attributes.position.needsUpdate = true;
-        newGeometry.computeBoundingBox();
-        newGeometry.computeVertexNormals();
-        updateShape(shapeId, { geometry: newGeometry });
+        updateData.geometry.attributes.position.needsUpdate = true;
+        updateData.geometry.computeBoundingBox();
+        updateData.geometry.computeVertexNormals();
+
+        updateShape(shapeId, { geometry: updateData.geometry });
+
+        updateData.lineUpdates.forEach(update => {
+          updateSelectedLineValue(update.lineId, update.newValue);
+          updateSelectedLineVertices(update.lineId, update.newEndVertex);
+        });
       });
 
       selectedLines.forEach(line => {
-        if (processedLines.has(line.id)) return;
+        if (allProcessedLines.has(line.id)) return;
 
         const shape = shapes.find(s => s.id === line.shapeId);
         if (!shape?.geometry) return;
@@ -269,8 +312,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         if (!bbox) return;
 
         const positions = shape.geometry.attributes.position.array;
-        let closestStart = null;
-        let closestEnd = null;
+        let closestStart: number[] | null = null;
+        let closestEnd: number[] | null = null;
         let minDistStart = Infinity;
         let minDistEnd = Infinity;
 
