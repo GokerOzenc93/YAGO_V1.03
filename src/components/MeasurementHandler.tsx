@@ -90,6 +90,11 @@ export const MeasurementHandler = () => {
     };
 
     const handleClick = (event: MouseEvent) => {
+      if (!hoveredEdgeInfo || allEdges.length === 0) {
+        console.log('No edge hovered');
+        return;
+      }
+
       const canvas = gl.domElement;
       const rect = canvas.getBoundingClientRect();
 
@@ -100,7 +105,6 @@ export const MeasurementHandler = () => {
 
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(mouse, camera);
-      raycaster.params.Line = { threshold: 15 };
 
       const meshes = scene.children.filter(
         (child) => child instanceof THREE.Mesh && child.visible
@@ -109,30 +113,36 @@ export const MeasurementHandler = () => {
       const intersects = raycaster.intersectObjects(meshes, true);
 
       if (intersects.length === 0) {
-        console.log('No shape intersected');
+        console.log('No intersection with mesh');
         return;
       }
 
-      const intersect = intersects[0];
-      const clickPoint = intersect.point;
+      const intersectPoint = intersects[0].point;
 
-      const shape = shapes.find((s) => {
-        const meshPosition = new THREE.Vector3(...s.position);
-        return intersect.object.position.equals(meshPosition);
-      });
-
+      const shape = shapes.find(s => s.id === hoveredEdgeInfo.shapeId);
       if (!shape) {
-        console.log('Shape not found in store');
+        console.log('Shape not found');
         return;
       }
 
       const edges = getEdgesFromShape(shape);
-      const closestEdge = findClosestEdgePoint(clickPoint, edges, 50);
+      const edgeIndex = hoveredEdgeInfo.edgeIndex;
 
-      if (!closestEdge) {
-        console.log('No edge found nearby');
+      if (edgeIndex >= edges.length) {
+        console.log('Invalid edge index');
         return;
       }
+
+      const edge = edges[edgeIndex];
+      const line = new THREE.Line3(edge[0], edge[1]);
+      const closestPoint = new THREE.Vector3();
+      line.closestPointToPoint(intersectPoint, true, closestPoint);
+
+      const closestEdge = {
+        point: closestPoint,
+        edgeIndex: edgeIndex,
+        distance: 0
+      };
 
       if (!activeMeasurement || !activeMeasurement.point1) {
         const newMeasurement = {
