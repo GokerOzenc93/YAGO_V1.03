@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Copy, Move, RotateCw, Trash2, Eye, EyeOff } from 'lucide-react';
+import { CreditCard as Edit, Copy, Move, RotateCw, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface ContextMenuProps {
   position: { x: number; y: number };
