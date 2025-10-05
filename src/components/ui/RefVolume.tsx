@@ -29,6 +29,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     removeSelectedLine,
     updateSelectedLineValue,
     updateSelectedLineFormula,
+    updateSelectedLineLabel,
     shapes
   } = useAppStore();
 
@@ -782,8 +783,11 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                     <input
                       type="text"
                       value={line.label}
-                      readOnly
-                      className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                      onChange={(e) => {
+                        updateSelectedLineLabel(line.id, e.target.value);
+                      }}
+                      placeholder="Name"
+                      className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
                     />
 
                     <input
