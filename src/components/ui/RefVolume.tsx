@@ -284,6 +284,18 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       }
     });
 
+    console.log('📦 Vertex moves grouped by shape:',
+      Array.from(vertexMovesByShape.entries()).map(([shapeId, moves]) => ({
+        shapeId,
+        moveCount: moves.length,
+        moves: moves.map(m => ({
+          lineId: m.lineId,
+          from: m.oldVertex,
+          to: m.newVertex
+        }))
+      }))
+    );
+
     vertexMovesByShape.forEach((moves, shapeId) => {
       const shape = shapes.find(s => s.id === shapeId);
       if (!shape || !shape.geometry) return;
@@ -294,9 +306,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       const positionAttr = newGeometry.attributes.position;
       const positions = positionAttr.array;
 
-      moves.forEach(move => {
-        console.log(`  ➜ Moving vertex:`, move.oldVertex, '→', move.newVertex);
+      moves.forEach((move, moveIndex) => {
+        console.log(`  ➜ Move ${moveIndex + 1}/${moves.length}: Moving vertex`, move.oldVertex, '→', move.newVertex);
 
+        let vertexFoundCount = 0;
         for (let i = 0; i < positions.length; i += 3) {
           const vx = positions[i];
           const vy = positions[i + 1];
@@ -312,7 +325,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             positions[i] = move.newVertex[0];
             positions[i + 1] = move.newVertex[1];
             positions[i + 2] = move.newVertex[2];
+            vertexFoundCount++;
+            console.log(`    ✓ Found and moved vertex at index ${i / 3}`);
           }
+        }
+
+        if (vertexFoundCount === 0) {
+          console.warn(`    ⚠️ No vertices found at position`, move.oldVertex);
+        } else {
+          console.log(`    ✓ Moved ${vertexFoundCount} vertices`);
         }
 
         updateSelectedLineValue(move.lineId, move.newValue);
