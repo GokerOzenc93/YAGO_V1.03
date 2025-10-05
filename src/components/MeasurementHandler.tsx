@@ -225,6 +225,3 @@ export const MeasurementHandler = () => {
     />
   );
 };
-
-
-export { MeasurementHandler }
