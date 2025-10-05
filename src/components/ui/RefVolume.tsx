@@ -259,7 +259,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         const invalidParams = undefinedParams.filter(param => !validFunctions.includes(param.toLowerCase()));
 
         if (invalidParams.length > 0) {
-          alert(`Undefined parameter(s): ${invalidParams.join(', ')}\n\nPlease define these parameters first or check for typos.`);
+          console.warn(`⚠️ Undefined parameter(s): ${invalidParams.join(', ')}`);
           return null;
         }
       }
@@ -521,9 +521,39 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       return;
     }
 
+    let processedExpression = param.value;
+    processedExpression = processedExpression.replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString());
+    processedExpression = processedExpression.replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString());
+    processedExpression = processedExpression.replace(/\bD\b/g, convertToDisplayUnit(currentDepth).toString());
+
+    customParameters.forEach(p => {
+      if (p.description && p.result && p.id !== id) {
+        const regex = new RegExp(`\\b${p.description}\\b`, 'g');
+        processedExpression = processedExpression.replace(regex, p.result);
+      }
+    });
+
+    selectedLines.forEach(line => {
+      if (line.label) {
+        const regex = new RegExp(`\\b${line.label}\\b`, 'g');
+        processedExpression = processedExpression.replace(regex, line.value.toString());
+      }
+    });
+
+    const undefinedParams = processedExpression.match(/\b[a-zA-Z][a-zA-Z0-9]*\b/g);
+    if (undefinedParams && undefinedParams.length > 0) {
+      const validFunctions = ['abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor', 'log', 'max', 'min', 'pow', 'random', 'round', 'sin', 'sqrt', 'tan'];
+      const invalidParams = undefinedParams.filter(p => !validFunctions.includes(p.toLowerCase()));
+
+      if (invalidParams.length > 0) {
+        alert(`Undefined parameter(s): ${invalidParams.join(', ')}\n\nPlease define these parameters first or check for typos.`);
+        return;
+      }
+    }
+
     const evaluatedValue = evaluateExpression(param.value);
     if (evaluatedValue === null || isNaN(evaluatedValue)) {
-      alert('Invalid formula. Check if all referenced parameters have been applied.');
+      alert('Invalid formula. Please check your expression.');
       return;
     }
 
