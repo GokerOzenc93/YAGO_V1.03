@@ -201,13 +201,30 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const handleLineValueChange = (lineId: string, newValueStr: string) => {
     const newValue = parseFloat(newValueStr);
-    if (isNaN(newValue) || newValue <= 0) return;
+    if (isNaN(newValue) || newValue <= 0) {
+      console.log('❌ Invalid value:', newValueStr);
+      return;
+    }
 
     const line = selectedLines.find(l => l.id === lineId);
-    if (!line) return;
+    if (!line) {
+      console.log('❌ Line not found:', lineId);
+      return;
+    }
 
     const shape = shapes.find(s => s.id === line.shapeId);
-    if (!shape || !shape.geometry) return;
+    if (!shape || !shape.geometry) {
+      console.log('❌ Shape not found:', line.shapeId);
+      return;
+    }
+
+    console.log('🔧 Updating line:', {
+      lineId,
+      oldValue: line.value,
+      newValue,
+      shapeId: shape.id,
+      edgeIndex: line.edgeIndex
+    });
 
     const oldLength = Math.sqrt(
       Math.pow(line.endVertex[0] - line.startVertex[0], 2) +
@@ -216,7 +233,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     );
 
     const newLengthInBase = convertToBaseUnit(newValue);
-    const scaleFactor = newLengthInBase / oldLength;
+    console.log('📏 Lengths:', { oldLength, newLengthInBase, displayValue: newValue });
 
     const direction = new THREE.Vector3(
       line.endVertex[0] - line.startVertex[0],
@@ -230,8 +247,16 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       line.startVertex[2] + direction.z * newLengthInBase
     );
 
-    const positionAttr = shape.geometry.attributes.position;
+    console.log('🎯 Vertices:', {
+      start: line.startVertex,
+      oldEnd: line.endVertex,
+      newEnd: [newEndVertex.x, newEndVertex.y, newEndVertex.z]
+    });
+
+    const newGeometry = shape.geometry.clone();
+    const positionAttr = newGeometry.attributes.position;
     const positions = positionAttr.array;
+    let updatedCount = 0;
 
     for (let i = 0; i < positions.length; i += 3) {
       const vx = positions[i];
@@ -244,25 +269,31 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         Math.pow(vz - line.endVertex[2], 2)
       );
 
-      if (distToEnd < 0.001) {
+      if (distToEnd < 0.01) {
         positions[i] = newEndVertex.x;
         positions[i + 1] = newEndVertex.y;
         positions[i + 2] = newEndVertex.z;
+        updatedCount++;
+        console.log(`✅ Updated vertex ${i/3}:`, [newEndVertex.x, newEndVertex.y, newEndVertex.z]);
       }
     }
 
+    console.log(`📊 Updated ${updatedCount} vertices`);
+
     positionAttr.needsUpdate = true;
-    shape.geometry.computeBoundingBox();
-    shape.geometry.computeVertexNormals();
+    newGeometry.computeBoundingBox();
+    newGeometry.computeVertexNormals();
 
     updateShape(shape.id, {
-      geometry: shape.geometry
+      geometry: newGeometry
     });
 
     updateSelectedLineValue(lineId, newValue);
 
     setEditingLineId(null);
     setEditingLineValue('');
+
+    console.log('✅ Geometry updated successfully');
   };
 
   const handleClearAllParameters = () => {
