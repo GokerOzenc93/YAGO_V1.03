@@ -233,31 +233,66 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       edgeIndex: line.edgeIndex
     });
 
-    const oldLength = Math.sqrt(
-      Math.pow(line.endVertex[0] - line.startVertex[0], 2) +
-      Math.pow(line.endVertex[1] - line.startVertex[1], 2) +
-      Math.pow(line.endVertex[2] - line.startVertex[2], 2)
-    );
+    const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
+    const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
+    const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
+
+    let fixedVertex: [number, number, number];
+    let movingVertex: [number, number, number];
+    let axis: 'x' | 'y' | 'z';
+
+    if (dy > dx && dy > dz) {
+      axis = 'y';
+      if (line.startVertex[1] < line.endVertex[1]) {
+        fixedVertex = line.startVertex;
+        movingVertex = line.endVertex;
+      } else {
+        fixedVertex = line.endVertex;
+        movingVertex = line.startVertex;
+      }
+      console.log('📐 Vertical line (Y-axis): Fixed at bottom, moving top');
+    } else if (dx > dy && dx > dz) {
+      axis = 'x';
+      if (line.startVertex[0] > line.endVertex[0]) {
+        fixedVertex = line.startVertex;
+        movingVertex = line.endVertex;
+      } else {
+        fixedVertex = line.endVertex;
+        movingVertex = line.startVertex;
+      }
+      console.log('📐 Horizontal line (X-axis): Fixed at right, moving left');
+    } else {
+      axis = 'z';
+      if (line.startVertex[2] < line.endVertex[2]) {
+        fixedVertex = line.startVertex;
+        movingVertex = line.endVertex;
+      } else {
+        fixedVertex = line.endVertex;
+        movingVertex = line.startVertex;
+      }
+      console.log('📐 Depth line (Z-axis): Fixed at front, moving back');
+    }
 
     const newLengthInBase = convertToBaseUnit(newValue);
-    console.log('📏 Lengths:', { oldLength, newLengthInBase, displayValue: newValue });
+    console.log('📏 Lengths:', { oldLength: line.value, newLengthInBase, displayValue: newValue });
 
     const direction = new THREE.Vector3(
-      line.endVertex[0] - line.startVertex[0],
-      line.endVertex[1] - line.startVertex[1],
-      line.endVertex[2] - line.startVertex[2]
+      movingVertex[0] - fixedVertex[0],
+      movingVertex[1] - fixedVertex[1],
+      movingVertex[2] - fixedVertex[2]
     ).normalize();
 
-    const newEndVertex = new THREE.Vector3(
-      line.startVertex[0] + direction.x * newLengthInBase,
-      line.startVertex[1] + direction.y * newLengthInBase,
-      line.startVertex[2] + direction.z * newLengthInBase
+    const newMovingVertex = new THREE.Vector3(
+      fixedVertex[0] + direction.x * newLengthInBase,
+      fixedVertex[1] + direction.y * newLengthInBase,
+      fixedVertex[2] + direction.z * newLengthInBase
     );
 
-    console.log('🎯 Vertices:', {
-      start: line.startVertex,
-      oldEnd: line.endVertex,
-      newEnd: [newEndVertex.x, newEndVertex.y, newEndVertex.z]
+    console.log('�� Vertices:', {
+      fixed: fixedVertex,
+      oldMoving: movingVertex,
+      newMoving: [newMovingVertex.x, newMovingVertex.y, newMovingVertex.z],
+      axis
     });
 
     const newGeometry = shape.geometry.clone();
@@ -270,18 +305,18 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       const vy = positions[i + 1];
       const vz = positions[i + 2];
 
-      const distToEnd = Math.sqrt(
-        Math.pow(vx - line.endVertex[0], 2) +
-        Math.pow(vy - line.endVertex[1], 2) +
-        Math.pow(vz - line.endVertex[2], 2)
+      const distToMoving = Math.sqrt(
+        Math.pow(vx - movingVertex[0], 2) +
+        Math.pow(vy - movingVertex[1], 2) +
+        Math.pow(vz - movingVertex[2], 2)
       );
 
-      if (distToEnd < 0.01) {
-        positions[i] = newEndVertex.x;
-        positions[i + 1] = newEndVertex.y;
-        positions[i + 2] = newEndVertex.z;
+      if (distToMoving < 0.01) {
+        positions[i] = newMovingVertex.x;
+        positions[i + 1] = newMovingVertex.y;
+        positions[i + 2] = newMovingVertex.z;
         updatedCount++;
-        console.log(`✅ Updated vertex ${i/3}:`, [newEndVertex.x, newEndVertex.y, newEndVertex.z]);
+        console.log(`✅ Updated vertex ${i/3}:`, [newMovingVertex.x, newMovingVertex.y, newMovingVertex.z]);
       }
     }
 
