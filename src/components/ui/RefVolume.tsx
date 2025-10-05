@@ -60,8 +60,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [editingLineValue, setEditingLineValue] = useState<string>('');
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
-  const [inputA, setInputA] = useState('');
-  const [resultA, setResultA] = useState<string>('');
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditDepth = canEditWidth;
@@ -80,17 +78,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
   useEffect(() => {
-    if (inputA && inputA.trim()) {
-      const evaluated = evaluateExpression(inputA);
-      if (evaluated !== null && !isNaN(evaluated) && evaluated > 0) {
-        setResultA(evaluated.toFixed(2));
-      }
-    }
-  }, [inputA, currentWidth, currentHeight, currentDepth, customParameters, selectedLines]);
-
-  useEffect(() => {
     recalculateAllParameters();
-  }, [currentWidth, currentHeight, currentDepth, resultA, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
+  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -125,10 +114,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         .replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString())
         .replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString())
         .replace(/\bD\b/g, convertToDisplayUnit(currentDepth).toString());
-
-      if (inputA && resultA) {
-        processed = processed.replace(/\bA\b/g, resultA);
-      }
 
       customParameters.forEach(param => {
         if (param.description && param.result) {
@@ -446,68 +431,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       <div className="flex-1 p-4 space-y-2">
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="space-y-2">
-            <div className="flex items-center h-10 px-2 rounded-md border border-blue-300 bg-blue-50/50 shadow-sm">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border bg-gradient-to-br from-blue-400 to-blue-500 text-white border-blue-300">
-                  A
-                </div>
-
-                <input
-                  type="text"
-                  value="A"
-                  readOnly
-                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
-                />
-
-                <input
-                  type="text"
-                  value={inputA}
-                  onChange={(e) => handleInputChange(setInputA, e.target.value)}
-                  placeholder="Formula..."
-                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-400 text-black font-medium"
-                />
-
-                <input
-                  type="text"
-                  value={resultA}
-                  readOnly
-                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
-                />
-
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => {
-                      if (inputA.trim()) {
-                        const evaluated = evaluateExpression(inputA);
-                        if (evaluated !== null && !isNaN(evaluated) && evaluated > 0) {
-                          setResultA(evaluated.toFixed(2));
-                          setTimeout(() => recalculateAllParameters(), 0);
-                        }
-                      }
-                    }}
-                    disabled={!inputA.trim()}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
-                      inputA.trim()
-                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <Check size={11} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputA('');
-                      setResultA('');
-                      setTimeout(() => recalculateAllParameters(), 0);
-                    }}
-                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {canEditWidth && renderDimensionInput('Width', 'W', inputWidth, setInputWidth, resultWidth, 'width', true, 1)}
             {renderDimensionInput('Height', 'H', inputHeight, setInputHeight, resultHeight, 'height', true, 2)}
             {canEditDepth && renderDimensionInput('Depth', 'D', inputDepth, setInputDepth, resultDepth, 'depth', true, 3)}
