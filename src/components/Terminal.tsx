@@ -11,6 +11,12 @@ const Terminal: React.FC = () => {
     angle?: number;
     unit: string;
   } | null>(null);
+  const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<{
+    shapeId: string;
+    edgeIndex: number;
+    currentLength: number;
+    edgeId: string;
+  } | null>(null);
 
   // Expose terminal input ref globally for external focus control
   useEffect(() => {
@@ -18,6 +24,14 @@ const Terminal: React.FC = () => {
     
     // Expose polyline status setter globally
     (window as any).setPolylineStatus = setPolylineStatus;
+
+    // Listen for edge selection events
+    const handleEdgeSelected = (e: CustomEvent) => {
+      setSelectedEdgeInfo(e.detail);
+      console.log(`Terminal: Edge selected - ${e.detail.currentLength.toFixed(2)} mm`);
+    };
+
+    window.addEventListener('edgeSelected', handleEdgeSelected as EventListener);
     
     // 🎯 GLOBAL KEYBOARD CAPTURE - Tüm klavye girişlerini terminale yönlendir
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -73,6 +87,7 @@ const Terminal: React.FC = () => {
     
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown, true);
+      window.removeEventListener('edgeSelected', handleEdgeSelected as EventListener);
       delete (window as any).terminalInputRef;
       delete (window as any).setPolylineStatus;
     };
@@ -82,6 +97,26 @@ const Terminal: React.FC = () => {
   const executeCommand = (command: string) => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
+
+    // Handle edge measurement update
+    if (selectedEdgeInfo) {
+      const newValue = parseFloat(trimmedCommand);
+      if (!isNaN(newValue) && newValue > 0) {
+        // Dispatch event to update edge measurement
+        const event = new CustomEvent('updateEdgeMeasurement', {
+          detail: {
+            shapeId: selectedEdgeInfo.shapeId,
+            edgeIndex: selectedEdgeInfo.edgeIndex,
+            newValue
+          }
+        });
+        window.dispatchEvent(event);
+        console.log(`Terminal: Updating edge to ${newValue} mm`);
+        setSelectedEdgeInfo(null);
+        setCommandInput('');
+        return;
+      }
+    }
 
     // Handle pending extrude shape - öncelik ver
     if ((window as any).pendingExtrudeShape) {
@@ -141,15 +176,23 @@ const Terminal: React.FC = () => {
               </span>
             </div>
 
-            {/* Orta - Polyline ölçü bilgileri */}
+            {/* Orta - Polyline ölçü bilgileri veya Edge bilgisi */}
             <div className="flex items-center gap-4 text-xs">
-              <span className="text-gray-300">
-                Length: <span className="text-orange-600 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
-              </span>
-              {polylineStatus.angle !== undefined && (
-                <span className="text-stone-600">
-                  Angle: <span className="text-slate-700 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+              {selectedEdgeInfo ? (
+                <span className="text-blue-600 font-medium">
+                  Edge Selected: <span className="text-blue-800 font-mono">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> - Enter new value
                 </span>
+              ) : (
+                <>
+                  <span className="text-gray-300">
+                    Length: <span className="text-orange-600 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
+                  </span>
+                  {polylineStatus.angle !== undefined && (
+                    <span className="text-stone-600">
+                      Angle: <span className="text-slate-700 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+                    </span>
+                  )}
+                </>
               )}
             </div>
 

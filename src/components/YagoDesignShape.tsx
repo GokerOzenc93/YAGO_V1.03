@@ -49,9 +49,6 @@ const YagoDesignShape: React.FC<Props> = ({
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<number | null>(null);
-  const [showMeasurementInput, setShowMeasurementInput] = useState(false);
-  const [measurementInputValue, setMeasurementInputValue] = useState('');
-  const [measurementInputPosition, setMeasurementInputPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Create geometry from shape - update when geometry or version changes
   const shapeGeometry = useMemo(() => {
@@ -140,6 +137,24 @@ const YagoDesignShape: React.FC<Props> = ({
       }
     }
   }, [isSelected, shape]);
+
+  // Listen for edge measurement updates from Terminal
+  useEffect(() => {
+    const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
+      const { shapeId, edgeIndex, newValue } = e.detail;
+
+      if (shapeId === shape.id && edgeIndex === selectedEdge) {
+        handleMeasurementUpdate(newValue);
+        setSelectedEdge(null);
+      }
+    };
+
+    window.addEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
+
+    return () => {
+      window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
+    };
+  }, [shape.id, selectedEdge]);
 
   // Handle transform controls
   useEffect(() => {
@@ -461,31 +476,25 @@ const YagoDesignShape: React.FC<Props> = ({
       return;
     }
 
-    // Set as selected and show input
+    // Set as selected and dispatch event for Terminal
     setSelectedEdge(edgeIndex);
-    setMeasurementInputValue(displayLength.toFixed(2));
 
-    // Calculate screen position for input
-    const midPoint = new THREE.Vector3().lerpVectors(worldStart, worldEnd, 0.5);
-    const screenPos = midPoint.project(camera);
-    const canvas = gl.domElement;
-    const x = (screenPos.x * 0.5 + 0.5) * canvas.clientWidth;
-    const y = (screenPos.y * -0.5 + 0.5) * canvas.clientHeight;
+    // Dispatch event to Terminal with edge info
+    const event = new CustomEvent('edgeSelected', {
+      detail: {
+        shapeId: shape.id,
+        edgeIndex,
+        currentLength: displayLength,
+        edgeId
+      }
+    });
+    window.dispatchEvent(event);
 
-    setMeasurementInputPosition({ x, y });
-    setShowMeasurementInput(true);
-
-    console.log(`✅ Edge ${edgeIndex} selected, length: ${displayLength.toFixed(2)}`);
+    console.log(`✅ Edge ${edgeIndex} selected, current length: ${displayLength.toFixed(2)} mm`);
   };
 
-  const handleMeasurementSubmit = () => {
+  const handleMeasurementUpdate = (newValue: number) => {
     if (selectedEdge === null || !meshRef.current) return;
-
-    const newValue = parseFloat(measurementInputValue);
-    if (isNaN(newValue) || newValue <= 0) {
-      alert('Please enter a valid positive number');
-      return;
-    }
 
     const edgeId = `${shape.id}-edge-${selectedEdge}`;
     const segment = lineSegments[selectedEdge];
@@ -530,12 +539,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    setShowMeasurementInput(false);
-    setSelectedEdge(null);
-    setMeasurementInputValue('');
-    setMeasurementInputPosition(null);
-
-    console.log(`✅ Edge ${selectedEdge} updated to ${newValue}`);
+    console.log(`✅ Edge ${selectedEdge} updated to ${newValue} mm`);
   };
 
   const handleClick = (e: any) => {
@@ -765,84 +769,6 @@ const YagoDesignShape: React.FC<Props> = ({
         </>
       )}
 
-      {/* Measurement input overlay */}
-      {showMeasurementInput && measurementInputPosition && (
-        <Html
-          position={[0, 0, 0]}
-          center
-          style={{
-            position: 'fixed',
-            left: `${measurementInputPosition.x}px`,
-            top: `${measurementInputPosition.y}px`,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: '8px',
-              borderRadius: '4px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-              display: 'flex',
-              gap: '4px',
-              alignItems: 'center',
-            }}
-          >
-            <input
-              type="number"
-              value={measurementInputValue}
-              onChange={(e) => setMeasurementInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleMeasurementSubmit();
-                if (e.key === 'Escape') {
-                  setShowMeasurementInput(false);
-                  setSelectedEdge(null);
-                }
-              }}
-              autoFocus
-              style={{
-                width: '80px',
-                padding: '4px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '2px',
-                fontSize: '14px',
-              }}
-            />
-            <button
-              onClick={handleMeasurementSubmit}
-              style={{
-                padding: '4px 12px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}
-            >
-              OK
-            </button>
-            <button
-              onClick={() => {
-                setShowMeasurementInput(false);
-                setSelectedEdge(null);
-              }}
-              style={{
-                padding: '4px 12px',
-                backgroundColor: '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </Html>
-      )}
 
       {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
       {isSelected &&
