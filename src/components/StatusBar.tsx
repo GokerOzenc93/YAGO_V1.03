@@ -101,7 +101,7 @@ const StatusBar: React.FC = () => {
   };
   
   return (
-    <div className="flex items-center justify-between h-4 px-2 text-xs bg-gray-800/80 backdrop-blur-sm border-t border-gray-700/50">
+    <div className="flex items-center justify-between h-4 px-2 text-xs bg-gray-800/80 backdrop-blur-sm border-t border-gray-700/50 relative z-40">
       <div className="flex items-center gap-4">
         {/* Surface Selection Status */}
         {surfaceSelectionStatus && (
