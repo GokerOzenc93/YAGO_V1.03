@@ -15,6 +15,8 @@ interface Props {
   onContextMenuRequest?: (event: any, shape: Shape) => void;
   isEditMode?: boolean;
   isBeingEdited?: boolean;
+  isFaceEditMode?: boolean;
+  onFaceSelect?: (faceIndex: number) => void;
 }
 
 const YagoDesignShape: React.FC<Props> = ({
@@ -22,6 +24,8 @@ const YagoDesignShape: React.FC<Props> = ({
   onContextMenuRequest,
   isEditMode = false,
   isBeingEdited = false,
+  isFaceEditMode = false,
+  onFaceSelect,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);

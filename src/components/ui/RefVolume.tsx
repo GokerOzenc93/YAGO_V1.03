@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
+import { X, Check, Plus, ChevronLeft, Ruler, RefreshCw } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -390,6 +390,30 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
+          <button
+            onClick={() => {
+              console.log('🔄 Manual parametric update triggered');
+              updateDependentEdges();
+            }}
+            className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
+            title="Update all parametric edges"
+          >
+            <RefreshCw size={11} className="text-orange-600" />
+          </button>
+          <button
+            onClick={() => {
+              const { isRulerMode, setIsRulerMode } = useAppStore.getState();
+              setIsRulerMode(!isRulerMode);
+            }}
+            className={`p-1.5 rounded-sm transition-colors ${
+              isRulerMode
+                ? 'bg-orange-200 text-orange-800'
+                : 'hover:bg-orange-200 text-orange-600'
+            }`}
+            title="Ruler mode"
+          >
+            <Ruler size={11} />
+          </button>
         </div>
         <div className="flex items-center gap-2">
           {customParameters.length > 0 && (

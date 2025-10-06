@@ -168,11 +168,6 @@ const Toolbar: React.FC = () => {
     { id: Tool.DIMENSION, icon: <Ruler size={12} />, label: 'Dimension', shortcut: 'D' },
   ];
 
-  const handleParametricUpdate = () => {
-    const event = new CustomEvent('updateAllParametricEdges');
-    window.dispatchEvent(event);
-    console.log('🔄 Parametric update triggered from toolbar');
-  };
 
   const menus = [
     { 
@@ -685,13 +680,6 @@ const Toolbar: React.FC = () => {
               {React.cloneElement(tool.icon, { size: 11 })}
             </button>
           ))}
-          <button
-            className="p-1.5 rounded-sm transition-all hover:bg-orange-50 text-orange-600 hover:text-orange-800"
-            onClick={handleParametricUpdate}
-            title="Update all parametric edges (🔄)"
-          >
-            <RefreshCw size={11} />
-          </button>
         </div>
 
         {/* Separator */}
