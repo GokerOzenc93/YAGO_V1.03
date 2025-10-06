@@ -18,7 +18,6 @@ import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
-import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
 const CameraPositionUpdater = () => {
@@ -426,11 +425,6 @@ const Scene: React.FC = () => {
 
   const exitEditMode = () => {
     console.log('Exiting edit mode');
-
-    // Face highlight'ları temizle
-    if (sceneRef) {
-      clearFaceHighlight(sceneRef);
-    }
 
     // 🎯 SAVE PERSISTENT PANELS - Mevcut panelleri kaydet
     if (editingShapeId && selectedFaces.length > 0) {

@@ -7,14 +7,6 @@ import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode, OrthoMode } from '../store/appStore';
 import { applyOrthoConstraint } from '../utils/orthoUtils';
-import {
-  detectFaceAtMouse,
-  addFaceHighlight,
-  clearFaceHighlight,
-  removeFaceHighlightByRowIndex,
-  clearTemporaryHighlights,
-  clearAllPersistentHighlights
-} from '../utils/faceSelection';
 
 // New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
@@ -43,7 +35,6 @@ const YagoDesignShape: React.FC<Props> = ({
     updateShape,
     orthoMode,
     isRulerMode,
-    addSelectedLine,
     convertToDisplayUnit,
     geometryUpdateVersion,
   } = useAppStore();
@@ -304,70 +295,11 @@ const YagoDesignShape: React.FC<Props> = ({
     };
 
     const handleCreateSurfaceHighlight = (event: CustomEvent) => {
-      const { shapeId, faceIndex, rowId, color, confirmed, faceNumber } = event.detail;
-      
-      if (shapeId === shape.id && meshRef.current) {
-        // Create highlight mesh for the face
-        const hits = detectFaceAtMouse(
-          { clientX: 0, clientY: 0 } as any, // Dummy event
-          camera,
-          meshRef.current,
-          gl.domElement
-        );
-        
-        // Create a mock hit for the specific face
-        const mockHit = {
-          faceIndex: faceIndex,
-          object: meshRef.current,
-          face: { a: 0, b: 1, c: 2 },
-          point: new THREE.Vector3()
-        };
-        
-        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, faceNumber, rowId);
-        
-        if (highlight) {
-          // Store highlight with rowId for later management
-          surfaceHighlights.set(rowId, highlight.mesh);
-          
-          console.log(`✅ Surface highlight created for face ${faceIndex}, row ${rowId}`);
-        }
-      }
+      console.log('Surface highlight creation removed');
     };
 
     const handleUpdateSurfaceHighlight = (event: CustomEvent) => {
-      const { rowId, faceIndex, role, color } = event.detail;
-      
-      // Remove old highlight
-      const oldHighlight = surfaceHighlights.get(rowId);
-      if (oldHighlight) {
-        scene.remove(oldHighlight);
-        if (oldHighlight.geometry) oldHighlight.geometry.dispose();
-        if (oldHighlight.material) {
-          if (Array.isArray(oldHighlight.material)) {
-            oldHighlight.material.forEach(mat => mat.dispose());
-          } else {
-            oldHighlight.material.dispose();
-          }
-        }
-      }
-      
-      // Create new highlight with updated color
-      if (meshRef.current) {
-        const mockHit = {
-          faceIndex: faceIndex,
-          object: meshRef.current,
-          face: { a: 0, b: 1, c: 2 },
-          point: new THREE.Vector3()
-        };
-        
-        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, undefined, undefined);
-        
-        if (highlight) {
-          surfaceHighlights.set(rowId, highlight.mesh);
-          
-          console.log(`✅ Surface highlight updated for row ${rowId}, role: ${role}`);
-        }
-      }
+      console.log('Surface highlight update removed');
     };
 
     const handleRemoveSurfaceHighlight = (event: CustomEvent) => {
@@ -499,73 +431,8 @@ const YagoDesignShape: React.FC<Props> = ({
     setHoveredEdge(closestEdge);
   };
 
-  const handleEdgeClick = (e: any) => {
-    if (!isRulerMode || hoveredEdge === null || !meshRef.current) return;
-
-    e.stopPropagation();
-
-    const segment = lineSegments[hoveredEdge];
-    const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
-    const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
-
-    const length = worldStart.distanceTo(worldEnd);
-    const displayLength = convertToDisplayUnit(length);
-
-    addSelectedLine({
-      id: `${shape.id}-edge-${hoveredEdge}-${Date.now()}`,
-      value: displayLength,
-      label: `Edge ${hoveredEdge + 1} (${shape.type})`,
-      shapeId: shape.id,
-      edgeIndex: hoveredEdge,
-      startVertex: segment.start.toArray() as [number, number, number],
-      endVertex: segment.end.toArray() as [number, number, number]
-    });
-
-    console.log(`✅ Line selected: ${displayLength.toFixed(2)} units`);
-  };
 
   const handleClick = (e: any) => {
-    // Ruler mode - handle edge selection
-    if (isRulerMode && hoveredEdge !== null) {
-      handleEdgeClick(e);
-      return;
-    }
-
-    // New surface selection mode
-    if (isFaceSelectionActive && e.nativeEvent.button === 0) {
-      e.stopPropagation();
-      
-      const hits = detectFaceAtMouse(
-        e.nativeEvent,
-        camera,
-        meshRef.current!,
-        gl.domElement
-      );
-
-      if (hits.length === 0) {
-        console.warn('🎯 No face detected');
-        return;
-      }
-
-      const hit = hits[0];
-      if (hit.faceIndex === undefined) {
-        console.warn('🎯 No face index');
-        return;
-      }
-
-      // Send face selection event
-      const faceSelectedEvent = new CustomEvent('faceSelected', {
-        detail: {
-          faceIndex: hit.faceIndex,
-          shapeId: shape.id
-        }
-      });
-      window.dispatchEvent(faceSelectedEvent);
-      
-      console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
-      return;
-    }
-    
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();

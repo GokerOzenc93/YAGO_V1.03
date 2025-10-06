@@ -286,13 +286,6 @@ interface AppState {
   // Ruler mode
   isRulerMode: boolean;
   setIsRulerMode: (enabled: boolean) => void;
-  selectedLines: Array<{ id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number]; formula?: string }>;
-  addSelectedLine: (line: { id: string; value: number; label: string; shapeId: string; edgeIndex: number; startVertex: [number, number, number]; endVertex: [number, number, number]; formula?: string }) => void;
-  updateSelectedLineValue: (id: string, newValue: number) => void;
-  updateSelectedLineVertices: (id: string, endVertex: [number, number, number]) => void;
-  updateSelectedLineFormula: (id: string, formula: string) => void;
-  updateSelectedLineLabel: (id: string, label: string) => void;
-  removeSelectedLine: (id: string) => void;
   formulaEvaluator: FormulaEvaluator;
   setParameterVariable: (name: string, value: number) => void;
   getParameterVariable: (name: string) => number | undefined;
@@ -450,42 +443,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   visibleDimensions: new Set<string>(),
   setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
 
-  // Ruler mode
   isRulerMode: false,
   setIsRulerMode: (enabled) => set({ isRulerMode: enabled }),
-  selectedLines: [],
-  addSelectedLine: (line) => set((state) => {
-    const exists = state.selectedLines.some(l => l.id === line.id);
-    if (exists) {
-      return state;
-    }
-    return {
-      selectedLines: [...state.selectedLines, line]
-    };
-  }),
-  removeSelectedLine: (id) => set((state) => ({
-    selectedLines: state.selectedLines.filter(l => l.id !== id)
-  })),
-  updateSelectedLineValue: (id, newValue) => set((state) => ({
-    selectedLines: state.selectedLines.map(l =>
-      l.id === id ? { ...l, value: newValue } : l
-    )
-  })),
-  updateSelectedLineVertices: (id, endVertex) => set((state) => ({
-    selectedLines: state.selectedLines.map(l =>
-      l.id === id ? { ...l, endVertex } : l
-    )
-  })),
-  updateSelectedLineFormula: (id, formula) => set((state) => ({
-    selectedLines: state.selectedLines.map(l =>
-      l.id === id ? { ...l, formula } : l
-    )
-  })),
-  updateSelectedLineLabel: (id, label) => set((state) => ({
-    selectedLines: state.selectedLines.map(l =>
-      l.id === id ? { ...l, label } : l
-    )
-  })),
 
   formulaEvaluator: createFormulaEvaluator(),
 
