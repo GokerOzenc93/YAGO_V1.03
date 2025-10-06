@@ -116,7 +116,32 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   useEffect(() => {
     syncFormulaVariables();
     recalculateAllParameters();
-  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), JSON.stringify(selectedLines.map(l => ({ id: l.id, formula: l.formula }))), syncFormulaVariables]);
+  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), JSON.stringify(selectedLines.map(l => ({ id: l.id, formula: l.formula })))]);
+
+  useEffect(() => {
+    if (selectedLines.length === 0) return;
+
+    console.log('🔄 W/H/D changed, forcing edge recalculation');
+
+    syncFormulaVariables();
+
+    selectedLines.forEach(line => {
+      if (!line.formula?.trim()) return;
+
+      const evaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
+      if (evaluated !== null && !isNaN(evaluated) && evaluated > 0) {
+        const currentVal = parseFloat(line.value.toFixed(2));
+        const newVal = parseFloat(evaluated.toFixed(2));
+
+        if (Math.abs(currentVal - newVal) > 0.01) {
+          console.log(`🔄 Edge ${line.label || line.id}: ${currentVal} -> ${newVal}`);
+          updateSelectedLineValue(line.id, newVal);
+        }
+      }
+    });
+
+    setTimeout(() => recalculateAllParameters(), 100);
+  }, [currentWidth, currentHeight, currentDepth]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
