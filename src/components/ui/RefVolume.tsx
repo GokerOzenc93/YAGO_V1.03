@@ -60,6 +60,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
   const formulaEvaluatorRef = useRef<FormulaEvaluator>(new FormulaEvaluator());
+  const updateDependentEdgesRef = useRef<() => void>();
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditDepth = canEditWidth;
@@ -247,6 +248,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const updateDependentEdges = useCallback(() => {
     const { shapes, evaluateFormula } = useAppStore.getState();
+    console.log('🔄 updateDependentEdges called, shapes:', shapes.length);
     shapes.forEach(shape => {
       if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
 
@@ -267,6 +269,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       });
     });
   }, []);
+
+  updateDependentEdgesRef.current = updateDependentEdges;
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
@@ -391,34 +395,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
-          <button
-            onClick={() => {
-              try {
-                console.log('🔄 Manual parametric update triggered');
-                updateDependentEdges();
-              } catch (error) {
-                console.error('❌ Error updating dependent edges:', error);
-              }
-            }}
-            className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
-            title="Update all parametric edges"
-          >
-            <RefreshCw size={11} className="text-orange-600" />
-          </button>
-          <button
-            onClick={() => {
-              const { isRulerMode, setIsRulerMode } = useAppStore.getState();
-              setIsRulerMode(!isRulerMode);
-            }}
-            className={`p-1.5 rounded-sm transition-colors ${
-              isRulerMode
-                ? 'bg-orange-200 text-orange-800'
-                : 'hover:bg-orange-200 text-orange-600'
-            }`}
-            title="Ruler mode"
-          >
-            <Ruler size={11} />
-          </button>
         </div>
         <div className="flex items-center gap-2">
           {customParameters.length > 0 && (
@@ -429,6 +405,24 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               Clear All
             </button>
           )}
+          <button
+            onClick={() => {
+              try {
+                console.log('🔄 Manual parametric update button clicked');
+                if (updateDependentEdgesRef.current) {
+                  updateDependentEdgesRef.current();
+                } else {
+                  console.error('❌ updateDependentEdgesRef.current is undefined');
+                }
+              } catch (error) {
+                console.error('❌ Error updating dependent edges:', error);
+              }
+            }}
+            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
+            title="Update all parametric edges"
+          >
+            <RefreshCw size={11} />
+          </button>
           <button
             onClick={() => setCustomParameters(prev => [...prev, {
               id: `param_${Date.now()}`,
@@ -441,7 +435,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             <Plus size={14} />
           </button>
           <button
-            onClick={() => setIsRulerMode(!isRulerMode)}
+            onClick={() => {
+              const { isRulerMode, setIsRulerMode } = useAppStore.getState();
+              setIsRulerMode(!isRulerMode);
+            }}
             className={`p-1.5 rounded-sm transition-colors ${
               isRulerMode ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
             }`}
