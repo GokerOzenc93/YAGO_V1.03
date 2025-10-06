@@ -210,6 +210,9 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
+  geometryUpdateVersion: number;
+  incrementGeometryVersion: () => void;
+  forceGeometryUpdate: (shapeId: string) => void;
   // YagoDesign integration
   isYagoDesignInitialized: boolean;
   setYagoDesignInitialized: (initialized: boolean) => void;
@@ -339,6 +342,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     if ([Tool.MOVE, Tool.ROTATE, Tool.SCALE].includes(tool)) {
       set({ lastTransformTool: tool });
     }
+  },
+
+  geometryUpdateVersion: 0,
+  incrementGeometryVersion: () => set((state) => ({
+    geometryUpdateVersion: state.geometryUpdateVersion + 1
+  })),
+
+  forceGeometryUpdate: (shapeId: string) => {
+    const { shapes, geometryUpdateVersion } = get();
+    const shape = shapes.find(s => s.id === shapeId);
+    if (!shape) return;
+
+    const updatedGeometry = shape.geometry.clone();
+    updatedGeometry.attributes.position.needsUpdate = true;
+    updatedGeometry.computeBoundingBox();
+    updatedGeometry.computeVertexNormals();
+
+    set((state) => ({
+      shapes: state.shapes.map(s =>
+        s.id === shapeId ? { ...s, geometry: updatedGeometry } : s
+      ),
+      geometryUpdateVersion: geometryUpdateVersion + 1
+    }));
+
+    console.log(`🔄 Force geometry update for shape ${shapeId}, version: ${geometryUpdateVersion + 1}`);
   },
   
   // YagoDesign integration
@@ -705,11 +733,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
     
   updateShape: (id, updates) =>
-    set((state) => ({
-      shapes: state.shapes.map((shape) =>
-        shape.id === id ? { ...shape, ...updates } : shape
-      ),
-    })),
+    set((state) => {
+      const hasGeometryUpdate = 'geometry' in updates;
+      return {
+        shapes: state.shapes.map((shape) =>
+          shape.id === id ? { ...shape, ...updates } : shape
+        ),
+        geometryUpdateVersion: hasGeometryUpdate ? state.geometryUpdateVersion + 1 : state.geometryUpdateVersion
+      };
+    }),
     
   deleteShape: (id) =>
     set((state) => ({

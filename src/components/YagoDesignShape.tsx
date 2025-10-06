@@ -45,6 +45,7 @@ const YagoDesignShape: React.FC<Props> = ({
     isRulerMode,
     addSelectedLine,
     convertToDisplayUnit,
+    geometryUpdateVersion,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -53,17 +54,20 @@ const YagoDesignShape: React.FC<Props> = ({
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null);
 
-  // Create geometry from shape
+  // Create geometry from shape - update when geometry or version changes
   const shapeGeometry = useMemo(() => {
+    console.log(`🔄 Shape ${shape.id} geometry updated, version: ${geometryUpdateVersion}`);
     return shape.geometry;
-  }, [shape.geometry]);
+  }, [shape.geometry, shape.id, geometryUpdateVersion]);
 
-  // Create edges geometry
+  // Create edges geometry - recreate when shape geometry changes
   const edgesGeometry = useMemo(() => {
-    return new THREE.EdgesGeometry(shapeGeometry);
-  }, [shapeGeometry]);
+    const edges = new THREE.EdgesGeometry(shapeGeometry);
+    console.log(`🔄 Shape ${shape.id} edges geometry recreated, version: ${geometryUpdateVersion}`);
+    return edges;
+  }, [shapeGeometry, shape.id, geometryUpdateVersion]);
 
-  // Create individual line segments for edge detection
+  // Create individual line segments for edge detection - update when edges change
   const lineSegments = useMemo(() => {
     const positions = edgesGeometry.attributes.position;
     const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3; index: number }> = [];
@@ -82,8 +86,32 @@ const YagoDesignShape: React.FC<Props> = ({
       segments.push({ start, end, index: i / 2 });
     }
 
+    console.log(`🔄 Shape ${shape.id} line segments recreated: ${segments.length} segments`);
     return segments;
-  }, [edgesGeometry]);
+  }, [edgesGeometry, shape.id]);
+
+  // Force mesh geometry update when geometry changes with proper cleanup
+  useEffect(() => {
+    if (meshRef.current && shape.geometry) {
+      const oldGeometry = meshRef.current.geometry;
+
+      if (oldGeometry !== shape.geometry) {
+        meshRef.current.geometry = shape.geometry;
+        console.log(`✅ Mesh geometry updated for shape ${shape.id}, version: ${geometryUpdateVersion}`);
+      }
+    }
+  }, [shape.geometry, shape.id, geometryUpdateVersion]);
+
+  // Cleanup edges geometry when component unmounts or geometry changes
+  useEffect(() => {
+    const currentEdges = edgesGeometry;
+    return () => {
+      if (currentEdges && currentEdges.dispose) {
+        currentEdges.dispose();
+        console.log(`🗑️ Cleaned up edges geometry for shape ${shape.id}`);
+      }
+    };
+  }, [edgesGeometry, shape.id]);
 
   // Debug: Log shape information when selected
   useEffect(() => {

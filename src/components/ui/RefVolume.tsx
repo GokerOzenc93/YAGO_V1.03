@@ -190,7 +190,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       processedInIteration.clear();
 
       const geometryUpdatesByShape = new Map<string, {
-        geometry: THREE.BufferGeometry;
+        originalGeometry: THREE.BufferGeometry;
+        newGeometry: THREE.BufferGeometry;
         vertexMoves: Array<{
           oldVertex: [number, number, number];
           newVertex: [number, number, number];
@@ -230,8 +231,12 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         if (!shape?.geometry) return;
 
         if (!geometryUpdatesByShape.has(line.shapeId)) {
+          const originalGeometry = shape.geometry;
+          const newGeometry = originalGeometry.clone();
+
           geometryUpdatesByShape.set(line.shapeId, {
-            geometry: shape.geometry.clone(),
+            originalGeometry,
+            newGeometry,
             vertexMoves: [],
             lineUpdates: []
           });
@@ -296,7 +301,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       if (!hasChanges) break;
 
       geometryUpdatesByShape.forEach((updateData, shapeId) => {
-        const positions = updateData.geometry.attributes.position.array as Float32Array;
+        const positions = updateData.newGeometry.attributes.position.array as Float32Array;
 
         updateData.vertexMoves.forEach(move => {
           for (let i = 0; i < positions.length; i += 3) {
@@ -314,16 +319,26 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           }
         });
 
-        updateData.geometry.attributes.position.needsUpdate = true;
-        updateData.geometry.computeBoundingBox();
-        updateData.geometry.computeVertexNormals();
+        updateData.newGeometry.attributes.position.needsUpdate = true;
+        updateData.newGeometry.computeBoundingBox();
+        updateData.newGeometry.computeVertexNormals();
+        updateData.newGeometry.computeBoundingSphere();
 
-        updateShape(shapeId, { geometry: updateData.geometry });
+        const shape = shapes.find(s => s.id === shapeId);
+        if (shape && updateData.originalGeometry !== updateData.newGeometry) {
+          if (updateData.originalGeometry && updateData.originalGeometry.dispose) {
+            updateData.originalGeometry.dispose();
+          }
+        }
+
+        updateShape(shapeId, { geometry: updateData.newGeometry });
 
         updateData.lineUpdates.forEach(update => {
           updateSelectedLineValue(update.lineId, update.newValue);
           updateSelectedLineVertices(update.lineId, update.newEndVertex);
         });
+
+        console.log(`✅ Geometry updated for shape ${shapeId} with ${updateData.vertexMoves.length} vertex moves`);
       });
 
       selectedLines.forEach(line => {
@@ -389,7 +404,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     } else if (iteration > 1) {
       console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
     }
-  }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables]);
+  }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
     const evaluated = evaluateExpression(value);
