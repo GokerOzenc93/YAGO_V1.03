@@ -233,6 +233,28 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setter(value);
   };
 
+  const updateDependentEdges = useCallback(() => {
+    shapes.forEach(shape => {
+      if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
+
+      shape.edgeFormulas.forEach(edgeFormula => {
+        const newValue = evaluateFormula(edgeFormula.formula);
+        if (newValue !== null && newValue > 0) {
+          const event = new CustomEvent('updateEdgeMeasurement', {
+            detail: {
+              shapeId: shape.id,
+              edgeIndex: edgeFormula.edgeIndex,
+              newValue,
+              formula: edgeFormula.formula
+            }
+          });
+          window.dispatchEvent(event);
+          console.log(`🔄 Auto-updated edge ${edgeFormula.edgeIndex} of shape ${shape.id} to ${newValue} mm`);
+        }
+      });
+    });
+  }, [shapes, evaluateFormula]);
+
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
     if (!param?.value.trim() || !param.description?.trim()) {
@@ -265,9 +287,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       syncFormulaVariables();
 
-
-
       recalculateAllParameters();
+
+      // Update all edges that depend on this parameter
+      updateDependentEdges();
     });
   };
 

@@ -116,16 +116,17 @@ const Terminal: React.FC = () => {
       }
 
       if (newValue > 0) {
-        // Dispatch event to update edge measurement
+        // Dispatch event to update edge measurement with formula
         const event = new CustomEvent('updateEdgeMeasurement', {
           detail: {
             shapeId: selectedEdgeInfo.shapeId,
             edgeIndex: selectedEdgeInfo.edgeIndex,
-            newValue
+            newValue,
+            formula: trimmedCommand
           }
         });
         window.dispatchEvent(event);
-        console.log(`Terminal: Updating edge to ${newValue} mm`);
+        console.log(`Terminal: Updating edge to ${newValue} mm (formula: ${trimmedCommand})`);
         setSelectedEdgeInfo(null);
         setCommandInput('');
         return;

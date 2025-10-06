@@ -152,10 +152,10 @@ const YagoDesignShape: React.FC<Props> = ({
   // Listen for edge measurement updates from Terminal
   useEffect(() => {
     const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
-      const { shapeId, edgeIndex, newValue } = e.detail;
+      const { shapeId, edgeIndex, newValue, formula } = e.detail;
 
       if (shapeId === shape.id && edgeIndex === selectedEdge) {
-        handleMeasurementUpdate(newValue);
+        handleMeasurementUpdate(newValue, formula);
         setSelectedEdge(null);
       }
     };
@@ -504,7 +504,7 @@ const YagoDesignShape: React.FC<Props> = ({
     console.log(`✅ Edge ${edgeIndex} (${edgeId}) selected, current length: ${displayLength.toFixed(2)} mm`);
   };
 
-  const handleMeasurementUpdate = (newValue: number) => {
+  const handleMeasurementUpdate = (newValue: number, formula?: string) => {
     if (selectedEdge === null || !meshRef.current) return;
 
     const segment = lineSegments[selectedEdge];
@@ -512,6 +512,31 @@ const YagoDesignShape: React.FC<Props> = ({
 
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
+
+    // If formula is provided, store it in shape's edgeFormulas
+    if (formula) {
+      const currentFormulas = shape.edgeFormulas || [];
+      const existingIndex = currentFormulas.findIndex(f => f.edgeIndex === selectedEdge);
+
+      const newFormula = {
+        edgeIndex: selectedEdge,
+        formula: formula,
+        originalLength: newValue
+      };
+
+      let updatedFormulas;
+      if (existingIndex >= 0) {
+        updatedFormulas = [...currentFormulas];
+        updatedFormulas[existingIndex] = newFormula;
+      } else {
+        updatedFormulas = [...currentFormulas, newFormula];
+      }
+
+      console.log(`📝 Saved edge formula: edge ${selectedEdge} = "${formula}"`);
+
+      // Update shape with formula
+      updateShape(shape.id, { edgeFormulas: updatedFormulas });
+    }
 
     // Get current edge length in local space
     const localStart = segment.start.clone();
