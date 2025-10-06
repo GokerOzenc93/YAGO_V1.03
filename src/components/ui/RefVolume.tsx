@@ -230,9 +230,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const handleInputChange = (setter: (val: string) => void, value: string) => {
-    if (/^[0-9a-zA-Z+\-*/().\s]*$/.test(value) || value === '') {
-      setter(value);
-    }
+    setter(value);
   };
 
   const handleApplyParameter = (id: string) => {
