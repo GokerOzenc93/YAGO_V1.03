@@ -150,28 +150,29 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const recalculateAllParameters = useCallback(() => {
-    syncFormulaVariables();
+    try {
+      syncFormulaVariables();
 
-    const updatedParams = customParameters.map(param => {
-      if (!param.value.trim()) return param;
-      const evaluated = evaluateExpression(param.value, `param-${param.description}`);
-      return evaluated !== null && !isNaN(evaluated)
-        ? { ...param, result: evaluated.toFixed(2) }
-        : param;
-    });
-
-    const hasParamChanges = updatedParams.some((p, i) => p.result !== customParameters[i].result);
-    if (hasParamChanges) {
-      setCustomParameters(updatedParams);
-
-      const evaluator = formulaEvaluatorRef.current;
-      updatedParams.forEach(param => {
-        if (param.description && param.result) {
-          evaluator.setVariable(param.description, parseFloat(param.result));
-          console.log(`🔄 Updated parameter variable: ${param.description}=${param.result}`);
-        }
+      const updatedParams = customParameters.map(param => {
+        if (!param.value.trim()) return param;
+        const evaluated = evaluateExpression(param.value, `param-${param.description}`);
+        return evaluated !== null && !isNaN(evaluated)
+          ? { ...param, result: evaluated.toFixed(2) }
+          : param;
       });
-    }
+
+      const hasParamChanges = updatedParams.some((p, i) => p.result !== customParameters[i].result);
+      if (hasParamChanges) {
+        setCustomParameters(updatedParams);
+
+        const evaluator = formulaEvaluatorRef.current;
+        updatedParams.forEach(param => {
+          if (param.description && param.result) {
+            evaluator.setVariable(param.description, parseFloat(param.result));
+            console.log(`🔄 Updated parameter variable: ${param.description}=${param.result}`);
+          }
+        });
+      }
 
     const MAX_ITERATIONS = 10;
     let iteration = 0;
@@ -301,44 +302,47 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       if (!hasChanges) break;
 
       geometryUpdatesByShape.forEach((updateData, shapeId) => {
-        const positions = updateData.newGeometry.attributes.position.array as Float32Array;
+        try {
+          const positions = updateData.newGeometry.attributes.position.array as Float32Array;
 
-        updateData.vertexMoves.forEach(move => {
-          for (let i = 0; i < positions.length; i += 3) {
-            const dist = Math.sqrt(
-              Math.pow(positions[i] - move.oldVertex[0], 2) +
-              Math.pow(positions[i + 1] - move.oldVertex[1], 2) +
-              Math.pow(positions[i + 2] - move.oldVertex[2], 2)
-            );
+          updateData.vertexMoves.forEach(move => {
+            for (let i = 0; i < positions.length; i += 3) {
+              const dist = Math.sqrt(
+                Math.pow(positions[i] - move.oldVertex[0], 2) +
+                Math.pow(positions[i + 1] - move.oldVertex[1], 2) +
+                Math.pow(positions[i + 2] - move.oldVertex[2], 2)
+              );
 
-            if (dist < 0.01) {
-              positions[i] = move.newVertex[0];
-              positions[i + 1] = move.newVertex[1];
-              positions[i + 2] = move.newVertex[2];
+              if (dist < 0.01) {
+                positions[i] = move.newVertex[0];
+                positions[i + 1] = move.newVertex[1];
+                positions[i + 2] = move.newVertex[2];
+              }
             }
-          }
-        });
+          });
 
-        updateData.newGeometry.attributes.position.needsUpdate = true;
-        updateData.newGeometry.computeBoundingBox();
-        updateData.newGeometry.computeVertexNormals();
-        updateData.newGeometry.computeBoundingSphere();
+          updateData.newGeometry.attributes.position.needsUpdate = true;
+          updateData.newGeometry.computeBoundingBox();
+          updateData.newGeometry.computeVertexNormals();
+          updateData.newGeometry.computeBoundingSphere();
 
-        const shape = shapes.find(s => s.id === shapeId);
-        if (shape && updateData.originalGeometry !== updateData.newGeometry) {
-          if (updateData.originalGeometry && updateData.originalGeometry.dispose) {
-            updateData.originalGeometry.dispose();
+          const shape = shapes.find(s => s.id === shapeId);
+          if (!shape) {
+            console.warn(`⚠️ Shape ${shapeId} not found during geometry update`);
+            return;
           }
+
+          updateShape(shapeId, { geometry: updateData.newGeometry });
+
+          updateData.lineUpdates.forEach(update => {
+            updateSelectedLineValue(update.lineId, update.newValue);
+            updateSelectedLineVertices(update.lineId, update.newEndVertex);
+          });
+
+          console.log(`✅ Geometry updated for shape ${shapeId} with ${updateData.vertexMoves.length} vertex moves`);
+        } catch (error) {
+          console.error(`❌ Error updating geometry for shape ${shapeId}:`, error);
         }
-
-        updateShape(shapeId, { geometry: updateData.newGeometry });
-
-        updateData.lineUpdates.forEach(update => {
-          updateSelectedLineValue(update.lineId, update.newValue);
-          updateSelectedLineVertices(update.lineId, update.newEndVertex);
-        });
-
-        console.log(`✅ Geometry updated for shape ${shapeId} with ${updateData.vertexMoves.length} vertex moves`);
       });
 
       selectedLines.forEach(line => {
@@ -404,38 +408,57 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     } else if (iteration > 1) {
       console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
     }
+    } catch (error) {
+      console.error('❌ Error during parameter recalculation:', error);
+    }
   }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
-    const evaluated = evaluateExpression(value);
-    if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
+    try {
+      const evaluated = evaluateExpression(value);
+      if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
 
-    if (dimension === 'width') setResultWidth(evaluated.toFixed(2));
-    if (dimension === 'height') setResultHeight(evaluated.toFixed(2));
-    if (dimension === 'depth') setResultDepth(evaluated.toFixed(2));
+      if (dimension === 'width') setResultWidth(evaluated.toFixed(2));
+      if (dimension === 'height') setResultHeight(evaluated.toFixed(2));
+      if (dimension === 'depth') setResultDepth(evaluated.toFixed(2));
 
-    const newValue = convertToBaseUnit(evaluated);
-    editedShape.geometry.computeBoundingBox();
-    const bbox = editedShape.geometry.boundingBox;
-    const currentScale = [...editedShape.scale];
-    const newScale = [...currentScale];
+      const newValue = convertToBaseUnit(evaluated);
 
-    let originalDimension = 0;
-    if (dimension === 'width') {
-      originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0] || 1;
-      newScale[0] = (newValue / originalDimension) * currentScale[0];
-    } else if (dimension === 'height') {
-      originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1] || 1;
-      newScale[1] = (newValue / originalDimension) * currentScale[1];
-    } else {
-      originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2] || 1;
-      newScale[2] = (newValue / originalDimension) * currentScale[2];
+      if (!editedShape.geometry) {
+        console.error('❌ No geometry found for edited shape');
+        return;
+      }
+
+      editedShape.geometry.computeBoundingBox();
+      const bbox = editedShape.geometry.boundingBox;
+
+      if (!bbox) {
+        console.error('❌ Failed to compute bounding box');
+        return;
+      }
+
+      const currentScale = [...editedShape.scale];
+      const newScale = [...currentScale];
+
+      let originalDimension = 0;
+      if (dimension === 'width') {
+        originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0] || 1;
+        newScale[0] = (newValue / originalDimension) * currentScale[0];
+      } else if (dimension === 'height') {
+        originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1] || 1;
+        newScale[1] = (newValue / originalDimension) * currentScale[1];
+      } else {
+        originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2] || 1;
+        newScale[2] = (newValue / originalDimension) * currentScale[2];
+      }
+
+      updateShape(editedShape.id, {
+        scale: newScale as [number, number, number],
+        geometry: editedShape.geometry.clone(),
+      });
+    } catch (error) {
+      console.error('❌ Error applying dimension change:', error);
     }
-
-    updateShape(editedShape.id, {
-      scale: newScale as [number, number, number],
-      geometry: editedShape.geometry.clone(),
-    });
   };
 
   const handleInputChange = (setter: (val: string) => void, value: string) => {
