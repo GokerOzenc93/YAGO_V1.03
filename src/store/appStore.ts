@@ -293,13 +293,6 @@ interface AppState {
   updateSelectedLineFormula: (id: string, formula: string) => void;
   updateSelectedLineLabel: (id: string, label: string) => void;
   removeSelectedLine: (id: string) => void;
-  // Edge-to-edge distances
-  edgeDistances: Array<{ id: string; edge1Id: string; edge2Id: string; distance: number; label: string; formula?: string }>;
-  addEdgeDistance: (distance: { id: string; edge1Id: string; edge2Id: string; distance: number; label: string; formula?: string }) => void;
-  updateEdgeDistance: (id: string, distance: number) => void;
-  updateEdgeDistanceFormula: (id: string, formula: string) => void;
-  updateEdgeDistanceLabel: (id: string, label: string) => void;
-  removeEdgeDistance: (id: string) => void;
   formulaEvaluator: FormulaEvaluator;
   setParameterVariable: (name: string, value: number) => void;
   getParameterVariable: (name: string) => number | undefined;
@@ -491,32 +484,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateSelectedLineLabel: (id, label) => set((state) => ({
     selectedLines: state.selectedLines.map(l =>
       l.id === id ? { ...l, label } : l
-    )
-  })),
-
-  // Edge-to-edge distances
-  edgeDistances: [],
-  addEdgeDistance: (distance) => set((state) => {
-    const exists = state.edgeDistances.some(d => d.id === distance.id);
-    if (exists) return state;
-    return { edgeDistances: [...state.edgeDistances, distance] };
-  }),
-  removeEdgeDistance: (id) => set((state) => ({
-    edgeDistances: state.edgeDistances.filter(d => d.id !== id)
-  })),
-  updateEdgeDistance: (id, distance) => set((state) => ({
-    edgeDistances: state.edgeDistances.map(d =>
-      d.id === id ? { ...d, distance } : d
-    )
-  })),
-  updateEdgeDistanceFormula: (id, formula) => set((state) => ({
-    edgeDistances: state.edgeDistances.map(d =>
-      d.id === id ? { ...d, formula } : d
-    )
-  })),
-  updateEdgeDistanceLabel: (id, label) => set((state) => ({
-    edgeDistances: state.edgeDistances.map(d =>
-      d.id === id ? { ...d, label } : d
     )
   })),
 

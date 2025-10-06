@@ -28,12 +28,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     selectedLines,
     updateSelectedLineValue,
     updateSelectedLineVertices,
-    edgeDistances,
-    addEdgeDistance,
-    updateEdgeDistance,
-    updateEdgeDistanceFormula,
-    updateEdgeDistanceLabel,
-    removeEdgeDistance,
     updateSelectedLineFormula,
     updateSelectedLineLabel,
     removeSelectedLine,
@@ -855,94 +849,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {selectedLines.length >= 2 && (
-          <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-semibold text-blue-900">Edge-to-Edge Distances</div>
-              <button
-                onClick={() => {
-                  if (selectedLines.length >= 2) {
-                    const edge1 = selectedLines[selectedLines.length - 2];
-                    const edge2 = selectedLines[selectedLines.length - 1];
-
-                    const edge1Mid = [
-                      (edge1.startVertex[0] + edge1.endVertex[0]) / 2,
-                      (edge1.startVertex[1] + edge1.endVertex[1]) / 2,
-                      (edge1.startVertex[2] + edge1.endVertex[2]) / 2
-                    ];
-                    const edge2Mid = [
-                      (edge2.startVertex[0] + edge2.endVertex[0]) / 2,
-                      (edge2.startVertex[1] + edge2.endVertex[1]) / 2,
-                      (edge2.startVertex[2] + edge2.endVertex[2]) / 2
-                    ];
-
-                    const distance = Math.sqrt(
-                      Math.pow(edge2Mid[0] - edge1Mid[0], 2) +
-                      Math.pow(edge2Mid[1] - edge1Mid[1], 2) +
-                      Math.pow(edge2Mid[2] - edge1Mid[2], 2)
-                    );
-
-                    const displayDistance = convertToDisplayUnit(distance);
-
-                    addEdgeDistance({
-                      id: `dist-${Date.now()}`,
-                      edge1Id: edge1.id,
-                      edge2Id: edge2.id,
-                      distance: displayDistance,
-                      label: `D${edgeDistances.length + 1}`
-                    });
-                  }
-                }}
-                className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
-              >
-                <Plus size={12} />
-                Add Distance
-              </button>
-            </div>
-
-            <div className="space-y-1.5">
-              {edgeDistances.map((dist, index) => {
-                const edge1 = selectedLines.find(l => l.id === dist.edge1Id);
-                const edge2 = selectedLines.find(l => l.id === dist.edge2Id);
-
-                return (
-                  <div key={dist.id} className="flex items-center gap-2 p-2 bg-white rounded-md border border-blue-200">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center bg-blue-500 text-white">
-                      {index + 1}
-                    </div>
-
-                    <input
-                      type="text"
-                      value={dist.label}
-                      onChange={(e) => updateEdgeDistanceLabel(dist.id, e.target.value)}
-                      placeholder="Name"
-                      className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
-                    />
-
-                    <div className="text-xs text-gray-600 flex-1">
-                      {edge1?.label || 'Edge 1'} ↔ {edge2?.label || 'Edge 2'}
-                    </div>
-
-                    <input
-                      type="text"
-                      value={dist.distance.toFixed(2)}
-                      readOnly
-                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
-                    />
-
-                    <button
-                      onClick={() => removeEdgeDistance(dist.id)}
-                      className="flex-shrink-0 p-1.5 bg-orange-100 text-orange-600 hover:bg-orange-200 rounded-sm transition-colors"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                );
-              })}
             </div>
           </div>
         )}
