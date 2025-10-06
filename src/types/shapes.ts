@@ -4,6 +4,8 @@ export interface EdgeFormula {
   edgeIndex: number;
   formula: string;
   originalLength: number;
+  parameterName?: string;
+  currentValue?: number;
 }
 
 export interface Shape {

@@ -158,9 +158,16 @@ const YagoDesignShape: React.FC<Props> = ({
     const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
       const { shapeId, edgeIndex, newValue, formula } = e.detail;
 
-      if (shapeId === shape.id && edgeIndex === selectedEdge) {
-        handleMeasurementUpdate(newValue, formula);
-        setSelectedEdge(null);
+      if (shapeId === shape.id) {
+        console.log(`🔄 Received updateEdgeMeasurement for shape ${shapeId}, edge ${edgeIndex}, value: ${newValue}`);
+
+        // Update with specific edge index (for parametric updates)
+        handleMeasurementUpdate(newValue, formula, edgeIndex);
+
+        // Only clear selection if this was for the selected edge
+        if (edgeIndex === selectedEdge) {
+          setSelectedEdge(null);
+        }
       }
     };
 
@@ -508,10 +515,11 @@ const YagoDesignShape: React.FC<Props> = ({
     console.log(`✅ Edge ${edgeIndex} (${edgeId}) selected, current length: ${displayLength.toFixed(2)} mm`);
   };
 
-  const handleMeasurementUpdate = (newValue: number, formula?: string) => {
-    if (selectedEdge === null || !meshRef.current) return;
+  const handleMeasurementUpdate = (newValue: number, formula?: string, targetEdgeIndex?: number) => {
+    const edgeIndex = targetEdgeIndex !== undefined ? targetEdgeIndex : selectedEdge;
+    if (edgeIndex === null || !meshRef.current) return;
 
-    const segment = lineSegments[selectedEdge];
+    const segment = lineSegments[edgeIndex];
     const edgeId = segment.id;
 
     // Store confirmed measurement
@@ -520,12 +528,13 @@ const YagoDesignShape: React.FC<Props> = ({
     // If formula is provided, store it in shape's edgeFormulas
     if (formula) {
       const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeIndex === selectedEdge);
+      const existingIndex = currentFormulas.findIndex(f => f.edgeIndex === edgeIndex);
 
       const newFormula = {
-        edgeIndex: selectedEdge,
+        edgeIndex: edgeIndex,
         formula: formula,
-        originalLength: newValue
+        originalLength: newValue,
+        currentValue: newValue
       };
 
       let updatedFormulas;
@@ -536,7 +545,7 @@ const YagoDesignShape: React.FC<Props> = ({
         updatedFormulas = [...currentFormulas, newFormula];
       }
 
-      console.log(`📝 Saved edge formula: edge ${selectedEdge} = "${formula}"`);
+      console.log(`📝 Saved edge formula: edge ${edgeIndex} = "${formula}"`);
 
       // Update shape with formula
       updateShape(shape.id, { edgeFormulas: updatedFormulas });
@@ -773,12 +782,13 @@ const YagoDesignShape: React.FC<Props> = ({
             const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
             const isSelected = selectedEdge === idx;
+            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeIndex === idx);
             const points = [segment.start, segment.end];
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
 
-            // Red for hover, Blue for confirmed/selected, Black for normal
-            const color = isSelected ? '#0000ff' : (isHovered ? '#ff0000' : (measurement?.confirmed ? '#0000ff' : '#000000'));
-            const lineWidth = (isHovered || isSelected || measurement?.confirmed) ? 5 : 2;
+            // Orange for parametric, Red for hover, Blue for confirmed/selected, Black for normal
+            const color = edgeFormula ? '#ff8800' : isSelected ? '#0000ff' : (isHovered ? '#ff0000' : (measurement?.confirmed ? '#0000ff' : '#000000'));
+            const lineWidth = (isHovered || isSelected || measurement?.confirmed || edgeFormula) ? 5 : 2;
 
             return (
               <lineSegments
@@ -804,8 +814,9 @@ const YagoDesignShape: React.FC<Props> = ({
             const edgeId = `${shape.id}-edge-${idx}`;
             const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
+            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeIndex === idx);
 
-            if ((isHovered || measurement?.confirmed) && meshRef.current) {
+            if ((isHovered || measurement?.confirmed || edgeFormula) && meshRef.current) {
               const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
               const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
               const midPoint = new THREE.Vector3().lerpVectors(worldStart, worldEnd, 0.5);
@@ -825,7 +836,7 @@ const YagoDesignShape: React.FC<Props> = ({
                 >
                   <div
                     style={{
-                      backgroundColor: measurement?.confirmed ? 'rgba(0, 0, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
+                      backgroundColor: edgeFormula ? 'rgba(255, 165, 0, 0.9)' : measurement?.confirmed ? 'rgba(0, 0, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
                       color: 'white',
                       padding: '4px 8px',
                       borderRadius: '4px',
@@ -835,7 +846,11 @@ const YagoDesignShape: React.FC<Props> = ({
                       boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                     }}
                   >
-                    {displayValue.toFixed(2)} mm
+                    {edgeFormula ? (
+                      <span>{edgeFormula.formula} = {displayValue.toFixed(2)} mm</span>
+                    ) : (
+                      <span>{displayValue.toFixed(2)} mm</span>
+                    )}
                   </div>
                 </Html>
               );
