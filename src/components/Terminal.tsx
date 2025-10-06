@@ -166,7 +166,7 @@ const Terminal: React.FC = () => {
   return (
     <>
       {/* InfoBar - Information display for polyline, ruler mode, etc. */}
-      {(polylineStatus || isRulerMode || selectedEdgeInfo) && (
+      {(polylineStatus || selectedEdgeInfo) && (
         <div className="fixed bottom-10 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-b border-stone-300 z-50" style={{ height: '24px' }}>
           <div className="flex items-center h-full px-3">
             {/* Sol taraf - Tüm bilgilendirme mesajları */}

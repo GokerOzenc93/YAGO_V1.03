@@ -350,7 +350,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     <div className="flex-1 flex flex-col">
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <button onClick={onClose} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
+          <button onClick={() => {
+            setIsRulerMode(false);
+            onClose();
+          }} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
