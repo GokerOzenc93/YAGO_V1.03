@@ -63,10 +63,20 @@ const YagoDesignShape: React.FC<Props> = ({
     return edges;
   }, [shapeGeometry, shape.id, geometryUpdateVersion]);
 
+  // Generate stable edge ID based on vertex positions
+  const getEdgeId = useCallback((start: THREE.Vector3, end: THREE.Vector3) => {
+    // Sort coordinates to make ID direction-independent
+    const [p1, p2] = start.x < end.x || (start.x === end.x && start.y < end.y) || (start.x === end.x && start.y === end.y && start.z < end.z)
+      ? [start, end]
+      : [end, start];
+
+    return `${shape.id}-edge-${p1.x.toFixed(3)},${p1.y.toFixed(3)},${p1.z.toFixed(3)}-${p2.x.toFixed(3)},${p2.y.toFixed(3)},${p2.z.toFixed(3)}`;
+  }, [shape.id]);
+
   // Create individual line segments for edge detection - update when edges change
   const lineSegments = useMemo(() => {
     const positions = edgesGeometry.attributes.position;
-    const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3; index: number }> = [];
+    const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3; index: number; id: string }> = [];
 
     for (let i = 0; i < positions.count; i += 2) {
       const start = new THREE.Vector3(
@@ -79,12 +89,13 @@ const YagoDesignShape: React.FC<Props> = ({
         positions.getY(i + 1),
         positions.getZ(i + 1)
       );
-      segments.push({ start, end, index: i / 2 });
+      const edgeId = getEdgeId(start, end);
+      segments.push({ start, end, index: i / 2, id: edgeId });
     }
 
     console.log(`🔄 Shape ${shape.id} line segments recreated: ${segments.length} segments`);
     return segments;
-  }, [edgesGeometry, shape.id]);
+  }, [edgesGeometry, shape.id, geometryUpdateVersion, getEdgeId]);
 
   // Force mesh geometry update when geometry changes with proper cleanup
   useEffect(() => {
@@ -467,12 +478,12 @@ const YagoDesignShape: React.FC<Props> = ({
     const length = worldStart.distanceTo(worldEnd);
     const displayLength = convertToDisplayUnit(length);
 
-    const edgeId = `${shape.id}-edge-${edgeIndex}`;
+    const edgeId = segment.id; // Use stable ID
     const existingMeasurement = getEdgeMeasurement(edgeId);
 
     // If already confirmed, show the confirmed value
     if (existingMeasurement?.confirmed) {
-      console.log(`Edge ${edgeIndex} already has confirmed value: ${existingMeasurement.value}`);
+      console.log(`Edge ${edgeIndex} (${edgeId}) already has confirmed value: ${existingMeasurement.value}`);
       return;
     }
 
@@ -490,14 +501,14 @@ const YagoDesignShape: React.FC<Props> = ({
     });
     window.dispatchEvent(event);
 
-    console.log(`✅ Edge ${edgeIndex} selected, current length: ${displayLength.toFixed(2)} mm`);
+    console.log(`✅ Edge ${edgeIndex} (${edgeId}) selected, current length: ${displayLength.toFixed(2)} mm`);
   };
 
   const handleMeasurementUpdate = (newValue: number) => {
     if (selectedEdge === null || !meshRef.current) return;
 
-    const edgeId = `${shape.id}-edge-${selectedEdge}`;
     const segment = lineSegments[selectedEdge];
+    const edgeId = segment.id; // Use stable ID
 
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
@@ -540,7 +551,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    console.log(`✅ Edge ${selectedEdge} updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} (display: ${newValue} mm)`);
+    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} (display: ${newValue} mm)`);
   };
 
   const handleClick = (e: any) => {
