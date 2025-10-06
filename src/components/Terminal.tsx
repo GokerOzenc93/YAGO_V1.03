@@ -167,7 +167,7 @@ const Terminal: React.FC = () => {
     <>
       {/* Status Display */}
       {polylineStatus && (
-        <div className="fixed bottom-5 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-stone-300 z-20" style={{ height: '4mm' }}>
+        <div className="fixed bottom-5 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-stone-300 z-50" style={{ height: '4mm' }}>
           <div className="flex items-center justify-between h-full px-3">
             {/* Sol taraf - Tool bilgisi */}
             <div className="flex items-center gap-4 text-xs text-stone-600">
@@ -209,7 +209,7 @@ const Terminal: React.FC = () => {
       )}
 
       {/* Terminal */}
-      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30 h-8">
+      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-50 h-8">
       <div className="flex items-center h-full px-3">
         <input
           ref={inputRef}
