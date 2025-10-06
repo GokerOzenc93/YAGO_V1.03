@@ -17,6 +17,7 @@ import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
+import EdgeDistanceRenderer from './EdgeDistanceRenderer';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -747,6 +748,9 @@ const Scene: React.FC = () => {
 
         {/* Dimension Arrows - Seçili ölçüler için oklar */}
         {editedShape && <DimensionArrows shape={editedShape} />}
+
+        {/* Edge Distance Renderer */}
+        <EdgeDistanceRenderer />
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
