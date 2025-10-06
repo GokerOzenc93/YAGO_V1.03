@@ -502,33 +502,34 @@ const YagoDesignShape: React.FC<Props> = ({
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
 
-    // Update geometry based on new measurement
-    const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
-    const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
-    const currentLength = worldStart.distanceTo(worldEnd);
+    // Get current edge length in local space
+    const localStart = segment.start.clone();
+    const localEnd = segment.end.clone();
+    const currentLocalLength = localStart.distanceTo(localEnd);
     const newBaseLength = convertToBaseUnit(newValue);
-    const scaleFactor = newBaseLength / currentLength;
 
-    // Calculate direction and update edge
-    const direction = new THREE.Vector3().subVectors(worldEnd, worldStart).normalize();
-    const newWorldEnd = worldStart.clone().add(direction.multiplyScalar(newBaseLength));
+    // Calculate scale factor
+    const scaleFactor = newBaseLength / currentLocalLength;
 
-    // Update geometry vertices
+    // Clone geometry for modification
     const geometry = shape.geometry.clone();
     const positions = geometry.attributes.position.array as Float32Array;
-    const inverseMatrix = meshRef.current.matrixWorld.clone().invert();
 
-    // Find and update matching vertices
+    // Find all vertices that match edge endpoints and scale them
+    const tolerance = 0.001;
+    const edgeDirection = new THREE.Vector3().subVectors(localEnd, localStart).normalize();
+    const offset = (newBaseLength - currentLocalLength);
+
     for (let i = 0; i < positions.length; i += 3) {
       const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
-      const worldVertex = vertex.clone().applyMatrix4(meshRef.current.matrixWorld);
 
-      // Check if this vertex matches the end point
-      if (worldVertex.distanceTo(worldEnd) < 0.01) {
-        const localNewEnd = newWorldEnd.clone().applyMatrix4(inverseMatrix);
-        positions[i] = localNewEnd.x;
-        positions[i + 1] = localNewEnd.y;
-        positions[i + 2] = localNewEnd.z;
+      // Check if this vertex is the end point of the edge
+      if (vertex.distanceTo(localEnd) < tolerance) {
+        // Move the end vertex along the edge direction
+        const newPosition = vertex.clone().add(edgeDirection.clone().multiplyScalar(offset));
+        positions[i] = newPosition.x;
+        positions[i + 1] = newPosition.y;
+        positions[i + 2] = newPosition.z;
       }
     }
 
@@ -539,7 +540,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    console.log(`✅ Edge ${selectedEdge} updated to ${newValue} mm`);
+    console.log(`✅ Edge ${selectedEdge} updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} (display: ${newValue} mm)`);
   };
 
   const handleClick = (e: any) => {
