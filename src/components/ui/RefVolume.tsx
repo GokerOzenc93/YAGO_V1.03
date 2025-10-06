@@ -246,7 +246,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const updateDependentEdges = useCallback(() => {
-    shapes.forEach(shape => {
+    const currentShapes = useAppStore.getState().shapes;
+    currentShapes.forEach(shape => {
       if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
 
       shape.edgeFormulas.forEach(edgeFormula => {
@@ -265,7 +266,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         }
       });
     });
-  }, [shapes, evaluateFormula]);
+  }, [evaluateFormula]);
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
@@ -392,8 +393,12 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
           <button
             onClick={() => {
-              console.log('🔄 Manual parametric update triggered');
-              updateDependentEdges();
+              try {
+                console.log('🔄 Manual parametric update triggered');
+                updateDependentEdges();
+              } catch (error) {
+                console.error('❌ Error updating dependent edges:', error);
+              }
             }}
             className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
             title="Update all parametric edges"
