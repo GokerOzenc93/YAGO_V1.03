@@ -165,9 +165,9 @@ const Terminal: React.FC = () => {
 
   return (
     <>
-      {/* Status Display */}
+      {/* InfoBar - Information display for polyline, ruler mode, etc. */}
       {polylineStatus && (
-        <div className="fixed bottom-5 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-stone-300 z-50" style={{ height: '4mm' }}>
+        <div className="fixed bottom-10 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-b border-stone-300 z-50" style={{ height: '24px' }}>
           <div className="flex items-center justify-between h-full px-3">
             {/* Sol taraf - Tool bilgisi */}
             <div className="flex items-center gap-4 text-xs text-stone-600">
