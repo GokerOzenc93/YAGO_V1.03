@@ -115,8 +115,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   useEffect(() => {
     syncFormulaVariables();
-    recalculateAllParameters();
-  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), JSON.stringify(selectedLines.map(l => ({ id: l.id, formula: l.formula }))), syncFormulaVariables]);
+  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), syncFormulaVariables]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -154,20 +153,23 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
     affectedShapeIds.forEach(shapeId => {
       const shape = shapes.find(s => s.id === shapeId);
-      if (!shape?.geometry) return;
+      if (!shape?.geometry) {
+        console.warn(`⚠️ Shape ${shapeId} not found or has no geometry`);
+        return;
+      }
 
       console.log(`🔨 Rebuilding geometry for shape ${shapeId} from original state`);
 
       const originalGeometry = shape.geometry;
-      const newGeometry = originalGeometry.clone();
 
-      const edgesForThisShape = selectedLines.filter(line => line.shapeId === shapeId);
+      const edgesForThisShape = selectedLines.filter(line => line.shapeId === shapeId && line.formula?.trim());
 
       if (edgesForThisShape.length === 0) {
-        console.log(`⚠️ No edges for shape ${shapeId}, skipping`);
+        console.log(`⚠️ No edges WITH FORMULAS for shape ${shapeId}, skipping rebuild`);
         return;
       }
 
+      const newGeometry = originalGeometry.clone();
       const positions = newGeometry.attributes.position.array as Float32Array;
 
       edgesForThisShape.forEach((line, index) => {
@@ -515,19 +517,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
     }
 
-    const affectedShapeIds = new Set<string>();
-    selectedLines.forEach(line => {
-      if (line.formula?.trim()) {
-        affectedShapeIds.add(line.shapeId);
-      }
-    });
-
-    if (affectedShapeIds.size > 0) {
-      rebuildGeometryFromScratch(affectedShapeIds);
-    }
-
     console.log('🔄 ========== FULL PARAMETER RECALCULATION COMPLETE ==========');
-  }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit, rebuildGeometryFromScratch]);
+  }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
     console.log(`🚀 ========== DIMENSION CHANGE: ${dimension.toUpperCase()} ==========`);
@@ -686,10 +677,16 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       console.log('📊 Re-evaluating ALL edges after formula change...');
 
+      const line = selectedLines.find(l => l.id === lineId);
+      if (!line) {
+        console.warn(`⚠️ Line ${lineId} not found in selectedLines`);
+        return;
+      }
+
       const affectedShapeIds = new Set<string>();
-      selectedLines.forEach(line => {
-        if (line.formula?.trim()) {
-          affectedShapeIds.add(line.shapeId);
+      selectedLines.forEach(l => {
+        if (l.formula?.trim()) {
+          affectedShapeIds.add(l.shapeId);
         }
       });
 
