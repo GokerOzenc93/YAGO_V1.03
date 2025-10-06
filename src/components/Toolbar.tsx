@@ -655,12 +655,21 @@ const Toolbar: React.FC = () => {
                   : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
               }`}
               onClick={() => {
-                if (activeTool === tool.id) {
-                  // If already active, deactivate and switch to Select
+                if (tool.id === Tool.DIMENSION) {
+                  const { isRulerMode, setIsRulerMode } = useAppStore.getState();
+                  if (isRulerMode) {
+                    setIsRulerMode(false);
+                    setActiveTool(Tool.SELECT);
+                    console.log('Ruler mode deactivated');
+                  } else {
+                    setIsRulerMode(true);
+                    setActiveTool(tool.id);
+                    console.log('Ruler mode activated');
+                  }
+                } else if (activeTool === tool.id) {
                   setActiveTool(Tool.SELECT);
                   console.log(`${tool.label} tool deactivated`);
                 } else {
-                  // Activate the tool
                   setActiveTool(tool.id);
                   console.log(`${tool.label} tool activated`);
                 }
