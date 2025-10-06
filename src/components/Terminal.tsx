@@ -100,8 +100,22 @@ const Terminal: React.FC = () => {
 
     // Handle edge measurement update
     if (selectedEdgeInfo) {
-      const newValue = parseFloat(trimmedCommand);
-      if (!isNaN(newValue) && newValue > 0) {
+      // Try to parse as a number first
+      let newValue = parseFloat(trimmedCommand);
+
+      // If not a number, try to evaluate as formula with parameters
+      if (isNaN(newValue)) {
+        const evaluatedValue = useAppStore.getState().evaluateFormula(trimmedCommand);
+        if (evaluatedValue !== null && evaluatedValue > 0) {
+          newValue = evaluatedValue;
+        } else {
+          console.log('Invalid value or formula. Enter a number or parameter name.');
+          setCommandInput('');
+          return;
+        }
+      }
+
+      if (newValue > 0) {
         // Dispatch event to update edge measurement
         const event = new CustomEvent('updateEdgeMeasurement', {
           detail: {
