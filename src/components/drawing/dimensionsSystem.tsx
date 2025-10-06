@@ -19,22 +19,30 @@ export interface SimpleDimension {
   originalStart?: THREE.Vector3;
   originalEnd?: THREE.Vector3;
   previewPosition?: THREE.Vector3;
+  isInverted?: boolean;
 }
 
 interface SimpleDimensionLineProps {
   dimension: SimpleDimension;
   isPreview?: boolean;
   previewPosition?: THREE.Vector3;
+  onNumberClick?: (dimensionId: string) => void;
 }
 
-const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({ 
-  dimension, 
+const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
+  dimension,
   isPreview = false,
-  previewPosition
+  previewPosition,
+  onNumberClick
 }) => {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const textRef = useRef<THREE.Mesh>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const lineColor = dimension.isInverted ? "#0000ff" : "#00ff00";
+  const numberBgColor = dimension.isInverted ? "#00ff00" : "#0000ff";
+  const numberTextColor = dimension.isInverted ? "#0000ff" : "#ffffff";
   
   // Ölçü yazısı için formatlama
   const formattedDistance = useMemo(() => {
@@ -128,8 +136,8 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
             itemSize={3}
           />
         </bufferGeometry>
-        <lineBasicMaterial 
-          color={isPreview ? "#ff6b35" : "#00ff00"} 
+        <lineBasicMaterial
+          color={isPreview ? "#ff6b35" : lineColor}
           linewidth={3}
           depthTest={false}
         />
@@ -149,8 +157,8 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
               itemSize={3}
             />
           </bufferGeometry>
-          <lineBasicMaterial 
-            color={isPreview ? "#ff6b35" : "#00ff00"} 
+          <lineBasicMaterial
+            color={isPreview ? "#ff6b35" : lineColor}
             linewidth={2}
             depthTest={false}
           />
@@ -160,17 +168,38 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       {/* Ok uçları */}
       {points.arrows.map((arrow, index) => (
         <primitive key={index} object={arrow} >
-          <meshBasicMaterial color={isPreview ? "#ff6b35" : "#00ff00"} depthTest={false} />
+          <meshBasicMaterial color={isPreview ? "#ff6b35" : lineColor} depthTest={false} />
         </primitive>
       ))}
 
-      {/* Ölçü metni */}
+      {/* Ölçü metni ve arka plan */}
       <Billboard position={dimension.textPosition} follow={true} lockX={false} lockY={false} lockZ={false}>
+        {/* Mavi daire arka plan */}
+        <mesh
+          position={[0, 0, 0]}
+          onPointerEnter={() => !isPreview && setIsHovered(true)}
+          onPointerLeave={() => !isPreview && setIsHovered(false)}
+          onClick={(e) => {
+            if (!isPreview && onNumberClick) {
+              e.stopPropagation();
+              onNumberClick(dimension.id);
+            }
+          }}
+        >
+          <circleGeometry args={[isHovered ? 22 : 20, 32]} />
+          <meshBasicMaterial
+            color={isPreview ? "#ff6b35" : numberBgColor}
+            depthTest={false}
+            transparent={true}
+            opacity={isHovered ? 0.9 : 1}
+          />
+        </mesh>
+
         <Text
           ref={textRef}
           position={[0, 0, 0.1]}
           fontSize={14}
-          color={isPreview ? "#ff6b35" : "#00ff00"}
+          color={isPreview ? "#ffffff" : numberTextColor}
           anchorX="center"
           anchorY="middle"
           outlineWidth={0}
@@ -226,6 +255,19 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   const [dimensionsState, setDimensionsState] = useState<SimpleDimensionsState>(INITIAL_SIMPLE_DIMENSIONS_STATE);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
   const [originalSnapSettings, setOriginalSnapSettings] = useState<SnapSettings | null>(null);
+
+  const handleDimensionNumberClick = (dimensionId: string) => {
+    setDimensionsState(prev => ({
+      ...prev,
+      completedDimensions: prev.completedDimensions.map(dim =>
+        dim.id === dimensionId
+          ? { ...dim, isInverted: !dim.isInverted }
+          : dim
+      )
+    }));
+
+    console.log(`🎯 Dimension ${dimensionId}: Color inverted and auto-measurement activated`);
+  };
 
   // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
   useEffect(() => {
@@ -524,9 +566,10 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
 
       {/* Tamamlanmış ölçüler */}
       {dimensionsState.completedDimensions.map(dimension => (
-        <SimpleDimensionLine 
-          key={dimension.id} 
-          dimension={dimension} 
+        <SimpleDimensionLine
+          key={dimension.id}
+          dimension={dimension}
+          onNumberClick={handleDimensionNumberClick}
         />
       ))}
       
