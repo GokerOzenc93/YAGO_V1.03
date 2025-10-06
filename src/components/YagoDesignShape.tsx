@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { TransformControls } from '@react-three/drei';
+import { TransformControls, Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
@@ -36,7 +36,11 @@ const YagoDesignShape: React.FC<Props> = ({
     orthoMode,
     isRulerMode,
     convertToDisplayUnit,
+    convertToBaseUnit,
     geometryUpdateVersion,
+    edgeMeasurements,
+    setEdgeMeasurement,
+    getEdgeMeasurement,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -44,6 +48,10 @@ const YagoDesignShape: React.FC<Props> = ({
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<number | null>(null);
+  const [showMeasurementInput, setShowMeasurementInput] = useState(false);
+  const [measurementInputValue, setMeasurementInputValue] = useState('');
+  const [measurementInputPosition, setMeasurementInputPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Create geometry from shape - update when geometry or version changes
   const shapeGeometry = useMemo(() => {
@@ -432,7 +440,111 @@ const YagoDesignShape: React.FC<Props> = ({
   };
 
 
+  const handleEdgeClick = (e: any, edgeIndex: number) => {
+    if (!isRulerMode || !meshRef.current) return;
+
+    e.stopPropagation();
+
+    const segment = lineSegments[edgeIndex];
+    const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
+    const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
+
+    const length = worldStart.distanceTo(worldEnd);
+    const displayLength = convertToDisplayUnit(length);
+
+    const edgeId = `${shape.id}-edge-${edgeIndex}`;
+    const existingMeasurement = getEdgeMeasurement(edgeId);
+
+    // If already confirmed, show the confirmed value
+    if (existingMeasurement?.confirmed) {
+      console.log(`Edge ${edgeIndex} already has confirmed value: ${existingMeasurement.value}`);
+      return;
+    }
+
+    // Set as selected and show input
+    setSelectedEdge(edgeIndex);
+    setMeasurementInputValue(displayLength.toFixed(2));
+
+    // Calculate screen position for input
+    const midPoint = new THREE.Vector3().lerpVectors(worldStart, worldEnd, 0.5);
+    const screenPos = midPoint.project(camera);
+    const canvas = gl.domElement;
+    const x = (screenPos.x * 0.5 + 0.5) * canvas.clientWidth;
+    const y = (screenPos.y * -0.5 + 0.5) * canvas.clientHeight;
+
+    setMeasurementInputPosition({ x, y });
+    setShowMeasurementInput(true);
+
+    console.log(`✅ Edge ${edgeIndex} selected, length: ${displayLength.toFixed(2)}`);
+  };
+
+  const handleMeasurementSubmit = () => {
+    if (selectedEdge === null || !meshRef.current) return;
+
+    const newValue = parseFloat(measurementInputValue);
+    if (isNaN(newValue) || newValue <= 0) {
+      alert('Please enter a valid positive number');
+      return;
+    }
+
+    const edgeId = `${shape.id}-edge-${selectedEdge}`;
+    const segment = lineSegments[selectedEdge];
+
+    // Store confirmed measurement
+    setEdgeMeasurement(edgeId, newValue, true);
+
+    // Update geometry based on new measurement
+    const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
+    const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
+    const currentLength = worldStart.distanceTo(worldEnd);
+    const newBaseLength = convertToBaseUnit(newValue);
+    const scaleFactor = newBaseLength / currentLength;
+
+    // Calculate direction and update edge
+    const direction = new THREE.Vector3().subVectors(worldEnd, worldStart).normalize();
+    const newWorldEnd = worldStart.clone().add(direction.multiplyScalar(newBaseLength));
+
+    // Update geometry vertices
+    const geometry = shape.geometry.clone();
+    const positions = geometry.attributes.position.array as Float32Array;
+    const inverseMatrix = meshRef.current.matrixWorld.clone().invert();
+
+    // Find and update matching vertices
+    for (let i = 0; i < positions.length; i += 3) {
+      const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+      const worldVertex = vertex.clone().applyMatrix4(meshRef.current.matrixWorld);
+
+      // Check if this vertex matches the end point
+      if (worldVertex.distanceTo(worldEnd) < 0.01) {
+        const localNewEnd = newWorldEnd.clone().applyMatrix4(inverseMatrix);
+        positions[i] = localNewEnd.x;
+        positions[i + 1] = localNewEnd.y;
+        positions[i + 2] = localNewEnd.z;
+      }
+    }
+
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeBoundingBox();
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+
+    updateShape(shape.id, { geometry });
+
+    setShowMeasurementInput(false);
+    setSelectedEdge(null);
+    setMeasurementInputValue('');
+    setMeasurementInputPosition(null);
+
+    console.log(`✅ Edge ${selectedEdge} updated to ${newValue}`);
+  };
+
   const handleClick = (e: any) => {
+    // Ruler mode - handle edge selection
+    if (isRulerMode && hoveredEdge !== null) {
+      handleEdgeClick(e, hoveredEdge);
+      return;
+    }
+
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -577,9 +689,16 @@ const YagoDesignShape: React.FC<Props> = ({
       {isRulerMode && (
         <>
           {lineSegments.map((segment, idx) => {
+            const edgeId = `${shape.id}-edge-${idx}`;
+            const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
+            const isSelected = selectedEdge === idx;
             const points = [segment.start, segment.end];
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+
+            // Red for hover, Blue for confirmed/selected, Black for normal
+            const color = isSelected ? '#0000ff' : (isHovered ? '#ff0000' : (measurement?.confirmed ? '#0000ff' : '#000000'));
+            const lineWidth = (isHovered || isSelected || measurement?.confirmed) ? 5 : 2;
 
             return (
               <lineSegments
@@ -590,16 +709,139 @@ const YagoDesignShape: React.FC<Props> = ({
                 scale={shape.scale}
               >
                 <lineBasicMaterial
-                  color={isHovered ? '#ff0000' : '#000000'}
+                  color={color}
                   transparent
                   opacity={1}
-                  linewidth={isHovered ? 5 : 2}
+                  linewidth={lineWidth}
                   depthTest={false}
                 />
               </lineSegments>
             );
           })}
+
+          {/* Measurement labels on edges */}
+          {lineSegments.map((segment, idx) => {
+            const edgeId = `${shape.id}-edge-${idx}`;
+            const measurement = getEdgeMeasurement(edgeId);
+            const isHovered = hoveredEdge === idx;
+
+            if ((isHovered || measurement?.confirmed) && meshRef.current) {
+              const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
+              const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
+              const midPoint = new THREE.Vector3().lerpVectors(worldStart, worldEnd, 0.5);
+
+              const length = worldStart.distanceTo(worldEnd);
+              const displayValue = measurement?.confirmed ? measurement.value : convertToDisplayUnit(length);
+
+              return (
+                <Html
+                  key={`label-${idx}`}
+                  position={midPoint}
+                  center
+                  style={{
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: measurement?.confirmed ? 'rgba(0, 0, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    {displayValue.toFixed(2)} mm
+                  </div>
+                </Html>
+              );
+            }
+            return null;
+          })}
         </>
+      )}
+
+      {/* Measurement input overlay */}
+      {showMeasurementInput && measurementInputPosition && (
+        <Html
+          position={[0, 0, 0]}
+          center
+          style={{
+            position: 'fixed',
+            left: `${measurementInputPosition.x}px`,
+            top: `${measurementInputPosition.y}px`,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '8px',
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              display: 'flex',
+              gap: '4px',
+              alignItems: 'center',
+            }}
+          >
+            <input
+              type="number"
+              value={measurementInputValue}
+              onChange={(e) => setMeasurementInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleMeasurementSubmit();
+                if (e.key === 'Escape') {
+                  setShowMeasurementInput(false);
+                  setSelectedEdge(null);
+                }
+              }}
+              autoFocus
+              style={{
+                width: '80px',
+                padding: '4px 8px',
+                border: '1px solid #ccc',
+                borderRadius: '2px',
+                fontSize: '14px',
+              }}
+            />
+            <button
+              onClick={handleMeasurementSubmit}
+              style={{
+                padding: '4px 12px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              OK
+            </button>
+            <button
+              onClick={() => {
+                setShowMeasurementInput(false);
+                setSelectedEdge(null);
+              }}
+              style={{
+                padding: '4px 12px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </Html>
       )}
 
       {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}

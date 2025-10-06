@@ -286,6 +286,10 @@ interface AppState {
   // Ruler mode
   isRulerMode: boolean;
   setIsRulerMode: (enabled: boolean) => void;
+  edgeMeasurements: Map<string, { value: number; confirmed: boolean }>;
+  setEdgeMeasurement: (edgeId: string, value: number, confirmed: boolean) => void;
+  getEdgeMeasurement: (edgeId: string) => { value: number; confirmed: boolean } | undefined;
+  clearEdgeMeasurements: () => void;
   formulaEvaluator: FormulaEvaluator;
   setParameterVariable: (name: string, value: number) => void;
   getParameterVariable: (name: string) => number | undefined;
@@ -445,6 +449,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   isRulerMode: false,
   setIsRulerMode: (enabled) => set({ isRulerMode: enabled }),
+
+  edgeMeasurements: new Map(),
+  setEdgeMeasurement: (edgeId, value, confirmed) =>
+    set((state) => {
+      const newMap = new Map(state.edgeMeasurements);
+      newMap.set(edgeId, { value, confirmed });
+      return { edgeMeasurements: newMap };
+    }),
+  getEdgeMeasurement: (edgeId) => get().edgeMeasurements.get(edgeId),
+  clearEdgeMeasurements: () => set({ edgeMeasurements: new Map() }),
 
   formulaEvaluator: createFormulaEvaluator(),
 
