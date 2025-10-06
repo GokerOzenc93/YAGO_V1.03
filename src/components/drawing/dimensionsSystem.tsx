@@ -175,25 +175,49 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
       {/* Ölçü metni ve arka plan */}
       <Billboard position={dimension.textPosition} follow={true} lockX={false} lockY={false} lockZ={false}>
         {/* Mavi daire arka plan */}
-        <mesh
-          position={[0, 0, 0]}
-          onPointerEnter={() => !isPreview && setIsHovered(true)}
-          onPointerLeave={() => !isPreview && setIsHovered(false)}
-          onClick={(e) => {
-            if (!isPreview && onNumberClick) {
+        {!isPreview && (
+          <mesh
+            position={[0, 0, -0.1]}
+            onPointerEnter={(e) => {
               e.stopPropagation();
-              onNumberClick(dimension.id);
-            }
-          }}
-        >
-          <circleGeometry args={[isHovered ? 22 : 20, 32]} />
-          <meshBasicMaterial
-            color={isPreview ? "#ff6b35" : numberBgColor}
-            depthTest={false}
-            transparent={true}
-            opacity={isHovered ? 0.9 : 1}
-          />
-        </mesh>
+              setIsHovered(true);
+            }}
+            onPointerLeave={(e) => {
+              e.stopPropagation();
+              setIsHovered(false);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onNumberClick) {
+                onNumberClick(dimension.id);
+              }
+            }}
+            renderOrder={999}
+          >
+            <circleGeometry args={[isHovered ? 24 : 20, 32]} />
+            <meshBasicMaterial
+              color={numberBgColor}
+              side={THREE.DoubleSide}
+              depthTest={false}
+              transparent={false}
+              opacity={1}
+            />
+          </mesh>
+        )}
+
+        {/* Preview için turuncu arka plan */}
+        {isPreview && (
+          <mesh position={[0, 0, -0.1]} renderOrder={999}>
+            <circleGeometry args={[20, 32]} />
+            <meshBasicMaterial
+              color="#ff6b35"
+              side={THREE.DoubleSide}
+              depthTest={false}
+              transparent={false}
+              opacity={1}
+            />
+          </mesh>
+        )}
 
         <Text
           ref={textRef}
@@ -204,6 +228,7 @@ const SimpleDimensionLine: React.FC<SimpleDimensionLineProps> = ({
           anchorY="middle"
           outlineWidth={0}
           outlineColor="#000000"
+          renderOrder={1000}
         >
           {formattedDistance}
         </Text>
