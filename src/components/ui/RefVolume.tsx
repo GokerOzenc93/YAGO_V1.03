@@ -440,6 +440,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       const currentScale = [...editedShape.scale];
       const newScale = [...currentScale];
+      const oldScale = [...currentScale];
 
       let originalDimension = 0;
       if (dimension === 'width') {
@@ -453,10 +454,47 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         newScale[2] = (newValue / originalDimension) * currentScale[2];
       }
 
+      const scaleRatio = [
+        newScale[0] / oldScale[0],
+        newScale[1] / oldScale[1],
+        newScale[2] / oldScale[2]
+      ];
+
+      selectedLines.forEach(line => {
+        if (line.shapeId === editedShape.id) {
+          const newStartVertex: [number, number, number] = [
+            line.startVertex[0] * scaleRatio[0],
+            line.startVertex[1] * scaleRatio[1],
+            line.startVertex[2] * scaleRatio[2]
+          ];
+          const newEndVertex: [number, number, number] = [
+            line.endVertex[0] * scaleRatio[0],
+            line.endVertex[1] * scaleRatio[1],
+            line.endVertex[2] * scaleRatio[2]
+          ];
+
+          const newLength = Math.sqrt(
+            Math.pow(newEndVertex[0] - newStartVertex[0], 2) +
+            Math.pow(newEndVertex[1] - newStartVertex[1], 2) +
+            Math.pow(newEndVertex[2] - newStartVertex[2], 2)
+          );
+
+          const displayLength = convertToDisplayUnit(newLength);
+
+          updateSelectedLineVertices(line.id, newEndVertex);
+
+          if (!line.formula?.trim()) {
+            updateSelectedLineValue(line.id, displayLength);
+          }
+        }
+      });
+
       updateShape(editedShape.id, {
         scale: newScale as [number, number, number],
         geometry: editedShape.geometry.clone(),
       });
+
+      console.log(`✅ W/H/D updated: ${dimension} = ${evaluated}, scale ratio: [${scaleRatio.join(', ')}]`);
     } catch (error) {
       console.error('❌ Error applying dimension change:', error);
     }
