@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '../store/appStore';
 import { TransformControls, Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
