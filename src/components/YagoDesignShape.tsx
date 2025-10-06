@@ -517,10 +517,9 @@ const YagoDesignShape: React.FC<Props> = ({
     const localStart = segment.start.clone();
     const localEnd = segment.end.clone();
     const currentLocalLength = localStart.distanceTo(localEnd);
-    const newBaseLength = convertToBaseUnit(newValue);
 
-    // Calculate offset
-    const offset = (newBaseLength - currentLocalLength);
+    // newValue is already in mm (display unit), so convert to base unit
+    const newBaseLength = convertToBaseUnit(newValue);
 
     // Determine edge axis and direction
     const edgeVector = new THREE.Vector3().subVectors(localEnd, localStart);
@@ -530,17 +529,13 @@ const YagoDesignShape: React.FC<Props> = ({
 
     // Find dominant axis
     let axis: 'x' | 'y' | 'z';
-    let direction: number;
 
     if (absX > absY && absX > absZ) {
       axis = 'x';
-      direction = edgeVector.x > 0 ? 1 : -1;
     } else if (absY > absX && absY > absZ) {
       axis = 'y';
-      direction = edgeVector.y > 0 ? 1 : -1;
     } else {
       axis = 'z';
-      direction = edgeVector.z > 0 ? 1 : -1;
     }
 
     // Clone geometry for modification
@@ -548,7 +543,7 @@ const YagoDesignShape: React.FC<Props> = ({
     const positions = geometry.attributes.position.array as Float32Array;
     const tolerance = 0.001;
 
-    // Determine which endpoint to keep fixed (origin side)
+    // Determine which endpoint to keep fixed (origin side - minimum coordinate)
     const fixedPoint = axis === 'x' && localStart.x < localEnd.x ? localStart :
                        axis === 'x' && localStart.x >= localEnd.x ? localEnd :
                        axis === 'y' && localStart.y < localEnd.y ? localStart :
@@ -558,7 +553,18 @@ const YagoDesignShape: React.FC<Props> = ({
 
     const movingPoint = fixedPoint === localStart ? localEnd : localStart;
 
-    console.log(`📐 Edge axis: ${axis}, direction: ${direction > 0 ? '+' : '-'}, fixed:`, fixedPoint, 'moving:', movingPoint);
+    // Calculate new position for moving point
+    const newMovingPoint = fixedPoint.clone();
+    if (axis === 'x') {
+      newMovingPoint.x = fixedPoint.x + newBaseLength * (movingPoint.x > fixedPoint.x ? 1 : -1);
+    } else if (axis === 'y') {
+      newMovingPoint.y = fixedPoint.y + newBaseLength * (movingPoint.y > fixedPoint.y ? 1 : -1);
+    } else {
+      newMovingPoint.z = fixedPoint.z + newBaseLength * (movingPoint.z > fixedPoint.z ? 1 : -1);
+    }
+
+    console.log(`📐 Edge axis: ${axis}, current: ${currentLocalLength.toFixed(2)}, new: ${newBaseLength.toFixed(2)}`);
+    console.log(`   Fixed:`, fixedPoint, 'Moving:', movingPoint, '→', newMovingPoint);
 
     // Update all vertices that should move
     for (let i = 0; i < positions.length; i += 3) {
@@ -566,14 +572,10 @@ const YagoDesignShape: React.FC<Props> = ({
 
       // Check if this vertex is on the moving side
       if (vertex.distanceTo(movingPoint) < tolerance) {
-        // Move this vertex along the axis
-        if (axis === 'x') {
-          positions[i] += offset * direction;
-        } else if (axis === 'y') {
-          positions[i + 1] += offset * direction;
-        } else {
-          positions[i + 2] += offset * direction;
-        }
+        // Set vertex to new position
+        positions[i] = newMovingPoint.x;
+        positions[i + 1] = newMovingPoint.y;
+        positions[i + 2] = newMovingPoint.z;
       }
     }
 
