@@ -508,7 +508,7 @@ const YagoDesignShape: React.FC<Props> = ({
     if (selectedEdge === null || !meshRef.current) return;
 
     const segment = lineSegments[selectedEdge];
-    const edgeId = segment.id; // Use stable ID
+    const edgeId = segment.id;
 
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
@@ -519,28 +519,61 @@ const YagoDesignShape: React.FC<Props> = ({
     const currentLocalLength = localStart.distanceTo(localEnd);
     const newBaseLength = convertToBaseUnit(newValue);
 
-    // Calculate scale factor
-    const scaleFactor = newBaseLength / currentLocalLength;
+    // Calculate offset
+    const offset = (newBaseLength - currentLocalLength);
+
+    // Determine edge axis and direction
+    const edgeVector = new THREE.Vector3().subVectors(localEnd, localStart);
+    const absX = Math.abs(edgeVector.x);
+    const absY = Math.abs(edgeVector.y);
+    const absZ = Math.abs(edgeVector.z);
+
+    // Find dominant axis
+    let axis: 'x' | 'y' | 'z';
+    let direction: number;
+
+    if (absX > absY && absX > absZ) {
+      axis = 'x';
+      direction = edgeVector.x > 0 ? 1 : -1;
+    } else if (absY > absX && absY > absZ) {
+      axis = 'y';
+      direction = edgeVector.y > 0 ? 1 : -1;
+    } else {
+      axis = 'z';
+      direction = edgeVector.z > 0 ? 1 : -1;
+    }
 
     // Clone geometry for modification
     const geometry = shape.geometry.clone();
     const positions = geometry.attributes.position.array as Float32Array;
-
-    // Find all vertices that match edge endpoints and scale them
     const tolerance = 0.001;
-    const edgeDirection = new THREE.Vector3().subVectors(localEnd, localStart).normalize();
-    const offset = (newBaseLength - currentLocalLength);
 
+    // Determine which endpoint to keep fixed (origin side)
+    const fixedPoint = axis === 'x' && localStart.x < localEnd.x ? localStart :
+                       axis === 'x' && localStart.x >= localEnd.x ? localEnd :
+                       axis === 'y' && localStart.y < localEnd.y ? localStart :
+                       axis === 'y' && localStart.y >= localEnd.y ? localEnd :
+                       axis === 'z' && localStart.z < localEnd.z ? localStart :
+                       localEnd;
+
+    const movingPoint = fixedPoint === localStart ? localEnd : localStart;
+
+    console.log(`📐 Edge axis: ${axis}, direction: ${direction > 0 ? '+' : '-'}, fixed:`, fixedPoint, 'moving:', movingPoint);
+
+    // Update all vertices that should move
     for (let i = 0; i < positions.length; i += 3) {
       const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
 
-      // Check if this vertex is the end point of the edge
-      if (vertex.distanceTo(localEnd) < tolerance) {
-        // Move the end vertex along the edge direction
-        const newPosition = vertex.clone().add(edgeDirection.clone().multiplyScalar(offset));
-        positions[i] = newPosition.x;
-        positions[i + 1] = newPosition.y;
-        positions[i + 2] = newPosition.z;
+      // Check if this vertex is on the moving side
+      if (vertex.distanceTo(movingPoint) < tolerance) {
+        // Move this vertex along the axis
+        if (axis === 'x') {
+          positions[i] += offset * direction;
+        } else if (axis === 'y') {
+          positions[i + 1] += offset * direction;
+        } else {
+          positions[i + 2] += offset * direction;
+        }
       }
     }
 
@@ -551,7 +584,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} (display: ${newValue} mm)`);
+    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
   };
 
   const handleClick = (e: any) => {
