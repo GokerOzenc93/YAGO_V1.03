@@ -115,7 +115,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     return () => {
       window.removeEventListener('updateAllParametricEdges', handleUpdateAll);
     };
-  }, [updateDependentEdges]);
+  }, []);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -246,8 +246,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const updateDependentEdges = useCallback(() => {
-    const currentShapes = useAppStore.getState().shapes;
-    currentShapes.forEach(shape => {
+    const { shapes, evaluateFormula } = useAppStore.getState();
+    shapes.forEach(shape => {
       if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
 
       shape.edgeFormulas.forEach(edgeFormula => {
@@ -266,7 +266,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         }
       });
     });
-  }, [evaluateFormula]);
+  }, []);
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
