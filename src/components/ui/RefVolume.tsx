@@ -115,7 +115,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   useEffect(() => {
     syncFormulaVariables();
-  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), syncFormulaVariables]);
+    recalculateAllParameters();
+  }, [currentWidth, currentHeight, currentDepth, JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), JSON.stringify(selectedLines.map(l => ({ id: l.id, formula: l.formula }))), syncFormulaVariables]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -148,120 +149,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     return formulaEvaluatorRef.current.evaluateOrNull(expression, debugLabel);
   };
 
-  const rebuildGeometryFromScratch = useCallback((affectedShapeIds: Set<string>) => {
-    console.log('🔄 Starting COMPLETE geometry rebuild from scratch...');
-
-    affectedShapeIds.forEach(shapeId => {
-      const shape = shapes.find(s => s.id === shapeId);
-      if (!shape?.geometry) {
-        console.warn(`⚠️ Shape ${shapeId} not found or has no geometry`);
-        return;
-      }
-
-      console.log(`🔨 Rebuilding geometry for shape ${shapeId} from original state`);
-
-      const originalGeometry = shape.geometry;
-
-      const edgesForThisShape = selectedLines.filter(line => line.shapeId === shapeId && line.formula?.trim());
-
-      if (edgesForThisShape.length === 0) {
-        console.log(`⚠️ No edges WITH FORMULAS for shape ${shapeId}, skipping rebuild`);
-        return;
-      }
-
-      const newGeometry = originalGeometry.clone();
-      const positions = newGeometry.attributes.position.array as Float32Array;
-
-      edgesForThisShape.forEach((line, index) => {
-        if (!line.formula?.trim()) {
-          console.log(`⏭️ Edge ${line.label || line.id} has no formula, skipping`);
-          return;
-        }
-
-        const evaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
-        if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
-          console.warn(`❌ Formula evaluation failed for edge ${line.label || line.id}: ${line.formula}`);
-          return;
-        }
-
-        const newLength = convertToBaseUnit(evaluated);
-        const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
-        const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
-        const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
-
-        let fixedVertex: [number, number, number];
-        let movingVertex: [number, number, number];
-
-        if (dy > dx && dy > dz) {
-          [fixedVertex, movingVertex] = line.startVertex[1] < line.endVertex[1]
-            ? [line.startVertex, line.endVertex]
-            : [line.endVertex, line.startVertex];
-        } else if (dx > dy && dx > dz) {
-          [fixedVertex, movingVertex] = line.startVertex[0] > line.endVertex[0]
-            ? [line.startVertex, line.endVertex]
-            : [line.endVertex, line.startVertex];
-        } else {
-          [fixedVertex, movingVertex] = line.startVertex[2] < line.endVertex[2]
-            ? [line.startVertex, line.endVertex]
-            : [line.endVertex, line.startVertex];
-        }
-
-        const direction = new THREE.Vector3(
-          movingVertex[0] - fixedVertex[0],
-          movingVertex[1] - fixedVertex[1],
-          movingVertex[2] - fixedVertex[2]
-        ).normalize();
-
-        if (direction.length() === 0) {
-          console.warn(`⚠️ Zero-length direction for edge ${line.label || line.id}`);
-          return;
-        }
-
-        const newMovingVertex: [number, number, number] = [
-          fixedVertex[0] + direction.x * newLength,
-          fixedVertex[1] + direction.y * newLength,
-          fixedVertex[2] + direction.z * newLength
-        ];
-
-        for (let i = 0; i < positions.length; i += 3) {
-          const dist = Math.sqrt(
-            Math.pow(positions[i] - movingVertex[0], 2) +
-            Math.pow(positions[i + 1] - movingVertex[1], 2) +
-            Math.pow(positions[i + 2] - movingVertex[2], 2)
-          );
-
-          if (dist < 0.01) {
-            positions[i] = newMovingVertex[0];
-            positions[i + 1] = newMovingVertex[1];
-            positions[i + 2] = newMovingVertex[2];
-          }
-        }
-
-        const displayLength = convertToDisplayUnit(newLength);
-        updateSelectedLineValue(line.id, displayLength);
-        updateSelectedLineVertices(line.id, newMovingVertex);
-
-        console.log(`✅ Edge ${line.label || line.id}: ${line.formula} = ${evaluated.toFixed(2)} → ${displayLength.toFixed(2)}`);
-      });
-
-      newGeometry.attributes.position.needsUpdate = true;
-      newGeometry.computeBoundingBox();
-      newGeometry.computeVertexNormals();
-      newGeometry.computeBoundingSphere();
-
-      if (originalGeometry && originalGeometry.dispose) {
-        originalGeometry.dispose();
-      }
-
-      updateShape(shapeId, { geometry: newGeometry });
-      console.log(`✅ Geometry completely rebuilt for shape ${shapeId}`);
-    });
-
-    console.log('✅ COMPLETE geometry rebuild finished!');
-  }, [shapes, selectedLines, convertToBaseUnit, convertToDisplayUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression]);
-
   const recalculateAllParameters = useCallback(() => {
-    console.log('🔄 ========== FULL PARAMETER RECALCULATION START ==========');
     syncFormulaVariables();
 
     const updatedParams = customParameters.map(param => {
@@ -516,18 +404,11 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     } else if (iteration > 1) {
       console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
     }
-
-    console.log('🔄 ========== FULL PARAMETER RECALCULATION COMPLETE ==========');
   }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
-    console.log(`🚀 ========== DIMENSION CHANGE: ${dimension.toUpperCase()} ==========`);
-
     const evaluated = evaluateExpression(value);
-    if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
-      console.warn(`⚠️ Invalid dimension value: ${value}`);
-      return;
-    }
+    if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
 
     if (dimension === 'width') setResultWidth(evaluated.toFixed(2));
     if (dimension === 'height') setResultHeight(evaluated.toFixed(2));
@@ -554,28 +435,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
       geometry: editedShape.geometry.clone(),
-    });
-
-    console.log(`✅ Dimension updated: ${dimension} = ${evaluated.toFixed(2)}`);
-
-    requestAnimationFrame(() => {
-      syncFormulaVariables();
-
-      console.log('📊 Re-evaluating ALL edges after dimension change...');
-
-      const affectedShapeIds = new Set<string>();
-      selectedLines.forEach(line => {
-        if (line.formula?.trim()) {
-          affectedShapeIds.add(line.shapeId);
-        }
-      });
-
-      if (affectedShapeIds.size > 0) {
-        console.log(`🔨 Rebuilding geometry for ${affectedShapeIds.size} shape(s)...`);
-        rebuildGeometryFromScratch(affectedShapeIds);
-      }
-
-      console.log(`✅ ========== DIMENSION UPDATE COMPLETE ==========`);
     });
   };
 
@@ -610,92 +469,46 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     ));
 
     requestAnimationFrame(() => {
-      console.log(`🚀 ========== PARAMETER CHANGE: ${param.description}=${evaluated} ==========`);
-
       const evaluator = formulaEvaluatorRef.current;
       evaluator.setVariable(param.description, evaluated);
       setParameterVariable(param.description, evaluated);
+      console.log(`✅ Parameter applied: ${param.description}=${evaluated}`);
 
       syncFormulaVariables();
 
-      console.log('📊 Re-evaluating ALL edge formulas from scratch...');
-
-      selectedLines.forEach((line, index) => {
-        if (!line.formula?.trim()) {
-          console.log(`⏭️ Edge ${index + 1} (${line.label || line.id}): No formula, skipping`);
-          return;
-        }
-
-        const lineEvaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
-        if (lineEvaluated !== null && !isNaN(lineEvaluated) && lineEvaluated > 0) {
-          const currentVal = parseFloat(line.value.toFixed(2));
-          const newVal = parseFloat(lineEvaluated.toFixed(2));
-
-          console.log(`📏 Edge ${index + 1} (${line.label || line.id}): ${line.formula} = ${newVal.toFixed(2)} (was ${currentVal.toFixed(2)})`);
-
-          updateSelectedLineValue(line.id, newVal);
-        } else {
-          console.warn(`⚠️ Edge ${index + 1} (${line.label || line.id}): Formula "${line.formula}" evaluation failed`);
-        }
-      });
-
-      const affectedShapeIds = new Set<string>();
       selectedLines.forEach(line => {
         if (line.formula?.trim()) {
-          affectedShapeIds.add(line.shapeId);
+          const lineEvaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
+          if (lineEvaluated !== null && !isNaN(lineEvaluated) && lineEvaluated > 0) {
+            const currentVal = parseFloat(line.value.toFixed(2));
+            const newVal = parseFloat(lineEvaluated.toFixed(2));
+
+            if (Math.abs(currentVal - newVal) > 0.01) {
+              console.log(`🔄 Forcing edge update: ${line.label || line.id} from ${currentVal} to ${newVal}`);
+              updateSelectedLineValue(line.id, newVal);
+            }
+          }
         }
       });
 
-      console.log(`🔨 Rebuilding geometry for ${affectedShapeIds.size} shape(s)...`);
-      if (affectedShapeIds.size > 0) {
-        rebuildGeometryFromScratch(affectedShapeIds);
-      }
-
-      console.log(`✅ ========== PARAMETER UPDATE COMPLETE ==========`);
+      recalculateAllParameters();
     });
   };
 
   const handleEdgeApply = (lineId: string, formula: string) => {
-    console.log(`🚀 ========== EDGE FORMULA APPLIED: ${lineId} ==========`);
-
     syncFormulaVariables();
 
     const evaluated = evaluateExpression(formula, `edge-${lineId}`);
     if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
       console.warn(`⚠️ Invalid formula for edge ${lineId}: ${formula}`);
-      alert('Invalid formula or result is not positive');
       return;
     }
 
     updateSelectedLineFormula(lineId, formula);
-    updateSelectedLineValue(lineId, evaluated);
-
-    console.log(`✅ Edge formula set: ${lineId} = ${formula} → ${evaluated.toFixed(2)}`);
 
     requestAnimationFrame(() => {
       syncFormulaVariables();
-
-      console.log('📊 Re-evaluating ALL edges after formula change...');
-
-      const line = selectedLines.find(l => l.id === lineId);
-      if (!line) {
-        console.warn(`⚠️ Line ${lineId} not found in selectedLines`);
-        return;
-      }
-
-      const affectedShapeIds = new Set<string>();
-      selectedLines.forEach(l => {
-        if (l.formula?.trim()) {
-          affectedShapeIds.add(l.shapeId);
-        }
-      });
-
-      if (affectedShapeIds.size > 0) {
-        console.log(`🔨 Rebuilding geometry for ${affectedShapeIds.size} shape(s)...`);
-        rebuildGeometryFromScratch(affectedShapeIds);
-      }
-
-      console.log(`✅ ========== EDGE UPDATE COMPLETE ==========`);
+      recalculateAllParameters();
     });
 
     setEditingLineId(null);
