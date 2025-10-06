@@ -25,12 +25,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setVisibleDimensions,
     isRulerMode,
     setIsRulerMode,
-    selectedLines,
-    updateSelectedLineValue,
-    updateSelectedLineVertices,
-    updateSelectedLineFormula,
-    updateSelectedLineLabel,
-    removeSelectedLine,
     shapes,
     setParameterVariable,
     getParameterVariable,
@@ -103,20 +97,13 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       }
     });
 
-    selectedLines.forEach(line => {
-      if (line.label) {
-        evaluator.setVariable(line.label, line.value);
-        setParameterVariable(line.label, line.value);
-      }
-    });
-
     console.log('🔄 Formula variables synced:', evaluator.getAllVariables().map(v => `${v.name}=${v.value}`).join(', '));
-  }, [currentWidth, currentHeight, currentDepth, customParameters, selectedLines, convertToDisplayUnit, setParameterVariable]);
+  }, [currentWidth, currentHeight, currentDepth, customParameters, convertToDisplayUnit, setParameterVariable]);
 
   useEffect(() => {
     syncFormulaVariables();
     recalculateAllParameters();
-  }, [JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value }))), JSON.stringify(selectedLines.map(l => ({ id: l.id, formula: l.formula })))]);
+  }, [JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -127,9 +114,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     }
   };
 
-  useEffect(() => updateDimensionResult('width', inputWidth, setResultWidth), [inputWidth, customParameters, selectedLines]);
-  useEffect(() => updateDimensionResult('height', inputHeight, setResultHeight), [inputHeight, customParameters, selectedLines]);
-  useEffect(() => updateDimensionResult('depth', inputDepth, setResultDepth), [inputDepth, customParameters, selectedLines]);
+  useEffect(() => updateDimensionResult('width', inputWidth, setResultWidth), [inputWidth, customParameters]);
+  useEffect(() => updateDimensionResult('height', inputHeight, setResultHeight), [inputHeight, customParameters]);
+  useEffect(() => updateDimensionResult('depth', inputDepth, setResultDepth), [inputDepth, customParameters]);
 
   const applyResultChange = (dimension: 'width' | 'height' | 'depth', result: string, current: number, canEdit: boolean) => {
     if (isApplyingChanges) return;
@@ -174,245 +161,15 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         });
       }
 
-    const MAX_ITERATIONS = 10;
-    let iteration = 0;
-    let hasChanges = true;
-    const processedInIteration = new Set<string>();
-    const allProcessedLines = new Set<string>();
+    // Edge calculation removed
 
-    const lineValueHistory = new Map<string, number[]>();
-    selectedLines.forEach(line => {
-      lineValueHistory.set(line.id, [line.value]);
-    });
-
-    while (hasChanges && iteration < MAX_ITERATIONS) {
-      hasChanges = false;
-      iteration++;
-      processedInIteration.clear();
-
-      const geometryUpdatesByShape = new Map<string, {
-        originalGeometry: THREE.BufferGeometry;
-        newGeometry: THREE.BufferGeometry;
-        vertexMoves: Array<{
-          oldVertex: [number, number, number];
-          newVertex: [number, number, number];
-        }>;
-        lineUpdates: Array<{
-          lineId: string;
-          newValue: number;
-          newEndVertex: [number, number, number];
-        }>;
-      }>();
-
-      selectedLines.forEach(line => {
+    // Edge processing removed
         if (!line.formula?.trim()) return;
 
-        const evaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
-        if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
-          if (line.formula.trim()) {
-            console.warn(`⚠️ Formula evaluation failed for edge ${line.label || line.id}: ${line.formula}`);
-          }
-          return;
-        }
-
-        const currentVal = parseFloat(line.value.toFixed(2));
-        const newVal = parseFloat(evaluated.toFixed(2));
-
-        if (Math.abs(currentVal - newVal) <= 0.01) return;
-
-        const history = lineValueHistory.get(line.id) || [];
-        if (history.some(val => Math.abs(val - newVal) < 0.01)) {
-          console.warn(`🔄 Circular dependency detected for edge ${line.label || line.id}`);
-          return;
-        }
-        history.push(newVal);
-        lineValueHistory.set(line.id, history);
-
-        const shape = shapes.find(s => s.id === line.shapeId);
-        if (!shape?.geometry) return;
-
-        if (!geometryUpdatesByShape.has(line.shapeId)) {
-          const originalGeometry = shape.geometry;
-          const newGeometry = originalGeometry.clone();
-
-          geometryUpdatesByShape.set(line.shapeId, {
-            originalGeometry,
-            newGeometry,
-            vertexMoves: [],
-            lineUpdates: []
-          });
-        }
-
-        const updateData = geometryUpdatesByShape.get(line.shapeId)!;
-
-        const dx = Math.abs(line.endVertex[0] - line.startVertex[0]);
-        const dy = Math.abs(line.endVertex[1] - line.startVertex[1]);
-        const dz = Math.abs(line.endVertex[2] - line.startVertex[2]);
-
-        let fixedVertex: [number, number, number], movingVertex: [number, number, number];
-
-        if (dy > dx && dy > dz) {
-          [fixedVertex, movingVertex] = line.startVertex[1] < line.endVertex[1]
-            ? [line.startVertex, line.endVertex]
-            : [line.endVertex, line.startVertex];
-        } else if (dx > dy && dx > dz) {
-          [fixedVertex, movingVertex] = line.startVertex[0] > line.endVertex[0]
-            ? [line.startVertex, line.endVertex]
-            : [line.endVertex, line.startVertex];
-        } else {
-          [fixedVertex, movingVertex] = line.startVertex[2] < line.endVertex[2]
-            ? [line.startVertex, line.endVertex]
-            : [line.endVertex, line.startVertex];
-        }
-
-        const newLength = convertToBaseUnit(newVal);
-        const direction = new THREE.Vector3(
-          movingVertex[0] - fixedVertex[0],
-          movingVertex[1] - fixedVertex[1],
-          movingVertex[2] - fixedVertex[2]
-        ).normalize();
-
-        if (direction.length() === 0) {
-          console.warn(`⚠️ Zero-length direction vector for edge ${line.label || line.id}`);
-          return;
-        }
-
-        const newMovingVertex: [number, number, number] = [
-          fixedVertex[0] + direction.x * newLength,
-          fixedVertex[1] + direction.y * newLength,
-          fixedVertex[2] + direction.z * newLength
-        ];
-
-        updateData.vertexMoves.push({
-          oldVertex: movingVertex,
-          newVertex: newMovingVertex
-        });
-
-        updateData.lineUpdates.push({
-          lineId: line.id,
-          newValue: newVal,
-          newEndVertex: newMovingVertex
-        });
-
-        hasChanges = true;
-        processedInIteration.add(line.id);
-        allProcessedLines.add(line.id);
-      });
-
-      if (!hasChanges) break;
-
-      geometryUpdatesByShape.forEach((updateData, shapeId) => {
-        try {
-          const positions = updateData.newGeometry.attributes.position.array as Float32Array;
-
-          updateData.vertexMoves.forEach(move => {
-            for (let i = 0; i < positions.length; i += 3) {
-              const dist = Math.sqrt(
-                Math.pow(positions[i] - move.oldVertex[0], 2) +
-                Math.pow(positions[i + 1] - move.oldVertex[1], 2) +
-                Math.pow(positions[i + 2] - move.oldVertex[2], 2)
-              );
-
-              if (dist < 0.01) {
-                positions[i] = move.newVertex[0];
-                positions[i + 1] = move.newVertex[1];
-                positions[i + 2] = move.newVertex[2];
-              }
-            }
-          });
-
-          updateData.newGeometry.attributes.position.needsUpdate = true;
-          updateData.newGeometry.computeBoundingBox();
-          updateData.newGeometry.computeVertexNormals();
-          updateData.newGeometry.computeBoundingSphere();
-
-          const shape = shapes.find(s => s.id === shapeId);
-          if (!shape) {
-            console.warn(`⚠️ Shape ${shapeId} not found during geometry update`);
-            return;
-          }
-
-          updateShape(shapeId, { geometry: updateData.newGeometry });
-
-          updateData.lineUpdates.forEach(update => {
-            updateSelectedLineValue(update.lineId, update.newValue);
-            updateSelectedLineVertices(update.lineId, update.newEndVertex);
-          });
-
-          console.log(`✅ Geometry updated for shape ${shapeId} with ${updateData.vertexMoves.length} vertex moves`);
-        } catch (error) {
-          console.error(`❌ Error updating geometry for shape ${shapeId}:`, error);
-        }
-      });
-
-      selectedLines.forEach(line => {
-        if (allProcessedLines.has(line.id)) return;
-        if (line.formula?.trim()) return;
-
-        const shape = shapes.find(s => s.id === line.shapeId);
-        if (!shape?.geometry) return;
-
-        shape.geometry.computeBoundingBox();
-        const bbox = shape.geometry.boundingBox;
-        if (!bbox) return;
-
-        const positions = shape.geometry.attributes.position.array;
-        let closestStart: number[] | null = null;
-        let closestEnd: number[] | null = null;
-        let minDistStart = Infinity;
-        let minDistEnd = Infinity;
-
-        for (let i = 0; i < positions.length; i += 3) {
-          const v = [positions[i], positions[i + 1], positions[i + 2]];
-          const distToStart = Math.sqrt(
-            Math.pow(v[0] - line.startVertex[0], 2) +
-            Math.pow(v[1] - line.startVertex[1], 2) +
-            Math.pow(v[2] - line.startVertex[2], 2)
-          );
-          const distToEnd = Math.sqrt(
-            Math.pow(v[0] - line.endVertex[0], 2) +
-            Math.pow(v[1] - line.endVertex[1], 2) +
-            Math.pow(v[2] - line.endVertex[2], 2)
-          );
-
-          if (distToStart < minDistStart) {
-            minDistStart = distToStart;
-            closestStart = v;
-          }
-          if (distToEnd < minDistEnd) {
-            minDistEnd = distToEnd;
-            closestEnd = v;
-          }
-        }
-
-        if (closestStart && closestEnd) {
-          const newLength = Math.sqrt(
-            Math.pow(closestEnd[0] - closestStart[0], 2) +
-            Math.pow(closestEnd[1] - closestStart[1], 2) +
-            Math.pow(closestEnd[2] - closestStart[2], 2)
-          );
-
-          const displayLength = convertToDisplayUnit(newLength);
-          const currentVal = parseFloat(line.value.toFixed(2));
-
-          if (Math.abs(displayLength - currentVal) > 0.01) {
-            updateSelectedLineValue(line.id, displayLength);
-            updateSelectedLineVertices(line.id, closestEnd as [number, number, number]);
-            hasChanges = true;
-          }
-        }
-      });
-    }
-
-    if (iteration >= MAX_ITERATIONS) {
-      console.warn('🔄 Edge recalculation reached maximum iterations - possible circular dependency');
-    } else if (iteration > 1) {
-      console.log(`✅ Edge dynamic updates completed in ${iteration} iterations`);
-    }
     } catch (error) {
       console.error('❌ Error during parameter recalculation:', error);
     }
-  }, [customParameters, selectedLines, shapes, convertToBaseUnit, updateSelectedLineValue, updateSelectedLineVertices, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
+  }, [customParameters, shapes, convertToBaseUnit, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
 
   const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
     try {
@@ -460,34 +217,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         newScale[2] / oldScale[2]
       ];
 
-      selectedLines.forEach(line => {
-        if (line.shapeId === editedShape.id) {
-          const newStartVertex: [number, number, number] = [
-            line.startVertex[0] * scaleRatio[0],
-            line.startVertex[1] * scaleRatio[1],
-            line.startVertex[2] * scaleRatio[2]
-          ];
-          const newEndVertex: [number, number, number] = [
-            line.endVertex[0] * scaleRatio[0],
-            line.endVertex[1] * scaleRatio[1],
-            line.endVertex[2] * scaleRatio[2]
-          ];
-
-          const newLength = Math.sqrt(
-            Math.pow(newEndVertex[0] - newStartVertex[0], 2) +
-            Math.pow(newEndVertex[1] - newStartVertex[1], 2) +
-            Math.pow(newEndVertex[2] - newStartVertex[2], 2)
-          );
-
-          const displayLength = convertToDisplayUnit(newLength);
-
-          updateSelectedLineVertices(line.id, newEndVertex);
-
-          if (!line.formula?.trim()) {
-            updateSelectedLineValue(line.id, displayLength);
-          }
-        }
-      });
 
       updateShape(editedShape.id, {
         scale: newScale as [number, number, number],
@@ -538,44 +267,12 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       syncFormulaVariables();
 
-      selectedLines.forEach(line => {
-        if (line.formula?.trim()) {
-          const lineEvaluated = evaluateExpression(line.formula, `edge-${line.label || line.id}`);
-          if (lineEvaluated !== null && !isNaN(lineEvaluated) && lineEvaluated > 0) {
-            const currentVal = parseFloat(line.value.toFixed(2));
-            const newVal = parseFloat(lineEvaluated.toFixed(2));
 
-            if (Math.abs(currentVal - newVal) > 0.01) {
-              console.log(`🔄 Forcing edge update: ${line.label || line.id} from ${currentVal} to ${newVal}`);
-              updateSelectedLineValue(line.id, newVal);
-            }
-          }
-        }
-      });
 
       recalculateAllParameters();
     });
   };
 
-  const handleEdgeApply = (lineId: string, formula: string) => {
-    syncFormulaVariables();
-
-    const evaluated = evaluateExpression(formula, `edge-${lineId}`);
-    if (evaluated === null || isNaN(evaluated) || evaluated <= 0) {
-      console.warn(`⚠️ Invalid formula for edge ${lineId}: ${formula}`);
-      return;
-    }
-
-    updateSelectedLineFormula(lineId, formula);
-
-    requestAnimationFrame(() => {
-      syncFormulaVariables();
-      recalculateAllParameters();
-    });
-
-    setEditingLineId(null);
-    setEditingLineValue('');
-  };
 
   const renderDimensionInput = (
     label: string,
@@ -776,82 +473,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           </div>
         )}
 
-        {selectedLines.length > 0 && (
-          <div className="bg-white rounded-md border border-stone-200 p-2">
-            <div className="space-y-2 max-h-[200px] overflow-y-auto">
-              {selectedLines.map((line, index) => (
-                <div key={line.id} className="flex items-center h-10 px-2 rounded-md border border-orange-300 bg-orange-50/50 shadow-sm">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border bg-gradient-to-br from-blue-400 to-blue-500 text-white border-blue-300">
-                      {index + 1}
-                    </div>
-
-                    <input
-                      type="text"
-                      value={line.label}
-                      onChange={(e) => updateSelectedLineLabel(line.id, e.target.value)}
-                      placeholder="Name"
-                      className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
-                    />
-
-                    <input
-                      type="text"
-                      value={editingLineId === line.id ? editingLineValue : (line.formula || '')}
-                      onChange={(e) => editingLineId === line.id && setEditingLineValue(e.target.value)}
-                      onFocus={() => {
-                        setEditingLineId(line.id);
-                        setEditingLineValue(line.formula || '');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editingLineId === line.id) {
-                          handleEdgeApply(line.id, editingLineValue);
-                        } else if (e.key === 'Escape') {
-                          setEditingLineId(null);
-                          setEditingLineValue('');
-                        }
-                      }}
-                      placeholder="Formula..."
-                      className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-400 text-black font-medium"
-                    />
-
-                    <input
-                      type="text"
-                      value={(() => {
-                        if (line.formula?.trim()) {
-                          const evaluated = evaluateExpression(line.formula);
-                          return evaluated !== null && !isNaN(evaluated) ? evaluated.toFixed(2) : line.value.toFixed(2);
-                        }
-                        return line.value.toFixed(2);
-                      })()}
-                      readOnly
-                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
-                    />
-
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => editingLineId === line.id && editingLineValue.trim() && handleEdgeApply(line.id, editingLineValue)}
-                        disabled={editingLineId !== line.id || !editingLineValue.trim()}
-                        className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
-                          editingLineId === line.id && editingLineValue.trim()
-                            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        }`}
-                      >
-                        <Check size={11} />
-                      </button>
-                      <button
-                        onClick={() => removeSelectedLine(line.id)}
-                        className="flex-shrink-0 p-1.5 bg-orange-100 text-orange-600 hover:bg-orange-200 rounded-sm transition-colors"
-                      >
-                        <X size={11} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
