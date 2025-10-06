@@ -4,7 +4,7 @@ import { useAppStore, Tool } from '../store/appStore';
 
 const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');
-  const { activeTool } = useAppStore();
+  const { activeTool, isRulerMode } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [polylineStatus, setPolylineStatus] = useState<{
     distance: number;
@@ -176,11 +176,15 @@ const Terminal: React.FC = () => {
               </span>
             </div>
 
-            {/* Orta - Polyline ölçü bilgileri veya Edge bilgisi */}
+            {/* Orta - Polyline ölçü bilgileri, Edge bilgisi veya Ruler mode mesajı */}
             <div className="flex items-center gap-4 text-xs">
-              {selectedEdgeInfo ? (
+              {isRulerMode && !selectedEdgeInfo ? (
+                <span className="text-orange-600 font-medium animate-pulse">
+                  📏 Ruler Mode Active - Hover over edges to measure, click to modify
+                </span>
+              ) : selectedEdgeInfo ? (
                 <span className="text-blue-600 font-medium">
-                  Edge Selected: <span className="text-blue-800 font-mono">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> - Enter new value
+                  Edge Selected: <span className="text-blue-800 font-mono">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> - Enter new value in Terminal ↓
                 </span>
               ) : (
                 <>
