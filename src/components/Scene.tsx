@@ -16,9 +16,6 @@ import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
-import DimensionArrows from './DimensionArrows';
-import { MeasurementLine } from './MeasurementLine';
-import { MeasurementHandler } from './MeasurementHandler';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -115,7 +112,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
   }, [camera, shapes, hiddenShapeIds]);
 
   // Auto zoom fit when entering edit mode - IMMEDIATE fit to screen
-  // 🎯 CRITICAL: Only fit when ENTERING edit mode, not when shape changes
   useEffect(() => {
     if (isEditMode && editingShapeId && controlsRef.current) {
       const editedShape = shapes.find((s) => s.id === editingShapeId);
@@ -125,8 +121,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
         console.log('Edit mode: Auto zoom fit applied immediately');
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode, editingShapeId]);
+  }, [isEditMode, editingShapeId, camera, shapes]);
 
   // Store controls ref globally for external access
   useEffect(() => {
@@ -188,12 +183,7 @@ const Scene: React.FC = () => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
-    viewMode,
-    isMeasurementMode,
-    activeMeasurement,
-    setActiveMeasurement,
-    measurements,
-    addMeasurement,
+    viewMode, // 🎯 NEW: Get current view mode
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -620,7 +610,6 @@ const Scene: React.FC = () => {
       >
         <CameraPositionUpdater />
         <CameraController isAddPanelMode={isAddPanelMode} editModeWidth={400} />
-        <MeasurementHandler />
         <Stats className="hidden" />
 
         {cameraType === CameraType.PERSPECTIVE ? (
@@ -742,17 +731,6 @@ const Scene: React.FC = () => {
           completedShapes={[]}
           shapes={visibleShapes}
         />
-
-        {/* Dimension Arrows - Seçili ölçüler için oklar */}
-        {editedShape && <DimensionArrows shape={editedShape} />}
-
-        {/* Measurement Lines */}
-        {measurements.map((measurement) => (
-          <MeasurementLine key={measurement.id} measurement={measurement} />
-        ))}
-        {activeMeasurement && activeMeasurement.point2 && (
-          <MeasurementLine measurement={activeMeasurement} />
-        )}
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
