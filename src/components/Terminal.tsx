@@ -4,12 +4,18 @@ import { useAppStore, Tool } from '../store/appStore';
 
 const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');
-  const { activeTool } = useAppStore();
+  const { activeTool, isRulerMode } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [polylineStatus, setPolylineStatus] = useState<{
     distance: number;
     angle?: number;
     unit: string;
+  } | null>(null);
+  const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<{
+    shapeId: string;
+    edgeIndex: number;
+    currentLength: number;
+    edgeId: string;
   } | null>(null);
 
   // Expose terminal input ref globally for external focus control
@@ -19,6 +25,13 @@ const Terminal: React.FC = () => {
     // Expose polyline status setter globally
     (window as any).setPolylineStatus = setPolylineStatus;
 
+    // Listen for edge selection events
+    const handleEdgeSelected = (e: CustomEvent) => {
+      setSelectedEdgeInfo(e.detail);
+      console.log(`Terminal: Edge selected - ${e.detail.currentLength.toFixed(2)} mm`);
+    };
+
+    window.addEventListener('edgeSelected', handleEdgeSelected as EventListener);
     
     // 🎯 GLOBAL KEYBOARD CAPTURE - Tüm klavye girişlerini terminale yönlendir
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -74,6 +87,7 @@ const Terminal: React.FC = () => {
     
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown, true);
+      window.removeEventListener('edgeSelected', handleEdgeSelected as EventListener);
       delete (window as any).terminalInputRef;
       delete (window as any).setPolylineStatus;
     };
@@ -84,23 +98,40 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
-    // Handle dimension measurement update - HIGHEST PRIORITY
-    if ((window as any).selectedDimensionId) {
-      const newValue = parseFloat(trimmedCommand);
-      if (!isNaN(newValue) && newValue > 0) {
-        if ((window as any).handleDimensionUpdate) {
-          (window as any).handleDimensionUpdate(newValue);
+    // Handle edge measurement update
+    if (selectedEdgeInfo) {
+      // Try to parse as a number first
+      let newValue = parseFloat(trimmedCommand);
+
+      // If not a number, try to evaluate as formula with parameters
+      if (isNaN(newValue)) {
+        const evaluatedValue = useAppStore.getState().evaluateFormula(trimmedCommand);
+        if (evaluatedValue !== null && evaluatedValue > 0) {
+          newValue = evaluatedValue;
+        } else {
+          console.log('Invalid value or formula. Enter a number or parameter name.');
           setCommandInput('');
-          console.log(`Terminal: Updated dimension to ${newValue} mm`);
           return;
         }
-      } else {
-        console.log('Invalid dimension value. Enter a positive number.');
+      }
+
+      if (newValue > 0) {
+        // Dispatch event to update edge measurement with formula
+        const event = new CustomEvent('updateEdgeMeasurement', {
+          detail: {
+            shapeId: selectedEdgeInfo.shapeId,
+            edgeIndex: selectedEdgeInfo.edgeIndex,
+            newValue,
+            formula: trimmedCommand
+          }
+        });
+        window.dispatchEvent(event);
+        console.log(`Terminal: Updating edge to ${newValue} mm (formula: ${trimmedCommand})`);
+        setSelectedEdgeInfo(null);
         setCommandInput('');
         return;
       }
     }
-
 
     // Handle pending extrude shape - öncelik ver
     if ((window as any).pendingExtrudeShape) {
@@ -150,14 +181,18 @@ const Terminal: React.FC = () => {
   return (
     <>
       {/* InfoBar - Information display for polyline, ruler mode, etc. */}
-      {(polylineStatus || (window as any).selectedDimensionId) && (
+      {(polylineStatus || selectedEdgeInfo) && (
         <div className="fixed bottom-10 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-b border-stone-300 z-50" style={{ height: '24px' }}>
           <div className="flex items-center h-full px-3">
             {/* Sol taraf - Tüm bilgilendirme mesajları */}
             <div className="flex items-center gap-6 text-xs text-stone-800">
-              {(window as any).selectedDimensionId ? (
+              {isRulerMode && !selectedEdgeInfo ? (
                 <span className="font-normal">
-                  Dimension Selected: Enter new measurement in Terminal below and press Enter
+                  Ruler Mode: Hover over edges to see measurements, click an edge to modify its length
+                </span>
+              ) : selectedEdgeInfo ? (
+                <span className="font-normal">
+                  Edge Selected: Current length = <span className="font-medium">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> | Enter new length in Terminal below and press Enter
                 </span>
               ) : (
                 <>

@@ -186,6 +186,7 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode,
+    isRulerMode,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -200,6 +201,16 @@ const Scene: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (isRulerMode) {
+      document.body.style.cursor = 'crosshair';
+    } else {
+      document.body.style.cursor = 'default';
+    }
+    return () => {
+      document.body.style.cursor = 'default';
+    };
+  }, [isRulerMode]);
 
   const [measurementOverlay, setMeasurementOverlay] =
     useState(null);
