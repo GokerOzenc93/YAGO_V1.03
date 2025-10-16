@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Pin, PinOff, CreditCard as Edit3, Save, ChevronLeft } from 'lucide-react';
+import { X, Pin, PinOff, Edit3, Save } from 'lucide-react';
 
 interface EditModeHeaderProps {
   volumeName: string;
@@ -60,7 +60,7 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between h-10 px-3 border-b border-gray-200">
+    <div className="flex items-center justify-between p-3 pt-4 border-b border-gray-200">
       <div className="flex items-center gap-2 flex-1">
         {isEditingName ? (
           <input
@@ -70,61 +70,62 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
             onChange={(e) => setTempName(e.target.value)}
             onKeyDown={handleNameKeyDown}
             onBlur={handleNameSave}
-            className="text-gray-900 font-inter text-xs font-medium bg-transparent border-b border-orange-500 outline-none flex-1 min-w-0"
+            className="text-gray-900 font-inter text-base font-bold bg-transparent border-b border-blue-500 outline-none flex-1 min-w-0"
             maxLength={20}
           />
         ) : (
           <div className="flex items-center gap-1 flex-1 min-w-0">
-            <span className="text-gray-900 font-inter text-xs font-medium truncate">
+            <span className="text-gray-900 font-inter text-base font-bold truncate">
               {volumeName}
             </span>
             <button
               onClick={handleNameEdit}
-              className="text-stone-600 hover:text-orange-600 p-1 rounded transition-colors flex-shrink-0"
+              className="text-gray-500 hover:text-blue-600 p-0.5 rounded transition-colors flex-shrink-0"
               title="Edit Name"
             >
-              <Edit3 size={11} />
+              <Edit3 size={12} />
             </button>
           </div>
         )}
-
+        
         <button
           onClick={onSaveVolume}
-          className="text-stone-600 hover:text-green-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-green-50 flex-shrink-0"
+          className="text-gray-500 hover:text-green-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-green-50 flex-shrink-0"
           title="Save Volume"
         >
-          <Save size={11} />
+          <Save size={14} />
         </button>
       </div>
-
+      
+      {/* Panel genişliği 200px'ten büyükse düğmeleri göster*/}
       {panelWidth > 200 && (
         <div className="flex items-center gap-1">
           {isLocked && (
             <button
               onClick={onCollapse}
-              className="text-stone-600 hover:text-orange-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-orange-50 flex-shrink-0"
-              title="Paneli Sola Gizle"
+              className="text-gray-500 hover:text-blue-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-blue-50"
+              title="Arayüzü Küçült"
             >
-              <ChevronLeft size={11} />
+              <X size={14} />
             </button>
           )}
-
+          
           <button
             onClick={onToggleLock}
-            className={`p-1.5 rounded-sm transition-colors flex-shrink-0 ${
-              isLocked ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200' : 'text-stone-600 hover:text-orange-600 bg-stone-50 hover:bg-orange-50'
+            className={`p-1 rounded transition-colors ${
+              isLocked ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50'
             }`}
             title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
           >
-            {isLocked ? <Pin size={11} /> : <PinOff size={11} />}
+            {isLocked ? <Pin size={14} /> : <PinOff size={14} />}
           </button>
-
+          
           <button
             onClick={onClose}
-            className="text-stone-600 hover:text-red-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-red-50 flex-shrink-0"
+            className="text-gray-500 hover:text-red-600 p-1.5 rounded-lg transition-colors bg-gray-50 hover:bg-red-50"
             title="Düzenleme Modundan Çık"
           >
-            <X size={11} />
+            <X size={14} />
           </button>
         </div>
       )}

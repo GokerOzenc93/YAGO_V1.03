@@ -42,8 +42,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             shapeId,
             faceIndex,
             rowId: activeRowId,
-            color: 0xfff5e6, // Light cream/beige color (very light orange)
-            opacity: 0.3, // More transparent
+            color: 0xffb366, // Default orange
+           opacity: 0.15, // Very transparent
             faceNumber: surfaceRows.length // Use current row count as face number
           }
         });
@@ -112,14 +112,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     if (row && row.faceIndex !== null) {
       // Update highlight color based on role
       const roleColors = {
-        'left': 0xfff5e6,    // Very light cream/beige
-        'right': 0xfff5e6,   // Very light cream/beige
-        'top': 0xfff5e6,     // Very light cream/beige
-        'bottom': 0xfff5e6,  // Very light cream/beige
-        'front': 0xfff5e6,   // Very light cream/beige
-        'back': 0xffffe6,    // Very light yellow - Ba
-        'door': 0xe6fff2,    // Very light green - D
-        '': 0xfff5e6         // Default very light cream/beige
+        'left': 0xffd99f,    // Light orange (açık turuncu) - toolbar tonu
+        'right': 0xffd99f,   // Light orange (açık turuncu) - toolbar tonu
+        'top': 0xffd99f,     // Light orange (açık turuncu) - toolbar tonu
+        'bottom': 0xffd99f,  // Light orange (açık turuncu) - toolbar tonu
+        'front': 0xffd99f,   // Light orange (açık turuncu) - toolbar tonu
+        'back': 0xffff00,    // Yellow (sarı) - Ba
+        'door': 0xceffce,    // Blue (mavi) - D
+        '': 0xffb6b6         // Default light orange
       };
       
       const color = roleColors[role as keyof typeof roleColors] || roleColors[''];
@@ -199,61 +199,106 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
-            className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
+            className="p-1 hover:bg-orange-200 rounded transition-colors"
           >
-            <ChevronLeft size={11} className="text-orange-600" />
+            <ChevronLeft size={16} className="text-orange-600" />
           </button>
-          <MousePointer size={11} className="text-orange-600" />
-          <span className="text-xs font-medium text-orange-800">Surface Specification</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {surfaceRows.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
-            >
-              Clear All
-            </button>
-          )}
-          <button
-            onClick={handleSelectSurface}
-            disabled={isSelectionActive}
-            className="p-1.5 rounded-sm transition-colors hover:bg-orange-100 text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Add Surface"
-          >
-            <Plus size={14} />
-          </button>
+          <MousePointer size={16} className="text-orange-600" />
+          <span className="font-semibold text-orange-800">Surface Specification</span>
         </div>
       </div>
 
-      <div className="flex-1 p-4 space-y-2">
+      {/* Content */}
+      <div className="flex-1 p-4 space-y-4">
+        
+        {/* Select Surface Button */}
+        <div className="bg-white rounded-lg border border-stone-200 p-2">
+          <div className="flex items-center justify-between h-8">
+            <div className="flex items-center gap-2">
+            {/* Add Surface Button */}
+            <button
+              onClick={handleSelectSurface}
+              disabled={isSelectionActive}
+              className={`p-1.5 rounded-md transition-colors ${
+                isSelectionActive 
+                  ? 'bg-orange-300 text-white cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+              title="Add Surface"
+            >
+              <Plus size={14} />
+            </button>
+            
+            {/* Exit Selection Button */}
+            {isSelectionActive && (
+              <button
+                onClick={handleExitSelection}
+                className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+                title="Exit Surface Selection"
+              >
+                <X size={14} />
+              </button>
+            )}
+            
+            {/* Add Surface Label */}
+            <span className={`text-sm font-medium ${
+              isSelectionActive ? 'text-orange-600' : 'text-gray-700'
+            }`}>
+              Add Surface
+            </span>
+            </div>
+            
+            {/* Clear All Button - moved to right */}
+            {surfaceRows.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors h-6"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+          
+          {isSelectionActive && (
+            <div></div>
+          )}
+        </div>
+
+        {/* Surface Rows */}
         {surfaceRows.length > 0 && (
-          <div className="bg-white rounded-md border border-stone-200 p-2">
+          <div className="bg-white rounded-lg border border-stone-200 p-2">
+            <div className="mb-2">
+              <h4 className="font-medium text-slate-800 text-xs">Surfaces</h4>
+            </div>
+            
             <div className="space-y-2">
               {surfaceRows.map((row, index) => (
-                <div
-                  key={row.id}
-                  className={`flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 ${
-                    row.isActive
-                      ? 'border-orange-300 bg-orange-50/50 shadow-sm'
-                      : row.confirmed
+                <div 
+                  key={row.id} 
+                  className={`flex items-center gap-2 p-2 rounded-lg border transition-all duration-200 ${
+                    row.isActive 
+                      ? 'border-orange-300 bg-orange-50/50 shadow-sm' 
+                      : row.confirmed 
                         ? 'border-green-300 bg-green-50/50 shadow-sm'
                         : 'border-gray-200 bg-gray-50/50'
                   }`}
                 >
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  {/* Surface Number - Turuncu-beyaz tema */}
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                     {index + 1}
                   </div>
                   
+                  {/* Role Selection */}
                   <select
                     value={row.role}
                     onChange={(e) => handleRoleChange(row.id, e.target.value)}
                     disabled={!row.confirmed}
-                    className="h-6 w-16 text-xs bg-white border border-gray-300 rounded-sm px-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
+                    className="w-12 text-xs bg-white border border-gray-300 rounded px-1 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
                   >
                     <option value="">Role</option>
                     <option value="left">L</option>
@@ -264,30 +309,33 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                     <option value="back">BA</option>
                     <option value="door">D</option>
                   </select>
-
+                  
+                  {/* Formula Input */}
                   <input
                     type="text"
                     value={row.formula}
                     onChange={(e) => handleFormulaChange(row.id, e.target.value)}
                     disabled={false}
                     placeholder="Description..."
-                    className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                    className="flex-1 min-w-0 text-xs bg-white border border-gray-300 rounded px-2 py-1 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
                   />
-
+                  
+                  {/* Apply Button */}
                   <div className="flex items-center gap-1">
+                    {/* Apply/Check Icon */}
                     <button
                       onClick={() => handleConfirmSurface(row.id)}
                       disabled={!row.role || !row.role.trim() || row.faceIndex === null}
-                      className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      className={`flex-shrink-0 p-1 rounded transition-all ${
                         row.confirmed && row.role && row.role.trim()
-                          ? 'bg-orange-100 text-orange-600 cursor-default'
+                          ? 'bg-green-600 text-white cursor-default' 
                           : (!row.role || !row.role.trim() || row.faceIndex === null || row.confirmed)
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                            : 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
                       }`}
                       title={
                         row.confirmed && row.role && row.role.trim()
-                          ? "Applied"
+                          ? "Applied" 
                           : (!row.role || !row.role.trim())
                             ? "Select a role first"
                             : row.faceIndex === null
@@ -295,15 +343,16 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
                               : "Click to apply surface"
                       }
                     >
-                      <Check size={11} />
+                      <Check size={12} />
                     </button>
-
+                    
+                    {/* Remove Row Button */}
                     <button
                       onClick={() => handleRemoveRow(row.id)}
-                      className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
+                      className="flex-shrink-0 p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded transition-colors"
                       title="Remove this surface"
                     >
-                      <X size={11} />
+                      <X size={12} />
                     </button>
                 </div>
                 </div>

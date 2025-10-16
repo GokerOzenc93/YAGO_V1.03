@@ -159,20 +159,13 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
       } else if (activeTool === 'Scale') {
         const scale = meshRef.current.scale.toArray() as [number, number, number];
-
-        // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
-        // This means when we scale with gizmo, it naturally grows in X+, Y+, Z+ directions!
-        // We DON'T need to adjust position because the geometry's origin IS the min corner
-
-        // 🎯 UPDATE SHAPE SCALE IN STORE (position stays the same)
+        
+        // 🎯 UPDATE SHAPE SCALE IN STORE
         updateShape(shape.id, {
           scale: scale
         });
-
-        console.log(`🎯 Gizmo Scale: Shape ${shape.id} scaled from origin (min corner):`, {
-          scale,
-          position: shape.position
-        });
+        
+        console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
       }
     };
     
@@ -201,15 +194,10 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
         const finalScale = meshRef.current.scale.toArray() as [number, number, number];
-
         updateShape(shape.id, {
           scale: finalScale
         });
-
-        console.log(`🎯 Shape ${shape.id} final scale from origin:`, {
-          scale: finalScale,
-          position: shape.position
-        });
+        console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
       }
     };
     
@@ -459,11 +447,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get opacity based on view mode
   const getOpacity = () => {
-    // Edit modda referans volume her zaman wireframe (şeffaf)
-    if (isEditMode && !isBeingEdited) return 0.0;
-
-    // Referans cube her zaman wireframe
-    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.0;
+    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
 
     // 🎯 EDIT MODE: Normal sahnedeki gibi şeffaf
     return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
