@@ -299,8 +299,15 @@ interface AppState {
   }>) => void;
   resetVertexEditMode: () => void;
   // Vertex-parameter bindings
-  vertexParameterBindings: Map<string, { shapeId: string; vertexIndex: number; axis: string; parameterCode: string; }>;
-  addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode: string) => void;
+  vertexParameterBindings: Map<string, {
+    shapeId: string;
+    vertexIndex: number;
+    axis: string;
+    parameterCode?: string;
+    displayValue?: number;
+  }>;
+  addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode?: string, displayValue?: number) => void;
+  updateVertexParameterBindingValue: (shapeId: string, vertexIndex: number, axis: string, displayValue: number) => void;
   removeVertexParameterBinding: (shapeId: string, vertexIndex: number) => void;
   history: {
     past: AppState[];
@@ -481,12 +488,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Vertex-parameter bindings
   vertexParameterBindings: new Map(),
 
-  addVertexParameterBinding: (shapeId, vertexIndex, axis, parameterCode) => {
+  addVertexParameterBinding: (shapeId, vertexIndex, axis, parameterCode, displayValue) => {
     const key = `${shapeId}_${vertexIndex}_${axis}`;
     const newBindings = new Map(get().vertexParameterBindings);
-    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode });
+    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode, displayValue });
     set({ vertexParameterBindings: newBindings });
-    console.log(`Vertex binding added: ${key} -> ${parameterCode}`);
+    console.log(`Vertex binding added: ${key} -> ${parameterCode || displayValue}`);
+  },
+
+  updateVertexParameterBindingValue: (shapeId, vertexIndex, axis, displayValue) => {
+    const key = `${shapeId}_${vertexIndex}_${axis}`;
+    const newBindings = new Map(get().vertexParameterBindings);
+    const existing = newBindings.get(key);
+    if (existing) {
+      newBindings.set(key, { ...existing, displayValue });
+      set({ vertexParameterBindings: newBindings });
+      console.log(`Vertex binding value updated: ${key} -> ${displayValue}`);
+    }
   },
 
   removeVertexParameterBinding: (shapeId, vertexIndex) => {

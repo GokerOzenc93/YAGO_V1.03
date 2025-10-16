@@ -559,15 +559,12 @@ const Scene: React.FC = () => {
 
     if (isParameter) {
       // Store parameter code for later updates and create binding
-      setVertexEditMode({
-        parameterCode: value,
-        movementValue: null,
-      });
       addVertexParameterBinding(
         editingShapeId,
         vertexEditMode.selectedVertexIndex,
         vertexEditMode.activeAxis!,
-        value
+        value,
+        undefined
       );
       console.log(`Vertex linked to parameter: ${value}`);
     } else {
@@ -575,10 +572,15 @@ const Scene: React.FC = () => {
       const numericValue = parseFloat(value);
       if (!isNaN(numericValue)) {
         const baseValue = convertToBaseUnit(numericValue);
-        setVertexEditMode({
-          movementValue: baseValue,
-          parameterCode: null,
-        });
+
+        // Create binding with display value
+        addVertexParameterBinding(
+          editingShapeId,
+          vertexEditMode.selectedVertexIndex,
+          vertexEditMode.activeAxis!,
+          undefined,
+          numericValue
+        );
 
         // Apply vertex movement
         applyVertexMovement(shape, vertexEditMode.selectedVertexIndex, vertexEditMode.activeAxis, baseValue);
@@ -680,7 +682,7 @@ const Scene: React.FC = () => {
   // Listen for parameter updates and apply to bound vertices
   useEffect(() => {
     const handleParameterUpdate = (event) => {
-      const { code, baseValue } = event.detail;
+      const { code, value, baseValue } = event.detail;
 
       // Find all vertex bindings for this parameter
       const bindingsToUpdate = Array.from(vertexParameterBindings.entries())
@@ -688,13 +690,20 @@ const Scene: React.FC = () => {
 
       if (bindingsToUpdate.length === 0) return;
 
-      console.log(`Updating ${bindingsToUpdate.length} vertices for parameter ${code} = ${baseValue}`);
+      console.log(`Updating ${bindingsToUpdate.length} vertices for parameter ${code} = ${value}`);
 
-      // Apply movement to each bound vertex
+      // Apply movement to each bound vertex and update display value
       bindingsToUpdate.forEach(([key, binding]) => {
         const shape = shapes.find(s => s.id === binding.shapeId);
         if (shape) {
           applyVertexMovement(shape, binding.vertexIndex, binding.axis, baseValue);
+          // Update display value in binding
+          useAppStore.getState().updateVertexParameterBindingValue(
+            binding.shapeId,
+            binding.vertexIndex,
+            binding.axis,
+            value
+          );
         }
       });
     };

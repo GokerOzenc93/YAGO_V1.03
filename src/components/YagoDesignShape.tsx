@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { TransformControls } from '@react-three/drei';
+import { TransformControls, Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
@@ -46,6 +46,8 @@ const YagoDesignShape: React.FC<Props> = ({
     vertexEditMode,
     setVertexEditMode,
     resetVertexEditMode,
+    vertexParameterBindings,
+    measurementUnit,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -719,7 +721,7 @@ const YagoDesignShape: React.FC<Props> = ({
               />
             </mesh>
 
-            {/* Red Arrow for Active Axis */}
+            {/* Red Arrow for Active Axis (during selection) */}
             {isSelectedVertex && vertexEditMode.activeAxis && (() => {
               const axis = vertexEditMode.activeAxis;
               const direction = new THREE.Vector3(
@@ -740,6 +742,74 @@ const YagoDesignShape: React.FC<Props> = ({
                 />
               );
             })()}
+
+            {/* Display arrows and values for confirmed bindings */}
+            {['x+', 'x-', 'y+', 'y-', 'z+', 'z-'].map((axis) => {
+              const bindingKey = `${shape.id}_${index}_${axis}`;
+              const binding = vertexParameterBindings.get(bindingKey);
+
+              if (!binding) return null;
+
+              const direction = new THREE.Vector3(
+                axis === 'x+' ? 1 : axis === 'x-' ? -1 : 0,
+                axis === 'y+' ? 1 : axis === 'y-' ? -1 : 0,
+                axis === 'z+' ? 1 : axis === 'z-' ? -1 : 0
+              );
+
+              const arrowLength = 100;
+              const arrowEndPos = new THREE.Vector3(...worldPos).add(
+                direction.clone().multiplyScalar(arrowLength)
+              );
+
+              // Format display text
+              let displayText = '';
+              if (binding.parameterCode && binding.displayValue !== undefined) {
+                // Show "a=200" format
+                displayText = `${binding.parameterCode}=${binding.displayValue.toFixed(0)}`;
+              } else if (binding.parameterCode) {
+                // Show just parameter code (waiting for value)
+                displayText = binding.parameterCode;
+              } else if (binding.displayValue !== undefined) {
+                // Show just the value
+                displayText = `${binding.displayValue.toFixed(0)}`;
+              }
+
+              return (
+                <group key={bindingKey}>
+                  {/* Persistent Arrow */}
+                  <arrowHelper
+                    args={[
+                      direction,
+                      new THREE.Vector3(...worldPos),
+                      arrowLength,
+                      0xff0000,
+                      30,
+                      20
+                    ]}
+                  />
+
+                  {/* Label at arrow tip */}
+                  {displayText && (
+                    <Html
+                      position={[arrowEndPos.x, arrowEndPos.y, arrowEndPos.z]}
+                      style={{
+                        background: 'rgba(255, 0, 0, 0.9)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      }}
+                    >
+                      {displayText} {measurementUnit}
+                    </Html>
+                  )}
+                </group>
+              );
+            })}
           </group>
         );
       })}
