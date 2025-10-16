@@ -556,6 +556,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             height={currentHeight}
             depth={currentDepth}
             convertToDisplayUnit={convertToDisplayUnit}
+            convertToBaseUnit={convertToBaseUnit}
           />
         </div>
       </div>
