@@ -71,13 +71,15 @@ const YagoDesignShape: React.FC<Props> = ({
 
   // Generate stable edge ID based on vertex positions
   const getEdgeId = useCallback((start: THREE.Vector3, end: THREE.Vector3) => {
-    // Sort coordinates to make ID direction-independent
-    const [p1, p2] = start.x < end.x || (start.x === end.x && start.y < end.y) || (start.x === end.x && start.y === end.y && start.z < end.z)
-      ? [start, end]
-      : [end, start];
+    const p1 = `${start.x.toFixed(3)},${start.y.toFixed(3)},${start.z.toFixed(3)}`;
+    const p2 = `${end.x.toFixed(3)},${end.y.toFixed(3)},${end.z.toFixed(3)}`;
 
-    return `${shape.id}-edge-${p1.x.toFixed(3)},${p1.y.toFixed(3)},${p1.z.toFixed(3)}-${p2.x.toFixed(3)},${p2.y.toFixed(3)},${p2.z.toFixed(3)}`;
-  }, [shape.id]);
+    if (p1 < p2) {
+      return `edge-${p1}-${p2}`;
+    } else {
+      return `edge-${p2}-${p1}`;
+    }
+  }, []);
 
   // Create individual line segments for edge detection - update when edges change
   const lineSegments = useMemo(() => {

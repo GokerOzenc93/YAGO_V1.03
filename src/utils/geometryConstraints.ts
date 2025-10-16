@@ -75,13 +75,36 @@ function extractEdges(positions: Float32Array): Array<{ id: string; start: THREE
     const v3 = new THREE.Vector3(positions[i + 6], positions[i + 7], positions[i + 8]);
 
     edges.push(
-      { id: `${i}_0`, start: v1, end: v2 },
-      { id: `${i}_1`, start: v2, end: v3 },
-      { id: `${i}_2`, start: v3, end: v1 }
+      {
+        id: makeEdgeId(v1, v2),
+        start: v1,
+        end: v2
+      },
+      {
+        id: makeEdgeId(v2, v3),
+        start: v2,
+        end: v3
+      },
+      {
+        id: makeEdgeId(v3, v1),
+        start: v3,
+        end: v1
+      }
     );
   }
 
   return edges;
+}
+
+function makeEdgeId(v1: THREE.Vector3, v2: THREE.Vector3): string {
+  const p1 = `${v1.x.toFixed(3)},${v1.y.toFixed(3)},${v1.z.toFixed(3)}`;
+  const p2 = `${v2.x.toFixed(3)},${v2.y.toFixed(3)},${v2.z.toFixed(3)}`;
+
+  if (p1 < p2) {
+    return `edge-${p1}-${p2}`;
+  } else {
+    return `edge-${p2}-${p1}`;
+  }
 }
 
 function getEdgeAxis(start: THREE.Vector3, end: THREE.Vector3): 'x' | 'y' | 'z' {
