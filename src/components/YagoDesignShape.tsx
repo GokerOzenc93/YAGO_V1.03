@@ -7,6 +7,7 @@ import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode, OrthoMode } from '../store/appStore';
 import { applyOrthoConstraint } from '../utils/orthoUtils';
+import { buildConstraintsFromEdgeFormulas, applyConstraintsToGeometry } from '../utils/geometryConstraints';
 
 // New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
@@ -45,6 +46,7 @@ const YagoDesignShape: React.FC<Props> = ({
     edgeMeasurements,
     setEdgeMeasurement,
     getEdgeMeasurement,
+    evaluateFormula,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -523,108 +525,52 @@ const YagoDesignShape: React.FC<Props> = ({
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
 
-    // If formula is provided, store it in shape's edgeFormulas
-    if (formula) {
-      const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
-
-      const newFormula = {
-        edgeId: edgeId,
-        start: [segment.start.x, segment.start.y, segment.start.z] as [number, number, number],
-        end: [segment.end.x, segment.end.y, segment.end.z] as [number, number, number],
-        formula: formula,
-        originalLength: newValue,
-        currentValue: newValue
-      };
-
-      let updatedFormulas;
-      if (existingIndex >= 0) {
-        updatedFormulas = [...currentFormulas];
-        updatedFormulas[existingIndex] = newFormula;
-      } else {
-        updatedFormulas = [...currentFormulas, newFormula];
-      }
-
-      console.log(`📝 Saved edge formula: edge ${edgeId} = "${formula}"`);
-
-      // Update shape with formula
-      updateShape(shape.id, { edgeFormulas: updatedFormulas });
-    }
-
-    // Get current edge length in local space
-    const localStart = segment.start.clone();
-    const localEnd = segment.end.clone();
-    const currentLocalLength = localStart.distanceTo(localEnd);
-
     // newValue is already in mm (display unit), so convert to base unit
     const newBaseLength = convertToBaseUnit(newValue);
 
-    // Determine edge axis and direction
-    const edgeVector = new THREE.Vector3().subVectors(localEnd, localStart);
-    const absX = Math.abs(edgeVector.x);
-    const absY = Math.abs(edgeVector.y);
-    const absZ = Math.abs(edgeVector.z);
+    // Update or add edge formula
+    const currentFormulas = shape.edgeFormulas || [];
+    const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
 
-    // Find dominant axis
-    let axis: 'x' | 'y' | 'z';
+    const newFormula = {
+      edgeId: edgeId,
+      start: [segment.start.x, segment.start.y, segment.start.z] as [number, number, number],
+      end: [segment.end.x, segment.end.y, segment.end.z] as [number, number, number],
+      formula: formula || newValue.toString(),
+      originalLength: newValue,
+      currentValue: newValue
+    };
 
-    if (absX > absY && absX > absZ) {
-      axis = 'x';
-    } else if (absY > absX && absY > absZ) {
-      axis = 'y';
+    let updatedFormulas;
+    if (existingIndex >= 0) {
+      updatedFormulas = [...currentFormulas];
+      updatedFormulas[existingIndex] = newFormula;
     } else {
-      axis = 'z';
+      updatedFormulas = [...currentFormulas, newFormula];
     }
 
-    // Clone geometry for modification
-    const geometry = shape.geometry.clone();
-    const positions = geometry.attributes.position.array as Float32Array;
-    const tolerance = 0.001;
+    console.log(`📝 Saved edge constraint: edge ${edgeId} = "${newFormula.formula}"`);
 
-    // Determine which endpoint to keep fixed (origin side - minimum coordinate)
-    const fixedPoint = axis === 'x' && localStart.x < localEnd.x ? localStart :
-                       axis === 'x' && localStart.x >= localEnd.x ? localEnd :
-                       axis === 'y' && localStart.y < localEnd.y ? localStart :
-                       axis === 'y' && localStart.y >= localEnd.y ? localEnd :
-                       axis === 'z' && localStart.z < localEnd.z ? localStart :
-                       localEnd;
-
-    const movingPoint = fixedPoint === localStart ? localEnd : localStart;
-
-    // Calculate new position for moving point
-    const newMovingPoint = fixedPoint.clone();
-    if (axis === 'x') {
-      newMovingPoint.x = fixedPoint.x + newBaseLength * (movingPoint.x > fixedPoint.x ? 1 : -1);
-    } else if (axis === 'y') {
-      newMovingPoint.y = fixedPoint.y + newBaseLength * (movingPoint.y > fixedPoint.y ? 1 : -1);
-    } else {
-      newMovingPoint.z = fixedPoint.z + newBaseLength * (movingPoint.z > fixedPoint.z ? 1 : -1);
-    }
-
-    console.log(`📐 Edge axis: ${axis}, current: ${currentLocalLength.toFixed(2)}, new: ${newBaseLength.toFixed(2)}`);
-    console.log(`   Fixed:`, fixedPoint, 'Moving:', movingPoint, '→', newMovingPoint);
-
-    // Update all vertices that should move
-    for (let i = 0; i < positions.length; i += 3) {
-      const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
-
-      // Check if this vertex is on the moving side
-      if (vertex.distanceTo(movingPoint) < tolerance) {
-        // Set vertex to new position
-        positions[i] = newMovingPoint.x;
-        positions[i + 1] = newMovingPoint.y;
-        positions[i + 2] = newMovingPoint.z;
+    // Build constraints from ALL edge formulas (including the new one)
+    const constraints = buildConstraintsFromEdgeFormulas(
+      shape.geometry,
+      updatedFormulas,
+      (f) => {
+        const result = evaluateFormula(f);
+        return result !== null ? convertToBaseUnit(result) : null;
       }
-    }
+    );
 
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeBoundingBox();
-    geometry.computeVertexNormals();
-    geometry.computeBoundingSphere();
+    // Apply all constraints to geometry at once
+    const newGeometry = applyConstraintsToGeometry(shape.geometry, constraints);
 
-    updateShape(shape.id, { geometry });
+    // Update shape with new geometry and formulas
+    updateShape(shape.id, {
+      geometry: newGeometry,
+      edgeFormulas: updatedFormulas
+    });
 
-    console.log(`✅ Edge (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
+    console.log(`✅ Edge (${edgeId}) constrained to ${newValue.toFixed(2)} mm with ${constraints.length} total constraints applied`);
   }, [selectedEdgeId, lineSegments, shape, updateShape, setEdgeMeasurement, convertToBaseUnit, convertToDisplayUnit]);
 
   // Listen for edge measurement updates from Terminal
@@ -651,6 +597,7 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
     };
   }, [shape.id, selectedEdgeId, handleMeasurementUpdate]);
+
 
   const handleClick = (e: any) => {
     // Ruler mode - handle edge selection
@@ -917,8 +864,29 @@ const YagoDesignShape: React.FC<Props> = ({
             showZ={true}
             enabled={true}
             space="local"
-            onObjectChange={() => {
-              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
+            onMouseUp={() => {
+              console.log('🎯 TRANSFORM COMPLETE - Mouse released');
+
+              // Re-apply constraints after transform to maintain edge measurements
+              if (shape.edgeFormulas && shape.edgeFormulas.length > 0) {
+                setTimeout(() => {
+                  console.log('🔗 Re-applying constraints after transform');
+                  const constraints = buildConstraintsFromEdgeFormulas(
+                    shape.geometry,
+                    shape.edgeFormulas,
+                    (formula) => {
+                      const result = evaluateFormula(formula);
+                      return result !== null ? convertToBaseUnit(result) : null;
+                    }
+                  );
+
+                  if (constraints.length > 0) {
+                    const newGeometry = applyConstraintsToGeometry(shape.geometry, constraints);
+                    updateShape(shape.id, { geometry: newGeometry });
+                    console.log(`✅ Re-applied ${constraints.length} constraints after transform`);
+                  }
+                }, 50);
+              }
             }}
           />
         )}
