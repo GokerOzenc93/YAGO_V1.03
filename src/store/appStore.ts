@@ -280,6 +280,28 @@ interface AppState {
   showVertexPoints: boolean;
   setShowVertexPoints: (show: boolean) => void;
   toggleVertexPoints: () => void;
+  // Vertex edit mode
+  vertexEditMode: {
+    isActive: boolean;
+    selectedVertexIndex: number | null;
+    hoveredVertexIndex: number | null;
+    activeAxis: 'x' | 'y' | 'z' | null;
+    movementValue: number | null;
+    parameterCode: string | null;
+  };
+  setVertexEditMode: (mode: Partial<{
+    isActive: boolean;
+    selectedVertexIndex: number | null;
+    hoveredVertexIndex: number | null;
+    activeAxis: 'x' | 'y' | 'z' | null;
+    movementValue: number | null;
+    parameterCode: string | null;
+  }>) => void;
+  resetVertexEditMode: () => void;
+  // Vertex-parameter bindings
+  vertexParameterBindings: Map<string, { shapeId: string; vertexIndex: number; axis: string; parameterCode: string; }>;
+  addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode: string) => void;
+  removeVertexParameterBinding: (shapeId: string, vertexIndex: number) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -412,8 +434,69 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleVertexPoints: () => {
     const { showVertexPoints } = get();
-    set({ showVertexPoints: !showVertexPoints });
-    console.log(`Vertex points toggled: ${!showVertexPoints}`);
+    const newValue = !showVertexPoints;
+    set({ showVertexPoints: newValue });
+
+    // Reset vertex edit mode when toggling off
+    if (!newValue) {
+      get().resetVertexEditMode();
+    }
+
+    console.log(`Vertex points toggled: ${newValue}`);
+  },
+
+  // Vertex edit mode
+  vertexEditMode: {
+    isActive: false,
+    selectedVertexIndex: null,
+    hoveredVertexIndex: null,
+    activeAxis: null,
+    movementValue: null,
+    parameterCode: null,
+  },
+
+  setVertexEditMode: (updates) => {
+    set((state) => ({
+      vertexEditMode: {
+        ...state.vertexEditMode,
+        ...updates,
+      },
+    }));
+  },
+
+  resetVertexEditMode: () => {
+    set({
+      vertexEditMode: {
+        isActive: false,
+        selectedVertexIndex: null,
+        hoveredVertexIndex: null,
+        activeAxis: null,
+        movementValue: null,
+        parameterCode: null,
+      },
+    });
+    console.log('Vertex edit mode reset');
+  },
+
+  // Vertex-parameter bindings
+  vertexParameterBindings: new Map(),
+
+  addVertexParameterBinding: (shapeId, vertexIndex, axis, parameterCode) => {
+    const key = `${shapeId}_${vertexIndex}_${axis}`;
+    const newBindings = new Map(get().vertexParameterBindings);
+    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode });
+    set({ vertexParameterBindings: newBindings });
+    console.log(`Vertex binding added: ${key} -> ${parameterCode}`);
+  },
+
+  removeVertexParameterBinding: (shapeId, vertexIndex) => {
+    const newBindings = new Map(get().vertexParameterBindings);
+    const keysToRemove = Array.from(newBindings.keys()).filter(key =>
+      key.startsWith(`${shapeId}_${vertexIndex}_`)
+    );
+    keysToRemove.forEach(key => newBindings.delete(key));
+    set({ vertexParameterBindings: newBindings });
+    console.log(`Vertex bindings removed for: ${shapeId}_${vertexIndex}`);
   },
   
   // Snap settings - all enabled by default

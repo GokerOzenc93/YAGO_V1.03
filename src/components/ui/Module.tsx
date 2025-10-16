@@ -224,6 +224,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     setCustomParameters(prev => prev.map(p =>
       p.id === id ? { ...p, result: displayValue } : p
     ));
+
+    // Dispatch parameter update event for vertex movement
+    const parameterUpdateEvent = new CustomEvent('parameterUpdated', {
+      detail: {
+        code: param.description,
+        value: evaluatedValue,
+        baseValue: convertToBaseUnit(evaluatedValue),
+      }
+    });
+    window.dispatchEvent(parameterUpdateEvent);
+    console.log(`Parameter ${param.description} updated: ${displayValue}`);
   };
 
   return (

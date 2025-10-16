@@ -43,6 +43,9 @@ const YagoDesignShape: React.FC<Props> = ({
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
     showVertexPoints,
+    vertexEditMode,
+    setVertexEditMode,
+    resetVertexEditMode,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -647,19 +650,96 @@ const YagoDesignShape: React.FC<Props> = ({
         )}
 
       {/* 🎯 VERTEX POINTS - Show all vertex points when enabled */}
-      {showVertexPoints && isBeingEdited && vertexPositions.map((pos, index) => (
-        <mesh
-          key={`vertex-${index}`}
-          position={[
-            pos[0] * shape.scale[0] + shape.position[0],
-            pos[1] * shape.scale[1] + shape.position[1],
-            pos[2] * shape.scale[2] + shape.position[2]
-          ]}
-        >
-          <sphereGeometry args={[15, 16, 16]} />
-          <meshBasicMaterial color="#000000" depthTest={false} />
-        </mesh>
-      ))}
+      {showVertexPoints && isBeingEdited && vertexPositions.map((pos, index) => {
+        const worldPos = [
+          pos[0] * shape.scale[0] + shape.position[0],
+          pos[1] * shape.scale[1] + shape.position[1],
+          pos[2] * shape.scale[2] + shape.position[2]
+        ] as [number, number, number];
+
+        const isHovered = vertexEditMode.hoveredVertexIndex === index;
+        const isSelectedVertex = vertexEditMode.selectedVertexIndex === index;
+
+        return (
+          <group key={`vertex-${index}`}>
+            {/* Vertex Point */}
+            <mesh
+              position={worldPos}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                setVertexEditMode({ hoveredVertexIndex: index });
+              }}
+              onPointerOut={(e) => {
+                e.stopPropagation();
+                if (vertexEditMode.hoveredVertexIndex === index) {
+                  setVertexEditMode({ hoveredVertexIndex: null });
+                }
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+
+                // If this vertex is already selected, cycle through axes
+                if (isSelectedVertex) {
+                  const axisOrder: Array<'x' | 'y' | 'z' | null> = ['x', 'y', 'z', null];
+                  const currentAxisIndex = vertexEditMode.activeAxis
+                    ? axisOrder.indexOf(vertexEditMode.activeAxis)
+                    : -1;
+                  const nextAxis = axisOrder[(currentAxisIndex + 1) % axisOrder.length];
+
+                  if (nextAxis === null) {
+                    // Reset selection
+                    resetVertexEditMode();
+                  } else {
+                    setVertexEditMode({ activeAxis: nextAxis });
+                  }
+                } else {
+                  // Select this vertex and start with X axis
+                  setVertexEditMode({
+                    selectedVertexIndex: index,
+                    activeAxis: 'x',
+                    isActive: true,
+                  });
+                }
+
+                console.log(`Vertex ${index} clicked, axis: ${vertexEditMode.activeAxis}`);
+              }}
+              onContextMenu={(e) => {
+                e.stopPropagation();
+                // Right click to confirm and show measurement input
+                if (isSelectedVertex && vertexEditMode.activeAxis) {
+                  console.log(`Vertex ${index} confirmed on axis ${vertexEditMode.activeAxis}`);
+                  // This will trigger measurement input in Scene
+                  setVertexEditMode({ isActive: true });
+                }
+              }}
+            >
+              <sphereGeometry args={[15, 16, 16]} />
+              <meshBasicMaterial
+                color={isSelectedVertex ? '#ff0000' : isHovered ? '#ff6600' : '#000000'}
+                depthTest={false}
+              />
+            </mesh>
+
+            {/* Red Arrow for Active Axis */}
+            {isSelectedVertex && vertexEditMode.activeAxis && (
+              <arrowHelper
+                args={[
+                  new THREE.Vector3(
+                    vertexEditMode.activeAxis === 'x' ? 1 : 0,
+                    vertexEditMode.activeAxis === 'y' ? 1 : 0,
+                    vertexEditMode.activeAxis === 'z' ? 1 : 0
+                  ),
+                  new THREE.Vector3(...worldPos),
+                  100,
+                  0xff0000,
+                  30,
+                  20
+                ]}
+              />
+            )}
+          </group>
+        );
+      })}
     </group>
   );
 };

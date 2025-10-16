@@ -184,6 +184,11 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode, // 🎯 NEW: Get current view mode
+    vertexEditMode,
+    setVertexEditMode,
+    resetVertexEditMode,
+    addVertexParameterBinding,
+    vertexParameterBindings,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -204,6 +209,9 @@ const Scene: React.FC = () => {
     useState(null);
   const [measurementInput, setMeasurementInput] = useState('');
   const [contextMenu, setContextMenu] = useState({ visible: false, position: { x: 0, y: 0 }, shape: null });
+
+  // Vertex movement input
+  const [vertexMeasurementInput, setVertexMeasurementInput] = useState('');
 
   // Panel-related state variables (now unused but kept for compatibility)
   const [shapePanels, setShapePanels] = useState({});
@@ -534,6 +542,107 @@ const Scene: React.FC = () => {
     }
   }, [measurementOverlay]);
 
+  // Vertex measurement submit handler
+  const handleVertexMeasurementSubmit = (e) => {
+    e.preventDefault();
+
+    if (!editingShapeId || vertexEditMode.selectedVertexIndex === null) return;
+
+    const shape = shapes.find(s => s.id === editingShapeId);
+    if (!shape) return;
+
+    const value = vertexMeasurementInput.trim();
+    if (!value) return;
+
+    // Check if it's a parameter code (alphabetic)
+    const isParameter = /^[a-zA-Z][a-zA-Z0-9]*$/.test(value);
+
+    if (isParameter) {
+      // Store parameter code for later updates and create binding
+      setVertexEditMode({
+        parameterCode: value,
+        movementValue: null,
+      });
+      addVertexParameterBinding(
+        editingShapeId,
+        vertexEditMode.selectedVertexIndex,
+        vertexEditMode.activeAxis!,
+        value
+      );
+      console.log(`Vertex linked to parameter: ${value}`);
+    } else {
+      // Try to evaluate as numeric expression
+      const numericValue = parseFloat(value);
+      if (!isNaN(numericValue)) {
+        const baseValue = convertToBaseUnit(numericValue);
+        setVertexEditMode({
+          movementValue: baseValue,
+          parameterCode: null,
+        });
+
+        // Apply vertex movement
+        applyVertexMovement(shape, vertexEditMode.selectedVertexIndex, vertexEditMode.activeAxis, baseValue);
+      }
+    }
+
+    setVertexMeasurementInput('');
+    resetVertexEditMode();
+  };
+
+  // Apply vertex movement
+  const applyVertexMovement = (shape, vertexIndex, axis, distance) => {
+    if (!axis || distance === null) return;
+
+    console.log(`Moving vertex ${vertexIndex} on ${axis} axis by ${distance}`);
+
+    // Clone the geometry
+    const newGeometry = shape.geometry.clone();
+    const positions = newGeometry.attributes.position;
+
+    // Get vertex positions
+    const vertexMap = new Map<string, number[]>();
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+      const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+
+      if (!vertexMap.has(key)) {
+        vertexMap.set(key, [x, y, z]);
+      }
+    }
+
+    const uniqueVertices = Array.from(vertexMap.values());
+    if (vertexIndex >= uniqueVertices.length) return;
+
+    const targetVertex = uniqueVertices[vertexIndex];
+    const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+
+    // Update all matching vertices
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+
+      if (
+        Math.abs(x - targetVertex[0]) < 0.0001 &&
+        Math.abs(y - targetVertex[1]) < 0.0001 &&
+        Math.abs(z - targetVertex[2]) < 0.0001
+      ) {
+        const currentValue = positions.getComponent(i, axisIndex);
+        positions.setComponent(i, axisIndex, currentValue + distance / shape.scale[axisIndex]);
+      }
+    }
+
+    positions.needsUpdate = true;
+    newGeometry.computeVertexNormals();
+    newGeometry.computeBoundingBox();
+
+    // Update shape
+    updateShape(shape.id, { geometry: newGeometry });
+    console.log(`Vertex ${vertexIndex} moved successfully`);
+  };
+
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir
   const handleFaceSelect = (faceIndex) => {
     // Add face to the selected faces list in EditMode
@@ -562,6 +671,32 @@ const Scene: React.FC = () => {
 
   // Scene referansını al
   const [sceneRef, setSceneRef] = useState(null);
+
+  // Listen for parameter updates and apply to bound vertices
+  useEffect(() => {
+    const handleParameterUpdate = (event) => {
+      const { code, baseValue } = event.detail;
+
+      // Find all vertex bindings for this parameter
+      const bindingsToUpdate = Array.from(vertexParameterBindings.entries())
+        .filter(([_, binding]) => binding.parameterCode === code);
+
+      if (bindingsToUpdate.length === 0) return;
+
+      console.log(`Updating ${bindingsToUpdate.length} vertices for parameter ${code} = ${baseValue}`);
+
+      // Apply movement to each bound vertex
+      bindingsToUpdate.forEach(([key, binding]) => {
+        const shape = shapes.find(s => s.id === binding.shapeId);
+        if (shape) {
+          applyVertexMovement(shape, binding.vertexIndex, binding.axis as 'x' | 'y' | 'z', baseValue);
+        }
+      });
+    };
+
+    window.addEventListener('parameterUpdated', handleParameterUpdate);
+    return () => window.removeEventListener('parameterUpdated', handleParameterUpdate);
+  }, [vertexParameterBindings, shapes]);
 
   return (
     <div className="w-full h-full bg-gray-100">
@@ -771,6 +906,64 @@ const Scene: React.FC = () => {
                 {measurementOverlay.unit}
               </span>
             </form>
+          </div>,
+          document.body
+        )}
+
+      {/* Vertex Movement Input Overlay */}
+      {vertexEditMode.isActive &&
+        vertexEditMode.selectedVertexIndex !== null &&
+        vertexEditMode.activeAxis &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 2000,
+            }}
+            className="bg-white rounded-md shadow-2xl p-4 border-2 border-orange-400"
+          >
+            <div className="mb-2 text-sm font-medium text-slate-800">
+              Move Vertex {vertexEditMode.selectedVertexIndex} on {vertexEditMode.activeAxis.toUpperCase()} axis
+            </div>
+            <form
+              onSubmit={handleVertexMeasurementSubmit}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={vertexMeasurementInput}
+                onChange={(e) => setVertexMeasurementInput(e.target.value)}
+                className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400"
+                placeholder="Distance or Code"
+                autoFocus
+              />
+              <span className="text-sm text-gray-600">
+                {measurementUnit}
+              </span>
+              <button
+                type="submit"
+                className="px-3 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setVertexMeasurementInput('');
+                  resetVertexEditMode();
+                }}
+                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+            </form>
+            <div className="mt-2 text-xs text-gray-500">
+              Enter a number or a parameter code (e.g., "W" or "100")
+            </div>
           </div>,
           document.body
         )}
