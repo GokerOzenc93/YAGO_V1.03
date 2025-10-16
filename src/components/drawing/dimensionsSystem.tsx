@@ -389,24 +389,29 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const rect = gl.domElement.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
+
     const mouseScreenPos = new THREE.Vector2(event.clientX - rect.left, event.clientY - rect.top);
 
     raycaster.setFromCamera({ x, y }, camera);
-    
+
     let worldPoint = new THREE.Vector3();
     let intersectionSuccess = false;
-    
+
     // Positioning modunda iken, ölçü çizgisini perpendicular düzlemde konumlandır
     if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
       // Seçilen iki noktanın ortalama yüksekliğinde düzlem oluştur
       const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -averageY);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
-    } else {
-      // Normal mod: Y=0 düzlemi
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    } else if (dimensionsState.firstPoint) {
+      // İlk nokta seçildikten sonra, aynı Y yüksekliğinde düzlem kullan
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -dimensionsState.firstPoint.y);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    } else {
+      // Hiç nokta seçilmediğinde: 3D şekillerin kenarlarıyla raycast yap
+      // Bu sayede doğru yükseklikteki noktaları seçebiliriz
+      const planeY0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      intersectionSuccess = raycaster.ray.intersectPlane(planeY0, worldPoint);
     }
     
     if (!intersectionSuccess) {
@@ -422,29 +427,34 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning && !dimensionsState.secondPoint) {
-      // STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
+      // STANDART SNAP SYSTEM KULLAN - Arttırılmış tolerans ile
+      const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 8 : 3);
+
       const snapPoints = findSnapPoints(
         worldPoint,
-        completedShapes, 
-        shapes, 
+        completedShapes,
+        shapes,
         snapSettings,
-        snapTolerance * 2,
+        perspectiveTolerance,
         null,
         null,
         camera,
         gl.domElement,
         mouseScreenPos
       );
-      
+
       if (snapPoints.length > 0) {
         const closestSnap = snapPoints[0];
         setDimensionsState(prev => ({ ...prev, currentSnapPoint: closestSnap }));
+        console.log(`🎯 DIMENSION SNAP: ${closestSnap.type} at [${closestSnap.point.x.toFixed(1)}, ${closestSnap.point.y.toFixed(1)}, ${closestSnap.point.z.toFixed(1)}]`);
         return closestSnap.point;
       } else {
         setDimensionsState(prev => ({ ...prev, currentSnapPoint: null }));
+        // Grid snap - sabit Y yüksekliğinde
+        const yHeight = dimensionsState.firstPoint ? dimensionsState.firstPoint.y : 0;
         return new THREE.Vector3(
           snapToGrid(worldPoint.x, gridSize),
-          0,
+          yHeight,
           snapToGrid(worldPoint.z, gridSize)
         );
       }
