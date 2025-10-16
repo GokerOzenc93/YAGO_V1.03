@@ -258,13 +258,13 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           const event = new CustomEvent('updateEdgeMeasurement', {
             detail: {
               shapeId: shape.id,
-              edgeIndex: edgeFormula.edgeIndex,
+              edgeId: edgeFormula.edgeId,
               newValue,
               formula: edgeFormula.formula
             }
           });
           window.dispatchEvent(event);
-          console.log(`🔄 Auto-updated edge ${edgeFormula.edgeIndex} of shape ${shape.id} to ${newValue} mm`);
+          console.log(`🔄 Auto-updated edge ${edgeFormula.edgeId} of shape ${shape.id} to ${newValue} mm`);
         }
       });
     });

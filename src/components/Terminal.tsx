@@ -13,9 +13,8 @@ const Terminal: React.FC = () => {
   } | null>(null);
   const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<{
     shapeId: string;
-    edgeIndex: number;
-    currentLength: number;
     edgeId: string;
+    currentLength: number;
   } | null>(null);
 
   // Expose terminal input ref globally for external focus control
@@ -137,13 +136,13 @@ const Terminal: React.FC = () => {
         const event = new CustomEvent('updateEdgeMeasurement', {
           detail: {
             shapeId: selectedEdgeInfo.shapeId,
-            edgeIndex: selectedEdgeInfo.edgeIndex,
+            edgeId: selectedEdgeInfo.edgeId,
             newValue,
             formula: trimmedCommand
           }
         });
         window.dispatchEvent(event);
-        console.log(`Terminal: Updating edge to ${newValue} mm (formula: ${trimmedCommand})`);
+        console.log(`Terminal: Updating edge ${selectedEdgeInfo.edgeId} to ${newValue} mm (formula: ${trimmedCommand})`);
         setSelectedEdgeInfo(null);
         setCommandInput('');
         return;
