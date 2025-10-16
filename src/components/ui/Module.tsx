@@ -3,7 +3,6 @@ import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
-import TechnicalDrawing2D from './TechnicalDrawing2D';
 
 interface CustomParameter {
   id: string;
@@ -53,7 +52,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [resultDepth, setResultDepth] = useState<string>('');
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
-  const [selectedView, setSelectedView] = useState<'top' | 'bottom' | 'left' | 'right' | 'front' | 'back'>('front');
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -260,14 +258,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Parameters Section - Scrollable with max 6 items */}
-        <div className="flex-shrink-0 p-4 space-y-2" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+      <div className="flex-1 p-4 space-y-2">
 
         <div className="bg-white rounded-md border border-stone-200 p-2">
-          <div className="space-y-0 divide-y divide-gray-200">
+          <div className="space-y-2">
             {canEditWidth && (
-              <div className="flex items-center gap-2 h-10 px-2 transition-all duration-200">
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   1
@@ -329,7 +325,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditHeight && (
-              <div className="flex items-center gap-2 h-10 px-2 transition-all duration-200">
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   2
@@ -391,7 +387,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditDepth && (
-              <div className="flex items-center gap-2 h-10 px-2 transition-all duration-200">
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   3
@@ -455,7 +451,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {customParameters.map((param, index) => (
               <div
                 key={param.id}
-                className="flex items-center gap-2 h-10 px-2 transition-all duration-200"
+                className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
               >
                 <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
@@ -530,35 +526,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             Circle: Only height can be edited
           </div>
         )}
-        </div>
-
-        {/* 2D Technical Drawing Section */}
-        <div className="flex-1 border-t-2 border-gray-300 p-4 bg-gray-50 overflow-hidden">
-          <div className="mb-2">
-            <label className="text-xs font-medium text-gray-700 mb-1 block">View:</label>
-            <select
-              value={selectedView}
-              onChange={(e) => setSelectedView(e.target.value as any)}
-              className="w-full h-7 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 text-black font-medium"
-            >
-              <option value="top">Top View</option>
-              <option value="bottom">Bottom View</option>
-              <option value="left">Left View</option>
-              <option value="right">Right View</option>
-              <option value="front">Front View</option>
-              <option value="back">Back View</option>
-            </select>
-          </div>
-          <TechnicalDrawing2D
-            shape={editedShape}
-            view={selectedView}
-            width={currentWidth}
-            height={currentHeight}
-            depth={currentDepth}
-            convertToDisplayUnit={convertToDisplayUnit}
-            convertToBaseUnit={convertToBaseUnit}
-          />
-        </div>
       </div>
     </div>
   );
