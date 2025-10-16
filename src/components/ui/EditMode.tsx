@@ -4,7 +4,7 @@ import { Shape } from '../../types/shapes';
 import EditModeHeader from './EditModeHeader';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
-import Module from './Module';
+import RefVolume from './RefVolume';
 import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
@@ -46,9 +46,9 @@ const EditMode: React.FC<EditModeProps> = ({
   const [volumeName, setVolumeName] = useState('AD06072');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  const MIN_WIDTH_PX = 170;
-  const MAX_WIDTH_PX = 453;
-  const [panelWidth, setPanelWidth] = useState(400);
+  const MIN_WIDTH_PX = 302;
+  const MAX_WIDTH_PX = 604;
+  const [panelWidth, setPanelWidth] = useState(340);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -594,7 +594,7 @@ const EditMode: React.FC<EditModeProps> = ({
             )}
 
             {activeMainSection === 'volume' && activeVolumeSubSection === 'parameters' && (
-              <Module editedShape={editedShape} onClose={handleBackToMain} />
+              <RefVolume editedShape={editedShape} onClose={handleBackToMain} />
             )}
 
             {activeMainSection === 'panel' && (
