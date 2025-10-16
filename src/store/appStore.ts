@@ -3,7 +3,6 @@ import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
 import { GeometryFactory } from '../lib/geometryFactory';
-import { FormulaEvaluator, createFormulaEvaluator } from '../utils/formulaEvaluator';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {
@@ -163,6 +162,21 @@ export enum OrthoMode {
   ON = 'on'
 }
 
+export interface MeasurementPoint {
+  position: THREE.Vector3;
+  shapeId: string;
+  edgeIndex?: number;
+}
+
+export interface ActiveMeasurement {
+  id: string;
+  point1: MeasurementPoint;
+  point2: MeasurementPoint | null;
+  distance: number;
+  dimension: 'width' | 'height' | 'depth' | 'custom';
+  parameterId?: string;
+}
+
 export interface SnapSettings {
   [SnapType.ENDPOINT]: boolean;
   [SnapType.MIDPOINT]: boolean;
@@ -210,9 +224,15 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  geometryUpdateVersion: number;
-  incrementGeometryVersion: () => void;
-  forceGeometryUpdate: (shapeId: string) => void;
+  // Measurement system
+  isMeasurementMode: boolean;
+  setMeasurementMode: (enabled: boolean) => void;
+  activeMeasurement: ActiveMeasurement | null;
+  setActiveMeasurement: (measurement: ActiveMeasurement | null) => void;
+  measurements: ActiveMeasurement[];
+  addMeasurement: (measurement: ActiveMeasurement) => void;
+  removeMeasurement: (id: string) => void;
+  clearMeasurements: () => void;
   // YagoDesign integration
   isYagoDesignInitialized: boolean;
   setYagoDesignInitialized: (initialized: boolean) => void;
@@ -283,11 +303,6 @@ interface AppState {
   // Dimension visibility
   visibleDimensions: Set<string>;
   setVisibleDimensions: (dimensions: Set<string>) => void;
-  formulaEvaluator: FormulaEvaluator;
-  setParameterVariable: (name: string, value: number) => void;
-  getParameterVariable: (name: string) => number | undefined;
-  evaluateFormula: (formula: string) => number | null;
-  clearParameterVariables: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -332,31 +347,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     if ([Tool.MOVE, Tool.ROTATE, Tool.SCALE].includes(tool)) {
       set({ lastTransformTool: tool });
     }
-  },
-
-  geometryUpdateVersion: 0,
-  incrementGeometryVersion: () => set((state) => ({
-    geometryUpdateVersion: state.geometryUpdateVersion + 1
-  })),
-
-  forceGeometryUpdate: (shapeId: string) => {
-    const { shapes, geometryUpdateVersion } = get();
-    const shape = shapes.find(s => s.id === shapeId);
-    if (!shape) return;
-
-    const updatedGeometry = shape.geometry.clone();
-    updatedGeometry.attributes.position.needsUpdate = true;
-    updatedGeometry.computeBoundingBox();
-    updatedGeometry.computeVertexNormals();
-
-    set((state) => ({
-      shapes: state.shapes.map(s =>
-        s.id === shapeId ? { ...s, geometry: updatedGeometry } : s
-      ),
-      geometryUpdateVersion: geometryUpdateVersion + 1
-    }));
-
-    console.log(`🔄 Force geometry update for shape ${shapeId}, version: ${geometryUpdateVersion + 1}`);
   },
   
   // YagoDesign integration
@@ -440,30 +430,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   visibleDimensions: new Set<string>(),
   setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
 
-  formulaEvaluator: createFormulaEvaluator(),
+  // Measurement system
+  isMeasurementMode: false,
+  setMeasurementMode: (enabled) => set({ isMeasurementMode: enabled }),
 
-  setParameterVariable: (name, value) => {
-    const { formulaEvaluator } = get();
-    formulaEvaluator.setVariable(name, value);
-    console.log(`📊 Parameter variable set: ${name} = ${value}`);
-  },
+  activeMeasurement: null,
+  setActiveMeasurement: (measurement) => set({ activeMeasurement: measurement }),
 
-  getParameterVariable: (name) => {
-    const { formulaEvaluator } = get();
-    return formulaEvaluator.getVariable(name);
-  },
+  measurements: [],
+  addMeasurement: (measurement) =>
+    set((state) => ({ measurements: [...state.measurements, measurement] })),
 
-  evaluateFormula: (formula) => {
-    const { formulaEvaluator } = get();
-    return formulaEvaluator.evaluateOrNull(formula);
-  },
+  removeMeasurement: (id) =>
+    set((state) => ({
+      measurements: state.measurements.filter(m => m.id !== id),
+      activeMeasurement: state.activeMeasurement?.id === id ? null : state.activeMeasurement
+    })),
 
-  clearParameterVariables: () => {
-    const { formulaEvaluator } = get();
-    formulaEvaluator.clearVariables();
-    console.log(`🗑️ All parameter variables cleared`);
-  },
-
+  clearMeasurements: () => set({ measurements: [], activeMeasurement: null }),
+  
   // Snap settings - all enabled by default
   snapSettings: {
     [SnapType.ENDPOINT]: true,
@@ -686,15 +671,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
     
   updateShape: (id, updates) =>
-    set((state) => {
-      const hasGeometryUpdate = 'geometry' in updates;
-      return {
-        shapes: state.shapes.map((shape) =>
-          shape.id === id ? { ...shape, ...updates } : shape
-        ),
-        geometryUpdateVersion: hasGeometryUpdate ? state.geometryUpdateVersion + 1 : state.geometryUpdateVersion
-      };
-    }),
+    set((state) => ({
+      shapes: state.shapes.map((shape) =>
+        shape.id === id ? { ...shape, ...updates } : shape
+      ),
+    })),
     
   deleteShape: (id) =>
     set((state) => ({

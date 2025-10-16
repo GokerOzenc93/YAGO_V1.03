@@ -1,12 +1,20 @@
-import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { TransformControls, Html } from '@react-three/drei';
+import { TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode, OrthoMode } from '../store/appStore';
 import { applyOrthoConstraint } from '../utils/orthoUtils';
+import {
+  detectFaceAtMouse,
+  addFaceHighlight,
+  clearFaceHighlight,
+  removeFaceHighlightByRowIndex,
+  clearTemporaryHighlights,
+  clearAllPersistentHighlights
+} from '../utils/faceSelection';
 
 // New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
@@ -15,8 +23,6 @@ interface Props {
   onContextMenuRequest?: (event: any, shape: Shape) => void;
   isEditMode?: boolean;
   isBeingEdited?: boolean;
-  isFaceEditMode?: boolean;
-  onFaceSelect?: (faceIndex: number) => void;
 }
 
 const YagoDesignShape: React.FC<Props> = ({
@@ -24,8 +30,6 @@ const YagoDesignShape: React.FC<Props> = ({
   onContextMenuRequest,
   isEditMode = false,
   isBeingEdited = false,
-  isFaceEditMode = false,
-  onFaceSelect,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -37,8 +41,7 @@ const YagoDesignShape: React.FC<Props> = ({
     setSelectedObjectPosition,
     viewMode,
     updateShape,
-    orthoMode,
-    geometryUpdateVersion,
+    orthoMode, // 🎯 NEW: Get ortho mode
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -46,42 +49,15 @@ const YagoDesignShape: React.FC<Props> = ({
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
 
-  // Create geometry from shape - update when geometry or version changes
+  // Create geometry from shape
   const shapeGeometry = useMemo(() => {
-    console.log(`🔄 Shape ${shape.id} geometry updated, version: ${geometryUpdateVersion}`);
     return shape.geometry;
-  }, [shape.geometry, shape.id, geometryUpdateVersion]);
+  }, [shape.geometry]);
 
-  // Create edges geometry - recreate when shape geometry changes
+  // Create edges geometry
   const edgesGeometry = useMemo(() => {
-    const edges = new THREE.EdgesGeometry(shapeGeometry);
-    console.log(`🔄 Shape ${shape.id} edges geometry recreated, version: ${geometryUpdateVersion}`);
-    return edges;
-  }, [shapeGeometry, shape.id, geometryUpdateVersion]);
-
-
-  // Force mesh geometry update when geometry changes with proper cleanup
-  useEffect(() => {
-    if (meshRef.current && shape.geometry) {
-      const oldGeometry = meshRef.current.geometry;
-
-      if (oldGeometry !== shape.geometry) {
-        meshRef.current.geometry = shape.geometry;
-        console.log(`✅ Mesh geometry updated for shape ${shape.id}, version: ${geometryUpdateVersion}`);
-      }
-    }
-  }, [shape.geometry, shape.id, geometryUpdateVersion]);
-
-  // Cleanup edges geometry when component unmounts or geometry changes
-  useEffect(() => {
-    const currentEdges = edgesGeometry;
-    return () => {
-      if (currentEdges && currentEdges.dispose) {
-        currentEdges.dispose();
-        console.log(`🗑️ Cleaned up edges geometry for shape ${shape.id}`);
-      }
-    };
-  }, [edgesGeometry, shape.id]);
+    return new THREE.EdgesGeometry(shapeGeometry);
+  }, [shapeGeometry]);
 
   // Debug: Log shape information when selected
   useEffect(() => {
@@ -274,11 +250,70 @@ const YagoDesignShape: React.FC<Props> = ({
     };
 
     const handleCreateSurfaceHighlight = (event: CustomEvent) => {
-      console.log('Surface highlight creation removed');
+      const { shapeId, faceIndex, rowId, color, confirmed, faceNumber } = event.detail;
+      
+      if (shapeId === shape.id && meshRef.current) {
+        // Create highlight mesh for the face
+        const hits = detectFaceAtMouse(
+          { clientX: 0, clientY: 0 } as any, // Dummy event
+          camera,
+          meshRef.current,
+          gl.domElement
+        );
+        
+        // Create a mock hit for the specific face
+        const mockHit = {
+          faceIndex: faceIndex,
+          object: meshRef.current,
+          face: { a: 0, b: 1, c: 2 },
+          point: new THREE.Vector3()
+        };
+        
+        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, faceNumber, rowId);
+        
+        if (highlight) {
+          // Store highlight with rowId for later management
+          surfaceHighlights.set(rowId, highlight.mesh);
+          
+          console.log(`✅ Surface highlight created for face ${faceIndex}, row ${rowId}`);
+        }
+      }
     };
 
     const handleUpdateSurfaceHighlight = (event: CustomEvent) => {
-      console.log('Surface highlight update removed');
+      const { rowId, faceIndex, role, color } = event.detail;
+      
+      // Remove old highlight
+      const oldHighlight = surfaceHighlights.get(rowId);
+      if (oldHighlight) {
+        scene.remove(oldHighlight);
+        if (oldHighlight.geometry) oldHighlight.geometry.dispose();
+        if (oldHighlight.material) {
+          if (Array.isArray(oldHighlight.material)) {
+            oldHighlight.material.forEach(mat => mat.dispose());
+          } else {
+            oldHighlight.material.dispose();
+          }
+        }
+      }
+      
+      // Create new highlight with updated color
+      if (meshRef.current) {
+        const mockHit = {
+          faceIndex: faceIndex,
+          object: meshRef.current,
+          face: { a: 0, b: 1, c: 2 },
+          point: new THREE.Vector3()
+        };
+        
+        const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, undefined, undefined);
+        
+        if (highlight) {
+          surfaceHighlights.set(rowId, highlight.mesh);
+          
+          console.log(`✅ Surface highlight updated for row ${rowId}, role: ${role}`);
+        }
+      }
     };
 
     const handleRemoveSurfaceHighlight = (event: CustomEvent) => {
@@ -352,9 +387,42 @@ const YagoDesignShape: React.FC<Props> = ({
     });
   };
   
-
-
   const handleClick = (e: any) => {
+    // New surface selection mode
+    if (isFaceSelectionActive && e.nativeEvent.button === 0) {
+      e.stopPropagation();
+      
+      const hits = detectFaceAtMouse(
+        e.nativeEvent,
+        camera,
+        meshRef.current!,
+        gl.domElement
+      );
+
+      if (hits.length === 0) {
+        console.warn('🎯 No face detected');
+        return;
+      }
+
+      const hit = hits[0];
+      if (hit.faceIndex === undefined) {
+        console.warn('🎯 No face index');
+        return;
+      }
+
+      // Send face selection event
+      const faceSelectedEvent = new CustomEvent('faceSelected', {
+        detail: {
+          faceIndex: hit.faceIndex,
+          shapeId: shape.id
+        }
+      });
+      window.dispatchEvent(faceSelectedEvent);
+      
+      console.log(`🎯 Face ${hit.faceIndex} selected on shape ${shape.id}`);
+      return;
+    }
+    
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -470,7 +538,7 @@ const YagoDesignShape: React.FC<Props> = ({
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true}
+        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
@@ -482,19 +550,17 @@ const YagoDesignShape: React.FC<Props> = ({
           position={shape.position}
           rotation={shape.rotation}
           scale={shape.scale}
-          visible={true}
+          visible={true} // Always show edges
         >
           <lineBasicMaterial
             color={getEdgeColor()}
             transparent
             opacity={getEdgeOpacity()}
-            depthTest={viewMode === ViewMode.SOLID}
+            depthTest={viewMode === ViewMode.SOLID} // 🎯 Her yerden görünür
             linewidth={getEdgeLineWidth()}
           />
         </lineSegments>
       )}
-
-
 
       {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
       {isSelected &&
@@ -519,6 +585,9 @@ const YagoDesignShape: React.FC<Props> = ({
             showZ={true}
             enabled={true}
             space="local"
+            onObjectChange={() => {
+              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
+            }}
           />
         )}
     </group>

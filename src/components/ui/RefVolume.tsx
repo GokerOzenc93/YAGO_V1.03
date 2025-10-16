@@ -1,9 +1,8 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Check, Plus, ChevronLeft } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
-import { FormulaEvaluator, FormulaVariable } from '../../utils/formulaEvaluator';
 
 interface CustomParameter {
   id: string;
@@ -23,48 +22,55 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     convertToBaseUnit,
     updateShape,
     setVisibleDimensions,
-    shapes,
-    setParameterVariable,
-    getParameterVariable,
-    evaluateFormula
+    setMeasurementMode,
+    isMeasurementMode,
+    activeMeasurement,
   } = useAppStore();
+
+  const [activeMeasurementDimension, setActiveMeasurementDimension] = useState<'width' | 'height' | 'depth' | null>(null);
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
-      return { currentWidth: 500, currentHeight: 500, currentDepth: 500 };
+      return { currentWidth: 0, currentHeight: 0, currentDepth: 0 };
     }
 
     editedShape.geometry.computeBoundingBox();
     const bbox = editedShape.geometry.boundingBox;
-    if (!bbox) return { currentWidth: 500, currentHeight: 500, currentDepth: 500 };
+
+    if (!bbox) {
+      console.warn('Geometry bounding box hesaplanamadı, varsayılan değerler kullanılıyor');
+      return { currentWidth: 500, currentHeight: 500, currentDepth: 500 };
+    }
+
+    const width = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
+    const height = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
+    const depth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
 
     return {
-      currentWidth: (bbox.max.x - bbox.min.x) * editedShape.scale[0],
-      currentHeight: (bbox.max.y - bbox.min.y) * editedShape.scale[1],
-      currentDepth: (bbox.max.z - bbox.min.z) * editedShape.scale[2],
+      currentWidth: width,
+      currentHeight: height,
+      currentDepth: depth,
     };
   }, [editedShape.geometry, editedShape.scale]);
 
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
+
   const [resultWidth, setResultWidth] = useState<string>('');
   const [resultHeight, setResultHeight] = useState<string>('');
   const [resultDepth, setResultDepth] = useState<string>('');
+
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
-  const [editingLineId, setEditingLineId] = useState<string | null>(null);
-  const [editingLineValue, setEditingLineValue] = useState<string>('');
-  const [isApplyingChanges, setIsApplyingChanges] = useState(false);
-
-  const formulaEvaluatorRef = useRef<FormulaEvaluator>(new FormulaEvaluator());
-
-  const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
-  const canEditDepth = canEditWidth;
 
   useEffect(() => {
     setVisibleDimensions(selectedDimensions);
   }, [selectedDimensions, setVisibleDimensions]);
+
+  const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
+  const canEditHeight = true;
+  const canEditDepth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
 
   useEffect(() => {
     if (!inputWidth) setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
@@ -75,283 +81,201 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  const syncFormulaVariables = useCallback(() => {
-    const evaluator = formulaEvaluatorRef.current;
-
-    evaluator.clearVariables();
-
-    evaluator.setVariable('W', convertToDisplayUnit(currentWidth));
-    evaluator.setVariable('H', convertToDisplayUnit(currentHeight));
-    evaluator.setVariable('D', convertToDisplayUnit(currentDepth));
-
-    setParameterVariable('W', convertToDisplayUnit(currentWidth));
-    setParameterVariable('H', convertToDisplayUnit(currentHeight));
-    setParameterVariable('D', convertToDisplayUnit(currentDepth));
-
-    customParameters.forEach(param => {
-      if (param.description && param.result) {
-        evaluator.setVariable(param.description, parseFloat(param.result));
-        setParameterVariable(param.description, parseFloat(param.result));
-      }
-    });
-
-    console.log('🔄 Formula variables synced:', evaluator.getAllVariables().map(v => `${v.name}=${v.value}`).join(', '));
-  }, [currentWidth, currentHeight, currentDepth, customParameters, convertToDisplayUnit, setParameterVariable]);
-
   useEffect(() => {
-    syncFormulaVariables();
-    recalculateAllParameters();
-  }, [JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
+    if (activeMeasurement && activeMeasurement.point2 && activeMeasurementDimension) {
+      const distance = activeMeasurement.distance;
+      const displayValue = convertToDisplayUnit(distance).toFixed(2);
 
-
-  const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
-    if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
-      const evaluated = evaluateExpression(input);
-      if (evaluated !== null && !isNaN(evaluated) && evaluated > 0) {
-        setter(evaluated.toFixed(2));
+      if (activeMeasurementDimension === 'width') {
+        setInputWidth(displayValue);
+        setResultWidth(displayValue);
+      } else if (activeMeasurementDimension === 'height') {
+        setInputHeight(displayValue);
+        setResultHeight(displayValue);
+      } else if (activeMeasurementDimension === 'depth') {
+        setInputDepth(displayValue);
+        setResultDepth(displayValue);
       }
+
+      setMeasurementMode(false);
+      setActiveMeasurementDimension(null);
+    }
+  }, [activeMeasurement, activeMeasurementDimension, convertToDisplayUnit, setMeasurementMode]);
+
+  const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
+    if (regex.test(value) || value === '') {
+      setter(value);
     }
   };
 
-  useEffect(() => updateDimensionResult('width', inputWidth, setResultWidth), [inputWidth, customParameters]);
-  useEffect(() => updateDimensionResult('height', inputHeight, setResultHeight), [inputHeight, customParameters]);
-  useEffect(() => updateDimensionResult('depth', inputDepth, setResultDepth), [inputDepth, customParameters]);
-
-  const applyResultChange = (dimension: 'width' | 'height' | 'depth', result: string, current: number, canEdit: boolean) => {
-    if (isApplyingChanges) return;
-    const newValue = parseFloat(result);
-    if (result && Math.abs(newValue - convertToDisplayUnit(current)) > 0.1 && !isNaN(newValue) && newValue > 0 && canEdit) {
-      setIsApplyingChanges(true);
-      applyDimensionChange(dimension, result);
-      setTimeout(() => setIsApplyingChanges(false), 200);
-    }
-  };
-
-  useEffect(() => applyResultChange('width', resultWidth, currentWidth, canEditWidth), [resultWidth]);
-  useEffect(() => applyResultChange('height', resultHeight, currentHeight, true), [resultHeight]);
-  useEffect(() => applyResultChange('depth', resultDepth, currentDepth, canEditDepth), [resultDepth]);
-
-  const evaluateExpression = (expression: string, debugLabel?: string): number | null => {
-    return formulaEvaluatorRef.current.evaluateOrNull(expression, debugLabel);
-  };
-
-  const recalculateAllParameters = useCallback(() => {
+  const evaluateExpression = (expression: string): number | null => {
     try {
-      syncFormulaVariables();
+      let processedExpression = expression;
+      const originalExpression = expression;
 
-      const updatedParams = customParameters.map(param => {
-        if (!param.value.trim()) return param;
+      processedExpression = processedExpression.replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString());
+      processedExpression = processedExpression.replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString());
+      processedExpression = processedExpression.replace(/\bD\b/g, convertToDisplayUnit(currentDepth).toString());
 
-        // Check if parameter is a constant (pure number) or formula
-        const isConstant = !isNaN(parseFloat(param.value)) && isFinite(parseFloat(param.value));
-
-        if (isConstant) {
-          // Constant parameter - never recalculate, keep original value
-          return param;
-        } else {
-          // Formula parameter - recalculate when dependencies change
-          const evaluated = evaluateExpression(param.value, `param-${param.description}`);
-          return evaluated !== null && !isNaN(evaluated)
-            ? { ...param, result: evaluated.toFixed(2) }
-            : param;
+      customParameters.forEach(param => {
+        if (param.description && param.result) {
+          const regex = new RegExp(`\\b${param.description}\\b`, 'g');
+          processedExpression = processedExpression.replace(regex, param.result);
         }
       });
 
-      const hasParamChanges = updatedParams.some((p, i) => p.result !== customParameters[i].result);
-      if (hasParamChanges) {
-        setCustomParameters(updatedParams);
+      const undefinedParams = processedExpression.match(/\b[a-zA-Z][a-zA-Z0-9]*\b/g);
+      if (undefinedParams && undefinedParams.length > 0) {
+        const validFunctions = ['abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor', 'log', 'max', 'min', 'pow', 'random', 'round', 'sin', 'sqrt', 'tan'];
+        const invalidParams = undefinedParams.filter(param => !validFunctions.includes(param.toLowerCase()));
 
-        const evaluator = formulaEvaluatorRef.current;
-        updatedParams.forEach(param => {
-          if (param.description && param.result) {
-            evaluator.setVariable(param.description, parseFloat(param.result));
-            console.log(`🔄 Updated parameter variable: ${param.description}=${param.result}`);
-          }
-        });
+        if (invalidParams.length > 0) {
+          alert(`Undefined parameter(s): ${invalidParams.join(', ')}\n\nPlease define these parameters first or check for typos.`);
+          return null;
+        }
       }
 
-    } catch (error) {
-      console.error('❌ Error during parameter recalculation:', error);
-    }
-  }, [customParameters, shapes, convertToBaseUnit, updateShape, evaluateExpression, syncFormulaVariables, convertToDisplayUnit]);
-
-  const applyDimensionChange = (dimension: 'width' | 'height' | 'depth', value: string) => {
-    try {
-      const evaluated = evaluateExpression(value);
-      if (evaluated === null || isNaN(evaluated) || evaluated <= 0) return;
-
-      if (dimension === 'width') setResultWidth(evaluated.toFixed(2));
-      if (dimension === 'height') setResultHeight(evaluated.toFixed(2));
-      if (dimension === 'depth') setResultDepth(evaluated.toFixed(2));
-
-      const newValue = convertToBaseUnit(evaluated);
-
-      if (!editedShape.geometry) {
-        console.error('❌ No geometry found for edited shape');
-        return;
+      const result = eval(processedExpression);
+      if (typeof result === 'number' && isFinite(result)) {
+        return result;
       }
-
-      editedShape.geometry.computeBoundingBox();
-      const bbox = editedShape.geometry.boundingBox;
-
-      if (!bbox) {
-        console.error('❌ Failed to compute bounding box');
-        return;
-      }
-
-      const currentScale = [...editedShape.scale];
-      const newScale = [...currentScale];
-      const oldScale = [...currentScale];
-
-      let originalDimension = 0;
-      if (dimension === 'width') {
-        originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0] || 1;
-        newScale[0] = (newValue / originalDimension) * currentScale[0];
-      } else if (dimension === 'height') {
-        originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1] || 1;
-        newScale[1] = (newValue / originalDimension) * currentScale[1];
-      } else {
-        originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2] || 1;
-        newScale[2] = (newValue / originalDimension) * currentScale[2];
-      }
-
-      const scaleRatio = [
-        newScale[0] / oldScale[0],
-        newScale[1] / oldScale[1],
-        newScale[2] / oldScale[2]
-      ];
-
-
-      updateShape(editedShape.id, {
-        scale: newScale as [number, number, number],
-        geometry: editedShape.geometry.clone(),
-      });
-
-      console.log(`✅ W/H/D updated: ${dimension} = ${evaluated}, scale ratio: [${scaleRatio.join(', ')}]`);
-    } catch (error) {
-      console.error('❌ Error applying dimension change:', error);
+      return null;
+    } catch (e) {
+      return null;
     }
   };
 
-  const handleInputChange = (setter: (val: string) => void, value: string) => {
-    setter(value);
-  };
+  const applyDimensionChange = (
+    dimension: 'width' | 'height' | 'depth',
+    value: string
+  ) => {
+    const evaluatedValue = evaluateExpression(value);
 
-
-  const handleApplyParameter = (id: string) => {
-    const param = customParameters.find(p => p.id === id);
-    if (!param?.value.trim() || !param.description?.trim()) {
-      alert('Please enter both code name and formula');
+    if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
       return;
     }
 
-    if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(param.description)) {
+    if (dimension === 'width') setResultWidth(evaluatedValue.toFixed(2));
+    if (dimension === 'height') setResultHeight(evaluatedValue.toFixed(2));
+    if (dimension === 'depth') setResultDepth(evaluatedValue.toFixed(2));
+
+    const newValue = convertToBaseUnit(evaluatedValue);
+
+    editedShape.geometry.computeBoundingBox();
+    const bbox = editedShape.geometry.boundingBox;
+
+    const currentScale = [...editedShape.scale];
+    const originalScale = new THREE.Vector3(...currentScale);
+    const newScale = [...currentScale];
+
+    let originalDimension = 0;
+
+    if (dimension === 'width') {
+      originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0];
+      if (originalDimension === 0) originalDimension = 1;
+      newScale[0] = (newValue / originalDimension) * currentScale[0];
+    } else if (dimension === 'height') {
+      originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1];
+      if (originalDimension === 0) originalDimension = 1;
+      newScale[1] = (newValue / originalDimension) * currentScale[1];
+    } else if (dimension === 'depth') {
+      originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2];
+      if (originalDimension === 0) originalDimension = 1;
+      newScale[2] = (newValue / originalDimension) * currentScale[2];
+    }
+
+    // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
+    // This means when we scale, it naturally grows in X+, Y+, Z+ directions!
+    // We DON'T need to adjust position because the geometry's origin IS the min corner
+
+    updateShape(editedShape.id, {
+      scale: newScale as [number, number, number],
+    });
+
+    console.log(`🎯 RefVolume: ${dimension} changed, geometry scales from origin (min corner):`, {
+      dimension,
+      bbox: { min: [bbox.min.x, bbox.min.y, bbox.min.z], max: [bbox.max.x, bbox.max.y, bbox.max.z] },
+      oldScale: originalScale.toArray(),
+      newScale,
+      position: editedShape.position
+    });
+  };
+
+  const handleAddParameter = () => {
+    const newParam: CustomParameter = {
+      id: `param_${Date.now()}`,
+      description: '',
+      value: '',
+      result: null
+    };
+    setCustomParameters(prev => [...prev, newParam]);
+  };
+
+  const handleRemoveParameter = (id: string) => {
+    setCustomParameters(prev => prev.filter(param => param.id !== id));
+  };
+
+  const handleClearAllParameters = () => {
+    setCustomParameters([]);
+  };
+
+  const handleStartMeasurement = (dimension: 'width' | 'height' | 'depth') => {
+    setActiveMeasurementDimension(dimension);
+    setMeasurementMode(true);
+    console.log(`Started measurement mode for ${dimension}`);
+  };
+
+  const handleParameterDescriptionChange = (id: string, description: string) => {
+    setCustomParameters(prev => prev.map(param =>
+      param.id === id ? { ...param, description } : param
+    ));
+  };
+
+  const handleParameterValueChange = (id: string, value: string) => {
+    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
+    if (regex.test(value) || value === '') {
+      setCustomParameters(prev => prev.map(param =>
+        param.id === id ? { ...param, value, result: null } : param
+      ));
+    }
+  };
+
+  const handleApplyParameter = (id: string) => {
+    const param = customParameters.find(p => p.id === id);
+    if (!param || !param.value.trim()) return;
+
+    if (!param.description || !param.description.trim()) {
+      alert('Please enter a code name for this parameter');
+      return;
+    }
+
+    const codeRegex = /^[a-zA-Z][a-zA-Z0-9]*$/;
+    if (!codeRegex.test(param.description)) {
       alert('Code must start with a letter and contain only letters and numbers');
       return;
     }
 
-    syncFormulaVariables();
-
-    const evaluated = evaluateExpression(param.value, `param-${param.description}`);
-    if (evaluated === null || isNaN(evaluated)) {
-      alert('Invalid formula');
+    const evaluatedValue = evaluateExpression(param.value);
+    if (evaluatedValue === null || isNaN(evaluatedValue)) {
+      alert('Invalid formula. Check if all referenced parameters have been applied.');
       return;
     }
 
+    const displayValue = evaluatedValue.toFixed(2);
     setCustomParameters(prev => prev.map(p =>
-      p.id === id ? { ...p, result: evaluated.toFixed(2) } : p
+      p.id === id ? { ...p, result: displayValue } : p
     ));
-
-    requestAnimationFrame(() => {
-      const evaluator = formulaEvaluatorRef.current;
-      evaluator.setVariable(param.description, evaluated);
-      setParameterVariable(param.description, evaluated);
-      console.log(`✅ Parameter applied: ${param.description}=${evaluated}`);
-
-      syncFormulaVariables();
-
-      recalculateAllParameters();
-    });
   };
-
-
-  const renderDimensionInput = (
-    label: string,
-    code: string,
-    input: string,
-    setInput: (val: string) => void,
-    result: string,
-    dimension: 'width' | 'height' | 'depth',
-    canEdit: boolean,
-    index: number
-  ) => (
-    <div className="flex items-center h-10 px-2 rounded-md border border-orange-300 bg-orange-50/50 shadow-sm">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <button
-          onClick={() => {
-            setSelectedDimensions(prev => {
-              const newSet = new Set(prev);
-              newSet.has(dimension) ? newSet.delete(dimension) : newSet.add(dimension);
-              return newSet;
-            });
-          }}
-          className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-            selectedDimensions.has(dimension)
-              ? 'bg-white text-orange-500 border-orange-300'
-              : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
-          }`}
-        >
-          {index}
-        </button>
-
-        <input
-          type="text"
-          value={code}
-          readOnly
-          className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
-        />
-
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => handleInputChange(setInput, e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && applyDimensionChange(dimension, input)}
-          placeholder="Formula..."
-          className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-        />
-
-        <input
-          type="text"
-          value={result}
-          readOnly
-          className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
-        />
-
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={() => applyDimensionChange(dimension, input)}
-            disabled={!input.trim() || !canEdit}
-            className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
-              input.trim() && canEdit
-                ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <Check size={11} />
-          </button>
-          <button disabled className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed">
-            <X size={11} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <button onClick={onClose} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
+          >
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
@@ -359,20 +283,16 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         <div className="flex items-center gap-2">
           {customParameters.length > 0 && (
             <button
-              onClick={() => setCustomParameters([])}
+              onClick={handleClearAllParameters}
               className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
             >
               Clear All
             </button>
           )}
           <button
-            onClick={() => setCustomParameters(prev => [...prev, {
-              id: `param_${Date.now()}`,
-              description: '',
-              value: '',
-              result: null
-            }])}
+            onClick={handleAddParameter}
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
+            title="Add Custom Parameter"
           >
             <Plus size={14} />
           </button>
@@ -380,92 +300,390 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       </div>
 
       <div className="flex-1 p-4 space-y-2">
+
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="space-y-2">
-            {canEditWidth && renderDimensionInput('Width', 'W', inputWidth, setInputWidth, resultWidth, 'width', true, 1)}
-            {renderDimensionInput('Height', 'H', inputHeight, setInputHeight, resultHeight, 'height', true, 2)}
-            {canEditDepth && renderDimensionInput('Depth', 'D', inputDepth, setInputDepth, resultDepth, 'depth', true, 3)}
-
-            {customParameters.map((param, index) => (
-              <div key={param.id} className="flex items-center h-10 px-2 rounded-md border border-orange-300 bg-orange-50/50 shadow-sm">
+            {canEditWidth && (
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('width')) {
+                        newSet.delete('width');
+                      } else {
+                        newSet.add('width');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('width')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
+                  1
+                </button>
+
+                <input
+                  type="text"
+                  value="W"
+                  readOnly
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
+
+                <input
+                  type="text"
+                  value={inputWidth}
+                  onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyDimensionChange('width', inputWidth);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={resultWidth}
+                  readOnly
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => {
-                      setSelectedDimensions(prev => {
-                        const newSet = new Set(prev);
-                        const key = `param-${param.id}`;
-                        newSet.has(key) ? newSet.delete(key) : newSet.add(key);
-                        return newSet;
-                      });
-                    }}
-                    className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                      selectedDimensions.has(`param-${param.id}`)
-                        ? 'bg-white text-orange-500 border-orange-300'
-                        : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                    onClick={() => handleStartMeasurement('width')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'width'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
                     }`}
+                    title="Measure Width"
                   >
-                    {index + 4}
+                    <Ruler size={11} />
                   </button>
 
-                  <input
-                    type="text"
-                    value={param.description}
-                    onChange={(e) => setCustomParameters(prev => prev.map(p =>
-                      p.id === param.id ? { ...p, description: e.target.value } : p
-                    ))}
-                    placeholder="Code"
-                    className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  />
+                  <button
+                    onClick={() => applyDimensionChange('width', inputWidth)}
+                    disabled={!inputWidth.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      inputWidth.trim()
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Width"
+                  >
+                    <Check size={11} />
+                  </button>
 
-                  <input
-                    type="text"
-                    value={param.value}
-                    onChange={(e) => handleInputChange(val =>
-                      setCustomParameters(prev => prev.map(p =>
-                        p.id === param.id ? { ...p, value: val, result: null } : p
-                      )), e.target.value
-                    )}
-                    onKeyDown={(e) => e.key === 'Enter' && handleApplyParameter(param.id)}
-                    placeholder="Formula..."
-                    className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
-                  />
+                  <button
+                    onClick={() => handleRemoveParameter('')}
+                    disabled
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                    title="Cannot remove basic dimension"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+                </div>
+              </div>
+            )}
 
-                  <input
-                    type="text"
-                    value={param.result || ''}
-                    readOnly
-                    className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
-                  />
+            {canEditHeight && (
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('height')) {
+                        newSet.delete('height');
+                      } else {
+                        newSet.add('height');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('height')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
+                  2
+                </button>
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleApplyParameter(param.id)}
-                      disabled={!param.value.trim()}
-                      className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
-                        param.value.trim() ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      <Check size={11} />
-                    </button>
-                    <button
-                      onClick={() => setCustomParameters(prev => prev.filter(p => p.id !== param.id))}
-                      className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
+                <input
+                  type="text"
+                  value="H"
+                  readOnly
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
+
+                <input
+                  type="text"
+                  value={inputHeight}
+                  onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyDimensionChange('height', inputHeight);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={resultHeight}
+                  readOnly
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleStartMeasurement('height')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'height'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Height"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => applyDimensionChange('height', inputHeight)}
+                    disabled={!inputHeight.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      inputHeight.trim()
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Height"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveParameter('')}
+                    disabled
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                    title="Cannot remove basic dimension"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+                </div>
+              </div>
+            )}
+
+            {canEditDepth && (
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('depth')) {
+                        newSet.delete('depth');
+                      } else {
+                        newSet.add('depth');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('depth')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
+                  3
+                </button>
+
+                <input
+                  type="text"
+                  value="D"
+                  readOnly
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
+
+                <input
+                  type="text"
+                  value={inputDepth}
+                  onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyDimensionChange('depth', inputDepth);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={resultDepth}
+                  readOnly
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleStartMeasurement('depth')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'depth'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Depth"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => applyDimensionChange('depth', inputDepth)}
+                    disabled={!inputDepth.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      inputDepth.trim()
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Depth"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveParameter('')}
+                    disabled
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed"
+                    title="Cannot remove basic dimension"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+                </div>
+              </div>
+            )}
+
+            {customParameters.map((param, index) => (
+              <div
+                key={param.id}
+                className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
+              >
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      const paramKey = `param-${param.id}`;
+                      if (newSet.has(paramKey)) {
+                        newSet.delete(paramKey);
+                      } else {
+                        newSet.add(paramKey);
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has(`param-${param.id}`)
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
+                  {index + 4}
+                </button>
+
+                <input
+                  type="text"
+                  value={param.description}
+                  onChange={(e) => handleParameterDescriptionChange(param.id, e.target.value)}
+                  placeholder="Code"
+                  className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={param.value}
+                  onChange={(e) => handleParameterValueChange(param.id, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyParameter(param.id);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={param.result || ''}
+                  readOnly
+                  className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
+                  placeholder="Result"
+                />
+
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleStartMeasurement('custom')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'custom'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Custom Parameter"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => handleApplyParameter(param.id)}
+                    disabled={!param.value.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      param.value.trim()
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Parameter"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveParameter(param.id)}
+                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors"
+                    title="Remove Parameter"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {['cylinder', 'circle2d'].includes(editedShape.type) && (
+        {editedShape.type === 'cylinder' && (
           <div className="text-xs text-slate-600 p-2 bg-orange-50 rounded-sm border border-orange-200">
-            {editedShape.type === 'cylinder' ? 'Cylinder' : 'Circle'}: Only height can be edited
+            Cylinder: Only height can be edited
           </div>
         )}
 
+        {editedShape.type === 'circle2d' && (
+          <div className="text-xs text-slate-600 p-2 bg-orange-50 rounded-sm border border-orange-200">
+            Circle: Only height can be edited
+          </div>
+        )}
       </div>
     </div>
   );

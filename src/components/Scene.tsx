@@ -17,7 +17,10 @@ import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
+import { MeasurementLine } from './MeasurementLine';
+import { MeasurementHandler } from './MeasurementHandler';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
+import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
 import { createPortal } from 'react-dom';
 const CameraPositionUpdater = () => {
@@ -186,20 +189,26 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode,
+    isMeasurementMode,
+    activeMeasurement,
+    setActiveMeasurement,
+    measurements,
+    addMeasurement,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Prevent if user is typing in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
+      
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
 
   const [measurementOverlay, setMeasurementOverlay] =
     useState(null);
@@ -415,6 +424,11 @@ const Scene: React.FC = () => {
   const exitEditMode = () => {
     console.log('Exiting edit mode');
 
+    // Face highlight'ları temizle
+    if (sceneRef) {
+      clearFaceHighlight(sceneRef);
+    }
+
     // 🎯 SAVE PERSISTENT PANELS - Mevcut panelleri kaydet
     if (editingShapeId && selectedFaces.length > 0) {
       setShapePanels((prev) => ({
@@ -606,6 +620,7 @@ const Scene: React.FC = () => {
       >
         <CameraPositionUpdater />
         <CameraController isAddPanelMode={isAddPanelMode} editModeWidth={400} />
+        <MeasurementHandler />
         <Stats className="hidden" />
 
         {cameraType === CameraType.PERSPECTIVE ? (
@@ -730,6 +745,14 @@ const Scene: React.FC = () => {
 
         {/* Dimension Arrows - Seçili ölçüler için oklar */}
         {editedShape && <DimensionArrows shape={editedShape} />}
+
+        {/* Measurement Lines */}
+        {measurements.map((measurement) => (
+          <MeasurementLine key={measurement.id} measurement={measurement} />
+        ))}
+        {activeMeasurement && activeMeasurement.point2 && (
+          <MeasurementLine measurement={activeMeasurement} />
+        )}
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
