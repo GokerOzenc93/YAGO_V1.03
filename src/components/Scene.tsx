@@ -616,7 +616,12 @@ const Scene: React.FC = () => {
     if (vertexIndex >= uniqueVertices.length) return;
 
     const targetVertex = uniqueVertices[vertexIndex];
-    const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+
+    // Parse axis and direction (e.g., 'x+', 'y-')
+    const axisChar = axis.charAt(0);
+    const direction = axis.charAt(1) === '-' ? -1 : 1;
+    const axisIndex = axisChar === 'x' ? 0 : axisChar === 'y' ? 1 : 2;
+    const signedDistance = distance * direction;
 
     // Update all matching vertices
     for (let i = 0; i < positions.count; i++) {
@@ -630,7 +635,7 @@ const Scene: React.FC = () => {
         Math.abs(z - targetVertex[2]) < 0.0001
       ) {
         const currentValue = positions.getComponent(i, axisIndex);
-        positions.setComponent(i, axisIndex, currentValue + distance / shape.scale[axisIndex]);
+        positions.setComponent(i, axisIndex, currentValue + signedDistance / shape.scale[axisIndex]);
       }
     }
 
@@ -689,7 +694,7 @@ const Scene: React.FC = () => {
       bindingsToUpdate.forEach(([key, binding]) => {
         const shape = shapes.find(s => s.id === binding.shapeId);
         if (shape) {
-          applyVertexMovement(shape, binding.vertexIndex, binding.axis as 'x' | 'y' | 'z', baseValue);
+          applyVertexMovement(shape, binding.vertexIndex, binding.axis, baseValue);
         }
       });
     };

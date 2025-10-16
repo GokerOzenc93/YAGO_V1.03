@@ -680,7 +680,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
                 // If this vertex is already selected, cycle through axes
                 if (isSelectedVertex) {
-                  const axisOrder: Array<'x' | 'y' | 'z' | null> = ['x', 'y', 'z', null];
+                  const axisOrder: Array<'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null> = ['x+', 'x-', 'y+', 'y-', 'z+', 'z-', null];
                   const currentAxisIndex = vertexEditMode.activeAxis
                     ? axisOrder.indexOf(vertexEditMode.activeAxis)
                     : -1;
@@ -692,23 +692,22 @@ const YagoDesignShape: React.FC<Props> = ({
                   } else {
                     setVertexEditMode({ activeAxis: nextAxis });
                   }
+                  console.log(`Vertex ${index} axis cycled to: ${nextAxis}`);
                 } else {
-                  // Select this vertex and start with X axis
+                  // Select this vertex and start with X+ axis
                   setVertexEditMode({
                     selectedVertexIndex: index,
-                    activeAxis: 'x',
-                    isActive: true,
+                    activeAxis: 'x+',
+                    isActive: false,
                   });
+                  console.log(`Vertex ${index} selected, starting with X+`);
                 }
-
-                console.log(`Vertex ${index} clicked, axis: ${vertexEditMode.activeAxis}`);
               }}
-              onContextMenu={(e) => {
-                e.stopPropagation();
-                // Right click to confirm and show measurement input
-                if (isSelectedVertex && vertexEditMode.activeAxis) {
+              onPointerDown={(e) => {
+                // Right click (button 2) to confirm
+                if (e.button === 2 && isSelectedVertex && vertexEditMode.activeAxis) {
+                  e.stopPropagation();
                   console.log(`Vertex ${index} confirmed on axis ${vertexEditMode.activeAxis}`);
-                  // This will trigger measurement input in Scene
                   setVertexEditMode({ isActive: true });
                 }
               }}
@@ -721,22 +720,26 @@ const YagoDesignShape: React.FC<Props> = ({
             </mesh>
 
             {/* Red Arrow for Active Axis */}
-            {isSelectedVertex && vertexEditMode.activeAxis && (
-              <arrowHelper
-                args={[
-                  new THREE.Vector3(
-                    vertexEditMode.activeAxis === 'x' ? 1 : 0,
-                    vertexEditMode.activeAxis === 'y' ? 1 : 0,
-                    vertexEditMode.activeAxis === 'z' ? 1 : 0
-                  ),
-                  new THREE.Vector3(...worldPos),
-                  100,
-                  0xff0000,
-                  30,
-                  20
-                ]}
-              />
-            )}
+            {isSelectedVertex && vertexEditMode.activeAxis && (() => {
+              const axis = vertexEditMode.activeAxis;
+              const direction = new THREE.Vector3(
+                axis === 'x+' ? 1 : axis === 'x-' ? -1 : 0,
+                axis === 'y+' ? 1 : axis === 'y-' ? -1 : 0,
+                axis === 'z+' ? 1 : axis === 'z-' ? -1 : 0
+              );
+              return (
+                <arrowHelper
+                  args={[
+                    direction,
+                    new THREE.Vector3(...worldPos),
+                    100,
+                    0xff0000,
+                    30,
+                    20
+                  ]}
+                />
+              );
+            })()}
           </group>
         );
       })}

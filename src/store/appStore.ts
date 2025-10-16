@@ -285,7 +285,7 @@ interface AppState {
     isActive: boolean;
     selectedVertexIndex: number | null;
     hoveredVertexIndex: number | null;
-    activeAxis: 'x' | 'y' | 'z' | null;
+    activeAxis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
     movementValue: number | null;
     parameterCode: string | null;
   };
@@ -293,7 +293,7 @@ interface AppState {
     isActive: boolean;
     selectedVertexIndex: number | null;
     hoveredVertexIndex: number | null;
-    activeAxis: 'x' | 'y' | 'z' | null;
+    activeAxis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
     movementValue: number | null;
     parameterCode: string | null;
   }>) => void;
