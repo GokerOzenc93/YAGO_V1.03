@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
 
@@ -25,6 +25,14 @@ interface ProjectedEdge {
   index: number;
 }
 
+interface Transform {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  canvasWidth: number;
+  canvasHeight: number;
+}
+
 const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
   shape,
   view,
@@ -38,9 +46,9 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedEdgeIndex, setSelectedEdgeIndex] = useState<number | null>(null);
   const [hoveredEdgeIndex, setHoveredEdgeIndex] = useState<number | null>(null);
-  const [projectedEdges, setProjectedEdges] = useState<ProjectedEdge[]>([]);
   const [editingEdgeIndex, setEditingEdgeIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const transformRef = useRef<Transform | null>(null);
 
   const projectPoint = (point: THREE.Vector3, view: string): ProjectedPoint => {
     switch (view) {
@@ -130,6 +138,28 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     }
   };
 
+  const projectedEdges = useMemo(() => {
+    const edges = getShapeEdges();
+    const projected: ProjectedEdge[] = [];
+
+    edges.forEach((edge, index) => {
+      if (!isEdgeVisible(edge.start, edge.end, view)) return;
+
+      const startProj = projectPoint(edge.start, view);
+      const endProj = projectPoint(edge.end, view);
+      const length = edge.start.distanceTo(edge.end);
+
+      projected.push({
+        start: startProj,
+        end: endProj,
+        length,
+        index,
+      });
+    });
+
+    return projected;
+  }, [shape, view, width, height, depth]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -146,36 +176,17 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    const edges = getShapeEdges();
-    const projected: ProjectedEdge[] = [];
+    if (projectedEdges.length === 0) return;
 
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
 
-    edges.forEach((edge, index) => {
-      if (!isEdgeVisible(edge.start, edge.end, view)) return;
-
-      const startProj = projectPoint(edge.start, view);
-      const endProj = projectPoint(edge.end, view);
-
-      minX = Math.min(minX, startProj.x, endProj.x);
-      maxX = Math.max(maxX, startProj.x, endProj.x);
-      minY = Math.min(minY, startProj.y, endProj.y);
-      maxY = Math.max(maxY, startProj.y, endProj.y);
-
-      const length = edge.start.distanceTo(edge.end);
-
-      projected.push({
-        start: startProj,
-        end: endProj,
-        length,
-        index,
-      });
+    projectedEdges.forEach((edge) => {
+      minX = Math.min(minX, edge.start.x, edge.end.x);
+      maxX = Math.max(maxX, edge.start.x, edge.end.x);
+      minY = Math.min(minY, edge.start.y, edge.end.y);
+      maxY = Math.max(maxY, edge.start.y, edge.end.y);
     });
-
-    setProjectedEdges(projected);
-
-    if (projected.length === 0) return;
 
     const padding = 80;
     const shapeWidth = maxX - minX;
@@ -189,12 +200,20 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     const offsetX = rect.width / 2 - ((minX + maxX) / 2) * scale;
     const offsetY = rect.height / 2 - ((minY + maxY) / 2) * scale;
 
+    transformRef.current = {
+      scale,
+      offsetX,
+      offsetY,
+      canvasWidth: rect.width,
+      canvasHeight: rect.height,
+    };
+
     const toScreen = (p: ProjectedPoint) => ({
       x: p.x * scale + offsetX,
       y: p.y * scale + offsetY,
     });
 
-    projected.forEach((edge) => {
+    projectedEdges.forEach((edge) => {
       const start = toScreen(edge.start);
       const end = toScreen(edge.end);
 
@@ -247,171 +266,7 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     ctx.textBaseline = 'top';
     ctx.fillText(`${view.toUpperCase()} VIEW`, rect.width / 2, 5);
 
-  }, [shape, view, width, height, depth, convertToDisplayUnit, selectedEdgeIndex, hoveredEdgeIndex]);
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const dpr = window.devicePixelRatio || 1;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const edges = getShapeEdges();
-    const projected: ProjectedEdge[] = [];
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    edges.forEach((edge, index) => {
-      if (!isEdgeVisible(edge.start, edge.end, view)) return;
-
-      const startProj = projectPoint(edge.start, view);
-      const endProj = projectPoint(edge.end, view);
-
-      minX = Math.min(minX, startProj.x, endProj.x);
-      maxX = Math.max(maxX, startProj.x, endProj.x);
-      minY = Math.min(minY, startProj.y, endProj.y);
-      maxY = Math.max(maxY, startProj.y, endProj.y);
-
-      const length = edge.start.distanceTo(edge.end);
-
-      projected.push({
-        start: startProj,
-        end: endProj,
-        length,
-        index,
-      });
-    });
-
-    const padding = 80;
-    const shapeWidth = maxX - minX;
-    const shapeHeight = maxY - minY;
-
-    const scale = Math.min(
-      (rect.width - padding * 2) / shapeWidth,
-      (rect.height - padding * 2) / shapeHeight
-    ) * 0.7;
-
-    const offsetX = rect.width / 2 - ((minX + maxX) / 2) * scale;
-    const offsetY = rect.height / 2 - ((minY + maxY) / 2) * scale;
-
-    const toScreen = (p: ProjectedPoint) => ({
-      x: p.x * scale + offsetX,
-      y: p.y * scale + offsetY,
-    });
-
-    let clickedEdge = -1;
-    const clickThreshold = 10;
-
-    for (const edge of projected) {
-      const start = toScreen(edge.start);
-      const end = toScreen(edge.end);
-
-      const dist = distanceToSegment(
-        { x, y },
-        start,
-        end
-      );
-
-      if (dist < clickThreshold) {
-        clickedEdge = edge.index;
-        break;
-      }
-    }
-
-    if (clickedEdge !== -1) {
-      setSelectedEdgeIndex(clickedEdge);
-      setEditingEdgeIndex(clickedEdge);
-      const edge = projected.find(e => e.index === clickedEdge);
-      if (edge) {
-        setEditValue(convertToDisplayUnit(edge.length).toFixed(1));
-      }
-      console.log(`🎯 Edge ${clickedEdge} selected`);
-    } else {
-      setSelectedEdgeIndex(null);
-      setEditingEdgeIndex(null);
-    }
-  };
-
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const edges = getShapeEdges();
-    const projected: ProjectedEdge[] = [];
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    edges.forEach((edge, index) => {
-      if (!isEdgeVisible(edge.start, edge.end, view)) return;
-
-      const startProj = projectPoint(edge.start, view);
-      const endProj = projectPoint(edge.end, view);
-
-      minX = Math.min(minX, startProj.x, endProj.x);
-      maxX = Math.max(maxX, startProj.x, endProj.x);
-      minY = Math.min(minY, startProj.y, endProj.y);
-      maxY = Math.max(maxY, startProj.y, endProj.y);
-
-      const length = edge.start.distanceTo(edge.end);
-
-      projected.push({
-        start: startProj,
-        end: endProj,
-        length,
-        index,
-      });
-    });
-
-    const padding = 80;
-    const shapeWidth = maxX - minX;
-    const shapeHeight = maxY - minY;
-
-    const scale = Math.min(
-      (rect.width - padding * 2) / shapeWidth,
-      (rect.height - padding * 2) / shapeHeight
-    ) * 0.7;
-
-    const offsetX = rect.width / 2 - ((minX + maxX) / 2) * scale;
-    const offsetY = rect.height / 2 - ((minY + maxY) / 2) * scale;
-
-    const toScreen = (p: ProjectedPoint) => ({
-      x: p.x * scale + offsetX,
-      y: p.y * scale + offsetY,
-    });
-
-    let hoveredEdge = -1;
-    const hoverThreshold = 10;
-
-    for (const edge of projected) {
-      const start = toScreen(edge.start);
-      const end = toScreen(edge.end);
-
-      const dist = distanceToSegment(
-        { x, y },
-        start,
-        end
-      );
-
-      if (dist < hoverThreshold) {
-        hoveredEdge = edge.index;
-        break;
-      }
-    }
-
-    setHoveredEdgeIndex(hoveredEdge !== -1 ? hoveredEdge : null);
-    canvas.style.cursor = hoveredEdge !== -1 ? 'pointer' : 'default';
-  };
+  }, [projectedEdges, view, convertToDisplayUnit, selectedEdgeIndex, hoveredEdgeIndex]);
 
   const distanceToSegment = (
     point: { x: number; y: number },
@@ -437,6 +292,86 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
   };
 
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const transform = transformRef.current;
+    if (!canvas || !transform) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const toScreen = (p: ProjectedPoint) => ({
+      x: p.x * transform.scale + transform.offsetX,
+      y: p.y * transform.scale + transform.offsetY,
+    });
+
+    let clickedEdge = -1;
+    const clickThreshold = 10;
+
+    for (const edge of projectedEdges) {
+      const start = toScreen(edge.start);
+      const end = toScreen(edge.end);
+
+      const dist = distanceToSegment({ x, y }, start, end);
+
+      if (dist < clickThreshold) {
+        clickedEdge = edge.index;
+        break;
+      }
+    }
+
+    if (clickedEdge !== -1) {
+      setSelectedEdgeIndex(clickedEdge);
+      setEditingEdgeIndex(clickedEdge);
+      const edge = projectedEdges.find(e => e.index === clickedEdge);
+      if (edge) {
+        setEditValue(convertToDisplayUnit(edge.length).toFixed(1));
+      }
+    } else {
+      setSelectedEdgeIndex(null);
+      setEditingEdgeIndex(null);
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const transform = transformRef.current;
+    if (!canvas || !transform) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const toScreen = (p: ProjectedPoint) => ({
+      x: p.x * transform.scale + transform.offsetX,
+      y: p.y * transform.scale + transform.offsetY,
+    });
+
+    let hoveredEdge = -1;
+    const hoverThreshold = 10;
+
+    for (const edge of projectedEdges) {
+      const start = toScreen(edge.start);
+      const end = toScreen(edge.end);
+
+      const dist = distanceToSegment({ x, y }, start, end);
+
+      if (dist < hoverThreshold) {
+        hoveredEdge = edge.index;
+        break;
+      }
+    }
+
+    const newHoveredIndex = hoveredEdge !== -1 ? hoveredEdge : null;
+
+    if (newHoveredIndex !== hoveredEdgeIndex) {
+      setHoveredEdgeIndex(newHoveredIndex);
+    }
+
+    canvas.style.cursor = hoveredEdge !== -1 ? 'pointer' : 'default';
+  };
+
   const handleEditSubmit = () => {
     if (editingEdgeIndex === null || !shape.originalPoints) return;
 
@@ -459,8 +394,6 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     const end = points[(i + 1) % points.length];
 
     const currentLength = start.distanceTo(end);
-    const scale = newLengthBase / currentLength;
-
     const direction = new THREE.Vector3().subVectors(end, start).normalize();
     const newEnd = start.clone().add(direction.multiplyScalar(newLengthBase));
 
@@ -480,7 +413,7 @@ const TechnicalDrawing2D: React.FC<TechnicalDrawing2DProps> = ({
     <div className="w-full h-full min-h-[200px] bg-white rounded border border-gray-300 relative flex flex-col">
       <canvas
         ref={canvasRef}
-        className="w-full flex-1 cursor-pointer"
+        className="w-full flex-1"
         style={{ width: '100%', minHeight: '200px' }}
         onClick={handleCanvasClick}
         onMouseMove={handleCanvasMouseMove}
