@@ -16,8 +16,9 @@ export interface SimpleDimension {
   distance: number;
   unit: string;
   textPosition: THREE.Vector3;
-  originalStart?: THREE.Vector3;
-  originalEnd?: THREE.Vector3;
+  originalStart: THREE.Vector3;
+  originalEnd: THREE.Vector3;
+  perpendicularOffset: THREE.Vector3;
   previewPosition?: THREE.Vector3;
   isInverted?: boolean;
 }
@@ -284,14 +285,30 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   const handleDimensionNumberClick = (dimensionId: string) => {
     setDimensionsState(prev => ({
       ...prev,
-      completedDimensions: prev.completedDimensions.map(dim =>
-        dim.id === dimensionId
-          ? { ...dim, isInverted: !dim.isInverted }
-          : dim
-      )
-    }));
+      completedDimensions: prev.completedDimensions.map(dim => {
+        if (dim.id === dimensionId) {
+          const newInverted = !dim.isInverted;
 
-    console.log(`🎯 Dimension ${dimensionId}: Color inverted and auto-measurement activated`);
+          const newStartPoint = dim.originalStart.clone().add(dim.perpendicularOffset);
+          const newEndPoint = dim.originalEnd.clone().add(dim.perpendicularOffset);
+          const newTextPosition = newStartPoint.clone().add(newEndPoint).multiplyScalar(0.5);
+
+          console.log(`🎯 Dimension ${dimensionId} inverted to ${newInverted}`);
+          console.log(`  Original: [${dim.originalStart.x.toFixed(1)}, ${dim.originalStart.z.toFixed(1)}] → [${dim.originalEnd.x.toFixed(1)}, ${dim.originalEnd.z.toFixed(1)}]`);
+          console.log(`  Offset: [${dim.perpendicularOffset.x.toFixed(1)}, ${dim.perpendicularOffset.z.toFixed(1)}]`);
+          console.log(`  New Dimension: [${newStartPoint.x.toFixed(1)}, ${newStartPoint.z.toFixed(1)}] → [${newEndPoint.x.toFixed(1)}, ${newEndPoint.z.toFixed(1)}]`);
+
+          return {
+            ...dim,
+            isInverted: newInverted,
+            startPoint: newStartPoint,
+            endPoint: newEndPoint,
+            textPosition: newTextPosition
+          };
+        }
+        return dim;
+      })
+    }));
   };
 
   // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
@@ -452,9 +469,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
       const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
-      
+
       const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
-      
+
+      console.log(`🎯 Creating dimension:`);
+      console.log(`  Original points: [${dimensionsState.firstPoint.x.toFixed(1)}, ${dimensionsState.firstPoint.z.toFixed(1)}] → [${dimensionsState.secondPoint.x.toFixed(1)}, ${dimensionsState.secondPoint.z.toFixed(1)}]`);
+      console.log(`  Perpendicular offset: [${perpendicularOffset.x.toFixed(1)}, ${perpendicularOffset.z.toFixed(1)}]`);
+      console.log(`  Dimension line: [${dimensionStart.x.toFixed(1)}, ${dimensionStart.z.toFixed(1)}] → [${dimensionEnd.x.toFixed(1)}, ${dimensionEnd.z.toFixed(1)}]`);
+
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
         startPoint: dimensionStart,
@@ -462,8 +484,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         distance: convertToDisplayUnit(distance),
         unit: measurementUnit,
         textPosition,
-        originalStart: dimensionsState.firstPoint,
-        originalEnd: dimensionsState.secondPoint
+        originalStart: dimensionsState.firstPoint.clone(),
+        originalEnd: dimensionsState.secondPoint.clone(),
+        perpendicularOffset: perpendicularOffset.clone()
       };
       
       setDimensionsState(prev => ({
@@ -537,8 +560,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       distance: convertToDisplayUnit(distance),
       unit: measurementUnit,
       textPosition,
-      originalStart: dimensionsState.firstPoint,
-      originalEnd: dimensionsState.secondPoint,
+      originalStart: dimensionsState.firstPoint.clone(),
+      originalEnd: dimensionsState.secondPoint.clone(),
+      perpendicularOffset: perpendicularOffset.clone(),
       previewPosition: dimensionsState.previewPosition
     };
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
