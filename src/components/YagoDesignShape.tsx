@@ -153,31 +153,6 @@ const YagoDesignShape: React.FC<Props> = ({
     }
   }, [isSelected, shape]);
 
-  // Listen for edge measurement updates from Terminal
-  useEffect(() => {
-    const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
-      const { shapeId, edgeId, newValue, formula } = e.detail;
-
-      if (shapeId === shape.id) {
-        console.log(`🔄 Received updateEdgeMeasurement for shape ${shapeId}, edge ${edgeId}, value: ${newValue}`);
-
-        // Update with specific edge ID
-        handleMeasurementUpdate(newValue, formula, edgeId);
-
-        // Only clear selection if this was for the selected edge
-        if (edgeId === selectedEdgeId) {
-          setSelectedEdgeId(null);
-        }
-      }
-    };
-
-    window.addEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
-
-    return () => {
-      window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
-    };
-  }, [shape.id, selectedEdgeId, handleMeasurementUpdate]);
-
   // Handle transform controls
   useEffect(() => {
     if (!transformRef.current || !isSelected) return;
@@ -522,7 +497,7 @@ const YagoDesignShape: React.FC<Props> = ({
     console.log(`✅ Edge (${edgeId}) selected, current length: ${displayLength.toFixed(2)} mm`);
   };
 
-  const handleMeasurementUpdate = (newValue: number, formula?: string, targetEdgeId?: string) => {
+  const handleMeasurementUpdate = useCallback((newValue: number, formula?: string, targetEdgeId?: string) => {
     const edgeId = targetEdgeId || selectedEdgeId;
     console.log(`🔧 handleMeasurementUpdate called:`, {
       newValue,
@@ -551,10 +526,12 @@ const YagoDesignShape: React.FC<Props> = ({
     // If formula is provided, store it in shape's edgeFormulas
     if (formula) {
       const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeIndex === edgeIndex);
+      const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
 
       const newFormula = {
-        edgeIndex: edgeIndex,
+        edgeId: edgeId,
+        start: [segment.start.x, segment.start.y, segment.start.z] as [number, number, number],
+        end: [segment.end.x, segment.end.y, segment.end.z] as [number, number, number],
         formula: formula,
         originalLength: newValue,
         currentValue: newValue
@@ -568,7 +545,7 @@ const YagoDesignShape: React.FC<Props> = ({
         updatedFormulas = [...currentFormulas, newFormula];
       }
 
-      console.log(`📝 Saved edge formula: edge ${edgeIndex} = "${formula}"`);
+      console.log(`📝 Saved edge formula: edge ${edgeId} = "${formula}"`);
 
       // Update shape with formula
       updateShape(shape.id, { edgeFormulas: updatedFormulas });
@@ -647,8 +624,33 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
-  };
+    console.log(`✅ Edge (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
+  }, [selectedEdgeId, lineSegments, shape, updateShape, setEdgeMeasurement, convertToBaseUnit, convertToDisplayUnit]);
+
+  // Listen for edge measurement updates from Terminal
+  useEffect(() => {
+    const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
+      const { shapeId, edgeId, newValue, formula } = e.detail;
+
+      if (shapeId === shape.id) {
+        console.log(`🔄 Received updateEdgeMeasurement for shape ${shapeId}, edge ${edgeId}, value: ${newValue}`);
+
+        // Update with specific edge ID
+        handleMeasurementUpdate(newValue, formula, edgeId);
+
+        // Only clear selection if this was for the selected edge
+        if (edgeId === selectedEdgeId) {
+          setSelectedEdgeId(null);
+        }
+      }
+    };
+
+    window.addEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
+
+    return () => {
+      window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
+    };
+  }, [shape.id, selectedEdgeId, handleMeasurementUpdate]);
 
   const handleClick = (e: any) => {
     // Ruler mode - handle edge selection
