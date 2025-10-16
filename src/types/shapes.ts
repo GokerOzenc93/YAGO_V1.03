@@ -2,7 +2,6 @@ import * as THREE from 'three';
 
 export interface EdgeFormula {
   edgeIndex: number;
-  edgeId: string;
   formula: string;
   originalLength: number;
   parameterName?: string;

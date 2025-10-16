@@ -1,0 +1,170 @@
+import * as THREE from 'three';
+import { CompletedShape } from './types';
+import { Shape } from '../../types/shapes';
+import { GeometryFactory } from '../../lib/geometryFactory';
+import { calculatePolylineCenter } from './utils';
+
+export const convertTo3DShape = async (
+  shape: CompletedShape,
+  addShape: (shape: Shape) => void,
+  selectShape: (id: string) => void,
+  gridSize: number = 50
+): Promise<Shape | null> => {
+  console.log(`Converting ${shape.type} to selectable 2D shape with ID: ${shape.id}`);
+
+  const height = 18; // 18mm height for 2D shapes
+  let geometry: THREE.BufferGeometry | null = null;
+  let position: [number, number, number];
+  let shapeType: string;
+
+  switch (shape.type) {
+    case 'rectangle': {
+      const width = Math.abs(shape.points[2].x - shape.points[0].x);
+      const depth = Math.abs(shape.points[2].z - shape.points[0].z);
+      geometry = await GeometryFactory.createBox(width, height, depth);
+      position = [
+        shape.points[0].x + width / 2,
+        height / 2,
+        shape.points[0].z + depth / 2
+      ];
+      shapeType = 'rectangle2d';
+      break;
+    }
+    case 'circle': {
+      const radius = shape.points[0].distanceTo(shape.points[1]);
+      geometry = await GeometryFactory.createCylinder(radius, height);
+      position = [shape.points[0].x, height / 2, shape.points[0].z];
+      shapeType = 'circle2d';
+      break;
+    }
+    case 'polyline':
+    case 'polygon': {
+      geometry = await GeometryFactory.createPolyline(shape.points, height);
+      const center = calculatePolylineCenter(shape.points);
+      position = [center.x, height / 2, center.z]; // Position at proper height
+      shapeType = shape.type === 'polygon' ? 'polygon2d' : 'polyline2d';
+      break;
+    }
+    default:
+      return null;
+  }
+
+  if (!geometry) {
+    console.error('Failed to create geometry for shape');
+    return null;
+  }
+
+  const newShape: Shape = {
+    id: Math.random().toString(36).substr(2, 9),
+    type: shapeType,
+    position: position,
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    geometry,
+    parameters: shape.type === 'circle'
+      ? { radius: shape.points[0].distanceTo(shape.points[1]), height }
+      : shape.type === 'rectangle'
+      ? {
+          width: Math.abs(shape.points[2].x - shape.points[0].x),
+          height,
+          depth: Math.abs(shape.points[2].z - shape.points[0].z)
+        }
+      : {
+          points: shape.points.length,
+          height,
+          area: 'calculated'
+        },
+    originalPoints: shape.points,
+    is2DShape: true,
+  };
+
+  addShape(newShape);
+  selectShape(newShape.id);
+
+  console.log(`2D shape converted using ${GeometryFactory.getCurrentMode()}: [${position.join(', ')}]`);
+  return newShape;
+};
+
+export const extrudeShape = async (
+  shape: CompletedShape,
+  addShape: (shape: Shape) => void,
+  height: number = 500,
+  gridSize: number = 50
+): Promise<Shape | null> => {
+  let geometry: THREE.BufferGeometry | null = null;
+  let position: [number, number, number];
+  let shapeType: string;
+
+  console.log(`Extruding ${shape.type} shape with ID: ${shape.id}`);
+
+  switch (shape.type) {
+    case 'rectangle': {
+      const width = Math.abs(shape.points[2].x - shape.points[0].x);
+      const depth = Math.abs(shape.points[2].z - shape.points[0].z);
+      geometry = await GeometryFactory.createBox(width, height, depth);
+      position = [
+        shape.points[0].x + width / 2,
+        height / 2,
+        shape.points[0].z + depth / 2
+      ];
+      shapeType = 'box';
+      console.log(`Rectangle extruded: ${width}x${height}x${depth}mm`);
+      break;
+    }
+    case 'circle': {
+      const radius = shape.points[0].distanceTo(shape.points[1]);
+      geometry = await GeometryFactory.createCylinder(radius, height);
+      position = [shape.points[0].x, height / 2, shape.points[0].z];
+      shapeType = 'cylinder';
+      console.log(`Circle extruded: radius ${radius}mm, height ${height}mm`);
+      break;
+    }
+    case 'polyline':
+    case 'polygon': {
+      // Create centered geometry
+      geometry = await GeometryFactory.createPolyline(shape.points, height);
+      
+      // Calculate the center of the original polyline points for positioning
+      const center = calculatePolylineCenter(shape.points);
+      position = [center.x, height / 2, center.z]; // Position at polyline center with proper Y offset
+      
+      shapeType = 'box'; // Extrude edilmiş şekiller box olarak işaretlenir
+      console.log(`${shape.type} extruded: ${shape.points.length} points, height ${height}mm at position [${position.join(', ')}]`);
+      break;
+    }
+    default:
+      console.warn(`Cannot extrude shape type: ${shape.type}`);
+      return null;
+  }
+
+  if (!geometry) {
+    console.error('Failed to create extruded geometry');
+    return null;
+  }
+
+  const newShape: Shape = {
+    id: Math.random().toString(36).substr(2, 9),
+    type: shapeType,
+    position: position,
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    geometry,
+    parameters: shape.type === 'circle' 
+      ? { radius: shape.points[0].distanceTo(shape.points[1]), height }
+      : shape.type === 'rectangle'
+      ? { 
+          width: Math.abs(shape.points[2].x - shape.points[0].x),
+          height,
+          depth: Math.abs(shape.points[2].z - shape.points[0].z)
+        }
+      : {
+          points: shape.points.length,
+          height,
+          area: 'calculated'
+        },
+  };
+
+  addShape(newShape);
+  console.log(`3D shape created using ${GeometryFactory.getCurrentMode()}: ${newShape.id}`);
+  return newShape;
+};

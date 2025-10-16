@@ -156,26 +156,16 @@ const YagoDesignShape: React.FC<Props> = ({
   // Listen for edge measurement updates from Terminal
   useEffect(() => {
     const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
-      const { shapeId, edgeId, newValue, formula } = e.detail;
+      const { shapeId, edgeIndex, newValue, formula } = e.detail;
 
       if (shapeId === shape.id) {
-        console.log(`🔄 Received updateEdgeMeasurement for shape ${shapeId}, edgeId: ${edgeId}, value: ${newValue}`);
-
-        // Find the current index of this edge by its stable edgeId
-        const currentEdgeIndex = lineSegments.findIndex(seg => seg.id === edgeId);
-
-        if (currentEdgeIndex === -1) {
-          console.error(`❌ Could not find edge with edgeId: ${edgeId}`);
-          return;
-        }
-
-        console.log(`   Found edge at current index: ${currentEdgeIndex}`);
+        console.log(`🔄 Received updateEdgeMeasurement for shape ${shapeId}, edge ${edgeIndex}, value: ${newValue}`);
 
         // Update with specific edge index (for parametric updates)
-        handleMeasurementUpdate(newValue, formula, currentEdgeIndex);
+        handleMeasurementUpdate(newValue, formula, edgeIndex);
 
         // Only clear selection if this was for the selected edge
-        if (currentEdgeIndex === selectedEdge) {
+        if (edgeIndex === selectedEdge) {
           setSelectedEdge(null);
         }
       }
@@ -186,7 +176,7 @@ const YagoDesignShape: React.FC<Props> = ({
     return () => {
       window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
     };
-  }, [shape.id, selectedEdge, lineSegments]);
+  }, [shape.id, selectedEdge]);
 
   // Handle transform controls
   useEffect(() => {
@@ -563,14 +553,13 @@ const YagoDesignShape: React.FC<Props> = ({
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
 
-    // If formula is provided, store it in shape's edgeFormulas using STABLE edgeId
+    // If formula is provided, store it in shape's edgeFormulas
     if (formula) {
       const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
+      const existingIndex = currentFormulas.findIndex(f => f.edgeIndex === edgeIndex);
 
       const newFormula = {
         edgeIndex: edgeIndex,
-        edgeId: edgeId,
         formula: formula,
         originalLength: newValue,
         currentValue: newValue
@@ -584,24 +573,10 @@ const YagoDesignShape: React.FC<Props> = ({
         updatedFormulas = [...currentFormulas, newFormula];
       }
 
-      console.log(`📝 Saved edge formula: edge ${edgeIndex} (${edgeId}) = "${formula}"`);
+      console.log(`📝 Saved edge formula: edge ${edgeIndex} = "${formula}"`);
 
       // Update shape with formula
       updateShape(shape.id, { edgeFormulas: updatedFormulas });
-    } else if (!formula) {
-      // If no formula provided but this edge has a formula, update its currentValue
-      const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
-
-      if (existingIndex >= 0) {
-        const updatedFormulas = [...currentFormulas];
-        updatedFormulas[existingIndex] = {
-          ...updatedFormulas[existingIndex],
-          currentValue: newValue
-        };
-        updateShape(shape.id, { edgeFormulas: updatedFormulas });
-        console.log(`🔄 Updated currentValue for parametric edge ${edgeIndex} (${edgeId}): ${newValue}`);
-      }
     }
 
     // Get current edge length in local space
@@ -658,30 +633,15 @@ const YagoDesignShape: React.FC<Props> = ({
     console.log(`   Fixed:`, fixedPoint, 'Moving:', movingPoint, '→', newMovingPoint);
 
     // Update all vertices that should move
-    let verticesUpdated = 0;
     for (let i = 0; i < positions.length; i += 3) {
       const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
-      const distToMoving = vertex.distanceTo(movingPoint);
 
       // Check if this vertex is on the moving side
-      if (distToMoving < tolerance) {
+      if (vertex.distanceTo(movingPoint) < tolerance) {
         // Set vertex to new position
         positions[i] = newMovingPoint.x;
         positions[i + 1] = newMovingPoint.y;
         positions[i + 2] = newMovingPoint.z;
-        verticesUpdated++;
-        console.log(`   Vertex ${i/3} matched (dist: ${distToMoving.toFixed(6)}): ${vertex.x.toFixed(3)},${vertex.y.toFixed(3)},${vertex.z.toFixed(3)} → ${newMovingPoint.x.toFixed(3)},${newMovingPoint.y.toFixed(3)},${newMovingPoint.z.toFixed(3)}`);
-      }
-    }
-    console.log(`   Total vertices updated: ${verticesUpdated} / ${positions.length / 3}`);
-
-    if (verticesUpdated === 0) {
-      console.error(`❌ No vertices were updated! movingPoint:`, movingPoint, 'tolerance:', tolerance);
-      console.error(`   Checking all vertices distances:`);
-      for (let i = 0; i < positions.length; i += 3) {
-        const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
-        const dist = vertex.distanceTo(movingPoint);
-        console.error(`   Vertex ${i/3}: (${vertex.x.toFixed(3)}, ${vertex.y.toFixed(3)}, ${vertex.z.toFixed(3)}) dist: ${dist.toFixed(6)}`);
       }
     }
 
@@ -692,8 +652,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    console.log(`✅ Edge ${edgeIndex} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
-    console.log(`   Vertices updated, geometry updated in store`);
+    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
   };
 
   const handleClick = (e: any) => {
@@ -848,11 +807,11 @@ const YagoDesignShape: React.FC<Props> = ({
       {isRulerMode && (
         <>
           {lineSegments.map((segment, idx) => {
-            const edgeId = segment.id;
+            const edgeId = `${shape.id}-edge-${idx}`;
             const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
             const isSelected = selectedEdge === idx;
-            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeId === edgeId);
+            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeIndex === idx);
             const points = [segment.start, segment.end];
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
 
@@ -881,11 +840,11 @@ const YagoDesignShape: React.FC<Props> = ({
 
           {/* Measurement labels on edges */}
           {lineSegments.map((segment, idx) => {
-            const edgeId = segment.id;
+            const edgeId = `${shape.id}-edge-${idx}`;
             const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
             const isSelected = selectedEdge === idx;
-            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeId === edgeId);
+            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeIndex === idx);
 
             if ((isHovered || isSelected || measurement?.confirmed || edgeFormula) && meshRef.current) {
               const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
@@ -918,9 +877,9 @@ const YagoDesignShape: React.FC<Props> = ({
                     }}
                   >
                     {edgeFormula ? (
-                      <span>{edgeFormula.formula} = {displayValue.toFixed(2)} mm</span>
+                      <span>{edgeFormula.formula} = {displayValue.toFixed(2)} mm [Edge #{idx}]</span>
                     ) : (
-                      <span>{displayValue.toFixed(2)} mm</span>
+                      <span>{displayValue.toFixed(2)} mm [Edge #{idx}]</span>
                     )}
                   </div>
                 </Html>
