@@ -42,8 +42,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
             shapeId,
             faceIndex,
             rowId: activeRowId,
-            color: 0xfff5e6, // Light cream/beige color (very light orange)
-            opacity: 0.3, // More transparent
+            color: 0xff8c42, // Vibrant orange color - more visible
+            opacity: 0.65, // More opaque for better visibility
             faceNumber: surfaceRows.length // Use current row count as face number
           }
         });
@@ -112,14 +112,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     if (row && row.faceIndex !== null) {
       // Update highlight color based on role
       const roleColors = {
-        'left': 0xfff5e6,    // Very light cream/beige
-        'right': 0xfff5e6,   // Very light cream/beige
-        'top': 0xfff5e6,     // Very light cream/beige
-        'bottom': 0xfff5e6,  // Very light cream/beige
-        'front': 0xfff5e6,   // Very light cream/beige
-        'back': 0xffffe6,    // Very light yellow - Ba
-        'door': 0xe6fff2,    // Very light green - D
-        '': 0xfff5e6         // Default very light cream/beige
+        'left': 0xff8c42,    // Vibrant orange - Left
+        'right': 0xff5722,   // Deep orange - Right
+        'top': 0x42a5f5,     // Bright blue - Top
+        'bottom': 0x26c6da,  // Cyan - Bottom
+        'front': 0x66bb6a,   // Green - Front
+        'back': 0xffeb3b,    // Yellow - Back
+        'door': 0xec407a,    // Pink - Door
+        '': 0xff8c42         // Default vibrant orange
       };
       
       const color = roleColors[role as keyof typeof roleColors] || roleColors[''];

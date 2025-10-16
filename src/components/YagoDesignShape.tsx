@@ -343,11 +343,52 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log('✅ All surface highlights cleared');
     };
 
+    const handleShapeDimensionsChanged = (event: CustomEvent) => {
+      const { shapeId, dimension, newValue, newScale } = event.detail;
+
+      if (shapeId === shape.id && surfaceHighlights.size > 0) {
+        console.log(`🎯 Shape dimensions changed for shape ${shapeId}, updating ${surfaceHighlights.size} surface highlights`);
+
+        surfaceHighlights.forEach((highlight, rowId) => {
+          scene.remove(highlight);
+          if (highlight.geometry) highlight.geometry.dispose();
+          if (highlight.material) {
+            if (Array.isArray(highlight.material)) {
+              highlight.material.forEach(mat => mat.dispose());
+            } else {
+              highlight.material.dispose();
+            }
+          }
+
+          const faceIndex = (highlight as any).userData?.faceIndex;
+          const color = (highlight.material as THREE.MeshBasicMaterial).color.getHex();
+          const opacity = (highlight.material as THREE.MeshBasicMaterial).opacity;
+
+          if (faceIndex !== undefined && meshRef.current) {
+            const mockHit = {
+              faceIndex: faceIndex,
+              object: meshRef.current,
+              face: { a: 0, b: 1, c: 2 },
+              point: new THREE.Vector3()
+            };
+
+            const newHighlight = addFaceHighlight(scene, mockHit, shape, color, opacity, false, undefined, rowId);
+
+            if (newHighlight) {
+              surfaceHighlights.set(rowId, newHighlight.mesh);
+              console.log(`✅ Surface highlight recreated for row ${rowId} after dimension change`);
+            }
+          }
+        });
+      }
+    };
+
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     window.addEventListener('createSurfaceHighlight', handleCreateSurfaceHighlight as EventListener);
     window.addEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
     window.addEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
     window.addEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+    window.addEventListener('shapeDimensionsChanged', handleShapeDimensionsChanged as EventListener);
 
     return () => {
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
@@ -355,6 +396,7 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
       window.removeEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+      window.removeEventListener('shapeDimensionsChanged', handleShapeDimensionsChanged as EventListener);
     };
   }, [scene, camera, gl.domElement, shape]);
 

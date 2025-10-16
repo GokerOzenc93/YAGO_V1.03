@@ -151,6 +151,19 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
     });
+
+    // Notify scene that shape dimensions changed - update surface highlights
+    const updateEvent = new CustomEvent('shapeDimensionsChanged', {
+      detail: {
+        shapeId: editedShape.id,
+        dimension,
+        newValue,
+        newScale
+      }
+    });
+    window.dispatchEvent(updateEvent);
+
+    console.log(`🎯 Shape dimensions updated: ${dimension} = ${evaluatedValue.toFixed(2)}`);
   };
 
   const handleAddParameter = () => {
