@@ -1,0 +1,105 @@
+import * as THREE from 'three';
+import { EdgeConstraint } from '../types/shapes';
+
+export function applyEdgeConstraints(
+  geometry: THREE.BufferGeometry,
+  constraints: EdgeConstraint[],
+  evaluateFormula: (formula: string) => number | null
+): THREE.BufferGeometry {
+  if (!constraints || constraints.length === 0) {
+    return geometry;
+  }
+
+  const newGeometry = geometry.clone();
+  const positions = newGeometry.attributes.position.array as Float32Array;
+
+  const edges = extractEdges(positions);
+
+  for (const constraint of constraints) {
+    const targetLength = evaluateFormula(constraint.formula);
+
+    if (targetLength === null || targetLength <= 0) {
+      console.warn(`⚠️ Invalid constraint formula "${constraint.formula}"`);
+      continue;
+    }
+
+    const edge = edges.find(e => e.id === constraint.edgeId);
+    if (!edge) {
+      console.warn(`⚠️ Edge ${constraint.edgeId} not found`);
+      continue;
+    }
+
+    const currentLength = edge.start.distanceTo(edge.end);
+    const scale = targetLength / currentLength;
+
+    const axis = getEdgeAxis(edge.start, edge.end);
+    const fixed = edge.start.clone();
+    const moving = edge.end.clone();
+
+    if (axis === 'x') {
+      const newX = fixed.x + (moving.x - fixed.x) * scale;
+      updateVertices(positions, moving, new THREE.Vector3(newX, moving.y, moving.z));
+    } else if (axis === 'y') {
+      const newY = fixed.y + (moving.y - fixed.y) * scale;
+      updateVertices(positions, moving, new THREE.Vector3(moving.x, newY, moving.z));
+    } else {
+      const newZ = fixed.z + (moving.z - fixed.z) * scale;
+      updateVertices(positions, moving, new THREE.Vector3(moving.x, moving.y, newZ));
+    }
+
+    console.log(`✅ Applied constraint: edge ${constraint.edgeId} = ${targetLength.toFixed(2)}mm`);
+  }
+
+  newGeometry.attributes.position.needsUpdate = true;
+  newGeometry.computeBoundingBox();
+  newGeometry.computeVertexNormals();
+
+  return newGeometry;
+}
+
+function extractEdges(positions: Float32Array): Array<{ id: string; start: THREE.Vector3; end: THREE.Vector3 }> {
+  const edges: Array<{ id: string; start: THREE.Vector3; end: THREE.Vector3 }> = [];
+
+  for (let i = 0; i < positions.length; i += 9) {
+    const v1 = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+    const v2 = new THREE.Vector3(positions[i + 3], positions[i + 4], positions[i + 5]);
+    const v3 = new THREE.Vector3(positions[i + 6], positions[i + 7], positions[i + 8]);
+
+    edges.push(
+      { id: `${i}_0`, start: v1, end: v2 },
+      { id: `${i}_1`, start: v2, end: v3 },
+      { id: `${i}_2`, start: v3, end: v1 }
+    );
+  }
+
+  return edges;
+}
+
+function getEdgeAxis(start: THREE.Vector3, end: THREE.Vector3): 'x' | 'y' | 'z' {
+  const delta = new THREE.Vector3().subVectors(end, start);
+  const absX = Math.abs(delta.x);
+  const absY = Math.abs(delta.y);
+  const absZ = Math.abs(delta.z);
+
+  if (absX > absY && absX > absZ) return 'x';
+  if (absY > absX && absY > absZ) return 'y';
+  return 'z';
+}
+
+function updateVertices(positions: Float32Array, oldPos: THREE.Vector3, newPos: THREE.Vector3) {
+  const tolerance = 0.001;
+
+  for (let i = 0; i < positions.length; i += 3) {
+    const vx = positions[i];
+    const vy = positions[i + 1];
+    const vz = positions[i + 2];
+
+    if (Math.abs(vx - oldPos.x) < tolerance &&
+        Math.abs(vy - oldPos.y) < tolerance &&
+        Math.abs(vz - oldPos.z) < tolerance) {
+      positions[i] = newPos.x;
+      positions[i + 1] = newPos.y;
+      positions[i + 2] = newPos.z;
+    }
+  }
+}

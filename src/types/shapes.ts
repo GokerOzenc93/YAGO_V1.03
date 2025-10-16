@@ -1,13 +1,9 @@
 import * as THREE from 'three';
 
-export interface EdgeFormula {
+export interface EdgeConstraint {
   edgeId: string;
-  start: [number, number, number];
-  end: [number, number, number];
   formula: string;
-  originalLength: number;
-  parameterName?: string;
-  currentValue?: number;
+  targetLength: number;
 }
 
 export interface Shape {
@@ -32,7 +28,7 @@ export interface Shape {
   is2DShape?: boolean;
   isReference?: boolean;
   mesh?: THREE.Mesh;
-  edgeFormulas?: EdgeFormula[];
+  edgeConstraints?: EdgeConstraint[];
 }
 
 export const SHAPE_COLORS = {

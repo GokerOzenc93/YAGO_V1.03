@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
 import { FormulaEvaluator, FormulaVariable } from '../../utils/formulaEvaluator';
-import { buildConstraintsFromEdgeFormulas, applyConstraintsToGeometry } from '../../utils/geometryConstraints';
+import { applyEdgeConstraints } from '../../utils/geometryConstraints';
 
 interface CustomParameter {
   id: string;
@@ -266,23 +266,22 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       console.log(`🔧 Applying ${shape.edgeFormulas.length} constraints to shape ${shape.id}`);
 
-      // Build constraints from all edge formulas
-      const constraints = buildConstraintsFromEdgeFormulas(
+      // Convert to EdgeConstraint format
+      const constraints = shape.edgeFormulas.map(f => ({
+        edgeId: f.edgeId,
+        formula: f.formula,
+        targetLength: evaluateFormula(f.formula) || 0
+      }));
+
+      // Apply all constraints to geometry at once
+      const newGeometry = applyEdgeConstraints(
         shape.geometry,
-        shape.edgeFormulas,
+        constraints,
         (formula) => {
           const result = evaluateFormula(formula);
           return result !== null ? convertToBaseUnit(result) : null;
         }
       );
-
-      if (constraints.length === 0) {
-        console.log(`⚠️ No valid constraints for shape ${shape.id}`);
-        return;
-      }
-
-      // Apply all constraints to geometry at once
-      const newGeometry = applyConstraintsToGeometry(shape.geometry, constraints);
 
       // Update shape with constrained geometry
       updateShape(shape.id, { geometry: newGeometry });

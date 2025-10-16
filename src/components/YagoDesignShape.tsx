@@ -7,7 +7,7 @@ import { Shape } from '../types/shapes';
 import { SHAPE_COLORS } from '../types/shapes';
 import { ViewMode, OrthoMode } from '../store/appStore';
 import { applyOrthoConstraint } from '../utils/orthoUtils';
-import { buildConstraintsFromEdgeFormulas, applyConstraintsToGeometry } from '../utils/geometryConstraints';
+import { applyEdgeConstraints } from '../utils/geometryConstraints';
 
 // New surface highlight management
 const surfaceHighlights = new Map<string, THREE.Mesh>();
@@ -551,26 +551,30 @@ const YagoDesignShape: React.FC<Props> = ({
 
     console.log(`📝 Saved edge constraint: edge ${edgeId} = "${newFormula.formula}"`);
 
-    // Build constraints from ALL edge formulas (including the new one)
-    const constraints = buildConstraintsFromEdgeFormulas(
+    // Convert to EdgeConstraint format
+    const constraints = updatedFormulas.map(f => ({
+      edgeId: f.edgeId,
+      formula: f.formula,
+      targetLength: evaluateFormula(f.formula) || 0
+    }));
+
+    // Apply all constraints to geometry
+    const newGeometry = applyEdgeConstraints(
       shape.geometry,
-      updatedFormulas,
-      (f) => {
-        const result = evaluateFormula(f);
+      constraints,
+      (formula) => {
+        const result = evaluateFormula(formula);
         return result !== null ? convertToBaseUnit(result) : null;
       }
     );
 
-    // Apply all constraints to geometry at once
-    const newGeometry = applyConstraintsToGeometry(shape.geometry, constraints);
-
-    // Update shape with new geometry and formulas
+    // Update shape with new geometry and constraints
     updateShape(shape.id, {
       geometry: newGeometry,
       edgeFormulas: updatedFormulas
     });
 
-    console.log(`✅ Edge (${edgeId}) constrained to ${newValue.toFixed(2)} mm with ${constraints.length} total constraints applied`);
+    console.log(`✅ Edge (${edgeId}) constrained to ${newValue.toFixed(2)} mm`);
   }, [selectedEdgeId, lineSegments, shape, updateShape, setEdgeMeasurement, convertToBaseUnit, convertToDisplayUnit]);
 
   // Listen for edge measurement updates from Terminal
@@ -871,20 +875,23 @@ const YagoDesignShape: React.FC<Props> = ({
               if (shape.edgeFormulas && shape.edgeFormulas.length > 0) {
                 setTimeout(() => {
                   console.log('🔗 Re-applying constraints after transform');
-                  const constraints = buildConstraintsFromEdgeFormulas(
+                  const constraints = shape.edgeFormulas.map(f => ({
+                    edgeId: f.edgeId,
+                    formula: f.formula,
+                    targetLength: evaluateFormula(f.formula) || 0
+                  }));
+
+                  const newGeometry = applyEdgeConstraints(
                     shape.geometry,
-                    shape.edgeFormulas,
+                    constraints,
                     (formula) => {
                       const result = evaluateFormula(formula);
                       return result !== null ? convertToBaseUnit(result) : null;
                     }
                   );
 
-                  if (constraints.length > 0) {
-                    const newGeometry = applyConstraintsToGeometry(shape.geometry, constraints);
-                    updateShape(shape.id, { geometry: newGeometry });
-                    console.log(`✅ Re-applied ${constraints.length} constraints after transform`);
-                  }
+                  updateShape(shape.id, { geometry: newGeometry });
+                  console.log(`✅ Re-applied ${constraints.length} constraints after transform`);
                 }, 50);
               }
             }}
