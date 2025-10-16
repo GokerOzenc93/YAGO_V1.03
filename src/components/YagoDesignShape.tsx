@@ -880,9 +880,9 @@ const YagoDesignShape: React.FC<Props> = ({
                     }}
                   >
                     {edgeFormula ? (
-                      <span>{edgeFormula.formula} = {displayValue.toFixed(2)} mm [Edge #{idx}]</span>
+                      <span>{edgeFormula.formula} = {displayValue.toFixed(2)} mm</span>
                     ) : (
-                      <span>{displayValue.toFixed(2)} mm [Edge #{idx}]</span>
+                      <span>{displayValue.toFixed(2)} mm</span>
                     )}
                   </div>
                 </Html>
