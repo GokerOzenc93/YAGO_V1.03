@@ -103,17 +103,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     recalculateAllParameters();
   }, [JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
 
-  useEffect(() => {
-    const handleUpdateAll = () => {
-      console.log('🔄 Received updateAllParametricEdges event');
-      updateDependentEdges();
-    };
-
-    window.addEventListener('updateAllParametricEdges', handleUpdateAll);
-    return () => {
-      window.removeEventListener('updateAllParametricEdges', handleUpdateAll);
-    };
-  }, []);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -282,9 +271,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       syncFormulaVariables();
 
       recalculateAllParameters();
-
-      // Update all edges that depend on this parameter
-      updateDependentEdges();
     });
   };
 
