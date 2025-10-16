@@ -19,6 +19,8 @@ export function applyEdgeConstraints(
   const edges = extractEdges(positions);
   console.log(`📊 Found ${edges.length} edges in geometry`);
 
+  const appliedEdges = new Set<string>();
+
   for (const constraint of constraints) {
     console.log(`🔍 Processing constraint for edge ${constraint.edgeId}, formula: ${constraint.formula}`);
 
@@ -31,10 +33,29 @@ export function applyEdgeConstraints(
 
     console.log(`✓ Target length evaluated: ${targetLength}mm`);
 
-    const edge = edges.find(e => e.id === constraint.edgeId);
+    let edge = edges.find(e => e.id === constraint.edgeId);
+
+    if (!edge) {
+      console.log(`🔄 Edge ID not found, searching by closest match...`);
+      const targetCoords = constraint.edgeId.split('-').slice(1);
+
+      for (const e of edges) {
+        const edgeCoords = e.id.split('-').slice(1);
+        if (areCoordsClose(targetCoords, edgeCoords)) {
+          edge = e;
+          console.log(`✓ Found matching edge: ${e.id}`);
+          break;
+        }
+      }
+    }
+
     if (!edge) {
       console.warn(`⚠️ Edge ${constraint.edgeId} not found in ${edges.length} edges`);
-      console.log('Available edge IDs:', edges.slice(0, 10).map(e => e.id));
+      continue;
+    }
+
+    if (appliedEdges.has(edge.id)) {
+      console.log(`⏭️ Edge ${edge.id} already constrained, skipping`);
       continue;
     }
 
@@ -56,7 +77,8 @@ export function applyEdgeConstraints(
       updateVertices(positions, moving, new THREE.Vector3(moving.x, moving.y, newZ));
     }
 
-    console.log(`✅ Applied constraint: edge ${constraint.edgeId} = ${targetLength.toFixed(2)}mm`);
+    appliedEdges.add(edge.id);
+    console.log(`✅ Applied constraint: edge ${edge.id} = ${targetLength.toFixed(2)}mm`);
   }
 
   newGeometry.attributes.position.needsUpdate = true;
@@ -105,6 +127,26 @@ function makeEdgeId(v1: THREE.Vector3, v2: THREE.Vector3): string {
   } else {
     return `edge-${p2}-${p1}`;
   }
+}
+
+function areCoordsClose(coords1: string[], coords2: string[], tolerance = 0.1): boolean {
+  if (coords1.length !== coords2.length) return false;
+
+  for (let i = 0; i < coords1.length; i++) {
+    const parts1 = coords1[i].split(',').map(Number);
+    const parts2 = coords2[i].split(',').map(Number);
+
+    if (parts1.length !== parts2.length) return false;
+
+    const allClose = parts1.every((val, idx) => {
+      const ratio = parts2[idx] === 0 ? 1 : val / parts2[idx];
+      return Math.abs(ratio - 1) < tolerance || Math.abs(val - parts2[idx]) < 1;
+    });
+
+    if (!allClose) return false;
+  }
+
+  return true;
 }
 
 function getEdgeAxis(start: THREE.Vector3, end: THREE.Vector3): 'x' | 'y' | 'z' {
