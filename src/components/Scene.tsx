@@ -12,10 +12,8 @@ import {
 } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
-import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
-import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import * as THREE from 'three';
@@ -685,11 +683,6 @@ const Scene: React.FC = () => {
           color="#e0f2fe"
           decay={2}
           distance={2000}
-        />
-
-        <DrawingPlane
-          onShowMeasurement={setMeasurementOverlay}
-          onHideMeasurement={() => setMeasurementOverlay(null)}
         />
 
         <group position={[0, -0.001, 0]}>
