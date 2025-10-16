@@ -4,6 +4,7 @@ import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
 import { FormulaEvaluator, FormulaVariable } from '../../utils/formulaEvaluator';
+import { buildConstraintsFromEdgeFormulas, applyConstraintsToGeometry } from '../../utils/geometryConstraints';
 
 interface CustomParameter {
   id: string;
@@ -155,10 +156,20 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       const updatedParams = customParameters.map(param => {
         if (!param.value.trim()) return param;
-        const evaluated = evaluateExpression(param.value, `param-${param.description}`);
-        return evaluated !== null && !isNaN(evaluated)
-          ? { ...param, result: evaluated.toFixed(2) }
-          : param;
+
+        // Check if parameter is a constant (pure number) or formula
+        const isConstant = !isNaN(parseFloat(param.value)) && isFinite(parseFloat(param.value));
+
+        if (isConstant) {
+          // Constant parameter - never recalculate, keep original value
+          return param;
+        } else {
+          // Formula parameter - recalculate when dependencies change
+          const evaluated = evaluateExpression(param.value, `param-${param.description}`);
+          return evaluated !== null && !isNaN(evaluated)
+            ? { ...param, result: evaluated.toFixed(2) }
+            : param;
+        }
       });
 
       const hasParamChanges = updatedParams.some((p, i) => p.result !== customParameters[i].result);
@@ -247,26 +258,36 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const updateDependentEdges = useCallback(() => {
-    const { shapes, evaluateFormula } = useAppStore.getState();
-    console.log('🔄 updateDependentEdges called, shapes:', shapes.length);
+    const { shapes, evaluateFormula, updateShape, convertToBaseUnit } = useAppStore.getState();
+    console.log('🔄 updateDependentEdges called with constraint system, shapes:', shapes.length);
+
     shapes.forEach(shape => {
       if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
 
-      shape.edgeFormulas.forEach(edgeFormula => {
-        const newValue = evaluateFormula(edgeFormula.formula);
-        if (newValue !== null && newValue > 0) {
-          const event = new CustomEvent('updateEdgeMeasurement', {
-            detail: {
-              shapeId: shape.id,
-              edgeId: edgeFormula.edgeId,
-              newValue,
-              formula: edgeFormula.formula
-            }
-          });
-          window.dispatchEvent(event);
-          console.log(`🔄 Auto-updated edge ${edgeFormula.edgeId} of shape ${shape.id} to ${newValue} mm`);
+      console.log(`🔧 Applying ${shape.edgeFormulas.length} constraints to shape ${shape.id}`);
+
+      // Build constraints from all edge formulas
+      const constraints = buildConstraintsFromEdgeFormulas(
+        shape.geometry,
+        shape.edgeFormulas,
+        (formula) => {
+          const result = evaluateFormula(formula);
+          return result !== null ? convertToBaseUnit(result) : null;
         }
-      });
+      );
+
+      if (constraints.length === 0) {
+        console.log(`⚠️ No valid constraints for shape ${shape.id}`);
+        return;
+      }
+
+      // Apply all constraints to geometry at once
+      const newGeometry = applyConstraintsToGeometry(shape.geometry, constraints);
+
+      // Update shape with constrained geometry
+      updateShape(shape.id, { geometry: newGeometry });
+
+      console.log(`✅ Applied ${constraints.length} constraints to shape ${shape.id}`);
     });
   }, []);
 
