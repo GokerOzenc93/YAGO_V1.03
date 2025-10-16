@@ -658,15 +658,30 @@ const YagoDesignShape: React.FC<Props> = ({
     console.log(`   Fixed:`, fixedPoint, 'Moving:', movingPoint, '→', newMovingPoint);
 
     // Update all vertices that should move
+    let verticesUpdated = 0;
     for (let i = 0; i < positions.length; i += 3) {
       const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+      const distToMoving = vertex.distanceTo(movingPoint);
 
       // Check if this vertex is on the moving side
-      if (vertex.distanceTo(movingPoint) < tolerance) {
+      if (distToMoving < tolerance) {
         // Set vertex to new position
         positions[i] = newMovingPoint.x;
         positions[i + 1] = newMovingPoint.y;
         positions[i + 2] = newMovingPoint.z;
+        verticesUpdated++;
+        console.log(`   Vertex ${i/3} matched (dist: ${distToMoving.toFixed(6)}): ${vertex.x.toFixed(3)},${vertex.y.toFixed(3)},${vertex.z.toFixed(3)} → ${newMovingPoint.x.toFixed(3)},${newMovingPoint.y.toFixed(3)},${newMovingPoint.z.toFixed(3)}`);
+      }
+    }
+    console.log(`   Total vertices updated: ${verticesUpdated} / ${positions.length / 3}`);
+
+    if (verticesUpdated === 0) {
+      console.error(`❌ No vertices were updated! movingPoint:`, movingPoint, 'tolerance:', tolerance);
+      console.error(`   Checking all vertices distances:`);
+      for (let i = 0; i < positions.length; i += 3) {
+        const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+        const dist = vertex.distanceTo(movingPoint);
+        console.error(`   Vertex ${i/3}: (${vertex.x.toFixed(3)}, ${vertex.y.toFixed(3)}, ${vertex.z.toFixed(3)}) dist: ${dist.toFixed(6)}`);
       }
     }
 
@@ -677,7 +692,8 @@ const YagoDesignShape: React.FC<Props> = ({
 
     updateShape(shape.id, { geometry });
 
-    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
+    console.log(`✅ Edge ${edgeIndex} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
+    console.log(`   Vertices updated, geometry updated in store`);
   };
 
   const handleClick = (e: any) => {
