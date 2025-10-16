@@ -1,8 +1,15 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check } from 'lucide-react';
+import { X, Puzzle, Check, Plus } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
+
+interface CustomParameter {
+  id: string;
+  description: string;
+  value: string;
+  result: string | null;
+}
 
 interface ModuleProps {
   editedShape: Shape;
@@ -12,15 +19,11 @@ interface ModuleProps {
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
-  // Şeklin mevcut geometrisinin ve ölçeğinin en dış sınırlarını hesaplar.
-  // Bu, nesne bir kutu olmasa bile (örneğin bir polylinedan oluşsa bile) doğru boyutları verir.
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
       return { currentWidth: 0, currentHeight: 0, currentDepth: 0 };
     }
 
-    // Bounding box'ı hesapla (eğer henüz hesaplanmadıysa)
-    // Bu metod, herhangi bir THREE.BufferGeometry için en dış sınırları verir.
     editedShape.geometry.computeBoundingBox();
     const bbox = editedShape.geometry.boundingBox;
 
@@ -29,25 +32,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       return { currentWidth: 500, currentHeight: 500, currentDepth: 500 };
     }
 
-    // Bounding box boyutlarını mevcut ölçekle çarpılarak gerçek dünya boyutları elde edilir
     const width = (bbox.max.x - bbox.min.x) * editedShape.scale[0];
     const height = (bbox.max.y - bbox.min.y) * editedShape.scale[1];
     const depth = (bbox.max.z - bbox.min.z) * editedShape.scale[2];
-
-    console.log(`🎯 Module boyutları hesaplandı:`, {
-      shapeType: editedShape.type,
-      shapeId: editedShape.id,
-      boundingBox: {
-        min: [bbox.min.x.toFixed(1), bbox.min.y.toFixed(1), bbox.min.z.toFixed(1)],
-        max: [bbox.max.x.toFixed(1), bbox.max.y.toFixed(1), bbox.max.z.toFixed(1)]
-      },
-      scale: editedShape.scale,
-      calculatedDimensions: {
-        width: width.toFixed(1),
-        height: height.toFixed(1), 
-        depth: depth.toFixed(1)
-      }
-    });
 
     return {
       currentWidth: width,
@@ -56,48 +43,50 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     };
   }, [editedShape.geometry, editedShape.scale]);
 
-  // Giriş alanları için yerel durumlar (state) tanımlandı.
-  // Başlangıçta ve güncellendiğinde küsuratsız gösterilir (toFixed(0)).
   const [inputWidth, setInputWidth] = useState(convertToDisplayUnit(currentWidth).toFixed(0));
   const [inputHeight, setInputHeight] = useState(convertToDisplayUnit(currentHeight).toFixed(0));
   const [inputDepth, setInputDepth] = useState(convertToDisplayUnit(currentDepth).toFixed(0));
 
-  // Shape tipine göre hangi boyutların düzenlenebilir olduğunu belirle
+  const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
+
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
-  const canEditHeight = true; // Tüm şekillerde yükseklik düzenlenebilir
+  const canEditHeight = true;
   const canEditDepth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
 
   useEffect(() => {
-    // editedShape veya boyutları dışarıdan değiştiğinde yerel durumu güncelle
-    // Yine küsuratsız gösterilir (toFixed(0)).
     setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
     setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
     setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  // Sayısal, ondalık, +, -, *, /, ( ) girişlere izin veren doğrulama fonksiyonu
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
-    // Sayıları, ondalık noktayı, +, -, *, /, parantezleri ve boşlukları kabul eden regex.
-    // Bu sayede kullanıcı hem tam sayı, hem ondalık sayı, hem de matematiksel ifadeler girebilir.
-    const regex = /^[0-9+\-*/().\s]*$/;
+    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
     if (regex.test(value) || value === '') {
       setter(value);
     }
   };
 
-  // Matematiksel ifadeyi değerlendirip sonucu döndüren yardımcı fonksiyon
   const evaluateExpression = (expression: string): number | null => {
     try {
-      // Güvenlik uyarısı: eval() kullanmak güvenlik açıkları oluşturabilir.
-      // Güvenli bir uygulama için daha robust bir matematiksel ifade ayrıştırıcı kütüphane kullanılması önerilir.
-      // Bu uygulama yerel olduğundan ve kullanıcı girdisi kısıtlı olduğundan şimdilik kullanılmıştır.
-      const result = eval(expression);
+      let processedExpression = expression;
+
+      processedExpression = processedExpression.replace(/\bW\b/g, convertToDisplayUnit(currentWidth).toString());
+      processedExpression = processedExpression.replace(/\bH\b/g, convertToDisplayUnit(currentHeight).toString());
+      processedExpression = processedExpression.replace(/\bD\b/g, convertToDisplayUnit(currentDepth).toString());
+
+      customParameters.forEach(param => {
+        if (param.description && param.result) {
+          const regex = new RegExp(`\\b${param.description}\\b`, 'g');
+          processedExpression = processedExpression.replace(regex, param.result);
+        }
+      });
+
+      const result = eval(processedExpression);
       if (typeof result === 'number' && isFinite(result)) {
         return result;
       }
       return null;
     } catch (e) {
-      console.error("Matematiksel ifade değerlendirilirken hata oluştu:", e);
       return null;
     }
   };
@@ -106,13 +95,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     dimension: 'width' | 'height' | 'depth',
     value: string
   ) => {
-    // Girilen değeri (matematiksel ifade de olabilir) değerlendir.
     const evaluatedValue = evaluateExpression(value);
 
-    // Değerlendirme sonucu geçersizse veya pozitif bir sayı değilse uyarı ver ve işlemi durdur.
     if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
-      console.warn(`Geçersiz değer veya matematiksel ifade ${dimension} için: ${value}. Pozitif bir sayı olmalı.`);
-      // Giriş alanını son geçerli değere sıfırla (küsuratsız olarak).
       if (dimension === 'width') setInputWidth(convertToDisplayUnit(currentWidth).toFixed(0));
       if (dimension === 'height') setInputHeight(convertToDisplayUnit(currentHeight).toFixed(0));
       if (dimension === 'depth') setInputDepth(convertToDisplayUnit(currentDepth).toFixed(0));
@@ -148,147 +133,334 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     });
   };
 
+  const handleAddParameter = () => {
+    const newParam: CustomParameter = {
+      id: `param_${Date.now()}`,
+      description: '',
+      value: '',
+      result: null
+    };
+    setCustomParameters(prev => [...prev, newParam]);
+  };
+
+  const handleRemoveParameter = (id: string) => {
+    setCustomParameters(prev => prev.filter(param => param.id !== id));
+  };
+
+  const handleClearAllParameters = () => {
+    setCustomParameters([]);
+  };
+
+  const handleParameterDescriptionChange = (id: string, description: string) => {
+    setCustomParameters(prev => prev.map(param =>
+      param.id === id ? { ...param, description } : param
+    ));
+  };
+
+  const handleParameterValueChange = (id: string, value: string) => {
+    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
+    if (regex.test(value) || value === '') {
+      setCustomParameters(prev => prev.map(param =>
+        param.id === id ? { ...param, value, result: null } : param
+      ));
+    }
+  };
+
+  const handleApplyParameter = (id: string) => {
+    const param = customParameters.find(p => p.id === id);
+    if (!param || !param.value.trim()) return;
+
+    if (!param.description || !param.description.trim()) {
+      alert('Please enter a code name for this parameter');
+      return;
+    }
+
+    const codeRegex = /^[a-zA-Z][a-zA-Z0-9]*$/;
+    if (!codeRegex.test(param.description)) {
+      alert('Code must start with a letter and contain only letters and numbers');
+      return;
+    }
+
+    const evaluatedValue = evaluateExpression(param.value);
+    if (evaluatedValue === null || isNaN(evaluatedValue)) {
+      alert('Invalid formula. Check if all referenced parameters have been applied.');
+      return;
+    }
+
+    const displayValue = evaluatedValue.toFixed(2);
+    setCustomParameters(prev => prev.map(p =>
+      p.id === id ? { ...p, result: displayValue } : p
+    ));
+  };
+
   return (
     <>
-      <div className="flex items-center justify-between px-3 py-2 bg-violet-600/20 border-b border-violet-500/30">
+      <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 bg-violet-600/30 rounded">
-            <Puzzle size={12} className="text-violet-300" />
-          </div>
-          <span className="text-white font-medium text-sm">Volume Parameters</span>
+          <Puzzle size={11} className="text-orange-600" />
+          <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white p-1 rounded transition-colors"
-          title="Back"
+          className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
         >
-          <X size={12} />
+          <X size={11} className="text-orange-600" />
         </button>
       </div>
 
-      <div className="flex-1 p-3 space-y-3">
-        <div className="h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent mb-3"></div>
+      <div className="flex-1 p-4 space-y-4">
 
-        <div className="space-y-2">
-          {/* Genişlik */}
-          {canEditWidth && (
+        <div className="bg-white rounded-md border border-stone-200 p-2">
+          <div className="flex items-center justify-between h-10">
             <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">W:</span>
-              <input
-                type="text" // Metin girişi olarak ayarlandı
-                value={inputWidth}
-                onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    applyDimensionChange('width', inputWidth);
-                  }
-                }}
-                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
               <button
-                onClick={() => applyDimensionChange('width', inputWidth)}
-                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
-                title="Apply Width"
+                onClick={handleAddParameter}
+                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-sm transition-colors"
+                title="Add Custom Parameter"
               >
-                <Check size={12} />
+                <Plus size={11} />
               </button>
-              <button
-                onClick={() => {
-                  // Güncelle functionality will be implemented later
-                  console.log('Update width clicked');
-                }}
-                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
-                title="Update Width"
-              >
-                <Check size={12} />
-              </button>
+              <span className="text-xs font-medium text-gray-700">Add Parameter</span>
             </div>
-          )}
 
-          {/* Yükseklik */}
-          {canEditHeight && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">H:</span>
-              <input
-                type="text" // Metin girişi olarak ayarlandı
-                value={inputHeight}
-                onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    applyDimensionChange('height', inputHeight);
-                  }
-                }}
-                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
+            {customParameters.length > 0 && (
               <button
-                onClick={() => applyDimensionChange('height', inputHeight)}
-                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
-                title="Apply Height"
+                onClick={handleClearAllParameters}
+                className="h-6 px-2 text-xs font-medium text-red-600 hover:text-red-800 rounded-sm hover:bg-red-50 transition-colors"
               >
-                <Check size={12} />
+                Clear All
               </button>
-              <button
-                onClick={() => {
-                  // Güncelle functionality will be implemented later
-                  console.log('Update height clicked');
-                }}
-                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
-                title="Update Height"
-              >
-                <Check size={12} />
-              </button>
-            </div>
-          )}
-
-          {/* Derinlik */}
-          {canEditDepth && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-xs w-4">D:</span>
-              <input
-                type="text" // Metin girişi olarak ayarlandı
-                value={inputDepth}
-                onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    applyDimensionChange('depth', inputDepth);
-                  }
-                }}
-                className="flex-1 bg-gray-800/50 text-white text-xs px-2 py-1 rounded border border-gray-600/50 focus:outline-none focus:border-violet-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <button
-                onClick={() => applyDimensionChange('depth', inputDepth)}
-                className="p-1 bg-green-700/50 hover:bg-green-600/70 text-white rounded transition-colors"
-                title="Apply Depth"
-              >
-                <Check size={12} />
-              </button>
-              <button
-                onClick={() => {
-                  // Güncelle functionality will be implemented later
-                  console.log('Update depth clicked');
-                }}
-                className="p-1 bg-blue-700/50 hover:bg-blue-600/70 text-white rounded transition-colors"
-                title="Update Depth"
-              >
-                <Check size={12} />
-              </button>
-            </div>
-          )}
-
-          {/* Bilgi mesajı - sadece cylinder için */}
-          {editedShape.type === 'cylinder' && (
-            <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
-              Cylinder: Only height can be edited
-            </div>
-          )}
-
-          {/* Bilgi mesajı - circle2d için */}
-          {editedShape.type === 'circle2d' && (
-            <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-800/30 rounded">
-              Circle: Only height can be edited
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        <div className="bg-white rounded-md border border-stone-200 p-2">
+          <div className="mb-2">
+            <h4 className="text-xs font-medium text-slate-800">Parameters</h4>
+          </div>
+
+          <div className="space-y-2">
+            {canEditWidth && (
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  1
+                </div>
+
+                <input
+                  type="text"
+                  value="W"
+                  readOnly
+                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
+
+                <input
+                  type="text"
+                  value={inputWidth}
+                  onChange={(e) => handleInputChange(setInputWidth, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyDimensionChange('width', inputWidth);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                />
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => applyDimensionChange('width', inputWidth)}
+                    disabled={!inputWidth.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      inputWidth.trim()
+                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Width"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    disabled
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
+                    title="Cannot remove basic dimension"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {canEditHeight && (
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  2
+                </div>
+
+                <input
+                  type="text"
+                  value="H"
+                  readOnly
+                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
+
+                <input
+                  type="text"
+                  value={inputHeight}
+                  onChange={(e) => handleInputChange(setInputHeight, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyDimensionChange('height', inputHeight);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                />
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => applyDimensionChange('height', inputHeight)}
+                    disabled={!inputHeight.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      inputHeight.trim()
+                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Height"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    disabled
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
+                    title="Cannot remove basic dimension"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {canEditDepth && (
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  3
+                </div>
+
+                <input
+                  type="text"
+                  value="D"
+                  readOnly
+                  className="w-16 h-6 text-xs bg-gray-100 border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
+                />
+
+                <input
+                  type="text"
+                  value={inputDepth}
+                  onChange={(e) => handleInputChange(setInputDepth, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyDimensionChange('depth', inputDepth);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                />
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => applyDimensionChange('depth', inputDepth)}
+                    disabled={!inputDepth.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      inputDepth.trim()
+                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Depth"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    disabled
+                    className="flex-shrink-0 p-1.5 bg-gray-100 text-gray-400 rounded-sm cursor-not-allowed w-7"
+                    title="Cannot remove basic dimension"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {customParameters.map((param, index) => (
+              <div
+                key={param.id}
+                className="flex items-center gap-2 h-10 px-2 rounded-md border border-gray-200 bg-gray-50/50"
+              >
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                  {index + 4}
+                </div>
+
+                <input
+                  type="text"
+                  value={param.description}
+                  onChange={(e) => handleParameterDescriptionChange(param.id, e.target.value)}
+                  placeholder="Code"
+                  className="w-16 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 text-black font-medium"
+                />
+
+                <input
+                  type="text"
+                  value={param.value}
+                  onChange={(e) => handleParameterValueChange(param.id, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyParameter(param.id);
+                    }
+                  }}
+                  placeholder="Formula..."
+                  className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-orange-500/20 focus:border-orange-400 placeholder-gray-400 mr-2 text-black font-medium"
+                />
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleApplyParameter(param.id)}
+                    disabled={!param.value.trim()}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
+                      param.value.trim()
+                        ? 'bg-white text-green-600 border border-green-600 cursor-pointer hover:bg-green-50'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Apply Parameter"
+                  >
+                    <Check size={11} />
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveParameter(param.id)}
+                    className="flex-shrink-0 p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-sm transition-colors w-7"
+                    title="Remove Parameter"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {editedShape.type === 'cylinder' && (
+          <div className="text-xs text-slate-600 p-2 bg-orange-50 rounded-sm border border-orange-200">
+            Cylinder: Only height can be edited
+          </div>
+        )}
+
+        {editedShape.type === 'circle2d' && (
+          <div className="text-xs text-slate-600 p-2 bg-orange-50 rounded-sm border border-orange-200">
+            Circle: Only height can be edited
+          </div>
+        )}
       </div>
     </>
   );

@@ -75,24 +75,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
   const controlsRef = useRef<any>(null);
   const { shapes, cameraType, isEditMode, editingShapeId, hiddenShapeIds } =
     useAppStore();
-  
-  // Edit mode camera pan effect
-  useEffect(() => {
-    if (!controlsRef.current) return;
-    
-    const controls = controlsRef.current;
-    const panAmount = isEditMode ? editModeWidth / 2 : 0; // Pan by half the panel width
-    
-    // Get current target and pan it to the right
-    const currentTarget = controls.target.clone();
-    const newTarget = new THREE.Vector3(currentTarget.x + panAmount, currentTarget.y, currentTarget.z);
-    
-    // Smoothly animate to new target
-    controls.target.copy(newTarget);
-    controls.update();
-    
-    console.log(`🎯 Camera panned for edit mode: ${isEditMode ? 'right' : 'center'} by ${panAmount}px`);
-  }, [isEditMode, editModeWidth]);
 
   // Handle zoom fit events
   useEffect(() => {

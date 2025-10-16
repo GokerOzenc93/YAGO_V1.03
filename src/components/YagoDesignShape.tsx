@@ -447,7 +447,11 @@ const YagoDesignShape: React.FC<Props> = ({
 
   // 🎯 NEW: Get opacity based on view mode
   const getOpacity = () => {
-    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.2;
+    // Edit modda referans volume her zaman wireframe (şeffaf)
+    if (isEditMode && !isBeingEdited) return 0.0;
+
+    // Referans cube her zaman wireframe
+    if (shape.type === 'REFERENCE_CUBE' || shape.isReference) return 0.0;
 
     // 🎯 EDIT MODE: Normal sahnedeki gibi şeffaf
     return 0.0; // Tüm şekiller tamamen şeffaf (sadece çizgiler görünür)
