@@ -16,8 +16,9 @@ export interface SimpleDimension {
   distance: number;
   unit: string;
   textPosition: THREE.Vector3;
-  originalStart?: THREE.Vector3;
-  originalEnd?: THREE.Vector3;
+  originalStart: THREE.Vector3;
+  originalEnd: THREE.Vector3;
+  perpendicularOffset: THREE.Vector3;
   previewPosition?: THREE.Vector3;
   isInverted?: boolean;
 }
@@ -280,8 +281,11 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   const [dimensionsState, setDimensionsState] = useState<SimpleDimensionsState>(INITIAL_SIMPLE_DIMENSIONS_STATE);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
   const [originalSnapSettings, setOriginalSnapSettings] = useState<SnapSettings | null>(null);
+  const [selectedDimensionId, setSelectedDimensionId] = useState<string | null>(null);
 
   const handleDimensionNumberClick = (dimensionId: string) => {
+    setSelectedDimensionId(dimensionId);
+
     setDimensionsState(prev => ({
       ...prev,
       completedDimensions: prev.completedDimensions.map(dim =>
@@ -291,7 +295,57 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       )
     }));
 
-    console.log(`🎯 Dimension ${dimensionId}: Color inverted and auto-measurement activated`);
+    console.log(`🎯 Dimension ${dimensionId} selected - Enter new measurement in Terminal`);
+
+    setTimeout(() => {
+      if ((window as any).terminalInputRef?.current) {
+        (window as any).terminalInputRef.current.focus();
+        (window as any).terminalInputRef.current.select();
+      }
+    }, 100);
+  };
+
+  const handleDimensionUpdate = (dimensionId: string, newDistance: number) => {
+    setDimensionsState(prev => ({
+      ...prev,
+      completedDimensions: prev.completedDimensions.map(dim => {
+        if (dim.id === dimensionId) {
+          const originalDistance = dim.originalStart.distanceTo(dim.originalEnd);
+          const scaleFactor = newDistance / convertToDisplayUnit(originalDistance);
+
+          const direction = new THREE.Vector3()
+            .subVectors(dim.originalEnd, dim.originalStart)
+            .normalize();
+
+          const newOriginalEnd = dim.originalStart.clone()
+            .add(direction.multiplyScalar(newDistance));
+
+          const newStartPoint = dim.originalStart.clone().add(dim.perpendicularOffset);
+          const newEndPoint = newOriginalEnd.clone().add(dim.perpendicularOffset);
+          const newTextPosition = newStartPoint.clone().add(newEndPoint).multiplyScalar(0.5);
+
+          console.log(`🎯 Dimension ${dimensionId} updated:`);
+          console.log(`  Old distance: ${convertToDisplayUnit(originalDistance).toFixed(1)}${measurementUnit}`);
+          console.log(`  New distance: ${newDistance.toFixed(1)}${measurementUnit}`);
+          console.log(`  Original start: [${dim.originalStart.x.toFixed(1)}, ${dim.originalStart.z.toFixed(1)}]`);
+          console.log(`  New end: [${newOriginalEnd.x.toFixed(1)}, ${newOriginalEnd.z.toFixed(1)}]`);
+          console.log(`  Dimension line: [${newStartPoint.x.toFixed(1)}, ${newStartPoint.z.toFixed(1)}] → [${newEndPoint.x.toFixed(1)}, ${newEndPoint.z.toFixed(1)}]`);
+
+          return {
+            ...dim,
+            originalEnd: newOriginalEnd,
+            startPoint: newStartPoint,
+            endPoint: newEndPoint,
+            distance: newDistance,
+            textPosition: newTextPosition
+          };
+        }
+        return dim;
+      })
+    }));
+
+    setSelectedDimensionId(null);
+    console.log(`🎯 Dimension measurement updated to ${newDistance.toFixed(1)}${measurementUnit}`);
   };
 
   // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
@@ -335,24 +389,29 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     const rect = gl.domElement.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
+
     const mouseScreenPos = new THREE.Vector2(event.clientX - rect.left, event.clientY - rect.top);
 
     raycaster.setFromCamera({ x, y }, camera);
-    
+
     let worldPoint = new THREE.Vector3();
     let intersectionSuccess = false;
-    
+
     // Positioning modunda iken, ölçü çizgisini perpendicular düzlemde konumlandır
     if (dimensionsState.isPositioning && dimensionsState.firstPoint && dimensionsState.secondPoint) {
       // Seçilen iki noktanın ortalama yüksekliğinde düzlem oluştur
       const averageY = (dimensionsState.firstPoint.y + dimensionsState.secondPoint.y) / 2;
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -averageY);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
-    } else {
-      // Normal mod: Y=0 düzlemi
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    } else if (dimensionsState.firstPoint) {
+      // İlk nokta seçildikten sonra, aynı Y yüksekliğinde düzlem kullan
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -dimensionsState.firstPoint.y);
       intersectionSuccess = raycaster.ray.intersectPlane(plane, worldPoint);
+    } else {
+      // Hiç nokta seçilmediğinde: 3D şekillerin kenarlarıyla raycast yap
+      // Bu sayede doğru yükseklikteki noktaları seçebiliriz
+      const planeY0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      intersectionSuccess = raycaster.ray.intersectPlane(planeY0, worldPoint);
     }
     
     if (!intersectionSuccess) {
@@ -368,29 +427,34 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     
     // Positioning modunda snap detection yapma
     if (!dimensionsState.isPositioning && !dimensionsState.secondPoint) {
-      // STANDART SNAP SYSTEM KULLAN - Mevcut snap ayarlarını kullan
+      // STANDART SNAP SYSTEM KULLAN - Arttırılmış tolerans ile
+      const perspectiveTolerance = snapTolerance * (camera instanceof THREE.PerspectiveCamera ? 8 : 3);
+
       const snapPoints = findSnapPoints(
         worldPoint,
-        completedShapes, 
-        shapes, 
+        completedShapes,
+        shapes,
         snapSettings,
-        snapTolerance * 2,
+        perspectiveTolerance,
         null,
         null,
         camera,
         gl.domElement,
         mouseScreenPos
       );
-      
+
       if (snapPoints.length > 0) {
         const closestSnap = snapPoints[0];
         setDimensionsState(prev => ({ ...prev, currentSnapPoint: closestSnap }));
+        console.log(`🎯 DIMENSION SNAP: ${closestSnap.type} at [${closestSnap.point.x.toFixed(1)}, ${closestSnap.point.y.toFixed(1)}, ${closestSnap.point.z.toFixed(1)}]`);
         return closestSnap.point;
       } else {
         setDimensionsState(prev => ({ ...prev, currentSnapPoint: null }));
+        // Grid snap - sabit Y yüksekliğinde
+        const yHeight = dimensionsState.firstPoint ? dimensionsState.firstPoint.y : 0;
         return new THREE.Vector3(
           snapToGrid(worldPoint.x, gridSize),
-          0,
+          yHeight,
           snapToGrid(worldPoint.z, gridSize)
         );
       }
@@ -452,9 +516,14 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       
       const dimensionStart = dimensionsState.firstPoint.clone().add(perpendicularOffset);
       const dimensionEnd = dimensionsState.secondPoint.clone().add(perpendicularOffset);
-      
+
       const textPosition = dimensionStart.clone().add(dimensionEnd).multiplyScalar(0.5);
-      
+
+      console.log(`🎯 Creating dimension:`);
+      console.log(`  Original points: [${dimensionsState.firstPoint.x.toFixed(1)}, ${dimensionsState.firstPoint.z.toFixed(1)}] → [${dimensionsState.secondPoint.x.toFixed(1)}, ${dimensionsState.secondPoint.z.toFixed(1)}]`);
+      console.log(`  Perpendicular offset: [${perpendicularOffset.x.toFixed(1)}, ${perpendicularOffset.z.toFixed(1)}]`);
+      console.log(`  Dimension line: [${dimensionStart.x.toFixed(1)}, ${dimensionStart.z.toFixed(1)}] → [${dimensionEnd.x.toFixed(1)}, ${dimensionEnd.z.toFixed(1)}]`);
+
       const newDimension: SimpleDimension = {
         id: Math.random().toString(36).substr(2, 9),
         startPoint: dimensionStart,
@@ -462,8 +531,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
         distance: convertToDisplayUnit(distance),
         unit: measurementUnit,
         textPosition,
-        originalStart: dimensionsState.firstPoint,
-        originalEnd: dimensionsState.secondPoint
+        originalStart: dimensionsState.firstPoint.clone(),
+        originalEnd: dimensionsState.secondPoint.clone(),
+        perpendicularOffset: perpendicularOffset.clone()
       };
       
       setDimensionsState(prev => ({
@@ -537,8 +607,9 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
       distance: convertToDisplayUnit(distance),
       unit: measurementUnit,
       textPosition,
-      originalStart: dimensionsState.firstPoint,
-      originalEnd: dimensionsState.secondPoint,
+      originalStart: dimensionsState.firstPoint.clone(),
+      originalEnd: dimensionsState.secondPoint.clone(),
+      perpendicularOffset: perpendicularOffset.clone(),
       previewPosition: dimensionsState.previewPosition
     };
   }, [dimensionsState, convertToDisplayUnit, measurementUnit]);
@@ -553,7 +624,20 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     }
   }, [activeTool]);
 
-  // Handle Escape key to exit dimension tool
+  useEffect(() => {
+    (window as any).selectedDimensionId = selectedDimensionId;
+    (window as any).handleDimensionUpdate = (newValue: number) => {
+      if (selectedDimensionId) {
+        handleDimensionUpdate(selectedDimensionId, newValue);
+      }
+    };
+
+    return () => {
+      delete (window as any).selectedDimensionId;
+      delete (window as any).handleDimensionUpdate;
+    };
+  }, [selectedDimensionId, handleDimensionUpdate]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeTool === Tool.DIMENSION && e.key === 'Escape') {
@@ -561,10 +645,12 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
           ...INITIAL_SIMPLE_DIMENSIONS_STATE,
           completedDimensions: prev.completedDimensions
         }));
-        
+
+        setSelectedDimensionId(null);
+
         const { setActiveTool } = useAppStore.getState();
         setActiveTool(Tool.SELECT);
-        
+
         console.log('🎯 Dimension tool exited with Escape key - dimensions preserved');
       }
     };

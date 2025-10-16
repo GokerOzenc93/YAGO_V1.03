@@ -112,7 +112,7 @@ const StatusBar: React.FC = () => {
         )}
         
         <div id="fps-container" className="flex items-center">
-          <span className="text-gray-400 mr-1">FPS:</span>
+          <span className="text-white mr-1">FPS:</span>
           <span id="fps-value"></span>
         </div>
       </div>
@@ -128,7 +128,7 @@ const StatusBar: React.FC = () => {
           ) : (
             <CameraOff size={10} className="text-gray-400" />
           )}
-          <span className="text-xs font-medium">{cameraType === CameraType.PERSPECTIVE ? 'Persp' : 'Ortho'}</span>
+          <span className="text-xs text-white font-medium">{cameraType === CameraType.PERSPECTIVE ? 'Persp' : 'Ortho'}</span>
         </button>
 
         {/* 🎯 NEW: View Mode Toggle */}
@@ -138,7 +138,7 @@ const StatusBar: React.FC = () => {
           title={`Current: ${getViewModeLabel()} View - Click to cycle (1/2/3)`}
         >
           {getViewModeIcon()}
-          <span className="text-xs font-medium">{getViewModeLabel()}</span>
+          <span className="text-xs text-white font-medium">{getViewModeLabel()}</span>
         </button>
 
         {/* Zoom Fit Button */}
@@ -153,7 +153,7 @@ const StatusBar: React.FC = () => {
 
         {/* View Shortcuts */}
         <div className="flex items-center gap-1">
-          <span className="text-gray-400 text-xs font-medium">Views:</span>
+          <span className="text-white text-xs font-medium">Views:</span>
           <div className="flex items-center gap-0.5">
             <button
               className="px-0.5 py-0.5 text-xs bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"

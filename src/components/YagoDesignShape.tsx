@@ -15,6 +15,8 @@ interface Props {
   onContextMenuRequest?: (event: any, shape: Shape) => void;
   isEditMode?: boolean;
   isBeingEdited?: boolean;
+  isFaceEditMode?: boolean;
+  onFaceSelect?: (faceIndex: number) => void;
 }
 
 const YagoDesignShape: React.FC<Props> = ({
@@ -22,6 +24,8 @@ const YagoDesignShape: React.FC<Props> = ({
   onContextMenuRequest,
   isEditMode = false,
   isBeingEdited = false,
+  isFaceEditMode = false,
+  onFaceSelect,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -34,21 +38,13 @@ const YagoDesignShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode,
-    isRulerMode,
-    convertToDisplayUnit,
-    convertToBaseUnit,
     geometryUpdateVersion,
-    edgeMeasurements,
-    setEdgeMeasurement,
-    getEdgeMeasurement,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
   // New surface selection state
   const [isFaceSelectionActive, setIsFaceSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
-  const [hoveredEdge, setHoveredEdge] = useState<number | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<number | null>(null);
 
   // Create geometry from shape - update when geometry or version changes
   const shapeGeometry = useMemo(() => {
@@ -63,39 +59,6 @@ const YagoDesignShape: React.FC<Props> = ({
     return edges;
   }, [shapeGeometry, shape.id, geometryUpdateVersion]);
 
-  // Generate stable edge ID based on vertex positions
-  const getEdgeId = useCallback((start: THREE.Vector3, end: THREE.Vector3) => {
-    // Sort coordinates to make ID direction-independent
-    const [p1, p2] = start.x < end.x || (start.x === end.x && start.y < end.y) || (start.x === end.x && start.y === end.y && start.z < end.z)
-      ? [start, end]
-      : [end, start];
-
-    return `${shape.id}-edge-${p1.x.toFixed(3)},${p1.y.toFixed(3)},${p1.z.toFixed(3)}-${p2.x.toFixed(3)},${p2.y.toFixed(3)},${p2.z.toFixed(3)}`;
-  }, [shape.id]);
-
-  // Create individual line segments for edge detection - update when edges change
-  const lineSegments = useMemo(() => {
-    const positions = edgesGeometry.attributes.position;
-    const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3; index: number; id: string }> = [];
-
-    for (let i = 0; i < positions.count; i += 2) {
-      const start = new THREE.Vector3(
-        positions.getX(i),
-        positions.getY(i),
-        positions.getZ(i)
-      );
-      const end = new THREE.Vector3(
-        positions.getX(i + 1),
-        positions.getY(i + 1),
-        positions.getZ(i + 1)
-      );
-      const edgeId = getEdgeId(start, end);
-      segments.push({ start, end, index: i / 2, id: edgeId });
-    }
-
-    console.log(`🔄 Shape ${shape.id} line segments recreated: ${segments.length} segments`);
-    return segments;
-  }, [edgesGeometry, shape.id, geometryUpdateVersion, getEdgeId]);
 
   // Force mesh geometry update when geometry changes with proper cleanup
   useEffect(() => {
@@ -148,24 +111,6 @@ const YagoDesignShape: React.FC<Props> = ({
       }
     }
   }, [isSelected, shape]);
-
-  // Listen for edge measurement updates from Terminal
-  useEffect(() => {
-    const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
-      const { shapeId, edgeIndex, newValue } = e.detail;
-
-      if (shapeId === shape.id && edgeIndex === selectedEdge) {
-        handleMeasurementUpdate(newValue);
-        setSelectedEdge(null);
-      }
-    };
-
-    window.addEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
-
-    return () => {
-      window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
-    };
-  }, [shape.id, selectedEdge]);
 
   // Handle transform controls
   useEffect(() => {
@@ -407,193 +352,9 @@ const YagoDesignShape: React.FC<Props> = ({
     });
   };
   
-  // Handle edge hover for ruler mode with 3D raycasting
-  const handleEdgePointerMove = (e: any) => {
-    if (!isRulerMode || !meshRef.current) {
-      if (hoveredEdge !== null) setHoveredEdge(null);
-      return;
-    }
 
-    const rect = gl.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-
-    let closestEdge: number | null = null;
-    let minDistance = 2.0;
-
-    lineSegments.forEach((segment, idx) => {
-      const worldStart = segment.start.clone().applyMatrix4(meshRef.current!.matrixWorld);
-      const worldEnd = segment.end.clone().applyMatrix4(meshRef.current!.matrixWorld);
-
-      const lineDir = new THREE.Vector3().subVectors(worldEnd, worldStart);
-      const lineLength = lineDir.length();
-      lineDir.normalize();
-
-      const ray = raycaster.ray;
-      const rayDir = ray.direction;
-      const rayOrigin = ray.origin;
-
-      const w = new THREE.Vector3().subVectors(rayOrigin, worldStart);
-      const a = rayDir.dot(rayDir);
-      const b = rayDir.dot(lineDir);
-      const c = lineDir.dot(lineDir);
-      const d = rayDir.dot(w);
-      const e = lineDir.dot(w);
-      const denominator = a * c - b * b;
-
-      if (Math.abs(denominator) < 0.0001) return;
-
-      const sc = (b * e - c * d) / denominator;
-      const tc = (a * e - b * d) / denominator;
-
-      if (tc < 0 || tc > lineLength) return;
-
-      const closestPointOnRay = rayOrigin.clone().addScaledVector(rayDir, sc);
-      const closestPointOnLine = worldStart.clone().addScaledVector(lineDir, tc);
-      const distance = closestPointOnRay.distanceTo(closestPointOnLine);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestEdge = idx;
-      }
-    });
-
-    setHoveredEdge(closestEdge);
-  };
-
-
-  const handleEdgeClick = (e: any, edgeIndex: number) => {
-    if (!isRulerMode || !meshRef.current) return;
-
-    e.stopPropagation();
-
-    const segment = lineSegments[edgeIndex];
-    const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
-    const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
-
-    const length = worldStart.distanceTo(worldEnd);
-    const displayLength = convertToDisplayUnit(length);
-
-    const edgeId = segment.id; // Use stable ID
-    const existingMeasurement = getEdgeMeasurement(edgeId);
-
-    // If already confirmed, show the confirmed value
-    if (existingMeasurement?.confirmed) {
-      console.log(`Edge ${edgeIndex} (${edgeId}) already has confirmed value: ${existingMeasurement.value}`);
-      return;
-    }
-
-    // Set as selected and dispatch event for Terminal
-    setSelectedEdge(edgeIndex);
-
-    // Dispatch event to Terminal with edge info
-    const event = new CustomEvent('edgeSelected', {
-      detail: {
-        shapeId: shape.id,
-        edgeIndex,
-        currentLength: displayLength,
-        edgeId
-      }
-    });
-    window.dispatchEvent(event);
-
-    console.log(`✅ Edge ${edgeIndex} (${edgeId}) selected, current length: ${displayLength.toFixed(2)} mm`);
-  };
-
-  const handleMeasurementUpdate = (newValue: number) => {
-    if (selectedEdge === null || !meshRef.current) return;
-
-    const segment = lineSegments[selectedEdge];
-    const edgeId = segment.id;
-
-    // Store confirmed measurement
-    setEdgeMeasurement(edgeId, newValue, true);
-
-    // Get current edge length in local space
-    const localStart = segment.start.clone();
-    const localEnd = segment.end.clone();
-    const currentLocalLength = localStart.distanceTo(localEnd);
-    const newBaseLength = convertToBaseUnit(newValue);
-
-    // Calculate offset
-    const offset = (newBaseLength - currentLocalLength);
-
-    // Determine edge axis and direction
-    const edgeVector = new THREE.Vector3().subVectors(localEnd, localStart);
-    const absX = Math.abs(edgeVector.x);
-    const absY = Math.abs(edgeVector.y);
-    const absZ = Math.abs(edgeVector.z);
-
-    // Find dominant axis
-    let axis: 'x' | 'y' | 'z';
-    let direction: number;
-
-    if (absX > absY && absX > absZ) {
-      axis = 'x';
-      direction = edgeVector.x > 0 ? 1 : -1;
-    } else if (absY > absX && absY > absZ) {
-      axis = 'y';
-      direction = edgeVector.y > 0 ? 1 : -1;
-    } else {
-      axis = 'z';
-      direction = edgeVector.z > 0 ? 1 : -1;
-    }
-
-    // Clone geometry for modification
-    const geometry = shape.geometry.clone();
-    const positions = geometry.attributes.position.array as Float32Array;
-    const tolerance = 0.001;
-
-    // Determine which endpoint to keep fixed (origin side)
-    const fixedPoint = axis === 'x' && localStart.x < localEnd.x ? localStart :
-                       axis === 'x' && localStart.x >= localEnd.x ? localEnd :
-                       axis === 'y' && localStart.y < localEnd.y ? localStart :
-                       axis === 'y' && localStart.y >= localEnd.y ? localEnd :
-                       axis === 'z' && localStart.z < localEnd.z ? localStart :
-                       localEnd;
-
-    const movingPoint = fixedPoint === localStart ? localEnd : localStart;
-
-    console.log(`📐 Edge axis: ${axis}, direction: ${direction > 0 ? '+' : '-'}, fixed:`, fixedPoint, 'moving:', movingPoint);
-
-    // Update all vertices that should move
-    for (let i = 0; i < positions.length; i += 3) {
-      const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
-
-      // Check if this vertex is on the moving side
-      if (vertex.distanceTo(movingPoint) < tolerance) {
-        // Move this vertex along the axis
-        if (axis === 'x') {
-          positions[i] += offset * direction;
-        } else if (axis === 'y') {
-          positions[i + 1] += offset * direction;
-        } else {
-          positions[i + 2] += offset * direction;
-        }
-      }
-    }
-
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeBoundingBox();
-    geometry.computeVertexNormals();
-    geometry.computeBoundingSphere();
-
-    updateShape(shape.id, { geometry });
-
-    console.log(`✅ Edge ${selectedEdge} (${edgeId}) updated from ${currentLocalLength.toFixed(2)} to ${newBaseLength.toFixed(2)} on ${axis}-axis`);
-  };
 
   const handleClick = (e: any) => {
-    // Ruler mode - handle edge selection
-    if (isRulerMode && hoveredEdge !== null) {
-      handleEdgeClick(e, hoveredEdge);
-      return;
-    }
-
     // Normal selection mode - only left click
     if (e.nativeEvent.button === 0) {
       e.stopPropagation();
@@ -706,7 +467,6 @@ const YagoDesignShape: React.FC<Props> = ({
         rotation={shape.rotation}
         scale={shape.scale}
         onClick={handleClick}
-        onPointerMove={isRulerMode ? handleEdgePointerMove : undefined}
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
@@ -716,7 +476,7 @@ const YagoDesignShape: React.FC<Props> = ({
       </mesh>
 
       {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
-      {shouldShowEdges() && !isRulerMode && (
+      {shouldShowEdges() && (
         <lineSegments
           geometry={edgesGeometry}
           position={shape.position}
@@ -734,85 +494,6 @@ const YagoDesignShape: React.FC<Props> = ({
         </lineSegments>
       )}
 
-      {/* 🎯 RULER MODE - Individual edge rendering with hover effect */}
-      {isRulerMode && (
-        <>
-          {lineSegments.map((segment, idx) => {
-            const edgeId = `${shape.id}-edge-${idx}`;
-            const measurement = getEdgeMeasurement(edgeId);
-            const isHovered = hoveredEdge === idx;
-            const isSelected = selectedEdge === idx;
-            const points = [segment.start, segment.end];
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-
-            // Red for hover, Blue for confirmed/selected, Black for normal
-            const color = isSelected ? '#0000ff' : (isHovered ? '#ff0000' : (measurement?.confirmed ? '#0000ff' : '#000000'));
-            const lineWidth = (isHovered || isSelected || measurement?.confirmed) ? 5 : 2;
-
-            return (
-              <lineSegments
-                key={idx}
-                geometry={lineGeometry}
-                position={shape.position}
-                rotation={shape.rotation}
-                scale={shape.scale}
-              >
-                <lineBasicMaterial
-                  color={color}
-                  transparent
-                  opacity={1}
-                  linewidth={lineWidth}
-                  depthTest={false}
-                />
-              </lineSegments>
-            );
-          })}
-
-          {/* Measurement labels on edges */}
-          {lineSegments.map((segment, idx) => {
-            const edgeId = `${shape.id}-edge-${idx}`;
-            const measurement = getEdgeMeasurement(edgeId);
-            const isHovered = hoveredEdge === idx;
-
-            if ((isHovered || measurement?.confirmed) && meshRef.current) {
-              const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
-              const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
-              const midPoint = new THREE.Vector3().lerpVectors(worldStart, worldEnd, 0.5);
-
-              const length = worldStart.distanceTo(worldEnd);
-              const displayValue = measurement?.confirmed ? measurement.value : convertToDisplayUnit(length);
-
-              return (
-                <Html
-                  key={`label-${idx}`}
-                  position={midPoint}
-                  center
-                  style={{
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                  }}
-                >
-                  <div
-                    style={{
-                      backgroundColor: measurement?.confirmed ? 'rgba(0, 0, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
-                      color: 'white',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    {displayValue.toFixed(2)} mm
-                  </div>
-                </Html>
-              );
-            }
-            return null;
-          })}
-        </>
-      )}
 
 
       {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
@@ -838,9 +519,6 @@ const YagoDesignShape: React.FC<Props> = ({
             showZ={true}
             enabled={true}
             space="local"
-            onObjectChange={() => {
-              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
-            }}
           />
         )}
     </group>

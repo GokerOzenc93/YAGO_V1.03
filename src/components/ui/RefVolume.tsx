@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
+import { X, Check, Plus, ChevronLeft } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -23,8 +23,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     convertToBaseUnit,
     updateShape,
     setVisibleDimensions,
-    isRulerMode,
-    setIsRulerMode,
     shapes,
     setParameterVariable,
     getParameterVariable,
@@ -105,6 +103,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     recalculateAllParameters();
   }, [JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
 
+
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
       const evaluated = evaluateExpression(input);
@@ -142,10 +141,20 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       const updatedParams = customParameters.map(param => {
         if (!param.value.trim()) return param;
-        const evaluated = evaluateExpression(param.value, `param-${param.description}`);
-        return evaluated !== null && !isNaN(evaluated)
-          ? { ...param, result: evaluated.toFixed(2) }
-          : param;
+
+        // Check if parameter is a constant (pure number) or formula
+        const isConstant = !isNaN(parseFloat(param.value)) && isFinite(parseFloat(param.value));
+
+        if (isConstant) {
+          // Constant parameter - never recalculate, keep original value
+          return param;
+        } else {
+          // Formula parameter - recalculate when dependencies change
+          const evaluated = evaluateExpression(param.value, `param-${param.description}`);
+          return evaluated !== null && !isNaN(evaluated)
+            ? { ...param, result: evaluated.toFixed(2) }
+            : param;
+        }
       });
 
       const hasParamChanges = updatedParams.some((p, i) => p.result !== customParameters[i].result);
@@ -160,11 +169,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           }
         });
       }
-
-    // Edge calculation removed
-
-    // Edge processing removed
-        if (!line.formula?.trim()) return;
 
     } catch (error) {
       console.error('❌ Error during parameter recalculation:', error);
@@ -230,10 +234,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const handleInputChange = (setter: (val: string) => void, value: string) => {
-    if (/^[0-9a-zA-Z+\-*/().\s]*$/.test(value) || value === '') {
-      setter(value);
-    }
+    setter(value);
   };
+
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
@@ -266,8 +269,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       console.log(`✅ Parameter applied: ${param.description}=${evaluated}`);
 
       syncFormulaVariables();
-
-
 
       recalculateAllParameters();
     });
@@ -374,14 +375,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
           >
             <Plus size={14} />
-          </button>
-          <button
-            onClick={() => setIsRulerMode(!isRulerMode)}
-            className={`p-1.5 rounded-sm transition-colors ${
-              isRulerMode ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-            }`}
-          >
-            <Ruler size={14} />
           </button>
         </div>
       </div>
