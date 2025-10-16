@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
+import { X, Puzzle, Check, Plus, ChevronLeft, Ruler, Circle } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -17,7 +17,7 @@ interface ModuleProps {
 }
 
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -248,6 +248,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               Clear All
             </button>
           )}
+          <button
+            onClick={toggleVertexPoints}
+            className={`p-1.5 rounded-sm transition-colors ${
+              showVertexPoints
+                ? 'bg-orange-100 text-orange-600'
+                : 'hover:bg-orange-100 text-orange-600'
+            }`}
+            title="Show/Hide Vertex Points"
+          >
+            <Circle size={14} fill={showVertexPoints ? 'currentColor' : 'none'} />
+          </button>
           <button
             onClick={handleAddParameter}
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"

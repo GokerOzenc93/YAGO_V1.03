@@ -702,22 +702,6 @@ const Toolbar: React.FC = () => {
               {React.cloneElement(tool.icon, { size: 11 })}
             </button>
           ))}
-          <button
-            className={`p-1.5 rounded-sm transition-all ${
-              !selectedShapeId
-                ? 'opacity-50 cursor-not-allowed text-stone-400'
-                : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
-            }`}
-            onClick={() => {
-              if (selectedShapeId) {
-                console.log('Show vertex points for shape:', selectedShapeId);
-              }
-            }}
-            disabled={!selectedShapeId}
-            title="Show Vertex Points"
-          >
-            <Circle size={8} fill="currentColor" />
-          </button>
         </div>
 
         {/* Separator */}

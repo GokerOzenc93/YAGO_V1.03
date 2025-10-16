@@ -42,6 +42,7 @@ const YagoDesignShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
+    showVertexPoints,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -57,6 +58,30 @@ const YagoDesignShape: React.FC<Props> = ({
   // Create edges geometry
   const edgesGeometry = useMemo(() => {
     return new THREE.EdgesGeometry(shapeGeometry);
+  }, [shapeGeometry]);
+
+  // Extract vertex positions for vertex points
+  const vertexPositions = useMemo(() => {
+    if (!shapeGeometry.attributes.position) return [];
+
+    const positions = shapeGeometry.attributes.position.array;
+    const vertices: [number, number, number][] = [];
+
+    // Extract unique vertices
+    const vertexMap = new Map<string, [number, number, number]>();
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+
+      if (!vertexMap.has(key)) {
+        vertexMap.set(key, [x, y, z]);
+      }
+    }
+
+    return Array.from(vertexMap.values());
   }, [shapeGeometry]);
 
   // Debug: Log shape information when selected
@@ -620,6 +645,21 @@ const YagoDesignShape: React.FC<Props> = ({
             }}
           />
         )}
+
+      {/* 🎯 VERTEX POINTS - Show all vertex points when enabled */}
+      {showVertexPoints && isBeingEdited && vertexPositions.map((pos, index) => (
+        <mesh
+          key={`vertex-${index}`}
+          position={[
+            pos[0] * shape.scale[0] + shape.position[0],
+            pos[1] * shape.scale[1] + shape.position[1],
+            pos[2] * shape.scale[2] + shape.position[2]
+          ]}
+        >
+          <sphereGeometry args={[15, 16, 16]} />
+          <meshBasicMaterial color="#000000" depthTest={false} />
+        </mesh>
+      ))}
     </group>
   );
 };

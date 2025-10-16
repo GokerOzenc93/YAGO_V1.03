@@ -276,6 +276,10 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Vertex points visibility
+  showVertexPoints: boolean;
+  setShowVertexPoints: (show: boolean) => void;
+  toggleVertexPoints: () => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -395,9 +399,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Panel mode states
   isAddPanelMode: false,
   setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
-  
+
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+
+  // Vertex points visibility
+  showVertexPoints: false,
+  setShowVertexPoints: (show) => {
+    set({ showVertexPoints: show });
+    console.log(`Vertex points ${show ? 'shown' : 'hidden'}`);
+  },
+
+  toggleVertexPoints: () => {
+    const { showVertexPoints } = get();
+    set({ showVertexPoints: !showVertexPoints });
+    console.log(`Vertex points toggled: ${!showVertexPoints}`);
+  },
   
   // Snap settings - all enabled by default
   snapSettings: {
