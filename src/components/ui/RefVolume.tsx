@@ -1,10 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Check, Plus, ChevronLeft, Ruler, RefreshCw } from 'lucide-react';
+import { X, Check, Plus, ChevronLeft } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
 import { FormulaEvaluator, FormulaVariable } from '../../utils/formulaEvaluator';
-import { applyEdgeConstraints } from '../../utils/geometryConstraints';
 
 interface CustomParameter {
   id: string;
@@ -24,8 +23,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     convertToBaseUnit,
     updateShape,
     setVisibleDimensions,
-    isRulerMode,
-    setIsRulerMode,
     shapes,
     setParameterVariable,
     getParameterVariable,
@@ -61,7 +58,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
   const formulaEvaluatorRef = useRef<FormulaEvaluator>(new FormulaEvaluator());
-  const updateDependentEdgesRef = useRef<() => void>();
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditDepth = canEditWidth;
@@ -252,40 +248,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setter(value);
   };
 
-  const updateDependentEdges = useCallback(() => {
-    const { shapes, evaluateFormula, updateShape, convertToBaseUnit } = useAppStore.getState();
-    console.log('🔄 updateDependentEdges called with constraint system, shapes:', shapes.length);
-
-    shapes.forEach(shape => {
-      if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
-
-      console.log(`🔧 Applying ${shape.edgeFormulas.length} constraints to shape ${shape.id}`);
-
-      // Convert to EdgeConstraint format
-      const constraints = shape.edgeFormulas.map(f => ({
-        edgeId: f.edgeId,
-        formula: f.formula,
-        targetLength: evaluateFormula(f.formula) || 0
-      }));
-
-      // Apply all constraints to geometry at once
-      const newGeometry = applyEdgeConstraints(
-        shape.geometry,
-        constraints,
-        (formula) => {
-          const result = evaluateFormula(formula);
-          return result !== null ? convertToBaseUnit(result) : null;
-        }
-      );
-
-      // Update shape with constrained geometry
-      updateShape(shape.id, { geometry: newGeometry });
-
-      console.log(`✅ Applied ${constraints.length} constraints to shape ${shape.id}`);
-    });
-  }, []);
-
-  updateDependentEdgesRef.current = updateDependentEdges;
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
@@ -403,10 +365,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     <div className="flex-1 flex flex-col">
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <button onClick={() => {
-            setIsRulerMode(false);
-            onClose();
-          }} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
+          <button onClick={onClose} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
@@ -421,24 +380,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             </button>
           )}
           <button
-            onClick={() => {
-              try {
-                console.log('🔄 Manual parametric update button clicked');
-                if (updateDependentEdgesRef.current) {
-                  updateDependentEdgesRef.current();
-                } else {
-                  console.error('❌ updateDependentEdgesRef.current is undefined');
-                }
-              } catch (error) {
-                console.error('❌ Error updating dependent edges:', error);
-              }
-            }}
-            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
-            title="Update all parametric edges"
-          >
-            <RefreshCw size={11} />
-          </button>
-          <button
             onClick={() => setCustomParameters(prev => [...prev, {
               id: `param_${Date.now()}`,
               description: '',
@@ -448,17 +389,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
           >
             <Plus size={14} />
-          </button>
-          <button
-            onClick={() => {
-              const { isRulerMode, setIsRulerMode } = useAppStore.getState();
-              setIsRulerMode(!isRulerMode);
-            }}
-            className={`p-1.5 rounded-sm transition-colors ${
-              isRulerMode ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-            }`}
-          >
-            <Ruler size={14} />
           </button>
         </div>
       </div>

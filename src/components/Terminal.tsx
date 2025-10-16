@@ -4,17 +4,12 @@ import { useAppStore, Tool } from '../store/appStore';
 
 const Terminal: React.FC = () => {
   const [commandInput, setCommandInput] = useState('');
-  const { activeTool, isRulerMode } = useAppStore();
+  const { activeTool } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [polylineStatus, setPolylineStatus] = useState<{
     distance: number;
     angle?: number;
     unit: string;
-  } | null>(null);
-  const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<{
-    shapeId: string;
-    edgeId: string;
-    currentLength: number;
   } | null>(null);
 
   // Expose terminal input ref globally for external focus control
@@ -24,13 +19,6 @@ const Terminal: React.FC = () => {
     // Expose polyline status setter globally
     (window as any).setPolylineStatus = setPolylineStatus;
 
-    // Listen for edge selection events
-    const handleEdgeSelected = (e: CustomEvent) => {
-      setSelectedEdgeInfo(e.detail);
-      console.log(`Terminal: Edge selected - ${e.detail.currentLength.toFixed(2)} mm`);
-    };
-
-    window.addEventListener('edgeSelected', handleEdgeSelected as EventListener);
     
     // 🎯 GLOBAL KEYBOARD CAPTURE - Tüm klavye girişlerini terminale yönlendir
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -86,7 +74,6 @@ const Terminal: React.FC = () => {
     
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown, true);
-      window.removeEventListener('edgeSelected', handleEdgeSelected as EventListener);
       delete (window as any).terminalInputRef;
       delete (window as any).setPolylineStatus;
     };
@@ -114,51 +101,6 @@ const Terminal: React.FC = () => {
       }
     }
 
-    // Handle edge measurement update
-    if (selectedEdgeInfo) {
-      // Try to parse as a number first
-      const numericValue = parseFloat(trimmedCommand);
-      let newValue: number;
-      let formula: string | undefined;
-      let isFormula = false;
-
-      // If not a number, try to evaluate as formula with parameters
-      if (isNaN(numericValue)) {
-        const evaluatedValue = useAppStore.getState().evaluateFormula(trimmedCommand);
-        if (evaluatedValue !== null && evaluatedValue > 0) {
-          newValue = evaluatedValue;
-          formula = trimmedCommand;
-          isFormula = true;
-          console.log(`✅ Formula detected: "${trimmedCommand}" = ${newValue} mm`);
-        } else {
-          console.log('Invalid value or formula. Enter a number or parameter name.');
-          setCommandInput('');
-          return;
-        }
-      } else {
-        // It's a pure number
-        newValue = numericValue;
-        formula = undefined;
-        console.log(`✅ Numeric value: ${newValue} mm`);
-      }
-
-      if (newValue > 0) {
-        // Dispatch event to update edge measurement with formula
-        const event = new CustomEvent('updateEdgeMeasurement', {
-          detail: {
-            shapeId: selectedEdgeInfo.shapeId,
-            edgeId: selectedEdgeInfo.edgeId,
-            newValue,
-            formula: formula
-          }
-        });
-        window.dispatchEvent(event);
-        console.log(`Terminal: Updating edge ${selectedEdgeInfo.edgeId} to ${newValue} mm${isFormula ? ` (formula: ${formula})` : ''}`);
-        setSelectedEdgeInfo(null);
-        setCommandInput('');
-        return;
-      }
-    }
 
     // Handle pending extrude shape - öncelik ver
     if ((window as any).pendingExtrudeShape) {
@@ -208,7 +150,7 @@ const Terminal: React.FC = () => {
   return (
     <>
       {/* InfoBar - Information display for polyline, ruler mode, etc. */}
-      {(polylineStatus || selectedEdgeInfo || (window as any).selectedDimensionId) && (
+      {(polylineStatus || (window as any).selectedDimensionId) && (
         <div className="fixed bottom-10 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-b border-stone-300 z-50" style={{ height: '24px' }}>
           <div className="flex items-center h-full px-3">
             {/* Sol taraf - Tüm bilgilendirme mesajları */}
@@ -216,14 +158,6 @@ const Terminal: React.FC = () => {
               {(window as any).selectedDimensionId ? (
                 <span className="font-normal">
                   Dimension Selected: Enter new measurement in Terminal below and press Enter
-                </span>
-              ) : isRulerMode && !selectedEdgeInfo ? (
-                <span className="font-normal">
-                  Ruler Mode: Hover over edges to see measurements, click an edge to modify its length
-                </span>
-              ) : selectedEdgeInfo ? (
-                <span className="font-normal">
-                  Edge Selected: Current length = <span className="font-medium">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> | Enter new length in Terminal below and press Enter
                 </span>
               ) : (
                 <>
