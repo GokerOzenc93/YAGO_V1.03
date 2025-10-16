@@ -185,11 +185,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         });
       }
 
-    // Edge calculation removed
-
-    // Edge processing removed
-        if (!line.formula?.trim()) return;
-
     } catch (error) {
       console.error('❌ Error during parameter recalculation:', error);
     }

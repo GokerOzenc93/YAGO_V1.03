@@ -7,25 +7,34 @@ export function applyEdgeConstraints(
   evaluateFormula: (formula: string) => number | null
 ): THREE.BufferGeometry {
   if (!constraints || constraints.length === 0) {
+    console.log('⚠️ No constraints to apply');
     return geometry;
   }
+
+  console.log(`🔧 Applying ${constraints.length} constraints...`);
 
   const newGeometry = geometry.clone();
   const positions = newGeometry.attributes.position.array as Float32Array;
 
   const edges = extractEdges(positions);
+  console.log(`📊 Found ${edges.length} edges in geometry`);
 
   for (const constraint of constraints) {
+    console.log(`🔍 Processing constraint for edge ${constraint.edgeId}, formula: ${constraint.formula}`);
+
     const targetLength = evaluateFormula(constraint.formula);
 
     if (targetLength === null || targetLength <= 0) {
-      console.warn(`⚠️ Invalid constraint formula "${constraint.formula}"`);
+      console.warn(`⚠️ Invalid constraint formula "${constraint.formula}" → ${targetLength}`);
       continue;
     }
 
+    console.log(`✓ Target length evaluated: ${targetLength}mm`);
+
     const edge = edges.find(e => e.id === constraint.edgeId);
     if (!edge) {
-      console.warn(`⚠️ Edge ${constraint.edgeId} not found`);
+      console.warn(`⚠️ Edge ${constraint.edgeId} not found in ${edges.length} edges`);
+      console.log('Available edge IDs:', edges.slice(0, 10).map(e => e.id));
       continue;
     }
 
