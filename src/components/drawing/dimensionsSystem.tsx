@@ -281,34 +281,71 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
   const [dimensionsState, setDimensionsState] = useState<SimpleDimensionsState>(INITIAL_SIMPLE_DIMENSIONS_STATE);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
   const [originalSnapSettings, setOriginalSnapSettings] = useState<SnapSettings | null>(null);
+  const [selectedDimensionId, setSelectedDimensionId] = useState<string | null>(null);
 
   const handleDimensionNumberClick = (dimensionId: string) => {
+    setSelectedDimensionId(dimensionId);
+
+    setDimensionsState(prev => ({
+      ...prev,
+      completedDimensions: prev.completedDimensions.map(dim =>
+        dim.id === dimensionId
+          ? { ...dim, isInverted: !dim.isInverted }
+          : dim
+      )
+    }));
+
+    console.log(`🎯 Dimension ${dimensionId} selected - Enter new measurement in Terminal`);
+
+    setTimeout(() => {
+      if ((window as any).terminalInputRef?.current) {
+        (window as any).terminalInputRef.current.focus();
+        (window as any).terminalInputRef.current.select();
+      }
+    }, 100);
+  };
+
+  const handleDimensionUpdate = (dimensionId: string, newDistance: number) => {
     setDimensionsState(prev => ({
       ...prev,
       completedDimensions: prev.completedDimensions.map(dim => {
         if (dim.id === dimensionId) {
-          const newInverted = !dim.isInverted;
+          const originalDistance = dim.originalStart.distanceTo(dim.originalEnd);
+          const scaleFactor = newDistance / convertToDisplayUnit(originalDistance);
+
+          const direction = new THREE.Vector3()
+            .subVectors(dim.originalEnd, dim.originalStart)
+            .normalize();
+
+          const newOriginalEnd = dim.originalStart.clone()
+            .add(direction.multiplyScalar(newDistance));
 
           const newStartPoint = dim.originalStart.clone().add(dim.perpendicularOffset);
-          const newEndPoint = dim.originalEnd.clone().add(dim.perpendicularOffset);
+          const newEndPoint = newOriginalEnd.clone().add(dim.perpendicularOffset);
           const newTextPosition = newStartPoint.clone().add(newEndPoint).multiplyScalar(0.5);
 
-          console.log(`🎯 Dimension ${dimensionId} inverted to ${newInverted}`);
-          console.log(`  Original: [${dim.originalStart.x.toFixed(1)}, ${dim.originalStart.z.toFixed(1)}] → [${dim.originalEnd.x.toFixed(1)}, ${dim.originalEnd.z.toFixed(1)}]`);
-          console.log(`  Offset: [${dim.perpendicularOffset.x.toFixed(1)}, ${dim.perpendicularOffset.z.toFixed(1)}]`);
-          console.log(`  New Dimension: [${newStartPoint.x.toFixed(1)}, ${newStartPoint.z.toFixed(1)}] → [${newEndPoint.x.toFixed(1)}, ${newEndPoint.z.toFixed(1)}]`);
+          console.log(`🎯 Dimension ${dimensionId} updated:`);
+          console.log(`  Old distance: ${convertToDisplayUnit(originalDistance).toFixed(1)}${measurementUnit}`);
+          console.log(`  New distance: ${newDistance.toFixed(1)}${measurementUnit}`);
+          console.log(`  Original start: [${dim.originalStart.x.toFixed(1)}, ${dim.originalStart.z.toFixed(1)}]`);
+          console.log(`  New end: [${newOriginalEnd.x.toFixed(1)}, ${newOriginalEnd.z.toFixed(1)}]`);
+          console.log(`  Dimension line: [${newStartPoint.x.toFixed(1)}, ${newStartPoint.z.toFixed(1)}] → [${newEndPoint.x.toFixed(1)}, ${newEndPoint.z.toFixed(1)}]`);
 
           return {
             ...dim,
-            isInverted: newInverted,
+            originalEnd: newOriginalEnd,
             startPoint: newStartPoint,
             endPoint: newEndPoint,
+            distance: newDistance,
             textPosition: newTextPosition
           };
         }
         return dim;
       })
     }));
+
+    setSelectedDimensionId(null);
+    console.log(`🎯 Dimension measurement updated to ${newDistance.toFixed(1)}${measurementUnit}`);
   };
 
   // Dimension tool aktivasyonu/deaktivasyonu için snap ayarlarını yönet
@@ -577,7 +614,20 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
     }
   }, [activeTool]);
 
-  // Handle Escape key to exit dimension tool
+  useEffect(() => {
+    (window as any).selectedDimensionId = selectedDimensionId;
+    (window as any).handleDimensionUpdate = (newValue: number) => {
+      if (selectedDimensionId) {
+        handleDimensionUpdate(selectedDimensionId, newValue);
+      }
+    };
+
+    return () => {
+      delete (window as any).selectedDimensionId;
+      delete (window as any).handleDimensionUpdate;
+    };
+  }, [selectedDimensionId, handleDimensionUpdate]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeTool === Tool.DIMENSION && e.key === 'Escape') {
@@ -585,10 +635,12 @@ export const DimensionsManager: React.FC<SimpleDimensionsManagerProps> = ({
           ...INITIAL_SIMPLE_DIMENSIONS_STATE,
           completedDimensions: prev.completedDimensions
         }));
-        
+
+        setSelectedDimensionId(null);
+
         const { setActiveTool } = useAppStore.getState();
         setActiveTool(Tool.SELECT);
-        
+
         console.log('🎯 Dimension tool exited with Escape key - dimensions preserved');
       }
     };

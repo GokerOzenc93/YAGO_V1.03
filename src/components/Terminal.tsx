@@ -98,6 +98,23 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
+    // Handle dimension measurement update - HIGHEST PRIORITY
+    if ((window as any).selectedDimensionId) {
+      const newValue = parseFloat(trimmedCommand);
+      if (!isNaN(newValue) && newValue > 0) {
+        if ((window as any).handleDimensionUpdate) {
+          (window as any).handleDimensionUpdate(newValue);
+          setCommandInput('');
+          console.log(`Terminal: Updated dimension to ${newValue} mm`);
+          return;
+        }
+      } else {
+        console.log('Invalid dimension value. Enter a positive number.');
+        setCommandInput('');
+        return;
+      }
+    }
+
     // Handle edge measurement update
     if (selectedEdgeInfo) {
       // Try to parse as a number first
@@ -181,12 +198,16 @@ const Terminal: React.FC = () => {
   return (
     <>
       {/* InfoBar - Information display for polyline, ruler mode, etc. */}
-      {(polylineStatus || selectedEdgeInfo) && (
+      {(polylineStatus || selectedEdgeInfo || (window as any).selectedDimensionId) && (
         <div className="fixed bottom-10 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-b border-stone-300 z-50" style={{ height: '24px' }}>
           <div className="flex items-center h-full px-3">
             {/* Sol taraf - Tüm bilgilendirme mesajları */}
             <div className="flex items-center gap-6 text-xs text-stone-800">
-              {isRulerMode && !selectedEdgeInfo ? (
+              {(window as any).selectedDimensionId ? (
+                <span className="font-normal">
+                  Dimension Selected: Enter new measurement in Terminal below and press Enter
+                </span>
+              ) : isRulerMode && !selectedEdgeInfo ? (
                 <span className="font-normal">
                   Ruler Mode: Hover over edges to see measurements, click an edge to modify its length
                 </span>
