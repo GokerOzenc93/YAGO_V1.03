@@ -100,33 +100,18 @@ const Terminal: React.FC = () => {
 
     // Handle edge measurement update
     if (selectedEdgeInfo) {
-      // Try to parse as a number first
-      let newValue = parseFloat(trimmedCommand);
-
-      // If not a number, try to evaluate as formula with parameters
-      if (isNaN(newValue)) {
-        const evaluatedValue = useAppStore.getState().evaluateFormula(trimmedCommand);
-        if (evaluatedValue !== null && evaluatedValue > 0) {
-          newValue = evaluatedValue;
-        } else {
-          console.log('Invalid value or formula. Enter a number or parameter name.');
-          setCommandInput('');
-          return;
-        }
-      }
-
-      if (newValue > 0) {
-        // Dispatch event to update edge measurement with formula
+      const newValue = parseFloat(trimmedCommand);
+      if (!isNaN(newValue) && newValue > 0) {
+        // Dispatch event to update edge measurement
         const event = new CustomEvent('updateEdgeMeasurement', {
           detail: {
             shapeId: selectedEdgeInfo.shapeId,
             edgeIndex: selectedEdgeInfo.edgeIndex,
-            newValue,
-            formula: trimmedCommand
+            newValue
           }
         });
         window.dispatchEvent(event);
-        console.log(`Terminal: Updating edge to ${newValue} mm (formula: ${trimmedCommand})`);
+        console.log(`Terminal: Updating edge to ${newValue} mm`);
         setSelectedEdgeInfo(null);
         setCommandInput('');
         return;
@@ -180,39 +165,51 @@ const Terminal: React.FC = () => {
 
   return (
     <>
-      {/* InfoBar - Information display for polyline, ruler mode, etc. */}
-      {(polylineStatus || selectedEdgeInfo) && (
-        <div className="fixed bottom-10 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-b border-stone-300 z-50" style={{ height: '24px' }}>
-          <div className="flex items-center h-full px-3">
-            {/* Sol taraf - Tüm bilgilendirme mesajları */}
-            <div className="flex items-center gap-6 text-xs text-stone-800">
+      {/* Status Display */}
+      {polylineStatus && (
+        <div className="fixed bottom-5 left-0 right-0 bg-stone-100/95 backdrop-blur-sm border-t border-stone-300 z-20" style={{ height: '4mm' }}>
+          <div className="flex items-center justify-between h-full px-3">
+            {/* Sol taraf - Tool bilgisi */}
+            <div className="flex items-center gap-4 text-xs text-stone-600">
+              <span className="font-medium">
+                Tool: <span className="text-slate-800">{activeTool}</span>
+              </span>
+            </div>
+
+            {/* Orta - Polyline ölçü bilgileri, Edge bilgisi veya Ruler mode mesajı */}
+            <div className="flex items-center gap-4 text-xs">
               {isRulerMode && !selectedEdgeInfo ? (
-                <span className="font-normal">
-                  Ruler Mode: Hover over edges to see measurements, click an edge to modify its length
+                <span className="text-orange-600 font-medium animate-pulse">
+                  📏 Ruler Mode Active - Hover over edges to measure, click to modify
                 </span>
               ) : selectedEdgeInfo ? (
-                <span className="font-normal">
-                  Edge Selected: Current length = <span className="font-medium">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> | Enter new length in Terminal below and press Enter
+                <span className="text-blue-600 font-medium">
+                  Edge Selected: <span className="text-blue-800 font-mono">{selectedEdgeInfo.currentLength.toFixed(2)} mm</span> - Enter new value in Terminal ↓
                 </span>
               ) : (
                 <>
-                  <span className="font-normal">
-                    Length: <span className="font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
+                  <span className="text-gray-300">
+                    Length: <span className="text-orange-600 font-mono font-medium">{polylineStatus.distance.toFixed(1)}{polylineStatus.unit}</span>
                   </span>
                   {polylineStatus.angle !== undefined && (
-                    <span className="font-normal">
-                      Angle: <span className="font-medium">{polylineStatus.angle.toFixed(1)}°</span>
+                    <span className="text-stone-600">
+                      Angle: <span className="text-slate-700 font-mono font-medium">{polylineStatus.angle.toFixed(1)}°</span>
                     </span>
                   )}
                 </>
               )}
+            </div>
+
+            {/* Sağ taraf - Durum bilgileri */}
+            <div className="flex items-center gap-4 text-xs text-stone-600">
+              <span>Ready</span>
             </div>
           </div>
         </div>
       )}
 
       {/* Terminal */}
-      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-50 h-8">
+      <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-300 z-30 h-8">
       <div className="flex items-center h-full px-3">
         <input
           ref={inputRef}

@@ -15,8 +15,6 @@ interface Props {
   onContextMenuRequest?: (event: any, shape: Shape) => void;
   isEditMode?: boolean;
   isBeingEdited?: boolean;
-  isFaceEditMode?: boolean;
-  onFaceSelect?: (faceIndex: number) => void;
 }
 
 const YagoDesignShape: React.FC<Props> = ({
@@ -24,8 +22,6 @@ const YagoDesignShape: React.FC<Props> = ({
   onContextMenuRequest,
   isEditMode = false,
   isBeingEdited = false,
-  isFaceEditMode = false,
-  onFaceSelect,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -156,28 +152,11 @@ const YagoDesignShape: React.FC<Props> = ({
   // Listen for edge measurement updates from Terminal
   useEffect(() => {
     const handleUpdateEdgeMeasurement = (e: CustomEvent) => {
-      const { shapeId, edgeId, newValue, formula } = e.detail;
+      const { shapeId, edgeIndex, newValue } = e.detail;
 
-      if (shapeId === shape.id) {
-        console.log(`🔄 Received updateEdgeMeasurement for shape ${shapeId}, edgeId: ${edgeId}, value: ${newValue}`);
-
-        // Find the current index of this edge by its stable edgeId
-        const currentEdgeIndex = lineSegments.findIndex(seg => seg.id === edgeId);
-
-        if (currentEdgeIndex === -1) {
-          console.error(`❌ Could not find edge with edgeId: ${edgeId}`);
-          return;
-        }
-
-        console.log(`   Found edge at current index: ${currentEdgeIndex}`);
-
-        // Update with specific edge index (for parametric updates)
-        handleMeasurementUpdate(newValue, formula, currentEdgeIndex);
-
-        // Only clear selection if this was for the selected edge
-        if (currentEdgeIndex === selectedEdge) {
-          setSelectedEdge(null);
-        }
+      if (shapeId === shape.id && edgeIndex === selectedEdge) {
+        handleMeasurementUpdate(newValue);
+        setSelectedEdge(null);
       }
     };
 
@@ -186,7 +165,7 @@ const YagoDesignShape: React.FC<Props> = ({
     return () => {
       window.removeEventListener('updateEdgeMeasurement', handleUpdateEdgeMeasurement as EventListener);
     };
-  }, [shape.id, selectedEdge, lineSegments]);
+  }, [shape.id, selectedEdge]);
 
   // Handle transform controls
   useEffect(() => {
@@ -492,17 +471,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     e.stopPropagation();
 
-    console.log(`🎯 handleEdgeClick called with edgeIndex: ${edgeIndex}`);
-    console.log(`   Total lineSegments: ${lineSegments.length}`);
-
     const segment = lineSegments[edgeIndex];
-    if (!segment) {
-      console.error(`❌ No segment found at index ${edgeIndex}`);
-      return;
-    }
-
-    console.log(`   Segment ${edgeIndex} - start:`, segment.start, 'end:', segment.end);
-
     const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
     const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
 
@@ -535,82 +504,23 @@ const YagoDesignShape: React.FC<Props> = ({
     console.log(`✅ Edge ${edgeIndex} (${edgeId}) selected, current length: ${displayLength.toFixed(2)} mm`);
   };
 
-  const handleMeasurementUpdate = (newValue: number, formula?: string, targetEdgeIndex?: number) => {
-    const edgeIndex = targetEdgeIndex !== undefined ? targetEdgeIndex : selectedEdge;
-    console.log(`🔧 handleMeasurementUpdate called:`, {
-      newValue,
-      formula,
-      targetEdgeIndex,
-      selectedEdge,
-      finalEdgeIndex: edgeIndex
-    });
+  const handleMeasurementUpdate = (newValue: number) => {
+    if (selectedEdge === null || !meshRef.current) return;
 
-    if (edgeIndex === null || !meshRef.current) {
-      console.error(`❌ Cannot update: edgeIndex is null`);
-      return;
-    }
-
-    const segment = lineSegments[edgeIndex];
-    if (!segment) {
-      console.error(`❌ No segment found at index ${edgeIndex}`);
-      return;
-    }
-
+    const segment = lineSegments[selectedEdge];
     const edgeId = segment.id;
-    console.log(`   Updating segment ${edgeIndex} (${edgeId})`);
-    console.log(`   Segment start:`, segment.start, 'end:', segment.end);
 
     // Store confirmed measurement
     setEdgeMeasurement(edgeId, newValue, true);
-
-    // If formula is provided, store it in shape's edgeFormulas using STABLE edgeId
-    if (formula) {
-      const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
-
-      const newFormula = {
-        edgeIndex: edgeIndex,
-        edgeId: edgeId,
-        formula: formula,
-        originalLength: newValue,
-        currentValue: newValue
-      };
-
-      let updatedFormulas;
-      if (existingIndex >= 0) {
-        updatedFormulas = [...currentFormulas];
-        updatedFormulas[existingIndex] = newFormula;
-      } else {
-        updatedFormulas = [...currentFormulas, newFormula];
-      }
-
-      console.log(`📝 Saved edge formula: edge ${edgeIndex} (${edgeId}) = "${formula}"`);
-
-      // Update shape with formula
-      updateShape(shape.id, { edgeFormulas: updatedFormulas });
-    } else if (!formula) {
-      // If no formula provided but this edge has a formula, update its currentValue
-      const currentFormulas = shape.edgeFormulas || [];
-      const existingIndex = currentFormulas.findIndex(f => f.edgeId === edgeId);
-
-      if (existingIndex >= 0) {
-        const updatedFormulas = [...currentFormulas];
-        updatedFormulas[existingIndex] = {
-          ...updatedFormulas[existingIndex],
-          currentValue: newValue
-        };
-        updateShape(shape.id, { edgeFormulas: updatedFormulas });
-        console.log(`🔄 Updated currentValue for parametric edge ${edgeIndex} (${edgeId}): ${newValue}`);
-      }
-    }
 
     // Get current edge length in local space
     const localStart = segment.start.clone();
     const localEnd = segment.end.clone();
     const currentLocalLength = localStart.distanceTo(localEnd);
-
-    // newValue is already in mm (display unit), so convert to base unit
     const newBaseLength = convertToBaseUnit(newValue);
+
+    // Calculate offset
+    const offset = (newBaseLength - currentLocalLength);
 
     // Determine edge axis and direction
     const edgeVector = new THREE.Vector3().subVectors(localEnd, localStart);
@@ -620,13 +530,17 @@ const YagoDesignShape: React.FC<Props> = ({
 
     // Find dominant axis
     let axis: 'x' | 'y' | 'z';
+    let direction: number;
 
     if (absX > absY && absX > absZ) {
       axis = 'x';
+      direction = edgeVector.x > 0 ? 1 : -1;
     } else if (absY > absX && absY > absZ) {
       axis = 'y';
+      direction = edgeVector.y > 0 ? 1 : -1;
     } else {
       axis = 'z';
+      direction = edgeVector.z > 0 ? 1 : -1;
     }
 
     // Clone geometry for modification
@@ -634,7 +548,7 @@ const YagoDesignShape: React.FC<Props> = ({
     const positions = geometry.attributes.position.array as Float32Array;
     const tolerance = 0.001;
 
-    // Determine which endpoint to keep fixed (origin side - minimum coordinate)
+    // Determine which endpoint to keep fixed (origin side)
     const fixedPoint = axis === 'x' && localStart.x < localEnd.x ? localStart :
                        axis === 'x' && localStart.x >= localEnd.x ? localEnd :
                        axis === 'y' && localStart.y < localEnd.y ? localStart :
@@ -644,18 +558,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     const movingPoint = fixedPoint === localStart ? localEnd : localStart;
 
-    // Calculate new position for moving point
-    const newMovingPoint = fixedPoint.clone();
-    if (axis === 'x') {
-      newMovingPoint.x = fixedPoint.x + newBaseLength * (movingPoint.x > fixedPoint.x ? 1 : -1);
-    } else if (axis === 'y') {
-      newMovingPoint.y = fixedPoint.y + newBaseLength * (movingPoint.y > fixedPoint.y ? 1 : -1);
-    } else {
-      newMovingPoint.z = fixedPoint.z + newBaseLength * (movingPoint.z > fixedPoint.z ? 1 : -1);
-    }
-
-    console.log(`📐 Edge axis: ${axis}, current: ${currentLocalLength.toFixed(2)}, new: ${newBaseLength.toFixed(2)}`);
-    console.log(`   Fixed:`, fixedPoint, 'Moving:', movingPoint, '→', newMovingPoint);
+    console.log(`📐 Edge axis: ${axis}, direction: ${direction > 0 ? '+' : '-'}, fixed:`, fixedPoint, 'moving:', movingPoint);
 
     // Update all vertices that should move
     for (let i = 0; i < positions.length; i += 3) {
@@ -663,10 +566,14 @@ const YagoDesignShape: React.FC<Props> = ({
 
       // Check if this vertex is on the moving side
       if (vertex.distanceTo(movingPoint) < tolerance) {
-        // Set vertex to new position
-        positions[i] = newMovingPoint.x;
-        positions[i + 1] = newMovingPoint.y;
-        positions[i + 2] = newMovingPoint.z;
+        // Move this vertex along the axis
+        if (axis === 'x') {
+          positions[i] += offset * direction;
+        } else if (axis === 'y') {
+          positions[i + 1] += offset * direction;
+        } else {
+          positions[i + 2] += offset * direction;
+        }
       }
     }
 
@@ -683,7 +590,6 @@ const YagoDesignShape: React.FC<Props> = ({
   const handleClick = (e: any) => {
     // Ruler mode - handle edge selection
     if (isRulerMode && hoveredEdge !== null) {
-      console.log(`👆 Click detected on hoveredEdge: ${hoveredEdge}`);
       handleEdgeClick(e, hoveredEdge);
       return;
     }
@@ -832,17 +738,16 @@ const YagoDesignShape: React.FC<Props> = ({
       {isRulerMode && (
         <>
           {lineSegments.map((segment, idx) => {
-            const edgeId = segment.id;
+            const edgeId = `${shape.id}-edge-${idx}`;
             const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
             const isSelected = selectedEdge === idx;
-            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeId === edgeId);
             const points = [segment.start, segment.end];
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
 
-            // Orange for parametric, Red for hover, Blue for confirmed/selected, Black for normal
-            const color = edgeFormula ? '#ff8800' : isSelected ? '#0000ff' : (isHovered ? '#ff0000' : (measurement?.confirmed ? '#0000ff' : '#000000'));
-            const lineWidth = (isHovered || isSelected || measurement?.confirmed || edgeFormula) ? 5 : 2;
+            // Red for hover, Blue for confirmed/selected, Black for normal
+            const color = isSelected ? '#0000ff' : (isHovered ? '#ff0000' : (measurement?.confirmed ? '#0000ff' : '#000000'));
+            const lineWidth = (isHovered || isSelected || measurement?.confirmed) ? 5 : 2;
 
             return (
               <lineSegments
@@ -865,13 +770,11 @@ const YagoDesignShape: React.FC<Props> = ({
 
           {/* Measurement labels on edges */}
           {lineSegments.map((segment, idx) => {
-            const edgeId = segment.id;
+            const edgeId = `${shape.id}-edge-${idx}`;
             const measurement = getEdgeMeasurement(edgeId);
             const isHovered = hoveredEdge === idx;
-            const isSelected = selectedEdge === idx;
-            const edgeFormula = shape.edgeFormulas?.find(f => f.edgeId === edgeId);
 
-            if ((isHovered || isSelected || measurement?.confirmed || edgeFormula) && meshRef.current) {
+            if ((isHovered || measurement?.confirmed) && meshRef.current) {
               const worldStart = segment.start.clone().applyMatrix4(meshRef.current.matrixWorld);
               const worldEnd = segment.end.clone().applyMatrix4(meshRef.current.matrixWorld);
               const midPoint = new THREE.Vector3().lerpVectors(worldStart, worldEnd, 0.5);
@@ -891,7 +794,7 @@ const YagoDesignShape: React.FC<Props> = ({
                 >
                   <div
                     style={{
-                      backgroundColor: edgeFormula ? 'rgba(255, 165, 0, 0.9)' : isSelected ? 'rgba(0, 255, 0, 0.9)' : measurement?.confirmed ? 'rgba(0, 0, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
+                      backgroundColor: measurement?.confirmed ? 'rgba(0, 0, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
                       color: 'white',
                       padding: '4px 8px',
                       borderRadius: '4px',
@@ -901,11 +804,7 @@ const YagoDesignShape: React.FC<Props> = ({
                       boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                     }}
                   >
-                    {edgeFormula ? (
-                      <span>{edgeFormula.formula} = {displayValue.toFixed(2)} mm</span>
-                    ) : (
-                      <span>{displayValue.toFixed(2)} mm</span>
-                    )}
+                    {displayValue.toFixed(2)} mm
                   </div>
                 </Html>
               );

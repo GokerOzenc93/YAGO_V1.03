@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Check, Plus, ChevronLeft, Ruler, RefreshCw } from 'lucide-react';
+import { X, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -60,7 +60,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
   const formulaEvaluatorRef = useRef<FormulaEvaluator>(new FormulaEvaluator());
-  const updateDependentEdgesRef = useRef<() => void>();
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditDepth = canEditWidth;
@@ -105,18 +104,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     syncFormulaVariables();
     recalculateAllParameters();
   }, [JSON.stringify(customParameters.map(p => ({ d: p.description, v: p.value })))]);
-
-  useEffect(() => {
-    const handleUpdateAll = () => {
-      console.log('🔄 Received updateAllParametricEdges event');
-      updateDependentEdges();
-    };
-
-    window.addEventListener('updateAllParametricEdges', handleUpdateAll);
-    return () => {
-      window.removeEventListener('updateAllParametricEdges', handleUpdateAll);
-    };
-  }, []);
 
   const updateDimensionResult = (dimension: 'width' | 'height' | 'depth', input: string, setter: (val: string) => void) => {
     if (input && input !== convertToDisplayUnit(dimension === 'width' ? currentWidth : dimension === 'height' ? currentHeight : currentDepth).toFixed(0)) {
@@ -243,35 +230,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   };
 
   const handleInputChange = (setter: (val: string) => void, value: string) => {
-    setter(value);
+    if (/^[0-9a-zA-Z+\-*/().\s]*$/.test(value) || value === '') {
+      setter(value);
+    }
   };
-
-  const updateDependentEdges = useCallback(() => {
-    const { shapes, evaluateFormula } = useAppStore.getState();
-    console.log('🔄 updateDependentEdges called, shapes:', shapes.length);
-    shapes.forEach(shape => {
-      if (!shape.edgeFormulas || shape.edgeFormulas.length === 0) return;
-
-      shape.edgeFormulas.forEach(edgeFormula => {
-        const newValue = evaluateFormula(edgeFormula.formula);
-        if (newValue !== null && newValue > 0) {
-          const event = new CustomEvent('updateEdgeMeasurement', {
-            detail: {
-              shapeId: shape.id,
-              edgeIndex: edgeFormula.edgeIndex,
-              edgeId: edgeFormula.edgeId,
-              newValue,
-              formula: edgeFormula.formula
-            }
-          });
-          window.dispatchEvent(event);
-          console.log(`🔄 Auto-updated edge ${edgeFormula.edgeIndex} (${edgeFormula.edgeId}) of shape ${shape.id} to ${newValue} mm`);
-        }
-      });
-    });
-  }, []);
-
-  updateDependentEdgesRef.current = updateDependentEdges;
 
   const handleApplyParameter = (id: string) => {
     const param = customParameters.find(p => p.id === id);
@@ -305,10 +267,9 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
       syncFormulaVariables();
 
-      recalculateAllParameters();
 
-      // Update all edges that depend on this parameter
-      updateDependentEdges();
+
+      recalculateAllParameters();
     });
   };
 
@@ -389,10 +350,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     <div className="flex-1 flex flex-col">
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
         <div className="flex items-center gap-2">
-          <button onClick={() => {
-            setIsRulerMode(false);
-            onClose();
-          }} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
+          <button onClick={onClose} className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors">
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
@@ -407,24 +365,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             </button>
           )}
           <button
-            onClick={() => {
-              try {
-                console.log('🔄 Manual parametric update button clicked');
-                if (updateDependentEdgesRef.current) {
-                  updateDependentEdgesRef.current();
-                } else {
-                  console.error('❌ updateDependentEdgesRef.current is undefined');
-                }
-              } catch (error) {
-                console.error('❌ Error updating dependent edges:', error);
-              }
-            }}
-            className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
-            title="Update all parametric edges"
-          >
-            <RefreshCw size={11} />
-          </button>
-          <button
             onClick={() => setCustomParameters(prev => [...prev, {
               id: `param_${Date.now()}`,
               description: '',
@@ -436,10 +376,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             <Plus size={14} />
           </button>
           <button
-            onClick={() => {
-              const { isRulerMode, setIsRulerMode } = useAppStore.getState();
-              setIsRulerMode(!isRulerMode);
-            }}
+            onClick={() => setIsRulerMode(!isRulerMode)}
             className={`p-1.5 rounded-sm transition-colors ${
               isRulerMode ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
             }`}
