@@ -117,18 +117,29 @@ const Terminal: React.FC = () => {
     // Handle edge measurement update
     if (selectedEdgeInfo) {
       // Try to parse as a number first
-      let newValue = parseFloat(trimmedCommand);
+      const numericValue = parseFloat(trimmedCommand);
+      let newValue: number;
+      let formula: string | undefined;
+      let isFormula = false;
 
       // If not a number, try to evaluate as formula with parameters
-      if (isNaN(newValue)) {
+      if (isNaN(numericValue)) {
         const evaluatedValue = useAppStore.getState().evaluateFormula(trimmedCommand);
         if (evaluatedValue !== null && evaluatedValue > 0) {
           newValue = evaluatedValue;
+          formula = trimmedCommand;
+          isFormula = true;
+          console.log(`✅ Formula detected: "${trimmedCommand}" = ${newValue} mm`);
         } else {
           console.log('Invalid value or formula. Enter a number or parameter name.');
           setCommandInput('');
           return;
         }
+      } else {
+        // It's a pure number
+        newValue = numericValue;
+        formula = undefined;
+        console.log(`✅ Numeric value: ${newValue} mm`);
       }
 
       if (newValue > 0) {
@@ -138,11 +149,11 @@ const Terminal: React.FC = () => {
             shapeId: selectedEdgeInfo.shapeId,
             edgeId: selectedEdgeInfo.edgeId,
             newValue,
-            formula: trimmedCommand
+            formula: formula
           }
         });
         window.dispatchEvent(event);
-        console.log(`Terminal: Updating edge ${selectedEdgeInfo.edgeId} to ${newValue} mm (formula: ${trimmedCommand})`);
+        console.log(`Terminal: Updating edge ${selectedEdgeInfo.edgeId} to ${newValue} mm${isFormula ? ` (formula: ${formula})` : ''}`);
         setSelectedEdgeInfo(null);
         setCommandInput('');
         return;
