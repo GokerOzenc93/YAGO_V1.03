@@ -12,10 +12,7 @@ import {
 } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
-import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
-import EditMode from './ui/EditMode';
-import { DimensionsManager } from './drawing/dimensionsSystem';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
 import { clearFaceHighlight } from '../utils/faceSelection';
 import * as THREE from 'three';
@@ -725,21 +722,6 @@ const Scene: React.FC = () => {
 
   return (
     <div className="w-full h-full bg-gray-100">
-      {/* WebGL Style Edit Mode Panel */}
-      {isEditMode && editedShape && (
-        <EditMode
-          editedShape={editedShape}
-          onExit={exitEditMode}
-          hoveredFace={null}
-          hoveredEdge={null}
-          showEdges={true}
-          setShowEdges={() => {}}
-          showFaces={true}
-          setShowFaces={() => {}}
-          isFaceEditMode={isFaceEditMode}
-          setIsFaceEditMode={setIsFaceEditMode}
-        />
-      )}
 
       <Canvas
         ref={canvasRef}
@@ -840,10 +822,6 @@ const Scene: React.FC = () => {
           distance={2000}
         />
 
-        <DrawingPlane
-          onShowMeasurement={setMeasurementOverlay}
-          onHideMeasurement={() => setMeasurementOverlay(null)}
-        />
 
         <group position={[0, -0.001, 0]}>
           <Grid
@@ -886,11 +864,6 @@ const Scene: React.FC = () => {
           );
         })}
 
-        {/* Dimensions Manager - Ölçülendirme sistemi */}
-        <DimensionsManager
-          completedShapes={[]}
-          shapes={visibleShapes}
-        />
 
         {/* Moved gizmo higher to avoid terminal overlap */}
         <GizmoHelper alignment="bottom-right" margin={[80, 100]}>
