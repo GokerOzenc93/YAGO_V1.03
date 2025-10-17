@@ -171,12 +171,13 @@ export class GeometryFactory {
       
       // Rotate to make it horizontal (lying on XZ plane)
       geometry.rotateX(-Math.PI / 2);
-      
-      // Center the geometry at origin
+
+      // 🎯 Pivot noktasını sol alt arka köşeye taşı
+      // Move origin to bottom-left-back corner (min point of bounding box)
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
-        const center = geometry.boundingBox.getCenter(new THREE.Vector3());
-        geometry.translate(-center.x, -center.y, -center.z);
+        const min = geometry.boundingBox.min;
+        geometry.translate(-min.x, -min.y, -min.z);
       }
       
       // Compute bounding volumes

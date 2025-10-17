@@ -338,12 +338,13 @@ function createCylinder() {
   };
 }
 
-// Example: Create and position shapes
+// 🎯 Origin is now at bottom-left-back corner (0,0,0)
+// Position shapes directly where you want their bottom-left corner
 const box = createBox();
-box.position = [0, 250, 0];
+box.position = [0, 0, 0];
 
 const cylinder = createCylinder();
-cylinder.position = [750, 250, 0];
+cylinder.position = [750, 0, 0];
 `;
 
 export const useAppStore = create<AppState>((set, get) => ({
