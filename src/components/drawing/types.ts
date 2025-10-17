@@ -1,12 +1,6 @@
 import * as THREE from 'three';
 import { SnapType } from '../../store/appStore';
 
-export interface EdgeParameter {
-  edgeIndex: number;
-  length: number;
-  parameterCode?: string;
-}
-
 export interface CompletedShape {
   id: string;
   type: 'polyline' | 'polygon' | 'rectangle' | 'circle';
@@ -17,7 +11,6 @@ export interface CompletedShape {
     radius?: number;
   };
   isClosed: boolean;
-  edgeParameters?: EdgeParameter[];
 }
 
 export interface Dimension {

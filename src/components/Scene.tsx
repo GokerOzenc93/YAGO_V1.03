@@ -591,11 +591,11 @@ const Scene: React.FC = () => {
     resetVertexEditMode();
   };
 
-  // Apply vertex movement - target is absolute length from origin
-  const applyVertexMovement = (shape, vertexIndex, axis, targetLength) => {
-    if (!axis || targetLength === null) return;
+  // Apply vertex movement
+  const applyVertexMovement = (shape, vertexIndex, axis, distance) => {
+    if (!axis || distance === null) return;
 
-    console.log(`Setting vertex ${vertexIndex} on ${axis} axis to absolute length: ${targetLength}`);
+    console.log(`Moving vertex ${vertexIndex} on ${axis} axis by ${distance}`);
 
     // Clone the geometry
     const newGeometry = shape.geometry.clone();
@@ -623,19 +623,7 @@ const Scene: React.FC = () => {
     const axisChar = axis.charAt(0);
     const direction = axis.charAt(1) === '-' ? -1 : 1;
     const axisIndex = axisChar === 'x' ? 0 : axisChar === 'y' ? 1 : 2;
-
-    // Calculate current world position of the vertex
-    const currentWorldValue = targetVertex[axisIndex] * shape.scale[axisIndex] + shape.position[axisIndex];
-
-    // Calculate the target world position
-    // For positive direction: position + targetLength
-    // For negative direction: position - targetLength
-    const targetWorldValue = shape.position[axisIndex] + (targetLength * direction);
-
-    // Calculate the new local position
-    const newLocalValue = (targetWorldValue - shape.position[axisIndex]) / shape.scale[axisIndex];
-
-    console.log(`Axis ${axis}: current world=${currentWorldValue.toFixed(2)}, target world=${targetWorldValue.toFixed(2)}, new local=${newLocalValue.toFixed(2)}`);
+    const signedDistance = distance * direction;
 
     // Update all matching vertices
     for (let i = 0; i < positions.count; i++) {
@@ -648,7 +636,8 @@ const Scene: React.FC = () => {
         Math.abs(y - targetVertex[1]) < 0.0001 &&
         Math.abs(z - targetVertex[2]) < 0.0001
       ) {
-        positions.setComponent(i, axisIndex, newLocalValue);
+        const currentValue = positions.getComponent(i, axisIndex);
+        positions.setComponent(i, axisIndex, currentValue + signedDistance / shape.scale[axisIndex]);
       }
     }
 
@@ -658,7 +647,7 @@ const Scene: React.FC = () => {
 
     // Update shape
     updateShape(shape.id, { geometry: newGeometry });
-    console.log(`Vertex ${vertexIndex} set to absolute position successfully`);
+    console.log(`Vertex ${vertexIndex} moved successfully`);
   };
 
   // 🎯 PERSISTENT PANEL FACE SELECTION - Paneller kalıcı olarak kaydedilir

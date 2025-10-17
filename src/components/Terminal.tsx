@@ -83,18 +83,6 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
-    // Handle edge length input - highest priority
-    if ((window as any).showEdgeLengthInput && (window as any).handleEdgeLengthInput) {
-      const lengthValue = parseFloat(trimmedCommand);
-      if (!isNaN(lengthValue) && lengthValue > 0) {
-        (window as any).handleEdgeLengthInput(trimmedCommand);
-        setCommandInput('');
-        return;
-      }
-      console.log('Invalid edge length. Enter a positive number.');
-      return;
-    }
-
     // Handle pending extrude shape - öncelik ver
     if ((window as any).pendingExtrudeShape) {
       // Enter tuşu ile 2D nesne olarak ekle
@@ -105,7 +93,7 @@ const Terminal: React.FC = () => {
           return;
         }
       }
-
+      
       // Sayı girildiyse extrude et
       const extrudeValue = parseFloat(trimmedCommand);
       if (!isNaN(extrudeValue) && extrudeValue > 0) {
@@ -115,7 +103,7 @@ const Terminal: React.FC = () => {
           return;
         }
       }
-
+      
       console.log('Geçersiz extrude değeri. Pozitif bir sayı girin veya Enter ile 2D nesne olarak ekleyin.');
       return;
     }

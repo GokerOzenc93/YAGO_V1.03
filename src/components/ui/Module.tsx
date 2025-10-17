@@ -19,8 +19,6 @@ interface ModuleProps {
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints } = useAppStore();
 
-  const [edgeInputs, setEdgeInputs] = useState<{ [key: number]: string }>({});
-
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
       return { currentWidth: 0, currentHeight: 0, currentDepth: 0 };
@@ -237,69 +235,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     });
     window.dispatchEvent(parameterUpdateEvent);
     console.log(`Parameter ${param.description} updated: ${displayValue}`);
-  };
-
-  const handleEdgeLengthChange = (edgeIndex: number, value: string) => {
-    const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
-    if (regex.test(value) || value === '') {
-      setEdgeInputs(prev => ({ ...prev, [edgeIndex]: value }));
-    }
-  };
-
-  const handleApplyEdgeLength = (edgeIndex: number) => {
-    const inputValue = edgeInputs[edgeIndex];
-    if (!inputValue || !inputValue.trim()) return;
-
-    const evaluatedValue = evaluateExpression(inputValue);
-    if (evaluatedValue === null || isNaN(evaluatedValue) || evaluatedValue <= 0) {
-      alert('Invalid edge length value');
-      return;
-    }
-
-    console.log(`🔍 Module Edge Length Debug:
-      - Input value: ${inputValue}
-      - Evaluated value: ${evaluatedValue}
-      - Current unit: mm (always in mm internally)
-      - No conversion needed - storing as ${evaluatedValue}mm`);
-
-    const newLengthInMm = evaluatedValue;
-
-    if (!editedShape.originalPoints || editedShape.originalPoints.length === 0) {
-      console.warn('⚠️ Shape has no originalPoints - cannot update edge length geometry');
-      return;
-    }
-
-    const updatedPoints = [...editedShape.originalPoints];
-    const startPoint = updatedPoints[edgeIndex];
-    const endPoint = updatedPoints[(edgeIndex + 1) % updatedPoints.length];
-
-    if (!startPoint || !endPoint) {
-      console.warn('⚠️ Invalid edge index');
-      return;
-    }
-
-    const currentLength = startPoint.distanceTo(endPoint);
-    const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
-    const newEndPoint = startPoint.clone().add(direction.multiplyScalar(newLengthInMm));
-
-    updatedPoints[(edgeIndex + 1) % updatedPoints.length] = newEndPoint;
-
-    const updatedEdgeParams = [...(editedShape.edgeParameters || [])];
-    const existingParamIndex = updatedEdgeParams.findIndex(p => p.edgeIndex === edgeIndex);
-
-    if (existingParamIndex >= 0) {
-      updatedEdgeParams[existingParamIndex].length = newLengthInMm;
-    } else {
-      updatedEdgeParams.push({ edgeIndex, length: newLengthInMm });
-    }
-
-    updateShape(editedShape.id, {
-      originalPoints: updatedPoints,
-      edgeParameters: updatedEdgeParams,
-    });
-
-    const actualLength = startPoint.distanceTo(newEndPoint);
-    console.log(`✅ Module: Edge ${edgeIndex} length updated from ${currentLength.toFixed(2)}mm to ${actualLength.toFixed(2)}mm (requested: ${evaluatedValue}mm)`);
   };
 
   return (
@@ -601,69 +536,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             ))}
           </div>
         </div>
-
-        {editedShape.edgeParameters && editedShape.edgeParameters.length > 0 && (
-          <div className="bg-white rounded-md border border-stone-200 p-2 mt-2">
-            <div className="text-xs font-medium text-orange-800 mb-2 px-2">Edge Dimensions</div>
-            <div className="space-y-2">
-              {editedShape.edgeParameters.map((edge, index) => (
-                <div
-                  key={`edge-${edge.edgeIndex}`}
-                  className="flex items-center gap-2 h-10 px-2 rounded-md border border-blue-300 bg-blue-50/50 shadow-sm"
-                >
-                  <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-blue-300">
-                      {customParameters.length + index + 4}
-                    </div>
-
-                    <input
-                      type="text"
-                      value={edge.parameterCode || `E${edge.edgeIndex}`}
-                      readOnly
-                      className="flex-shrink-0 w-12 h-6 text-xs bg-white border border-gray-300 rounded-sm px-1 text-black font-medium cursor-default"
-                    />
-
-                    <input
-                      type="text"
-                      value={edgeInputs[edge.edgeIndex] !== undefined ? edgeInputs[edge.edgeIndex] : convertToDisplayUnit(edge.length).toFixed(2)}
-                      onChange={(e) => handleEdgeLengthChange(edge.edgeIndex, e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleApplyEdgeLength(edge.edgeIndex);
-                        }
-                      }}
-                      placeholder="Formula..."
-                      className="flex-1 min-w-0 h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-400 text-black font-medium"
-                    />
-
-                    <input
-                      type="text"
-                      value={convertToDisplayUnit(edge.length).toFixed(2)}
-                      readOnly
-                      className="flex-shrink-0 w-[57px] h-6 text-xs bg-white border border-gray-300 rounded-sm px-2 text-gray-700 font-medium cursor-default"
-                      placeholder="Result"
-                    />
-
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => handleApplyEdgeLength(edge.edgeIndex)}
-                        disabled={!edgeInputs[edge.edgeIndex]?.trim()}
-                        className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
-                          edgeInputs[edge.edgeIndex]?.trim()
-                            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        }`}
-                        title="Apply Edge Length"
-                      >
-                        <Check size={11} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {editedShape.type === 'cylinder' && (
           <div className="text-xs text-slate-600 p-2 bg-orange-50 rounded-sm border border-orange-200">
