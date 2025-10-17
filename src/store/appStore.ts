@@ -276,41 +276,6 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
-  // Vertex points visibility
-  showVertexPoints: boolean;
-  setShowVertexPoints: (show: boolean) => void;
-  toggleVertexPoints: () => void;
-  // Vertex edit mode
-  vertexEditMode: {
-    isActive: boolean;
-    selectedVertexIndex: number | null;
-    hoveredVertexIndex: number | null;
-    activeAxis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
-    movementValue: number | null;
-    parameterCode: string | null;
-  };
-  setVertexEditMode: (mode: Partial<{
-    isActive: boolean;
-    selectedVertexIndex: number | null;
-    hoveredVertexIndex: number | null;
-    activeAxis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
-    movementValue: number | null;
-    parameterCode: string | null;
-  }>) => void;
-  resetVertexEditMode: () => void;
-  // Vertex-parameter bindings
-  vertexParameterBindings: Map<string, {
-    shapeId: string;
-    vertexIndex: number;
-    axis: string;
-    parameterCode?: string;
-    displayValue?: number;
-    isLocked?: boolean;
-  }>;
-  addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode?: string, displayValue?: number) => void;
-  updateVertexParameterBindingValue: (shapeId: string, vertexIndex: number, axis: string, displayValue: number) => void;
-  removeVertexParameterBinding: (shapeId: string, vertexIndex: number) => void;
-  toggleVertexParameterBindingLock: (shapeId: string, vertexIndex: number, axis: string) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -338,13 +303,12 @@ function createCylinder() {
   };
 }
 
-// 🎯 Origin is now at bottom-left-back corner (0,0,0)
-// Position shapes directly where you want their bottom-left corner
+// Example: Create and position shapes
 const box = createBox();
-box.position = [0, 0, 0];
+box.position = [0, 250, 0];
 
 const cylinder = createCylinder();
-cylinder.position = [750, 0, 0];
+cylinder.position = [750, 250, 0];
 `;
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -431,106 +395,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Panel mode states
   isAddPanelMode: false,
   setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
-
+  
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
-
-  // Vertex points visibility
-  showVertexPoints: false,
-  setShowVertexPoints: (show) => {
-    set({ showVertexPoints: show });
-    console.log(`Vertex points ${show ? 'shown' : 'hidden'}`);
-  },
-
-  toggleVertexPoints: () => {
-    const { showVertexPoints } = get();
-    const newValue = !showVertexPoints;
-    set({ showVertexPoints: newValue });
-
-    // Reset vertex edit mode when toggling off
-    if (!newValue) {
-      get().resetVertexEditMode();
-    }
-
-    console.log(`Vertex points toggled: ${newValue}`);
-  },
-
-  // Vertex edit mode
-  vertexEditMode: {
-    isActive: false,
-    selectedVertexIndex: null,
-    hoveredVertexIndex: null,
-    activeAxis: null,
-    movementValue: null,
-    parameterCode: null,
-  },
-
-  setVertexEditMode: (updates) => {
-    set((state) => ({
-      vertexEditMode: {
-        ...state.vertexEditMode,
-        ...updates,
-      },
-    }));
-  },
-
-  resetVertexEditMode: () => {
-    set({
-      vertexEditMode: {
-        isActive: false,
-        selectedVertexIndex: null,
-        hoveredVertexIndex: null,
-        activeAxis: null,
-        movementValue: null,
-        parameterCode: null,
-      },
-    });
-    console.log('Vertex edit mode reset');
-  },
-
-  // Vertex-parameter bindings
-  vertexParameterBindings: new Map(),
-
-  addVertexParameterBinding: (shapeId, vertexIndex, axis, parameterCode, displayValue) => {
-    const key = `${shapeId}_${vertexIndex}_${axis}`;
-    const newBindings = new Map(get().vertexParameterBindings);
-    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode, displayValue, isLocked: false });
-    set({ vertexParameterBindings: newBindings });
-    console.log(`Vertex binding added: ${key} -> ${parameterCode || displayValue}`);
-  },
-
-  updateVertexParameterBindingValue: (shapeId, vertexIndex, axis, displayValue) => {
-    const key = `${shapeId}_${vertexIndex}_${axis}`;
-    const newBindings = new Map(get().vertexParameterBindings);
-    const existing = newBindings.get(key);
-    if (existing) {
-      newBindings.set(key, { ...existing, displayValue });
-      set({ vertexParameterBindings: newBindings });
-      console.log(`Vertex binding value updated: ${key} -> ${displayValue}`);
-    }
-  },
-
-  removeVertexParameterBinding: (shapeId, vertexIndex) => {
-    const newBindings = new Map(get().vertexParameterBindings);
-    const keysToRemove = Array.from(newBindings.keys()).filter(key =>
-      key.startsWith(`${shapeId}_${vertexIndex}_`)
-    );
-    keysToRemove.forEach(key => newBindings.delete(key));
-    set({ vertexParameterBindings: newBindings });
-    console.log(`Vertex bindings removed for: ${shapeId}_${vertexIndex}`);
-  },
-
-  toggleVertexParameterBindingLock: (shapeId, vertexIndex, axis) => {
-    const key = `${shapeId}_${vertexIndex}_${axis}`;
-    const newBindings = new Map(get().vertexParameterBindings);
-    const existing = newBindings.get(key);
-    if (existing) {
-      const newLockState = !existing.isLocked;
-      newBindings.set(key, { ...existing, isLocked: newLockState });
-      set({ vertexParameterBindings: newBindings });
-      console.log(`Vertex binding lock toggled: ${key} -> ${newLockState ? 'LOCKED' : 'UNLOCKED'}`);
-    }
-  },
   
   // Snap settings - all enabled by default
   snapSettings: {

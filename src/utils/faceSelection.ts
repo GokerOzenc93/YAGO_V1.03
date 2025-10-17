@@ -248,55 +248,55 @@ export const getFullSurfaceVertices = (geometry: THREE.BufferGeometry, startFace
  * Yüzey highlight mesh'i oluştur
  */
 export const createFaceHighlight = (
-    vertices: THREE.Vector3[],
+    vertices: THREE.Vector3[], 
     worldMatrix: THREE.Matrix4,
     color: number = 0xff6b35,
     opacity: number = 0.6
 ): THREE.Mesh => {
     console.log(`🎨 Creating highlight mesh with ${vertices.length} vertices`);
-
+    
     // World space'e dönüştür
     const worldVertices = vertices.map(v => {
         const worldVertex = v.clone().applyMatrix4(worldMatrix);
         return worldVertex;
     });
-
+    
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(worldVertices.length * 3);
-
+    
     worldVertices.forEach((vertex, i) => {
         positions[i * 3] = vertex.x;
         positions[i * 3 + 1] = vertex.y;
         positions[i * 3 + 2] = vertex.z;
     });
-
+    
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
+    
     const indices: number[] = [];
-
+    
     if (worldVertices.length >= 3) {
         // Basit bir triangulation yöntemi: İlk vertex'i pivot alarak diğerlerini üçgenle
         for (let i = 1; i < worldVertices.length - 1; i++) {
             indices.push(0, i, i + 1);
         }
     }
-
+    
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
-
+    
     const material = new THREE.MeshBasicMaterial({
         color: color,
         transparent: true,
-        opacity: Math.min(opacity + 0.3, 0.95),
+        opacity: Math.min(opacity + 0.2, 0.9),
         side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false,
         wireframe: false
     });
-
+    
     const mesh = new THREE.Mesh(geometry, material);
     console.log(`✅ Highlight mesh created with ${indices.length / 3} triangles`);
-
+    
     return mesh;
 };
 
@@ -804,7 +804,7 @@ const buildFaceOverlayFromHit = (
 
     const mat = new THREE.MeshBasicMaterial({
         color,
-        opacity: Math.min(opacity + 0.25, 0.95),
+        opacity,
         transparent: true,
         depthWrite: false,
         depthTest: false,

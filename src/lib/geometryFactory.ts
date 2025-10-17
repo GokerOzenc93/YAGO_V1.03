@@ -61,11 +61,6 @@ export class GeometryFactory {
     // Three.js fallback
     console.log('🎯 Creating Three.js box geometry');
     const geometry = new THREE.BoxGeometry(width, height, depth);
-
-    // 🎯 Pivot noktasını sol alt arka köşeye taşı
-    // Geometry varsayılan olarak merkezde, onu sol alt köşeye kaydırıyoruz
-    geometry.translate(width / 2, height / 2, depth / 2);
-
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     return geometry;
@@ -91,11 +86,6 @@ export class GeometryFactory {
     // Three.js fallback
     console.log('🎯 Creating Three.js cylinder geometry');
     const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-
-    // 🎯 Pivot noktasını sol alt köşeye taşı (cylinder için alt merkez)
-    // Cylinder Y ekseni boyunca uzanabilir, merkezden alta kaydırıyoruz
-    geometry.translate(0, height / 2, 0);
-
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     return geometry;
@@ -171,13 +161,12 @@ export class GeometryFactory {
       
       // Rotate to make it horizontal (lying on XZ plane)
       geometry.rotateX(-Math.PI / 2);
-
-      // 🎯 Pivot noktasını sol alt arka köşeye taşı
-      // Move origin to bottom-left-back corner (min point of bounding box)
+      
+      // Center the geometry at origin
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
-        const min = geometry.boundingBox.min;
-        geometry.translate(-min.x, -min.y, -min.z);
+        const center = geometry.boundingBox.getCenter(new THREE.Vector3());
+        geometry.translate(-center.x, -center.y, -center.z);
       }
       
       // Compute bounding volumes

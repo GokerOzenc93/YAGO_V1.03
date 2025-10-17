@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check, Plus, ChevronLeft, Ruler, Circle } from 'lucide-react';
+import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -17,7 +17,7 @@ interface ModuleProps {
 }
 
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints, vertexParameterBindings } = useAppStore();
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -148,92 +148,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
-    // 🔒 CHECK FOR LOCKED VERTEX BINDINGS
-    // If any vertex binding is locked on this dimension, we need to:
-    // 1. Apply the new scale
-    // 2. Adjust shape position so the locked vertex stays in the same world space position
-    const lockedBindings = Array.from(vertexParameterBindings.entries())
-      .filter(([key, binding]) =>
-        binding.shapeId === editedShape.id &&
-        binding.isLocked &&
-        binding.displayValue !== undefined
-      );
-
-    // Check if any locked binding affects the dimension being changed
-    const axisIndex = dimension === 'width' ? 0 : dimension === 'height' ? 1 : 2;
-    const lockedBindingOnAxis = lockedBindings.find(([key, binding]) => {
-      const bindingAxis = binding.axis.startsWith('x') ? 0 : binding.axis.startsWith('y') ? 1 : 2;
-      return bindingAxis === axisIndex;
-    });
-
-    const newPosition = [...editedShape.position] as [number, number, number];
-
-    if (lockedBindingOnAxis) {
-      const [key, binding] = lockedBindingOnAxis;
-      const lockedDistance = binding.displayValue!;
-      const axis = binding.axis;
-      const vertexIndex = binding.vertexIndex;
-
-      console.log(`🔒 Locked constraint detected on ${axis} axis for vertex ${vertexIndex}, locked distance: ${lockedDistance}mm`);
-
-      // Get all unique vertices from geometry
-      const positions = editedShape.geometry.attributes.position;
-      const vertexMap = new Map<string, [number, number, number]>();
-
-      for (let i = 0; i < positions.count; i++) {
-        const x = positions.getX(i);
-        const y = positions.getY(i);
-        const z = positions.getZ(i);
-        const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
-
-        if (!vertexMap.has(key)) {
-          vertexMap.set(key, [x, y, z]);
-        }
-      }
-
-      const uniqueVertices = Array.from(vertexMap.values());
-      if (vertexIndex < uniqueVertices.length) {
-        const localVertexPos = new THREE.Vector3(...uniqueVertices[vertexIndex]);
-
-        // Calculate current world position of the locked vertex (with current scale)
-        const currentWorldVertexPos = localVertexPos.clone()
-          .multiply(new THREE.Vector3(...currentScale))
-          .add(new THREE.Vector3(...editedShape.position));
-
-        // Calculate new world position of the vertex with new scale
-        const newWorldVertexPos = localVertexPos.clone()
-          .multiply(new THREE.Vector3(...newScale))
-          .add(new THREE.Vector3(...editedShape.position));
-
-        // Calculate the difference and adjust shape position to keep vertex in place
-        const diff = currentWorldVertexPos.clone().sub(newWorldVertexPos);
-
-        // Only adjust position on the axis being changed
-        newPosition[axisIndex] += diff.getComponent(axisIndex);
-
-        console.log(`🔒 Locked vertex ${vertexIndex} kept at world position ${currentWorldVertexPos.getComponent(axisIndex).toFixed(2)}mm`);
-        console.log(`   Local vertex pos: ${localVertexPos.getComponent(axisIndex).toFixed(2)}, Old scale: ${currentScale[axisIndex].toFixed(3)}, New scale: ${newScale[axisIndex].toFixed(3)}`);
-        console.log(`   Position adjustment: ${diff.getComponent(axisIndex).toFixed(2)}mm, New shape position: ${newPosition[axisIndex].toFixed(2)}mm`);
-      }
-    }
-
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
-      position: newPosition,
     });
-
-    // Notify scene that shape dimensions changed - update surface highlights
-    const updateEvent = new CustomEvent('shapeDimensionsChanged', {
-      detail: {
-        shapeId: editedShape.id,
-        dimension,
-        newValue,
-        newScale
-      }
-    });
-    window.dispatchEvent(updateEvent);
-
-    console.log(`🎯 Shape dimensions updated: ${dimension} = ${evaluatedValue.toFixed(2)}`);
   };
 
   const handleAddParameter = () => {
@@ -294,17 +211,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     setCustomParameters(prev => prev.map(p =>
       p.id === id ? { ...p, result: displayValue } : p
     ));
-
-    // Dispatch parameter update event for vertex movement
-    const parameterUpdateEvent = new CustomEvent('parameterUpdated', {
-      detail: {
-        code: param.description,
-        value: evaluatedValue,
-        baseValue: convertToBaseUnit(evaluatedValue),
-      }
-    });
-    window.dispatchEvent(parameterUpdateEvent);
-    console.log(`Parameter ${param.description} updated: ${displayValue}`);
   };
 
   return (
@@ -329,17 +235,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
               Clear All
             </button>
           )}
-          <button
-            onClick={toggleVertexPoints}
-            className={`p-1.5 rounded-sm transition-colors ${
-              showVertexPoints
-                ? 'bg-orange-100 text-orange-600'
-                : 'hover:bg-orange-100 text-orange-600'
-            }`}
-            title="Show/Hide Vertex Points"
-          >
-            <Circle size={14} fill={showVertexPoints ? 'currentColor' : 'none'} />
-          </button>
           <button
             onClick={handleAddParameter}
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
