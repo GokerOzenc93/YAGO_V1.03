@@ -61,21 +61,22 @@ export const convertTo3DShape = async (
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
     geometry,
-    parameters: shape.type === 'circle' 
+    parameters: shape.type === 'circle'
       ? { radius: shape.points[0].distanceTo(shape.points[1]), height }
       : shape.type === 'rectangle'
-      ? { 
+      ? {
           width: Math.abs(shape.points[2].x - shape.points[0].x),
           height,
           depth: Math.abs(shape.points[2].z - shape.points[0].z)
         }
-      : { 
+      : {
           points: shape.points.length,
           height,
           area: 'calculated'
         },
     originalPoints: shape.points,
     is2DShape: true,
+    edgeParameters: shape.edgeParameters || [],
   };
 
   addShape(newShape);
@@ -149,10 +150,10 @@ export const extrudeShape = async (
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
     geometry,
-    parameters: shape.type === 'circle' 
+    parameters: shape.type === 'circle'
       ? { radius: shape.points[0].distanceTo(shape.points[1]), height }
       : shape.type === 'rectangle'
-      ? { 
+      ? {
           width: Math.abs(shape.points[2].x - shape.points[0].x),
           height,
           depth: Math.abs(shape.points[2].z - shape.points[0].z)
@@ -162,6 +163,7 @@ export const extrudeShape = async (
           height,
           area: 'calculated'
         },
+    edgeParameters: shape.edgeParameters || [],
   };
 
   addShape(newShape);

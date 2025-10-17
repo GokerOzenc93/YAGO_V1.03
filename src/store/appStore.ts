@@ -309,6 +309,9 @@ interface AppState {
   addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode?: string, displayValue?: number) => void;
   updateVertexParameterBindingValue: (shapeId: string, vertexIndex: number, axis: string, displayValue: number) => void;
   removeVertexParameterBinding: (shapeId: string, vertexIndex: number) => void;
+  selectedEdgeId: string | null;
+  selectedEdgeIndex: number | null;
+  setSelectedEdge: (shapeId: string | null, edgeIndex: number | null) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -515,6 +518,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     keysToRemove.forEach(key => newBindings.delete(key));
     set({ vertexParameterBindings: newBindings });
     console.log(`Vertex bindings removed for: ${shapeId}_${vertexIndex}`);
+  },
+
+  selectedEdgeId: null,
+  selectedEdgeIndex: null,
+  setSelectedEdge: (shapeId, edgeIndex) => {
+    set({ selectedEdgeId: shapeId, selectedEdgeIndex: edgeIndex });
+    console.log(`Edge selected: shape ${shapeId}, edge ${edgeIndex}`);
   },
   
   // Snap settings - all enabled by default

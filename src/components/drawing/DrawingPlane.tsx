@@ -73,7 +73,10 @@ const DrawingPlane: React.FC<DrawingPlaneProps> = ({ onShowMeasurement, onHideMe
   const [extrudeHeight, setExtrudeHeight] = useState('');
   const [pendingExtrudeShape, setPendingExtrudeShape] = useState<CompletedShape | null>(null);
   const [mouseWorldPosition, setMouseWorldPosition] = useState<THREE.Vector3 | null>(null);
-  
+  const [selectedEdge, setSelectedEdge] = useState<{ shapeId: string; edgeIndex: number } | null>(null);
+  const [edgeLengthInput, setEdgeLengthInput] = useState<string>('');
+  const [showEdgeLengthInput, setShowEdgeLengthInput] = useState(false);
+
   const planeRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
 
@@ -465,25 +468,96 @@ const focusTerminalForMeasurement = () => {
     console.log('Extrude operation cancelled');
   };
 
+  // Handle edge selection and length modification
+  const handleEdgeClick = (shapeId: string, edgeIndex: number, currentLength: number) => {
+    setSelectedEdge({ shapeId, edgeIndex });
+    setEdgeLengthInput(convertToDisplayUnit(currentLength).toFixed(2));
+    setShowEdgeLengthInput(true);
+
+    setTimeout(() => {
+      if ((window as any).terminalInputRef?.current) {
+        (window as any).terminalInputRef.current.focus();
+        (window as any).terminalInputRef.current.select();
+      }
+    }, 100);
+  };
+
+  const handleEdgeLengthApply = (input: string) => {
+    if (!selectedEdge) return;
+
+    const newLength = parseFloat(input);
+    if (isNaN(newLength) || newLength <= 0) {
+      console.log('Invalid edge length');
+      return;
+    }
+
+    const shape = completedShapes.find(s => s.id === selectedEdge.shapeId);
+    if (!shape) return;
+
+    const edgeIndex = selectedEdge.edgeIndex;
+    const startPoint = shape.points[edgeIndex];
+    const endPoint = shape.points[(edgeIndex + 1) % shape.points.length];
+    const currentLength = startPoint.distanceTo(endPoint);
+    const newLengthInMm = convertToBaseUnit(newLength);
+
+    const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+    const newEndPoint = startPoint.clone().add(direction.multiplyScalar(newLengthInMm));
+
+    newEndPoint.x = snapToGrid(newEndPoint.x, gridSize);
+    newEndPoint.z = snapToGrid(newEndPoint.z, gridSize);
+
+    const newPoints = [...shape.points];
+    newPoints[(edgeIndex + 1) % shape.points.length] = newEndPoint;
+
+    if (!shape.edgeParameters) {
+      shape.edgeParameters = [];
+    }
+
+    const existingParam = shape.edgeParameters.find(p => p.edgeIndex === edgeIndex);
+    if (existingParam) {
+      existingParam.length = newLengthInMm;
+    } else {
+      shape.edgeParameters.push({ edgeIndex, length: newLengthInMm });
+    }
+
+    setCompletedShapes(prev => prev.map(s =>
+      s.id === selectedEdge.shapeId
+        ? { ...s, points: newPoints, edgeParameters: shape.edgeParameters }
+        : s
+    ));
+
+    setShowEdgeLengthInput(false);
+    setSelectedEdge(null);
+    setEdgeLengthInput('');
+
+    console.log(`Edge ${edgeIndex} length updated to ${newLength}`);
+  };
+
   useEffect(() => {
     (window as any).handlePolylineMeasurement = handleMeasurementInput;
-    
-    // Expose extrude height handler globally  
+
+    // Expose extrude height handler globally
     (window as any).handleExtrudeHeight = handleExtrudeInput;
-    
+
     // Expose convert to 2D handler globally
     (window as any).handleConvertTo2D = handleConvertTo2D;
-    
+
     // Expose pending extrude shape globally for terminal access
     (window as any).pendingExtrudeShape = pendingExtrudeShape;
-    
+
+    // Expose edge length handler globally
+    (window as any).handleEdgeLengthInput = handleEdgeLengthApply;
+    (window as any).showEdgeLengthInput = showEdgeLengthInput;
+
     return () => {
       delete (window as any).handlePolylineMeasurement;
       delete (window as any).handleExtrudeHeight;
       delete (window as any).handleConvertTo2D;
       delete (window as any).pendingExtrudeShape;
+      delete (window as any).handleEdgeLengthInput;
+      delete (window as any).showEdgeLengthInput;
     };
-  }, [handleMeasurementInput, handleExtrudeInput, handleConvertTo2D, pendingExtrudeShape]);
+  }, [handleMeasurementInput, handleExtrudeInput, handleConvertTo2D, pendingExtrudeShape, handleEdgeLengthApply, showEdgeLengthInput]);
 
   // Auto-focus terminal input when extrude dialog shows
   useEffect(() => {
@@ -917,12 +991,38 @@ const focusTerminalForMeasurement = () => {
             />
           </line>
           
+          {/* Edge midpoint indicators for length editing */}
+          {activeTool === Tool.SELECT && (shape.type === 'polyline' || shape.type === 'polygon' || shape.type === 'rectangle') && (
+            <>
+              {shape.points.slice(0, -1).map((point, index) => {
+                const nextPoint = shape.points[index + 1];
+                const midpoint = new THREE.Vector3().addVectors(point, nextPoint).multiplyScalar(0.5);
+                const edgeLength = point.distanceTo(nextPoint);
+                const isSelected = selectedEdge?.shapeId === shape.id && selectedEdge?.edgeIndex === index;
+
+                return (
+                  <mesh
+                    key={`edge-${index}`}
+                    position={midpoint}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdgeClick(shape.id, index, edgeLength);
+                    }}
+                  >
+                    <sphereGeometry args={[gridSize / 10]} />
+                    <meshBasicMaterial color={isSelected ? "#10b981" : "#f59e0b"} />
+                  </mesh>
+                );
+              })}
+            </>
+          )}
+
           {/* Polyline Edit Nodes */}
           {activeTool === Tool.POLYLINE_EDIT && (shape.type === 'polyline' || shape.type === 'polygon') && (
             <>
               {shape.points.map((point, index) => (
-                <mesh 
-                  key={index} 
+                <mesh
+                  key={index}
                   position={point}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -931,8 +1031,8 @@ const focusTerminalForMeasurement = () => {
                   }}
                 >
                   <sphereGeometry args={[gridSize / 8]} />
-                  <meshBasicMaterial 
-                    color={editingPolylineId === shape.id ? "#f59e0b" : "#2563eb"} 
+                  <meshBasicMaterial
+                    color={editingPolylineId === shape.id ? "#f59e0b" : "#2563eb"}
                   />
                 </mesh>
               ))}
