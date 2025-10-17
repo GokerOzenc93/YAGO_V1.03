@@ -256,7 +256,33 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       return;
     }
 
-    const newLengthInMm = convertToBaseUnit(evaluatedValue);
+    console.log(`🔍 Module Edge Length Debug:
+      - Input value: ${inputValue}
+      - Evaluated value: ${evaluatedValue}
+      - Current unit: mm (always in mm internally)
+      - No conversion needed - storing as ${evaluatedValue}mm`);
+
+    const newLengthInMm = evaluatedValue;
+
+    if (!editedShape.originalPoints || editedShape.originalPoints.length === 0) {
+      console.warn('⚠️ Shape has no originalPoints - cannot update edge length geometry');
+      return;
+    }
+
+    const updatedPoints = [...editedShape.originalPoints];
+    const startPoint = updatedPoints[edgeIndex];
+    const endPoint = updatedPoints[(edgeIndex + 1) % updatedPoints.length];
+
+    if (!startPoint || !endPoint) {
+      console.warn('⚠️ Invalid edge index');
+      return;
+    }
+
+    const currentLength = startPoint.distanceTo(endPoint);
+    const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+    const newEndPoint = startPoint.clone().add(direction.multiplyScalar(newLengthInMm));
+
+    updatedPoints[(edgeIndex + 1) % updatedPoints.length] = newEndPoint;
 
     const updatedEdgeParams = [...(editedShape.edgeParameters || [])];
     const existingParamIndex = updatedEdgeParams.findIndex(p => p.edgeIndex === edgeIndex);
@@ -268,10 +294,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     }
 
     updateShape(editedShape.id, {
+      originalPoints: updatedPoints,
       edgeParameters: updatedEdgeParams,
     });
 
-    console.log(`Edge ${edgeIndex} length updated to ${evaluatedValue}`);
+    const actualLength = startPoint.distanceTo(newEndPoint);
+    console.log(`✅ Module: Edge ${edgeIndex} length updated from ${currentLength.toFixed(2)}mm to ${actualLength.toFixed(2)}mm (requested: ${evaluatedValue}mm)`);
   };
 
   return (

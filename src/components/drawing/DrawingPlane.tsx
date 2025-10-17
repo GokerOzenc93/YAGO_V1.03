@@ -497,10 +497,24 @@ const focusTerminalForMeasurement = () => {
     const edgeIndex = selectedEdge.edgeIndex;
     const startPoint = shape.points[edgeIndex];
     const endPoint = shape.points[(edgeIndex + 1) % shape.points.length];
-    const newLengthInMm = convertToBaseUnit(newLength);
+    const currentLength = startPoint.distanceTo(endPoint);
+
+    console.log(`🔍 Edge Length Debug:
+      - Input value: ${input}
+      - Parsed value: ${newLength}
+      - Current unit: ${measurementUnit}
+      - Current edge length: ${currentLength.toFixed(2)}mm (display: ${convertToDisplayUnit(currentLength).toFixed(2)} ${measurementUnit})
+      - Start point: [${startPoint.x.toFixed(2)}, ${startPoint.y.toFixed(2)}, ${startPoint.z.toFixed(2)}]
+      - End point: [${endPoint.x.toFixed(2)}, ${endPoint.y.toFixed(2)}, ${endPoint.z.toFixed(2)}]`);
+
+    const newLengthInMm = newLength;
+    console.log(`🔍 New length in mm: ${newLengthInMm}`);
 
     const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+    console.log(`🔍 Direction vector: [${direction.x.toFixed(4)}, ${direction.y.toFixed(4)}, ${direction.z.toFixed(4)}]`);
+
     const newEndPoint = startPoint.clone().add(direction.multiplyScalar(newLengthInMm));
+    console.log(`🔍 New end point: [${newEndPoint.x.toFixed(2)}, ${newEndPoint.y.toFixed(2)}, ${newEndPoint.z.toFixed(2)}]`);
 
     const newPoints = [...shape.points];
     newPoints[(edgeIndex + 1) % shape.points.length] = newEndPoint;
@@ -533,7 +547,7 @@ const focusTerminalForMeasurement = () => {
     setEdgeLengthInput('');
 
     const actualLength = startPoint.distanceTo(newEndPoint);
-    console.log(`Edge ${edgeIndex} length updated: requested ${newLength} ${measurementUnit}, actual ${convertToDisplayUnit(actualLength).toFixed(2)} ${measurementUnit}`);
+    console.log(`✅ Edge ${edgeIndex} length updated: requested ${newLength}mm, actual ${actualLength.toFixed(2)}mm`);
   };
 
   useEffect(() => {
