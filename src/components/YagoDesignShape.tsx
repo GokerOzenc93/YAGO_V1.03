@@ -32,6 +32,7 @@ const YagoDesignShape: React.FC<Props> = ({
   isBeingEdited = false,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const transformRef = useRef<any>(null);
   const { scene, camera, gl } = useThree();
   const {
@@ -155,10 +156,10 @@ const YagoDesignShape: React.FC<Props> = ({
     let originalScale = new THREE.Vector3(...shape.scale);
     
     const handleObjectChange = () => {
-      if (!meshRef.current) return;
+      if (!groupRef.current) return;
 
       if (activeTool === 'Move') {
-        let position = meshRef.current.position.clone();
+        let position = groupRef.current.position.clone();
 
         // 🎯 NEW: Apply ortho mode constraint
         position = applyOrthoConstraint(position, originalPosition, orthoMode);
@@ -180,7 +181,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
         console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
       } else if (activeTool === 'Rotate') {
-        const rotation = meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
+        const rotation = groupRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
 
         // 🎯 UPDATE SHAPE ROTATION IN STORE
         updateShape(shape.id, {
@@ -191,7 +192,7 @@ const YagoDesignShape: React.FC<Props> = ({
       } else if (activeTool === 'Scale') {
         // 🎯 PIVOT POINT SCALING
         // Geometry zaten sol alt köşeye kaydırılmış, sadece scale'ı güncelle
-        const newScale = meshRef.current.scale.toArray() as [number, number, number];
+        const newScale = groupRef.current.scale.toArray() as [number, number, number];
 
         // 🎯 CHECK FOR LOCKED VERTEX BINDINGS
         // If any vertex binding is locked, we need to constrain the scale to maintain that locked distance
@@ -232,7 +233,7 @@ const YagoDesignShape: React.FC<Props> = ({
           });
 
           // Apply the constrained scale
-          meshRef.current.scale.set(...newScale);
+          groupRef.current.scale.set(...newScale);
         }
 
         // 🎯 UPDATE NON-LOCKED VERTEX BINDINGS
@@ -665,50 +666,55 @@ const YagoDesignShape: React.FC<Props> = ({
   };
 
   return (
-    <group>
+    <group
+      ref={groupRef}
+      position={shape.position}
+      rotation={shape.rotation}
+      scale={shape.scale}
+    >
       {/* Main shape mesh */}
       <mesh
         ref={meshRef}
         geometry={shapeGeometry}
-        position={shape.position}
-        rotation={shape.rotation}
-        scale={shape.scale}
+        position={[0, 0, 0]}
+        rotation={[0, 0, 0]}
+        scale={[1, 1, 1]}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         castShadow
         receiveShadow
-        visible={true} // 👈 2D şekiller için her zaman görünür (gizmo etkileşimi için)
+        visible={true}
       >
         <meshPhysicalMaterial {...getMaterialProps()} />
       </mesh>
 
-      {/* 🎯 VIEW MODE BASED EDGES - Görünüm moduna göre çizgiler */}
+      {/* 🎯 VIEW MODE BASED EDGES */}
       {shouldShowEdges() && (
         <lineSegments
           geometry={edgesGeometry}
-          position={shape.position}
-          rotation={shape.rotation}
-          scale={shape.scale}
-          visible={true} // Always show edges
+          position={[0, 0, 0]}
+          rotation={[0, 0, 0]}
+          scale={[1, 1, 1]}
+          visible={true}
         >
           <lineBasicMaterial
             color={getEdgeColor()}
             transparent
             opacity={getEdgeOpacity()}
-            depthTest={viewMode === ViewMode.SOLID} // 🎯 Her yerden görünür
+            depthTest={viewMode === ViewMode.SOLID}
             linewidth={getEdgeLineWidth()}
           />
         </lineSegments>
       )}
 
-      {/* 🎯 TRANSFORM CONTROLS - 2D ve 3D şekiller için aktif */}
+      {/* 🎯 TRANSFORM CONTROLS - Attached to group for correct pivot */}
       {isSelected &&
-        meshRef.current &&
+        groupRef.current &&
         !isEditMode &&
         !isFaceSelectionActive && (
           <TransformControls
             ref={transformRef}
-            object={meshRef.current}
+            object={groupRef.current}
             mode={
               activeTool === 'Move'
                 ? 'translate'
