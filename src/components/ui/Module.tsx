@@ -149,7 +149,9 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     }
 
     // 🔒 CHECK FOR LOCKED VERTEX BINDINGS
-    // If any vertex binding is locked on this dimension, override the scale to maintain locked distance
+    // If any vertex binding is locked on this dimension, we need to:
+    // 1. Apply the new scale
+    // 2. Adjust shape position so the locked vertex stays in the same world space position
     const lockedBindings = Array.from(vertexParameterBindings.entries())
       .filter(([key, binding]) =>
         binding.shapeId === editedShape.id &&
@@ -164,29 +166,44 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       return bindingAxis === axisIndex;
     });
 
+    const newPosition = [...editedShape.position] as [number, number, number];
+
     if (lockedBindingOnAxis) {
       const [key, binding] = lockedBindingOnAxis;
       const lockedDistance = binding.displayValue!;
+      const axis = binding.axis;
 
-      // Get original dimension for this axis (from geometry, not scaled)
-      let originalGeometryDimension: number;
-      if (axisIndex === 0) {
-        originalGeometryDimension = bbox.max.x - bbox.min.x;
-      } else if (axisIndex === 1) {
-        originalGeometryDimension = bbox.max.y - bbox.min.y;
-      } else {
-        originalGeometryDimension = bbox.max.z - bbox.min.z;
-      }
+      // Get vertex position in local space (before any transformation)
+      const positions = editedShape.geometry.attributes.position.array;
+      const vertexIndex = binding.vertexIndex;
+      const localVertexPos = new THREE.Vector3(
+        positions[vertexIndex * 3],
+        positions[vertexIndex * 3 + 1],
+        positions[vertexIndex * 3 + 2]
+      );
 
-      // Calculate scale needed to maintain locked distance
-      const requiredScale = lockedDistance / originalGeometryDimension;
-      newScale[axisIndex] = requiredScale;
+      // Calculate current world position of the locked vertex
+      const currentWorldVertexPos = localVertexPos.clone()
+        .multiply(new THREE.Vector3(...currentScale))
+        .add(new THREE.Vector3(...editedShape.position));
 
-      console.log(`🔒 Locked constraint applied: ${dimension} locked to ${lockedDistance}mm, scale overridden to ${requiredScale.toFixed(3)}`);
+      // Calculate new world position of the vertex with new scale
+      const newWorldVertexPos = localVertexPos.clone()
+        .multiply(new THREE.Vector3(...newScale))
+        .add(new THREE.Vector3(...editedShape.position));
+
+      // Calculate the difference and adjust shape position to keep vertex in place
+      const diff = currentWorldVertexPos.clone().sub(newWorldVertexPos);
+
+      // Only adjust position on the axis being changed
+      newPosition[axisIndex] += diff.getComponent(axisIndex);
+
+      console.log(`🔒 Locked vertex constraint: vertex ${vertexIndex} on ${axis} kept at world position ${currentWorldVertexPos.getComponent(axisIndex).toFixed(2)}mm`);
     }
 
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
+      position: newPosition,
     });
 
     // Notify scene that shape dimensions changed - update surface highlights
