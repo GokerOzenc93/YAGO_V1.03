@@ -497,17 +497,19 @@ const focusTerminalForMeasurement = () => {
     const edgeIndex = selectedEdge.edgeIndex;
     const startPoint = shape.points[edgeIndex];
     const endPoint = shape.points[(edgeIndex + 1) % shape.points.length];
-    const currentLength = startPoint.distanceTo(endPoint);
     const newLengthInMm = convertToBaseUnit(newLength);
 
     const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
     const newEndPoint = startPoint.clone().add(direction.multiplyScalar(newLengthInMm));
 
-    newEndPoint.x = snapToGrid(newEndPoint.x, gridSize);
-    newEndPoint.z = snapToGrid(newEndPoint.z, gridSize);
-
     const newPoints = [...shape.points];
     newPoints[(edgeIndex + 1) % shape.points.length] = newEndPoint;
+
+    if (shape.isClosed && edgeIndex === 0) {
+      newPoints[newPoints.length - 1] = newEndPoint;
+    } else if (shape.isClosed && (edgeIndex + 1) === newPoints.length - 1) {
+      newPoints[0] = newEndPoint;
+    }
 
     if (!shape.edgeParameters) {
       shape.edgeParameters = [];
@@ -530,7 +532,8 @@ const focusTerminalForMeasurement = () => {
     setSelectedEdge(null);
     setEdgeLengthInput('');
 
-    console.log(`Edge ${edgeIndex} length updated to ${newLength}`);
+    const actualLength = startPoint.distanceTo(newEndPoint);
+    console.log(`Edge ${edgeIndex} length updated: requested ${newLength} ${measurementUnit}, actual ${convertToDisplayUnit(actualLength).toFixed(2)} ${measurementUnit}`);
   };
 
   useEffect(() => {
