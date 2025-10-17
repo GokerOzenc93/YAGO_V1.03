@@ -172,33 +172,49 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       const [key, binding] = lockedBindingOnAxis;
       const lockedDistance = binding.displayValue!;
       const axis = binding.axis;
-
-      // Get vertex position in local space (before any transformation)
-      const positions = editedShape.geometry.attributes.position.array;
       const vertexIndex = binding.vertexIndex;
-      const localVertexPos = new THREE.Vector3(
-        positions[vertexIndex * 3],
-        positions[vertexIndex * 3 + 1],
-        positions[vertexIndex * 3 + 2]
-      );
 
-      // Calculate current world position of the locked vertex
-      const currentWorldVertexPos = localVertexPos.clone()
-        .multiply(new THREE.Vector3(...currentScale))
-        .add(new THREE.Vector3(...editedShape.position));
+      console.log(`🔒 Locked constraint detected on ${axis} axis for vertex ${vertexIndex}, locked distance: ${lockedDistance}mm`);
 
-      // Calculate new world position of the vertex with new scale
-      const newWorldVertexPos = localVertexPos.clone()
-        .multiply(new THREE.Vector3(...newScale))
-        .add(new THREE.Vector3(...editedShape.position));
+      // Get all unique vertices from geometry
+      const positions = editedShape.geometry.attributes.position;
+      const vertexMap = new Map<string, [number, number, number]>();
 
-      // Calculate the difference and adjust shape position to keep vertex in place
-      const diff = currentWorldVertexPos.clone().sub(newWorldVertexPos);
+      for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const z = positions.getZ(i);
+        const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
 
-      // Only adjust position on the axis being changed
-      newPosition[axisIndex] += diff.getComponent(axisIndex);
+        if (!vertexMap.has(key)) {
+          vertexMap.set(key, [x, y, z]);
+        }
+      }
 
-      console.log(`🔒 Locked vertex constraint: vertex ${vertexIndex} on ${axis} kept at world position ${currentWorldVertexPos.getComponent(axisIndex).toFixed(2)}mm`);
+      const uniqueVertices = Array.from(vertexMap.values());
+      if (vertexIndex < uniqueVertices.length) {
+        const localVertexPos = new THREE.Vector3(...uniqueVertices[vertexIndex]);
+
+        // Calculate current world position of the locked vertex (with current scale)
+        const currentWorldVertexPos = localVertexPos.clone()
+          .multiply(new THREE.Vector3(...currentScale))
+          .add(new THREE.Vector3(...editedShape.position));
+
+        // Calculate new world position of the vertex with new scale
+        const newWorldVertexPos = localVertexPos.clone()
+          .multiply(new THREE.Vector3(...newScale))
+          .add(new THREE.Vector3(...editedShape.position));
+
+        // Calculate the difference and adjust shape position to keep vertex in place
+        const diff = currentWorldVertexPos.clone().sub(newWorldVertexPos);
+
+        // Only adjust position on the axis being changed
+        newPosition[axisIndex] += diff.getComponent(axisIndex);
+
+        console.log(`🔒 Locked vertex ${vertexIndex} kept at world position ${currentWorldVertexPos.getComponent(axisIndex).toFixed(2)}mm`);
+        console.log(`   Local vertex pos: ${localVertexPos.getComponent(axisIndex).toFixed(2)}, Old scale: ${currentScale[axisIndex].toFixed(3)}, New scale: ${newScale[axisIndex].toFixed(3)}`);
+        console.log(`   Position adjustment: ${diff.getComponent(axisIndex).toFixed(2)}mm, New shape position: ${newPosition[axisIndex].toFixed(2)}mm`);
+      }
     }
 
     updateShape(editedShape.id, {
