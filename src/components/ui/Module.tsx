@@ -17,7 +17,7 @@ interface ModuleProps {
 }
 
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints } = useAppStore();
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints, vertexParameterBindings } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -146,6 +146,40 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2];
       if (originalDimension === 0) originalDimension = 1;
       newScale[2] = (newValue / originalDimension) * currentScale[2];
+    }
+
+    // 🔒 CHECK FOR LOCKED VERTEX BINDINGS
+    // If any vertex binding is locked on this dimension, prevent the scale change
+    const lockedBindings = Array.from(vertexParameterBindings.entries())
+      .filter(([key, binding]) =>
+        binding.shapeId === editedShape.id &&
+        binding.isLocked &&
+        binding.displayValue !== undefined
+      );
+
+    // Check if any locked binding affects the dimension being changed
+    const axisIndex = dimension === 'width' ? 0 : dimension === 'height' ? 1 : 2;
+    const hasLockedBindingOnAxis = lockedBindings.some(([key, binding]) => {
+      const bindingAxis = binding.axis.startsWith('x') ? 0 : binding.axis.startsWith('y') ? 1 : 2;
+      return bindingAxis === axisIndex;
+    });
+
+    if (hasLockedBindingOnAxis) {
+      // Find the locked binding for this axis
+      const lockedBinding = lockedBindings.find(([key, binding]) => {
+        const bindingAxis = binding.axis.startsWith('x') ? 0 : binding.axis.startsWith('y') ? 1 : 2;
+        return bindingAxis === axisIndex;
+      });
+
+      if (lockedBinding) {
+        const [key, binding] = lockedBinding;
+        const lockedDistance = binding.displayValue!;
+
+        alert(`⚠️ Cannot change ${dimension.toUpperCase()} dimension!\n\nThis dimension is locked to ${lockedDistance}mm by a vertex constraint.\n\nPlease unlock the constraint first by clicking the lock icon (🔒).`);
+
+        console.log(`🔒 Dimension change blocked: ${dimension} is locked to ${lockedDistance}mm`);
+        return;
+      }
     }
 
     updateShape(editedShape.id, {
