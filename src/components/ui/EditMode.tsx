@@ -4,7 +4,7 @@ import { Shape } from '../../types/shapes';
 import EditModeHeader from './EditModeHeader';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
-import Module from './Module';
+import RefVolume from './RefVolume';
 import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
@@ -594,7 +594,7 @@ const EditMode: React.FC<EditModeProps> = ({
             )}
 
             {activeMainSection === 'volume' && activeVolumeSubSection === 'parameters' && (
-              <Module editedShape={editedShape} onClose={handleBackToMain} />
+              <RefVolume editedShape={editedShape} onClose={handleBackToMain} />
             )}
 
             {activeMainSection === 'panel' && (

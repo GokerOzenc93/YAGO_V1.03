@@ -159,13 +159,20 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
       } else if (activeTool === 'Scale') {
         const scale = meshRef.current.scale.toArray() as [number, number, number];
-        
-        // 🎯 UPDATE SHAPE SCALE IN STORE
+
+        // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
+        // This means when we scale with gizmo, it naturally grows in X+, Y+, Z+ directions!
+        // We DON'T need to adjust position because the geometry's origin IS the min corner
+
+        // 🎯 UPDATE SHAPE SCALE IN STORE (position stays the same)
         updateShape(shape.id, {
           scale: scale
         });
-        
-        console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
+
+        console.log(`🎯 Gizmo Scale: Shape ${shape.id} scaled from origin (min corner):`, {
+          scale,
+          position: shape.position
+        });
       }
     };
     
@@ -194,10 +201,15 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
         const finalScale = meshRef.current.scale.toArray() as [number, number, number];
+
         updateShape(shape.id, {
           scale: finalScale
         });
-        console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
+
+        console.log(`🎯 Shape ${shape.id} final scale from origin:`, {
+          scale: finalScale,
+          position: shape.position
+        });
       }
     };
     

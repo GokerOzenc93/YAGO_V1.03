@@ -11,13 +11,23 @@ interface CustomParameter {
   result: string | null;
 }
 
-interface ModuleProps {
+interface RefVolumeProps {
   editedShape: Shape;
   onClose: () => void;
 }
 
-const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const { convertToDisplayUnit, convertToBaseUnit, updateShape } = useAppStore();
+const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
+  const {
+    convertToDisplayUnit,
+    convertToBaseUnit,
+    updateShape,
+    setVisibleDimensions,
+    setMeasurementMode,
+    isMeasurementMode,
+    activeMeasurement,
+  } = useAppStore();
+
+  const [activeMeasurementDimension, setActiveMeasurementDimension] = useState<'width' | 'height' | 'depth' | null>(null);
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -52,6 +62,11 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [resultDepth, setResultDepth] = useState<string>('');
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
+  const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setVisibleDimensions(selectedDimensions);
+  }, [selectedDimensions, setVisibleDimensions]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -65,6 +80,27 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
+
+  useEffect(() => {
+    if (activeMeasurement && activeMeasurement.point2 && activeMeasurementDimension) {
+      const distance = activeMeasurement.distance;
+      const displayValue = convertToDisplayUnit(distance).toFixed(2);
+
+      if (activeMeasurementDimension === 'width') {
+        setInputWidth(displayValue);
+        setResultWidth(displayValue);
+      } else if (activeMeasurementDimension === 'height') {
+        setInputHeight(displayValue);
+        setResultHeight(displayValue);
+      } else if (activeMeasurementDimension === 'depth') {
+        setInputDepth(displayValue);
+        setResultDepth(displayValue);
+      }
+
+      setMeasurementMode(false);
+      setActiveMeasurementDimension(null);
+    }
+  }, [activeMeasurement, activeMeasurementDimension, convertToDisplayUnit, setMeasurementMode]);
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
     const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
@@ -130,6 +166,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     const bbox = editedShape.geometry.boundingBox;
 
     const currentScale = [...editedShape.scale];
+    const originalScale = new THREE.Vector3(...currentScale);
     const newScale = [...currentScale];
 
     let originalDimension = 0;
@@ -148,8 +185,20 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
+    // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
+    // This means when we scale, it naturally grows in X+, Y+, Z+ directions!
+    // We DON'T need to adjust position because the geometry's origin IS the min corner
+
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
+    });
+
+    console.log(`🎯 RefVolume: ${dimension} changed, geometry scales from origin (min corner):`, {
+      dimension,
+      bbox: { min: [bbox.min.x, bbox.min.y, bbox.min.z], max: [bbox.max.x, bbox.max.y, bbox.max.z] },
+      oldScale: originalScale.toArray(),
+      newScale,
+      position: editedShape.position
     });
   };
 
@@ -169,6 +218,12 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
   const handleClearAllParameters = () => {
     setCustomParameters([]);
+  };
+
+  const handleStartMeasurement = (dimension: 'width' | 'height' | 'depth') => {
+    setActiveMeasurementDimension(dimension);
+    setMeasurementMode(true);
+    console.log(`Started measurement mode for ${dimension}`);
   };
 
   const handleParameterDescriptionChange = (id: string, description: string) => {
@@ -223,7 +278,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
           >
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
-          <Ruler size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
         <div className="flex items-center gap-2">
@@ -250,11 +304,28 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="space-y-2">
             {canEditWidth && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('width')) {
+                        newSet.delete('width');
+                      } else {
+                        newSet.add('width');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('width')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   1
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -286,6 +357,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
+                    onClick={() => handleStartMeasurement('width')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'width'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Width"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -312,11 +395,28 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditHeight && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('height')) {
+                        newSet.delete('height');
+                      } else {
+                        newSet.add('height');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('height')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   2
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -348,6 +448,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
+                    onClick={() => handleStartMeasurement('height')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'height'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Height"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -374,11 +486,28 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditDepth && (
-              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has('depth')) {
+                        newSet.delete('depth');
+                      } else {
+                        newSet.add('depth');
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has('depth')
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   3
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -410,6 +539,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
+                    onClick={() => handleStartMeasurement('depth')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'depth'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Depth"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
+                  <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -438,12 +579,30 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
             {customParameters.map((param, index) => (
               <div
                 key={param.id}
-                className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
+                className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
               >
-                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedDimensions(prev => {
+                      const newSet = new Set(prev);
+                      const paramKey = `param-${param.id}`;
+                      if (newSet.has(paramKey)) {
+                        newSet.delete(paramKey);
+                      } else {
+                        newSet.add(paramKey);
+                      }
+                      return newSet;
+                    });
+                  }}
+                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
+                    selectedDimensions.has(`param-${param.id}`)
+                      ? 'bg-white text-orange-500 border-orange-300'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
+                  }`}
+                >
                   {index + 4}
-                </div>
+                </button>
 
                 <input
                   type="text"
@@ -475,6 +634,18 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleStartMeasurement('custom')}
+                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
+                      isMeasurementMode && activeMeasurementDimension === 'custom'
+                        ? 'bg-orange-300 text-white'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                    title="Measure Custom Parameter"
+                  >
+                    <Ruler size={11} />
+                  </button>
+
                   <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
@@ -518,4 +689,4 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   );
 };
 
-export default Module;
+export default RefVolume;

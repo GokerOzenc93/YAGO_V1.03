@@ -162,6 +162,21 @@ export enum OrthoMode {
   ON = 'on'
 }
 
+export interface MeasurementPoint {
+  position: THREE.Vector3;
+  shapeId: string;
+  edgeIndex?: number;
+}
+
+export interface ActiveMeasurement {
+  id: string;
+  point1: MeasurementPoint;
+  point2: MeasurementPoint | null;
+  distance: number;
+  dimension: 'width' | 'height' | 'depth' | 'custom';
+  parameterId?: string;
+}
+
 export interface SnapSettings {
   [SnapType.ENDPOINT]: boolean;
   [SnapType.MIDPOINT]: boolean;
@@ -209,6 +224,15 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
+  // Measurement system
+  isMeasurementMode: boolean;
+  setMeasurementMode: (enabled: boolean) => void;
+  activeMeasurement: ActiveMeasurement | null;
+  setActiveMeasurement: (measurement: ActiveMeasurement | null) => void;
+  measurements: ActiveMeasurement[];
+  addMeasurement: (measurement: ActiveMeasurement) => void;
+  removeMeasurement: (id: string) => void;
+  clearMeasurements: () => void;
   // YagoDesign integration
   isYagoDesignInitialized: boolean;
   setYagoDesignInitialized: (initialized: boolean) => void;
@@ -276,6 +300,9 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
+  // Dimension visibility
+  visibleDimensions: Set<string>;
+  setVisibleDimensions: (dimensions: Set<string>) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -395,9 +422,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Panel mode states
   isAddPanelMode: false,
   setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
-  
+
   isPanelEditMode: false,
   setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+
+  // Dimension visibility
+  visibleDimensions: new Set<string>(),
+  setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
+
+  // Measurement system
+  isMeasurementMode: false,
+  setMeasurementMode: (enabled) => set({ isMeasurementMode: enabled }),
+
+  activeMeasurement: null,
+  setActiveMeasurement: (measurement) => set({ activeMeasurement: measurement }),
+
+  measurements: [],
+  addMeasurement: (measurement) =>
+    set((state) => ({ measurements: [...state.measurements, measurement] })),
+
+  removeMeasurement: (id) =>
+    set((state) => ({
+      measurements: state.measurements.filter(m => m.id !== id),
+      activeMeasurement: state.activeMeasurement?.id === id ? null : state.activeMeasurement
+    })),
+
+  clearMeasurements: () => set({ measurements: [], activeMeasurement: null }),
   
   // Snap settings - all enabled by default
   snapSettings: {
@@ -536,6 +586,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           height - radius * 2,
           depth - radius * 2
         );
+        geometry.translate((width - radius * 2) / 2, (height - radius * 2) / 2, (depth - radius * 2) / 2);
 
         newShapes[shapes.indexOf(shape)] = {
           ...shape,
@@ -559,6 +610,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           height - distance * 2,
           depth - distance * 2
         );
+        geometry.translate((width - distance * 2) / 2, (height - distance * 2) / 2, (depth - distance * 2) / 2);
 
         newShapes[shapes.indexOf(shape)] = {
           ...shape,
@@ -575,34 +627,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ shapes: newShapes });
   },
   
-  shapes: [
-    {
-      id: '1',
-      type: 'box',
-      position: [-200, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(500, 500, 500),
-      parameters: {
-        width: 500,
-        height: 500,
-        depth: 500,
+  shapes: (() => {
+    const shape1Geometry = new THREE.BoxGeometry(500, 500, 500);
+    shape1Geometry.translate(250, 250, 250);
+
+    const shape2Geometry = new THREE.BoxGeometry(300, 300, 300);
+    shape2Geometry.translate(150, 150, 150);
+
+    return [
+      {
+        id: '1',
+        type: 'box',
+        position: [-200, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        geometry: shape1Geometry,
+        parameters: {
+          width: 500,
+          height: 500,
+          depth: 500,
+        },
       },
-    },
-    {
-      id: '2',
-      type: 'box',
-      position: [100, 250, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      geometry: new THREE.BoxGeometry(300, 300, 300),
-      parameters: {
-        width: 300,
-        height: 300,
-        depth: 300,
+      {
+        id: '2',
+        type: 'box',
+        position: [100, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        geometry: shape2Geometry,
+        parameters: {
+          width: 300,
+          height: 300,
+          depth: 300,
+        },
       },
-    },
-  ],
+    ];
+  })(),
   
   addShape: (shape) => 
     set((state) => ({ 

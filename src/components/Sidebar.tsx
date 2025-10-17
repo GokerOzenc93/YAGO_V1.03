@@ -152,10 +152,6 @@ const Sidebar: React.FC = () => {
           <span className="text-xs block mt-1">Properties</span>
         </button>
         <button className="flex-1 py-2 px-4 hover:bg-gray-700">
-          <Ruler size={18} className="mx-auto" />
-          <span className="text-xs block mt-1">Measures</span>
-        </button>
-        <button className="flex-1 py-2 px-4 hover:bg-gray-700">
           <PanelLeft size={18} className="mx-auto" />
           <span className="text-xs block mt-1">Layers</span>
         </button>

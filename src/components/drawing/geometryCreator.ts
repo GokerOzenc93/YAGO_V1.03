@@ -13,6 +13,7 @@ export const createPolylineGeometry = (
     if (points.length < 3) {
       // Fallback for insufficient points
       const geometry = new THREE.BoxGeometry(100, height, 100);
+      geometry.translate(50, height / 2, 50);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
       return geometry;
@@ -50,20 +51,20 @@ export const createPolylineGeometry = (
     
     // Rotate to make it horizontal (lying on XZ plane)
     geometry.rotateX(-Math.PI / 2);
-    
-    // Center the geometry at origin - this ensures gizmo appears at center
+
+    // 🎯 CRITICAL: Move min corner to origin (0,0,0) instead of centering
     geometry.computeBoundingBox();
     if (geometry.boundingBox) {
-      const center = geometry.boundingBox.getCenter(new THREE.Vector3());
-      geometry.translate(-center.x, -center.y, -center.z);
+      const min = geometry.boundingBox.min;
+      geometry.translate(-min.x, -min.y, -min.z);
     }
-    
+
     // Compute bounding volumes
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
-    
-    console.log(`🎯 Polyline geometry created centered at origin with height: ${height}mm`);
-    
+
+    console.log(`🎯 Polyline geometry created with min corner at origin, height: ${height}mm`);
+
     return geometry;
     
   } catch (error) {
@@ -71,9 +72,10 @@ export const createPolylineGeometry = (
     
     // Fallback geometry
     const fallbackGeometry = new THREE.BoxGeometry(100, height, 100);
+    fallbackGeometry.translate(50, height / 2, 50);
     fallbackGeometry.computeBoundingBox();
     fallbackGeometry.computeBoundingSphere();
-    
+
     return fallbackGeometry;
   }
 };
