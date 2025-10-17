@@ -149,7 +149,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     }
 
     // 🔒 CHECK FOR LOCKED VERTEX BINDINGS
-    // If any vertex binding is locked on this dimension, prevent the scale change
+    // If any vertex binding is locked on this dimension, override the scale to maintain locked distance
     const lockedBindings = Array.from(vertexParameterBindings.entries())
       .filter(([key, binding]) =>
         binding.shapeId === editedShape.id &&
@@ -159,27 +159,30 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
 
     // Check if any locked binding affects the dimension being changed
     const axisIndex = dimension === 'width' ? 0 : dimension === 'height' ? 1 : 2;
-    const hasLockedBindingOnAxis = lockedBindings.some(([key, binding]) => {
+    const lockedBindingOnAxis = lockedBindings.find(([key, binding]) => {
       const bindingAxis = binding.axis.startsWith('x') ? 0 : binding.axis.startsWith('y') ? 1 : 2;
       return bindingAxis === axisIndex;
     });
 
-    if (hasLockedBindingOnAxis) {
-      // Find the locked binding for this axis
-      const lockedBinding = lockedBindings.find(([key, binding]) => {
-        const bindingAxis = binding.axis.startsWith('x') ? 0 : binding.axis.startsWith('y') ? 1 : 2;
-        return bindingAxis === axisIndex;
-      });
+    if (lockedBindingOnAxis) {
+      const [key, binding] = lockedBindingOnAxis;
+      const lockedDistance = binding.displayValue!;
 
-      if (lockedBinding) {
-        const [key, binding] = lockedBinding;
-        const lockedDistance = binding.displayValue!;
-
-        alert(`⚠️ Cannot change ${dimension.toUpperCase()} dimension!\n\nThis dimension is locked to ${lockedDistance}mm by a vertex constraint.\n\nPlease unlock the constraint first by clicking the lock icon (🔒).`);
-
-        console.log(`🔒 Dimension change blocked: ${dimension} is locked to ${lockedDistance}mm`);
-        return;
+      // Get original dimension for this axis (from geometry, not scaled)
+      let originalGeometryDimension: number;
+      if (axisIndex === 0) {
+        originalGeometryDimension = bbox.max.x - bbox.min.x;
+      } else if (axisIndex === 1) {
+        originalGeometryDimension = bbox.max.y - bbox.min.y;
+      } else {
+        originalGeometryDimension = bbox.max.z - bbox.min.z;
       }
+
+      // Calculate scale needed to maintain locked distance
+      const requiredScale = lockedDistance / originalGeometryDimension;
+      newScale[axisIndex] = requiredScale;
+
+      console.log(`🔒 Locked constraint applied: ${dimension} locked to ${lockedDistance}mm, scale overridden to ${requiredScale.toFixed(3)}`);
     }
 
     updateShape(editedShape.id, {
