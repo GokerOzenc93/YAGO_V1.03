@@ -89,79 +89,6 @@ const YagoDesignShape: React.FC<Props> = ({
     return Array.from(vertexMap.values());
   }, [shapeGeometry]);
 
-  // Watch for scale changes and reapply vertex bindings to maintain absolute positions
-  useEffect(() => {
-    if (!isBeingEdited) return;
-
-    // Find all bindings for this shape
-    const shapeBindings = Array.from(vertexParameterBindings.entries())
-      .filter(([key]) => key.startsWith(`${shape.id}_`));
-
-    if (shapeBindings.length === 0) return;
-
-    console.log(`Shape ${shape.id} scale changed, reapplying ${shapeBindings.length} vertex bindings`);
-
-    // Reapply each binding to maintain absolute positions
-    shapeBindings.forEach(([key, binding]) => {
-      if (binding.displayValue !== undefined) {
-        // Get the target absolute length
-        const targetLength = binding.displayValue;
-
-        // Parse axis
-        const axisChar = binding.axis.charAt(0);
-        const direction = binding.axis.charAt(1) === '-' ? -1 : 1;
-        const axisIndex = axisChar === 'x' ? 0 : axisChar === 'y' ? 1 : 2;
-
-        // Calculate target world position
-        const targetWorldValue = shape.position[axisIndex] + (targetLength * direction);
-
-        // Calculate new local position based on current scale
-        const newLocalValue = (targetWorldValue - shape.position[axisIndex]) / shape.scale[axisIndex];
-
-        // Find and update the vertex
-        const vertexMap = new Map<string, number[]>();
-        const positions = shape.geometry.attributes.position;
-
-        for (let i = 0; i < positions.count; i++) {
-          const x = positions.getX(i);
-          const y = positions.getY(i);
-          const z = positions.getZ(i);
-          const vkey = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
-
-          if (!vertexMap.has(vkey)) {
-            vertexMap.set(vkey, [x, y, z]);
-          }
-        }
-
-        const uniqueVertices = Array.from(vertexMap.values());
-        if (binding.vertexIndex >= uniqueVertices.length) return;
-
-        const targetVertex = uniqueVertices[binding.vertexIndex];
-
-        // Update all matching vertices
-        let updated = false;
-        for (let i = 0; i < positions.count; i++) {
-          const x = positions.getX(i);
-          const y = positions.getY(i);
-          const z = positions.getZ(i);
-
-          if (
-            Math.abs(x - targetVertex[0]) < 0.0001 &&
-            Math.abs(y - targetVertex[1]) < 0.0001 &&
-            Math.abs(z - targetVertex[2]) < 0.0001
-          ) {
-            positions.setComponent(i, axisIndex, newLocalValue);
-            updated = true;
-          }
-        }
-
-        if (updated) {
-          positions.needsUpdate = true;
-          shape.geometry.computeVertexNormals();
-        }
-      }
-    });
-  }, [shape.scale, shape.position, isBeingEdited, vertexParameterBindings]);
 
   // Debug: Log shape information when selected
   useEffect(() => {
@@ -263,12 +190,72 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
       } else if (activeTool === 'Scale') {
         const scale = meshRef.current.scale.toArray() as [number, number, number];
-        
-        // 🎯 UPDATE SHAPE SCALE IN STORE
-        updateShape(shape.id, {
-          scale: scale
-        });
-        
+
+        // Check if there are vertex bindings
+        const shapeBindings = Array.from(vertexParameterBindings.entries())
+          .filter(([key]) => key.startsWith(`${shape.id}_`));
+
+        if (shapeBindings.length > 0) {
+          // Reapply vertex bindings during scaling
+          const newGeometry = shape.geometry.clone();
+          const positions = newGeometry.attributes.position;
+
+          shapeBindings.forEach(([key, binding]) => {
+            if (binding.displayValue === undefined) return;
+
+            const targetLength = binding.displayValue;
+            const axisChar = binding.axis.charAt(0);
+            const direction = binding.axis.charAt(1) === '-' ? -1 : 1;
+            const axisIndex = axisChar === 'x' ? 0 : axisChar === 'y' ? 1 : 2;
+
+            const targetWorldValue = shape.position[axisIndex] + (targetLength * direction);
+            const newLocalValue = (targetWorldValue - shape.position[axisIndex]) / scale[axisIndex];
+
+            const vertexMap = new Map<string, number[]>();
+            for (let i = 0; i < positions.count; i++) {
+              const x = positions.getX(i);
+              const y = positions.getY(i);
+              const z = positions.getZ(i);
+              const vkey = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+              if (!vertexMap.has(vkey)) {
+                vertexMap.set(vkey, [x, y, z]);
+              }
+            }
+
+            const uniqueVertices = Array.from(vertexMap.values());
+            if (binding.vertexIndex >= uniqueVertices.length) return;
+
+            const targetVertex = uniqueVertices[binding.vertexIndex];
+
+            for (let i = 0; i < positions.count; i++) {
+              const x = positions.getX(i);
+              const y = positions.getY(i);
+              const z = positions.getZ(i);
+
+              if (
+                Math.abs(x - targetVertex[0]) < 0.0001 &&
+                Math.abs(y - targetVertex[1]) < 0.0001 &&
+                Math.abs(z - targetVertex[2]) < 0.0001
+              ) {
+                positions.setComponent(i, axisIndex, newLocalValue);
+              }
+            }
+          });
+
+          positions.needsUpdate = true;
+          newGeometry.computeVertexNormals();
+          newGeometry.computeBoundingBox();
+
+          updateShape(shape.id, {
+            scale: scale,
+            geometry: newGeometry
+          });
+        } else {
+          updateShape(shape.id, {
+            scale: scale
+          });
+        }
+
         console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
       }
     };
@@ -282,7 +269,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
     const handleObjectChangeEnd = () => {
       if (!meshRef.current) return;
-      
+
       // Final update based on active tool
       if (activeTool === 'Move') {
         const finalPosition = meshRef.current.position.toArray() as [number, number, number];
@@ -298,23 +285,93 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
         const finalScale = meshRef.current.scale.toArray() as [number, number, number];
-        updateShape(shape.id, {
-          scale: finalScale
-        });
-        console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
+
+        // Reapply vertex bindings to maintain absolute positions
+        const shapeBindings = Array.from(vertexParameterBindings.entries())
+          .filter(([key]) => key.startsWith(`${shape.id}_`));
+
+        if (shapeBindings.length > 0) {
+          console.log(`🎯 Scale changed, reapplying ${shapeBindings.length} vertex bindings`);
+
+          const newGeometry = shape.geometry.clone();
+          const positions = newGeometry.attributes.position;
+
+          shapeBindings.forEach(([key, binding]) => {
+            if (binding.displayValue === undefined) return;
+
+            const targetLength = binding.displayValue;
+            const axisChar = binding.axis.charAt(0);
+            const direction = binding.axis.charAt(1) === '-' ? -1 : 1;
+            const axisIndex = axisChar === 'x' ? 0 : axisChar === 'y' ? 1 : 2;
+
+            // Calculate target world position
+            const targetWorldValue = shape.position[axisIndex] + (targetLength * direction);
+
+            // Calculate new local position based on NEW scale
+            const newLocalValue = (targetWorldValue - shape.position[axisIndex]) / finalScale[axisIndex];
+
+            // Find and update vertices
+            const vertexMap = new Map<string, number[]>();
+            for (let i = 0; i < positions.count; i++) {
+              const x = positions.getX(i);
+              const y = positions.getY(i);
+              const z = positions.getZ(i);
+              const vkey = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+              if (!vertexMap.has(vkey)) {
+                vertexMap.set(vkey, [x, y, z]);
+              }
+            }
+
+            const uniqueVertices = Array.from(vertexMap.values());
+            if (binding.vertexIndex >= uniqueVertices.length) return;
+
+            const targetVertex = uniqueVertices[binding.vertexIndex];
+
+            for (let i = 0; i < positions.count; i++) {
+              const x = positions.getX(i);
+              const y = positions.getY(i);
+              const z = positions.getZ(i);
+
+              if (
+                Math.abs(x - targetVertex[0]) < 0.0001 &&
+                Math.abs(y - targetVertex[1]) < 0.0001 &&
+                Math.abs(z - targetVertex[2]) < 0.0001
+              ) {
+                positions.setComponent(i, axisIndex, newLocalValue);
+              }
+            }
+          });
+
+          positions.needsUpdate = true;
+          newGeometry.computeVertexNormals();
+          newGeometry.computeBoundingBox();
+
+          // Update with both new scale and new geometry
+          updateShape(shape.id, {
+            scale: finalScale,
+            geometry: newGeometry
+          });
+          console.log(`🎯 Shape ${shape.id} scale and vertex bindings updated`);
+        } else {
+          // No bindings, just update scale
+          updateShape(shape.id, {
+            scale: finalScale
+          });
+          console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
+        }
       }
     };
     
     controls.addEventListener('mouseDown', handleMouseDown);
     controls.addEventListener('objectChange', handleObjectChange);
     controls.addEventListener('mouseUp', handleObjectChangeEnd);
-    
+
     return () => {
       controls.removeEventListener('mouseDown', handleMouseDown);
       controls.removeEventListener('objectChange', handleObjectChange);
       controls.removeEventListener('mouseUp', handleObjectChangeEnd);
     };
-  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape, orthoMode, shape.position, shape.rotation, shape.scale, activeTool]);
+  }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape, orthoMode, shape.position, shape.rotation, shape.scale, activeTool, vertexParameterBindings, shape.geometry]);
 
   useEffect(() => {
     if (isSelected && meshRef.current) {
