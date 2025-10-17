@@ -122,9 +122,7 @@ const YagoDesignShape: React.FC<Props> = ({
 
   // Handle transform controls
   useEffect(() => {
-    if (!transformRef.current || !isSelected) return;
-
-    const controls = transformRef.current;
+    if (!transformRef.current || !isSelected || !groupRef.current) return;
 
     // 🎯 NEW: Ortho mode constraint function
     const applyOrthoConstraint = (position: THREE.Vector3, originalPosition: THREE.Vector3) => {
@@ -287,23 +285,23 @@ const YagoDesignShape: React.FC<Props> = ({
     };
 
     const handleObjectChangeEnd = () => {
-      if (!meshRef.current) return;
+      if (!groupRef.current) return;
 
       // Final update based on active tool
       if (activeTool === 'Move') {
-        const finalPosition = meshRef.current.position.toArray() as [number, number, number];
+        const finalPosition = groupRef.current.position.toArray() as [number, number, number];
         updateShape(shape.id, {
           position: finalPosition
         });
         console.log(`🎯 Shape ${shape.id} final position:`, finalPosition);
       } else if (activeTool === 'Rotate') {
-        const finalRotation = meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
+        const finalRotation = groupRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
         updateShape(shape.id, {
           rotation: finalRotation
         });
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
-        const finalScale = meshRef.current.scale.toArray() as [number, number, number];
+        const finalScale = groupRef.current.scale.toArray() as [number, number, number];
         updateShape(shape.id, {
           scale: finalScale
         });
@@ -311,21 +309,14 @@ const YagoDesignShape: React.FC<Props> = ({
       }
     };
     
-    controls.addEventListener('mouseDown', handleMouseDown);
-    controls.addEventListener('objectChange', handleObjectChange);
-    controls.addEventListener('mouseUp', handleObjectChangeEnd);
-    
-    return () => {
-      controls.removeEventListener('mouseDown', handleMouseDown);
-      controls.removeEventListener('objectChange', handleObjectChange);
-      controls.removeEventListener('mouseUp', handleObjectChangeEnd);
-    };
+    // Event listeners are now handled via TransformControls props
+    // No need for manual addEventListener/removeEventListener
   }, [shape.id, gridSize, isSelected, setSelectedObjectPosition, updateShape, orthoMode, shape.position, shape.rotation, shape.scale, activeTool]);
 
   useEffect(() => {
-    if (isSelected && meshRef.current) {
+    if (isSelected && groupRef.current) {
       setSelectedObjectPosition(
-        meshRef.current.position.toArray() as [number, number, number]
+        groupRef.current.position.toArray() as [number, number, number]
       );
       console.log(
         `🎯 GIZMO SELECTION - Shape ${shape.id} selected:`,
@@ -726,13 +717,13 @@ const YagoDesignShape: React.FC<Props> = ({
             }
             size={0.8}
             showX={true}
-            showY={shape.is2DShape ? false : true} // 2D şekillerde Y ekseni gizli
+            showY={shape.is2DShape ? false : true}
             showZ={true}
             enabled={true}
             space="local"
-            onObjectChange={() => {
-              console.log('🎯 GIZMO CHANGE - Transform controls object changed');
-            }}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleObjectChangeEnd}
+            onChange={handleObjectChange}
           />
         )}
 
