@@ -419,36 +419,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     console.log(`🎯 Ortho mode toggled from ${orthoMode} to ${nextMode}`);
   },
   
-  // Panel mode states
-  isAddPanelMode: false,
-  setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
-
-  isPanelEditMode: false,
-  setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
-
-  // Dimension visibility
-  visibleDimensions: new Set<string>(),
-  setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
-
-  // Measurement system
-  isMeasurementMode: false,
-  setMeasurementMode: (enabled) => set({ isMeasurementMode: enabled }),
-
-  activeMeasurement: null,
-  setActiveMeasurement: (measurement) => set({ activeMeasurement: measurement }),
-
-  measurements: [],
-  addMeasurement: (measurement) =>
-    set((state) => ({ measurements: [...state.measurements, measurement] })),
-
-  removeMeasurement: (id) =>
-    set((state) => ({
-      measurements: state.measurements.filter(m => m.id !== id),
-      activeMeasurement: state.activeMeasurement?.id === id ? null : state.activeMeasurement
-    })),
-
-  clearMeasurements: () => set({ measurements: [], activeMeasurement: null }),
-  
   // Snap settings - all enabled by default
   snapSettings: {
     [SnapType.ENDPOINT]: true,

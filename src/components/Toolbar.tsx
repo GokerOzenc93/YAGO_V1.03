@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store/appStore';
-import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid2x2 as Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, CreditCard as Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, CreditCard as Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube, Ruler } from 'lucide-react';
+import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid2x2 as Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, Pentagon, FlipHorizontal, Copy as Copy1, Radius, Minus, ArrowBigRightDash, Eraser, Plus, Layers2, Eye, Monitor, Package, CreditCard as Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, CreditCard as Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, EyeOff, Cuboid as Cube } from 'lucide-react';
 import * as THREE from 'three';
 
 const Toolbar: React.FC = () => {
@@ -164,9 +164,6 @@ const Toolbar: React.FC = () => {
     { id: Tool.SCALE, icon: <Maximize size={12} />, label: 'Scale', shortcut: 'S' },
   ];
 
-  const measurementTools = [
-    { id: Tool.DIMENSION, icon: <Ruler size={12} />, label: 'Dimension', shortcut: 'D' },
-  ];
 
   const menus = [
     { 
@@ -634,37 +631,6 @@ const Toolbar: React.FC = () => {
               }`}
               onClick={() => setActiveTool(tool.id)}
               onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
-              title={`${tool.label} (${tool.shortcut})`}
-            >
-              {React.cloneElement(tool.icon, { size: 11 })}
-            </button>
-          ))}
-        </div>
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-stone-300"></div>
-
-        {/* Measurement Tools */}
-        <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
-          {measurementTools.map((tool) => (
-            <button
-              key={tool.id}
-              className={`p-1.5 rounded-sm transition-all ${
-                activeTool === tool.id
-                  ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
-                  : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
-              }`}
-              onClick={() => {
-                if (activeTool === tool.id) {
-                  // If already active, deactivate and switch to Select
-                  setActiveTool(Tool.SELECT);
-                  console.log(`${tool.label} tool deactivated`);
-                } else {
-                  // Activate the tool
-                  setActiveTool(tool.id);
-                  console.log(`${tool.label} tool activated`);
-                }
-              }}
               title={`${tool.label} (${tool.shortcut})`}
             >
               {React.cloneElement(tool.icon, { size: 11 })}
