@@ -716,27 +716,6 @@ const YagoDesignShape: React.FC<Props> = ({
                   e.stopPropagation();
                   console.log(`Vertex ${index} confirmed on axis ${vertexEditMode.activeAxis}`);
                   setVertexEditMode({ isActive: true });
-
-                  // Prompt for movement value
-                  const input = prompt(`Enter movement value for vertex ${index} on ${vertexEditMode.activeAxis} axis (in ${measurementUnit}):`);
-                  if (input !== null && input.trim() !== '') {
-                    const movementValue = parseFloat(input);
-                    if (!isNaN(movementValue) && movementValue !== 0) {
-                      // Dispatch vertex movement complete event
-                      const vertexMovementEvent = new CustomEvent('vertexMovementComplete', {
-                        detail: {
-                          shapeId: shape.id,
-                          vertexIndex: index,
-                          axis: vertexEditMode.activeAxis,
-                          movementValue,
-                          parameterCode: null,
-                        }
-                      });
-                      window.dispatchEvent(vertexMovementEvent);
-
-                      console.log(`Vertex ${index} movement recorded: ${movementValue} ${measurementUnit} on ${vertexEditMode.activeAxis}`);
-                    }
-                  }
                 }
               }}
             >

@@ -11,29 +11,13 @@ interface CustomParameter {
   result: string | null;
 }
 
-interface VertexBinding {
-  vertexIndex: number;
-  axis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-';
-  offset: number;
-  boundToParameter: 'W' | 'H' | 'D' | string;
-}
-
 interface ModuleProps {
   editedShape: Shape;
   onClose: () => void;
 }
 
 const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
-  const {
-    convertToDisplayUnit,
-    convertToBaseUnit,
-    updateShape,
-    showVertexPoints,
-    toggleVertexPoints,
-    vertexEditMode,
-    vertexParameterBindings,
-    addVertexParameterBinding,
-  } = useAppStore();
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -68,7 +52,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
   const [resultDepth, setResultDepth] = useState<string>('');
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
-  const [vertexBindings, setVertexBindings] = useState<VertexBinding[]>([]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -82,56 +65,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
-
-  useEffect(() => {
-    const handleVertexMovement = (event: CustomEvent) => {
-      const { shapeId, vertexIndex, axis, movementValue, parameterCode } = event.detail;
-
-      if (shapeId !== editedShape.id) return;
-
-      let boundParameter = 'W';
-      let currentDimensionValue = currentWidth;
-
-      if (axis.startsWith('x')) {
-        boundParameter = 'W';
-        currentDimensionValue = currentWidth;
-      } else if (axis.startsWith('y')) {
-        boundParameter = 'H';
-        currentDimensionValue = currentHeight;
-      } else if (axis.startsWith('z')) {
-        boundParameter = 'D';
-        currentDimensionValue = currentDepth;
-      }
-
-      if (parameterCode) {
-        boundParameter = parameterCode;
-        const param = customParameters.find(p => p.description === parameterCode);
-        if (param && param.result) {
-          currentDimensionValue = parseFloat(param.result);
-        }
-      }
-
-      const offset = currentDimensionValue - movementValue;
-
-      setVertexBindings(prev => {
-        const filtered = prev.filter(b => !(b.vertexIndex === vertexIndex && b.axis === axis));
-        return [...filtered, {
-          vertexIndex,
-          axis,
-          offset,
-          boundToParameter: boundParameter
-        }];
-      });
-
-      console.log(`🎯 Vertex binding created: Vertex ${vertexIndex} ${axis} bound to ${boundParameter} with offset ${offset.toFixed(2)}`);
-      console.log(`🎯 Formula: ${boundParameter} - ${offset.toFixed(2)} = ${movementValue.toFixed(2)}`);
-    };
-
-    window.addEventListener('vertexMovementComplete', handleVertexMovement as EventListener);
-    return () => {
-      window.removeEventListener('vertexMovementComplete', handleVertexMovement as EventListener);
-    };
-  }, [editedShape.id, currentWidth, currentHeight, currentDepth, customParameters]);
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
     const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
@@ -177,42 +110,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     }
   };
 
-  const updateVertexPositionsBasedOnDimension = (
-    dimension: 'width' | 'height' | 'depth',
-    newValue: number,
-    oldValue: number
-  ) => {
-    const parameterMap = {
-      'width': 'W',
-      'height': 'H',
-      'depth': 'D'
-    };
-    const boundParameter = parameterMap[dimension];
-
-    const relatedBindings = vertexBindings.filter(b => b.boundToParameter === boundParameter);
-
-    if (relatedBindings.length > 0) {
-      console.log(`🎯 Updating ${relatedBindings.length} vertex bindings for ${boundParameter}`);
-      console.log(`🎯 Old ${boundParameter}: ${oldValue.toFixed(2)}, New ${boundParameter}: ${newValue.toFixed(2)}`);
-
-      relatedBindings.forEach(binding => {
-        const newVertexPosition = newValue - binding.offset;
-        console.log(`🎯 Vertex ${binding.vertexIndex} ${binding.axis}: offset=${binding.offset}, new position=${newVertexPosition.toFixed(2)}`);
-
-        const vertexUpdateEvent = new CustomEvent('vertexPositionUpdate', {
-          detail: {
-            shapeId: editedShape.id,
-            vertexIndex: binding.vertexIndex,
-            axis: binding.axis,
-            newPosition: newVertexPosition,
-            offset: binding.offset,
-          }
-        });
-        window.dispatchEvent(vertexUpdateEvent);
-      });
-    }
-  };
-
   const applyDimensionChange = (
     dimension: 'width' | 'height' | 'depth',
     value: string
@@ -236,21 +133,17 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     const newScale = [...currentScale];
 
     let originalDimension = 0;
-    let oldDimensionValue = 0;
 
     if (dimension === 'width') {
       originalDimension = (bbox.max.x - bbox.min.x) * currentScale[0];
-      oldDimensionValue = currentWidth;
       if (originalDimension === 0) originalDimension = 1;
       newScale[0] = (newValue / originalDimension) * currentScale[0];
     } else if (dimension === 'height') {
       originalDimension = (bbox.max.y - bbox.min.y) * currentScale[1];
-      oldDimensionValue = currentHeight;
       if (originalDimension === 0) originalDimension = 1;
       newScale[1] = (newValue / originalDimension) * currentScale[1];
     } else if (dimension === 'depth') {
       originalDimension = (bbox.max.z - bbox.min.z) * currentScale[2];
-      oldDimensionValue = currentDepth;
       if (originalDimension === 0) originalDimension = 1;
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
@@ -259,8 +152,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       scale: newScale as [number, number, number],
     });
 
-    updateVertexPositionsBasedOnDimension(dimension, newValue, oldDimensionValue);
-
+    // Notify scene that shape dimensions changed - update surface highlights
     const updateEvent = new CustomEvent('shapeDimensionsChanged', {
       detail: {
         shapeId: editedShape.id,
@@ -333,6 +225,7 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
       p.id === id ? { ...p, result: displayValue } : p
     ));
 
+    // Dispatch parameter update event for vertex movement
     const parameterUpdateEvent = new CustomEvent('parameterUpdated', {
       detail: {
         code: param.description,
@@ -342,26 +235,6 @@ const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
     });
     window.dispatchEvent(parameterUpdateEvent);
     console.log(`Parameter ${param.description} updated: ${displayValue}`);
-
-    const relatedBindings = vertexBindings.filter(b => b.boundToParameter === param.description);
-    if (relatedBindings.length > 0) {
-      console.log(`🎯 Updating ${relatedBindings.length} vertex bindings for custom parameter ${param.description}`);
-      relatedBindings.forEach(binding => {
-        const newVertexPosition = evaluatedValue - binding.offset;
-        console.log(`🎯 Vertex ${binding.vertexIndex} ${binding.axis}: new position=${newVertexPosition.toFixed(2)}`);
-
-        const vertexUpdateEvent = new CustomEvent('vertexPositionUpdate', {
-          detail: {
-            shapeId: editedShape.id,
-            vertexIndex: binding.vertexIndex,
-            axis: binding.axis,
-            newPosition: newVertexPosition,
-            offset: binding.offset,
-          }
-        });
-        window.dispatchEvent(vertexUpdateEvent);
-      });
-    }
   };
 
   return (

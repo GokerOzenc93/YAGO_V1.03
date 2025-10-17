@@ -712,23 +712,6 @@ const Scene: React.FC = () => {
     return () => window.removeEventListener('parameterUpdated', handleParameterUpdate);
   }, [vertexParameterBindings, shapes]);
 
-  useEffect(() => {
-    const handleVertexPositionUpdate = (event) => {
-      const { shapeId, vertexIndex, axis, newPosition, offset } = event.detail;
-
-      const shape = shapes.find(s => s.id === shapeId);
-      if (!shape) return;
-
-      const baseValue = convertToBaseUnit(newPosition);
-      applyVertexMovement(shape, vertexIndex, axis, baseValue);
-
-      console.log(`Vertex ${vertexIndex} updated via dimension change: ${axis} = ${newPosition.toFixed(2)} (offset: ${offset.toFixed(2)})`);
-    };
-
-    window.addEventListener('vertexPositionUpdate', handleVertexPositionUpdate);
-    return () => window.removeEventListener('vertexPositionUpdate', handleVertexPositionUpdate);
-  }, [shapes, convertToBaseUnit]);
-
   return (
     <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
