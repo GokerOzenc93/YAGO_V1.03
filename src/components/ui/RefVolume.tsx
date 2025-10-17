@@ -21,13 +21,8 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
-    setVisibleDimensions,
-    setMeasurementMode,
-    isMeasurementMode,
-    activeMeasurement,
   } = useAppStore();
 
-  const [activeMeasurementDimension, setActiveMeasurementDimension] = useState<'width' | 'height' | 'depth' | null>(null);
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -64,9 +59,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    setVisibleDimensions(selectedDimensions);
-  }, [selectedDimensions, setVisibleDimensions]);
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -81,26 +73,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
 
-  useEffect(() => {
-    if (activeMeasurement && activeMeasurement.point2 && activeMeasurementDimension) {
-      const distance = activeMeasurement.distance;
-      const displayValue = convertToDisplayUnit(distance).toFixed(2);
-
-      if (activeMeasurementDimension === 'width') {
-        setInputWidth(displayValue);
-        setResultWidth(displayValue);
-      } else if (activeMeasurementDimension === 'height') {
-        setInputHeight(displayValue);
-        setResultHeight(displayValue);
-      } else if (activeMeasurementDimension === 'depth') {
-        setInputDepth(displayValue);
-        setResultDepth(displayValue);
-      }
-
-      setMeasurementMode(false);
-      setActiveMeasurementDimension(null);
-    }
-  }, [activeMeasurement, activeMeasurementDimension, convertToDisplayUnit, setMeasurementMode]);
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
     const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
@@ -220,11 +192,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setCustomParameters([]);
   };
 
-  const handleStartMeasurement = (dimension: 'width' | 'height' | 'depth') => {
-    setActiveMeasurementDimension(dimension);
-    setMeasurementMode(true);
-    console.log(`Started measurement mode for ${dimension}`);
-  };
 
   const handleParameterDescriptionChange = (id: string, description: string) => {
     setCustomParameters(prev => prev.map(param =>
@@ -357,18 +324,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => handleStartMeasurement('width')}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isMeasurementMode && activeMeasurementDimension === 'width'
-                        ? 'bg-orange-300 text-white'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
-                    title="Measure Width"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
-                  <button
                     onClick={() => applyDimensionChange('width', inputWidth)}
                     disabled={!inputWidth.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -448,18 +403,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => handleStartMeasurement('height')}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isMeasurementMode && activeMeasurementDimension === 'height'
-                        ? 'bg-orange-300 text-white'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
-                    title="Measure Height"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
-                  <button
                     onClick={() => applyDimensionChange('height', inputHeight)}
                     disabled={!inputHeight.trim()}
                     className={`flex-shrink-0 p-1.5 rounded-sm transition-all ${
@@ -538,18 +481,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => handleStartMeasurement('depth')}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isMeasurementMode && activeMeasurementDimension === 'depth'
-                        ? 'bg-orange-300 text-white'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
-                    title="Measure Depth"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => applyDimensionChange('depth', inputDepth)}
                     disabled={!inputDepth.trim()}
@@ -634,18 +565,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
                 />
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => handleStartMeasurement('custom')}
-                    className={`flex-shrink-0 p-1.5 rounded-sm transition-colors ${
-                      isMeasurementMode && activeMeasurementDimension === 'custom'
-                        ? 'bg-orange-300 text-white'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
-                    title="Measure Custom Parameter"
-                  >
-                    <Ruler size={11} />
-                  </button>
-
                   <button
                     onClick={() => handleApplyParameter(param.id)}
                     disabled={!param.value.trim()}
