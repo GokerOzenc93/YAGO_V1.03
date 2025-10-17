@@ -123,19 +123,19 @@ const YagoDesignShape: React.FC<Props> = ({
     if (!transformRef.current || !isSelected) return;
 
     const controls = transformRef.current;
-    
+
     // 🎯 NEW: Ortho mode constraint function
     const applyOrthoConstraint = (position: THREE.Vector3, originalPosition: THREE.Vector3) => {
       if (orthoMode === OrthoMode.OFF) return position;
-      
+
       // Calculate movement delta
       const delta = new THREE.Vector3().subVectors(position, originalPosition);
-      
+
       // Find the axis with maximum movement
       const absX = Math.abs(delta.x);
       const absY = Math.abs(delta.y);
       const absZ = Math.abs(delta.z);
-      
+
       // Constrain to the dominant axis
       if (absX >= absY && absX >= absZ) {
         // X axis dominant
@@ -148,21 +148,36 @@ const YagoDesignShape: React.FC<Props> = ({
         return new THREE.Vector3(originalPosition.x, originalPosition.y, position.z);
       }
     };
-    
+
     let originalPosition = new THREE.Vector3(...shape.position);
     let originalRotation = new THREE.Euler(...shape.rotation);
     let originalScale = new THREE.Vector3(...shape.scale);
+    let pivotOffset = new THREE.Vector3();
+
+    // 🎯 Calculate pivot point (sol alt arka köşe - left bottom back corner)
+    const calculatePivotOffset = () => {
+      if (!shapeGeometry.boundingBox) {
+        shapeGeometry.computeBoundingBox();
+      }
+      const bbox = shapeGeometry.boundingBox!;
+      // Sol alt arka köşe = min x, min y, min z
+      pivotOffset.set(
+        bbox.min.x * originalScale.x,
+        bbox.min.y * originalScale.y,
+        bbox.min.z * originalScale.z
+      );
+    };
     
     const handleObjectChange = () => {
       if (!meshRef.current) return;
 
       if (activeTool === 'Move') {
         let position = meshRef.current.position.clone();
-        
+
         // 🎯 NEW: Apply ortho mode constraint
         position = applyOrthoConstraint(position, originalPosition, orthoMode);
         meshRef.current.position.copy(position);
-        
+
         const snappedPosition = [
           Math.round(position.x / gridSize) * gridSize,
           Math.round(position.y / gridSize) * gridSize,
@@ -171,31 +186,49 @@ const YagoDesignShape: React.FC<Props> = ({
 
         meshRef.current.position.set(...snappedPosition);
         setSelectedObjectPosition(snappedPosition);
-        
+
         // 🎯 UPDATE SHAPE POSITION IN STORE
         updateShape(shape.id, {
           position: snappedPosition
         });
-        
+
         console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
       } else if (activeTool === 'Rotate') {
         const rotation = meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
-        
+
         // 🎯 UPDATE SHAPE ROTATION IN STORE
         updateShape(shape.id, {
           rotation: rotation
         });
-        
+
         console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
       } else if (activeTool === 'Scale') {
-        const scale = meshRef.current.scale.toArray() as [number, number, number];
-        
-        // 🎯 UPDATE SHAPE SCALE IN STORE
+        // 🎯 PIVOT POINT SCALING - Sol alt arka köşeyi sabit tut
+        const currentScale = meshRef.current.scale.clone();
+        const scaleDelta = new THREE.Vector3().subVectors(currentScale, originalScale);
+
+        // Ölçek değişikliğinden dolayı pozisyon değişikliğini hesapla
+        const positionAdjustment = new THREE.Vector3(
+          pivotOffset.x * (scaleDelta.x / originalScale.x),
+          pivotOffset.y * (scaleDelta.y / originalScale.y),
+          pivotOffset.z * (scaleDelta.z / originalScale.z)
+        );
+
+        // Yeni pozisyonu ayarla (pivot noktası sabit kalsın diye)
+        const newPosition = originalPosition.clone().add(positionAdjustment);
+        meshRef.current.position.copy(newPosition);
+
+        const scale = currentScale.toArray() as [number, number, number];
+        const position = newPosition.toArray() as [number, number, number];
+
+        // 🎯 UPDATE SHAPE SCALE AND POSITION IN STORE
         updateShape(shape.id, {
-          scale: scale
+          scale: scale,
+          position: position
         });
-        
+
         console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
+        console.log(`🎯 Shape ${shape.id} position adjusted for pivot:`, position);
       }
     };
     
@@ -204,11 +237,17 @@ const YagoDesignShape: React.FC<Props> = ({
       originalPosition = new THREE.Vector3(...shape.position);
       originalRotation = new THREE.Euler(...shape.rotation);
       originalScale = new THREE.Vector3(...shape.scale);
+
+      // Calculate pivot offset for scaling
+      if (activeTool === 'Scale') {
+        calculatePivotOffset();
+        console.log(`🎯 Pivot offset calculated:`, pivotOffset.toArray());
+      }
     };
 
     const handleObjectChangeEnd = () => {
       if (!meshRef.current) return;
-      
+
       // Final update based on active tool
       if (activeTool === 'Move') {
         const finalPosition = meshRef.current.position.toArray() as [number, number, number];
@@ -224,10 +263,13 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
         const finalScale = meshRef.current.scale.toArray() as [number, number, number];
+        const finalPosition = meshRef.current.position.toArray() as [number, number, number];
         updateShape(shape.id, {
-          scale: finalScale
+          scale: finalScale,
+          position: finalPosition
         });
         console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
+        console.log(`🎯 Shape ${shape.id} final position:`, finalPosition);
       }
     };
     
