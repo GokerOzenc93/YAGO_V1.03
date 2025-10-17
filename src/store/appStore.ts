@@ -305,10 +305,12 @@ interface AppState {
     axis: string;
     parameterCode?: string;
     displayValue?: number;
+    isLocked?: boolean;
   }>;
   addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode?: string, displayValue?: number) => void;
   updateVertexParameterBindingValue: (shapeId: string, vertexIndex: number, axis: string, displayValue: number) => void;
   removeVertexParameterBinding: (shapeId: string, vertexIndex: number) => void;
+  toggleVertexParameterBindingLock: (shapeId: string, vertexIndex: number, axis: string) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -491,7 +493,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   addVertexParameterBinding: (shapeId, vertexIndex, axis, parameterCode, displayValue) => {
     const key = `${shapeId}_${vertexIndex}_${axis}`;
     const newBindings = new Map(get().vertexParameterBindings);
-    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode, displayValue });
+    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode, displayValue, isLocked: false });
     set({ vertexParameterBindings: newBindings });
     console.log(`Vertex binding added: ${key} -> ${parameterCode || displayValue}`);
   },
@@ -515,6 +517,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     keysToRemove.forEach(key => newBindings.delete(key));
     set({ vertexParameterBindings: newBindings });
     console.log(`Vertex bindings removed for: ${shapeId}_${vertexIndex}`);
+  },
+
+  toggleVertexParameterBindingLock: (shapeId, vertexIndex, axis) => {
+    const key = `${shapeId}_${vertexIndex}_${axis}`;
+    const newBindings = new Map(get().vertexParameterBindings);
+    const existing = newBindings.get(key);
+    if (existing) {
+      const newLockState = !existing.isLocked;
+      newBindings.set(key, { ...existing, isLocked: newLockState });
+      set({ vertexParameterBindings: newBindings });
+      console.log(`Vertex binding lock toggled: ${key} -> ${newLockState ? 'LOCKED' : 'UNLOCKED'}`);
+    }
   },
   
   // Snap settings - all enabled by default

@@ -48,6 +48,7 @@ const YagoDesignShape: React.FC<Props> = ({
     resetVertexEditMode,
     vertexParameterBindings,
     measurementUnit,
+    toggleVertexParameterBindingLock,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -190,14 +191,87 @@ const YagoDesignShape: React.FC<Props> = ({
       } else if (activeTool === 'Scale') {
         // 🎯 PIVOT POINT SCALING
         // Geometry zaten sol alt köşeye kaydırılmış, sadece scale'ı güncelle
-        const scale = meshRef.current.scale.toArray() as [number, number, number];
+        const newScale = meshRef.current.scale.toArray() as [number, number, number];
+
+        // 🎯 CHECK FOR LOCKED VERTEX BINDINGS
+        // If any vertex binding is locked, we need to constrain the scale to maintain that locked distance
+        const lockedBindings = Array.from(vertexParameterBindings.entries())
+          .filter(([key, binding]) =>
+            binding.shapeId === shape.id &&
+            binding.isLocked &&
+            binding.displayValue !== undefined
+          );
+
+        if (lockedBindings.length > 0) {
+          // Apply constraints for each locked binding
+          lockedBindings.forEach(([key, binding]) => {
+            const axis = binding.axis;
+            const lockedDistance = binding.displayValue!;
+
+            // Get the axis index (x+/x- -> 0, y+/y- -> 1, z+/z- -> 2)
+            const axisIndex = axis.startsWith('x') ? 0 : axis.startsWith('y') ? 1 : 2;
+
+            // Get the original dimension for this axis
+            let originalDimension: number;
+            if (axisIndex === 0) {
+              originalDimension = shape.parameters.width || 500;
+            } else if (axisIndex === 1) {
+              originalDimension = shape.parameters.height || 500;
+            } else {
+              originalDimension = shape.parameters.depth || 500;
+            }
+
+            // Calculate what the scale should be to maintain the locked distance
+            // Original dimension * scale = locked distance
+            const requiredScale = lockedDistance / originalDimension;
+
+            // Constrain the scale on this axis to maintain the locked distance
+            newScale[axisIndex] = requiredScale;
+
+            console.log(`🔒 Locked constraint: ${axis} axis locked to ${lockedDistance}mm (original: ${originalDimension}mm), scale set to ${requiredScale.toFixed(3)}`);
+          });
+
+          // Apply the constrained scale
+          meshRef.current.scale.set(...newScale);
+        }
+
+        // 🎯 UPDATE NON-LOCKED VERTEX BINDINGS
+        // Update the displayValue for non-locked bindings based on the new scale
+        const allBindings = Array.from(vertexParameterBindings.entries())
+          .filter(([key, binding]) =>
+            binding.shapeId === shape.id &&
+            !binding.isLocked &&
+            binding.displayValue !== undefined
+          );
+
+        allBindings.forEach(([key, binding]) => {
+          const axis = binding.axis;
+          const axisIndex = axis.startsWith('x') ? 0 : axis.startsWith('y') ? 1 : 2;
+
+          // Get the original dimension for this axis
+          let originalDimension: number;
+          if (axisIndex === 0) {
+            originalDimension = shape.parameters.width || 500;
+          } else if (axisIndex === 1) {
+            originalDimension = shape.parameters.height || 500;
+          } else {
+            originalDimension = shape.parameters.depth || 500;
+          }
+
+          // Calculate new display value based on scale
+          const newDisplayValue = originalDimension * newScale[axisIndex];
+
+          // Update the binding
+          const { updateVertexParameterBindingValue } = useAppStore.getState();
+          updateVertexParameterBindingValue(shape.id, binding.vertexIndex, axis, newDisplayValue);
+        });
 
         // 🎯 UPDATE SHAPE SCALE IN STORE
         updateShape(shape.id, {
-          scale: scale
+          scale: newScale
         });
 
-        console.log(`🎯 Shape ${shape.id} scale updated:`, scale);
+        console.log(`🎯 Shape ${shape.id} scale updated:`, newScale);
       }
     };
     
@@ -719,7 +793,7 @@ const YagoDesignShape: React.FC<Props> = ({
                 }
               }}
             >
-              <sphereGeometry args={[15, 16, 16]} />
+              <sphereGeometry args={[8, 16, 16]} />
               <meshBasicMaterial
                 color={isSelectedVertex ? '#ff0000' : isHovered ? '#ff6600' : '#000000'}
                 depthTest={false}
@@ -793,7 +867,7 @@ const YagoDesignShape: React.FC<Props> = ({
                     ]}
                   />
 
-                  {/* Label at arrow tip */}
+                  {/* Label at arrow tip with lock button */}
                   {displayText && (
                     <Html
                       position={[arrowEndPos.x, arrowEndPos.y, arrowEndPos.z]}
@@ -805,11 +879,33 @@ const YagoDesignShape: React.FC<Props> = ({
                         fontSize: '12px',
                         fontWeight: 'bold',
                         whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
                         userSelect: 'none',
                       }}
                     >
-                      {displayText} {measurementUnit}
+                      <span style={{ pointerEvents: 'none' }}>{displayText} {measurementUnit}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleVertexParameterBindingLock(shape.id, index, axis);
+                        }}
+                        style={{
+                          background: binding.isLocked ? '#fbbf24' : 'rgba(255, 255, 255, 0.2)',
+                          border: 'none',
+                          borderRadius: '3px',
+                          padding: '2px 4px',
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title={binding.isLocked ? 'Locked: Length is fixed' : 'Unlocked: Length scales with shape'}
+                      >
+                        {binding.isLocked ? '🔒' : '🔓'}
+                      </button>
                     </Html>
                   )}
                 </group>
