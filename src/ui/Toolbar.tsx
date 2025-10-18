@@ -21,6 +21,8 @@ const Toolbar: React.FC = () => {
     setActiveTool,
     addShape,
     selectedShapeId,
+    shapes,
+    subtractShape,
     cameraType,
     setCameraType,
     viewMode,
@@ -71,6 +73,19 @@ const Toolbar: React.FC = () => {
     } catch (error) {
       console.error('❌ Failed to create geometry:', error);
     }
+  };
+
+  const handleSubtract = () => {
+    if (!selectedShapeId || shapes.length < 2) {
+      console.warn('Select a shape and ensure there are at least 2 shapes');
+      return;
+    }
+
+    const otherShapes = shapes.filter((s) => s.id !== selectedShapeId);
+    if (otherShapes.length === 0) return;
+
+    const targetShape = otherShapes[0];
+    subtractShape(targetShape.id, selectedShapeId);
   };
 
   const transformTools = [
@@ -174,15 +189,16 @@ const Toolbar: React.FC = () => {
 
         <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
           <button
-            className="p-1.5 rounded-sm hover:bg-stone-50 text-stone-600"
+            className="p-1.5 rounded-sm hover:bg-stone-50 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
             disabled={!selectedShapeId}
             title="Union"
           >
             <Plus size={11} />
           </button>
           <button
-            className="p-1.5 rounded-sm hover:bg-stone-50 text-stone-600"
-            disabled={!selectedShapeId}
+            onClick={handleSubtract}
+            className="p-1.5 rounded-sm hover:bg-red-50 hover:text-red-700 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            disabled={!selectedShapeId || shapes.length < 2}
             title="Subtract"
           >
             <Minus size={11} />

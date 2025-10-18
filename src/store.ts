@@ -36,6 +36,7 @@ interface AppState {
   addShape: (shape: Shape) => void;
   updateShape: (id: string, updates: Partial<Shape>) => void;
   deleteShape: (id: string) => void;
+  subtractShape: (targetId: string, subtractId: string) => void;
 
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
@@ -53,7 +54,7 @@ interface AppState {
   setOpenCascadeInstance: (instance: OpenCascadeInstance | null) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   shapes: [],
   addShape: (shape) => set((state) => ({ shapes: [...state.shapes, shape] })),
   updateShape: (id, updates) =>
@@ -65,6 +66,44 @@ export const useAppStore = create<AppState>((set) => ({
       shapes: state.shapes.filter((s) => s.id !== id),
       selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
     })),
+  subtractShape: async (targetId: string, subtractId: string) => {
+    const state = get();
+    const target = state.shapes.find((s) => s.id === targetId);
+    const subtract = state.shapes.find((s) => s.id === subtractId);
+    const oc = state.opencascadeInstance;
+
+    if (!target || !subtract || !oc || !target.ocShape || !subtract.ocShape) {
+      console.error('Cannot perform subtraction: missing shapes or OpenCascade');
+      return;
+    }
+
+    try {
+      const { performOCBoolean, convertOCShapeToThreeGeometry } = await import('./opencascade');
+
+      const resultShape = performOCBoolean(oc, target.ocShape, subtract.ocShape, 'subtract');
+      const resultGeometry = convertOCShapeToThreeGeometry(oc, resultShape);
+
+      set((state) => ({
+        shapes: state.shapes
+          .filter((s) => s.id !== subtractId)
+          .map((s) =>
+            s.id === targetId
+              ? {
+                  ...s,
+                  geometry: resultGeometry,
+                  ocShape: resultShape,
+                  parameters: { ...s.parameters, modified: true }
+                }
+              : s
+          ),
+        selectedShapeId: targetId
+      }));
+
+      console.log('✅ Boolean subtraction completed');
+    } catch (error) {
+      console.error('❌ Boolean subtraction failed:', error);
+    }
+  },
 
   selectedShapeId: null,
   selectShape: (id) => set({ selectedShapeId: id }),
