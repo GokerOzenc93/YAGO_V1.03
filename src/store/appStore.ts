@@ -303,9 +303,6 @@ interface AppState {
   // Dimension visibility
   visibleDimensions: Set<string>;
   setVisibleDimensions: (dimensions: Set<string>) => void;
-  // Volume name tracking
-  loadedVolumeName: string | null;
-  setLoadedVolumeName: (name: string | null) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -416,10 +413,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Dimension visibility
   visibleDimensions: new Set<string>(),
   setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
-
-  // Volume name tracking
-  loadedVolumeName: null,
-  setLoadedVolumeName: (name) => set({ loadedVolumeName: name }),
   
   // 🎯 NEW: Toggle ortho mode
   toggleOrthoMode: () => {
