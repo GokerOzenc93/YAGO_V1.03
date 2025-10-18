@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Puzzle, PanelLeft, Archive, MousePointer, Ruler } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import EditModeHeader from './EditModeHeader';
-import VolumeInfoBar from './VolumeInfoBar';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
-import RefVolume from './RefVolume';
+import Module from './Module';
 import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
@@ -37,17 +36,14 @@ const EditMode: React.FC<EditModeProps> = ({
   setIsFaceEditMode,
 }) => {
   const { addShape, selectShape, updateShape } = useAppStore();
-  const [panelHeight, setPanelHeight] = useState('calc(100vh - 118px)');
+  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
   const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
   const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLocked, setIsLocked] = useState(true); 
   
-  const [volumeName, setVolumeName] = useState('DefaultVolume');
-  const [cabinetCode, setCabinetCode] = useState('ad060');
-  const [description, setDescription] = useState('');
-  const [pose, setPose] = useState(1);
+  const [volumeName, setVolumeName] = useState('AD06072');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const MIN_WIDTH_PX = 302;
@@ -488,14 +484,7 @@ const EditMode: React.FC<EditModeProps> = ({
             isLocked={isLocked}
             panelWidth={panelWidth}
           />
-
-          <VolumeInfoBar
-            volumeName={volumeName}
-            cabinetCode={cabinetCode}
-            description={description}
-            pose={pose}
-          />
-
+          
           <div className="flex-1 flex flex-col overflow-hidden">
             {!activeMainSection && (
               <div className="flex-1 p-4 space-y-2">
@@ -605,7 +594,7 @@ const EditMode: React.FC<EditModeProps> = ({
             )}
 
             {activeMainSection === 'volume' && activeVolumeSubSection === 'parameters' && (
-              <RefVolume editedShape={editedShape} onClose={handleBackToMain} />
+              <Module editedShape={editedShape} onClose={handleBackToMain} />
             )}
 
             {activeMainSection === 'panel' && (

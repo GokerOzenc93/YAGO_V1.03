@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Puzzle, Check, Plus, ChevronLeft, Ruler } from 'lucide-react';
+import { X, Puzzle, Check, Plus, ChevronLeft, Ruler, Circle } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { Shape } from '../../types/shapes';
 import * as THREE from 'three';
@@ -11,19 +11,13 @@ interface CustomParameter {
   result: string | null;
 }
 
-interface RefVolumeProps {
+interface ModuleProps {
   editedShape: Shape;
   onClose: () => void;
 }
 
-const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
-  const {
-    convertToDisplayUnit,
-    convertToBaseUnit,
-    updateShape,
-    setVisibleDimensions,
-  } = useAppStore();
-
+const Module: React.FC<ModuleProps> = ({ editedShape, onClose }) => {
+  const { convertToDisplayUnit, convertToBaseUnit, updateShape, showVertexPoints, toggleVertexPoints, vertexParameterBindings } = useAppStore();
 
   const { currentWidth, currentHeight, currentDepth } = useMemo(() => {
     if (!editedShape.geometry) {
@@ -58,12 +52,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const [resultDepth, setResultDepth] = useState<string>('');
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
-  const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    setVisibleDimensions(selectedDimensions);
-  }, [selectedDimensions, setVisibleDimensions]);
-
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
   const canEditHeight = true;
@@ -77,7 +65,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setResultHeight(convertToDisplayUnit(currentHeight).toFixed(2));
     setResultDepth(convertToDisplayUnit(currentDepth).toFixed(2));
   }, [currentWidth, currentHeight, currentDepth, convertToDisplayUnit]);
-
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
     const regex = /^[0-9a-zA-Z+\-*/().\s]*$/;
@@ -143,7 +130,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     const bbox = editedShape.geometry.boundingBox;
 
     const currentScale = [...editedShape.scale];
-    const originalScale = new THREE.Vector3(...currentScale);
     const newScale = [...currentScale];
 
     let originalDimension = 0;
@@ -162,21 +148,92 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
       newScale[2] = (newValue / originalDimension) * currentScale[2];
     }
 
-    // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
-    // This means when we scale, it naturally grows in X+, Y+, Z+ directions!
-    // We DON'T need to adjust position because the geometry's origin IS the min corner
+    // 🔒 CHECK FOR LOCKED VERTEX BINDINGS
+    // If any vertex binding is locked on this dimension, we need to:
+    // 1. Apply the new scale
+    // 2. Adjust shape position so the locked vertex stays in the same world space position
+    const lockedBindings = Array.from(vertexParameterBindings.entries())
+      .filter(([key, binding]) =>
+        binding.shapeId === editedShape.id &&
+        binding.isLocked &&
+        binding.displayValue !== undefined
+      );
+
+    // Check if any locked binding affects the dimension being changed
+    const axisIndex = dimension === 'width' ? 0 : dimension === 'height' ? 1 : 2;
+    const lockedBindingOnAxis = lockedBindings.find(([key, binding]) => {
+      const bindingAxis = binding.axis.startsWith('x') ? 0 : binding.axis.startsWith('y') ? 1 : 2;
+      return bindingAxis === axisIndex;
+    });
+
+    const newPosition = [...editedShape.position] as [number, number, number];
+
+    if (lockedBindingOnAxis) {
+      const [key, binding] = lockedBindingOnAxis;
+      const lockedDistance = binding.displayValue!;
+      const axis = binding.axis;
+      const vertexIndex = binding.vertexIndex;
+
+      console.log(`🔒 Locked constraint detected on ${axis} axis for vertex ${vertexIndex}, locked distance: ${lockedDistance}mm`);
+
+      // Get all unique vertices from geometry
+      const positions = editedShape.geometry.attributes.position;
+      const vertexMap = new Map<string, [number, number, number]>();
+
+      for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const z = positions.getZ(i);
+        const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+
+        if (!vertexMap.has(key)) {
+          vertexMap.set(key, [x, y, z]);
+        }
+      }
+
+      const uniqueVertices = Array.from(vertexMap.values());
+      if (vertexIndex < uniqueVertices.length) {
+        const localVertexPos = new THREE.Vector3(...uniqueVertices[vertexIndex]);
+
+        // Calculate current world position of the locked vertex (with current scale)
+        const currentWorldVertexPos = localVertexPos.clone()
+          .multiply(new THREE.Vector3(...currentScale))
+          .add(new THREE.Vector3(...editedShape.position));
+
+        // Calculate new world position of the vertex with new scale
+        const newWorldVertexPos = localVertexPos.clone()
+          .multiply(new THREE.Vector3(...newScale))
+          .add(new THREE.Vector3(...editedShape.position));
+
+        // Calculate the difference and adjust shape position to keep vertex in place
+        const diff = currentWorldVertexPos.clone().sub(newWorldVertexPos);
+
+        // Only adjust position on the axis being changed
+        newPosition[axisIndex] += diff.getComponent(axisIndex);
+
+        console.log(`🔒 Locked vertex ${vertexIndex} kept at world position ${currentWorldVertexPos.getComponent(axisIndex).toFixed(2)}mm`);
+        console.log(`   Local vertex pos: ${localVertexPos.getComponent(axisIndex).toFixed(2)}, Old scale: ${currentScale[axisIndex].toFixed(3)}, New scale: ${newScale[axisIndex].toFixed(3)}`);
+        console.log(`   Position adjustment: ${diff.getComponent(axisIndex).toFixed(2)}mm, New shape position: ${newPosition[axisIndex].toFixed(2)}mm`);
+      }
+    }
 
     updateShape(editedShape.id, {
       scale: newScale as [number, number, number],
+      position: newPosition,
     });
 
-    console.log(`🎯 RefVolume: ${dimension} changed, geometry scales from origin (min corner):`, {
-      dimension,
-      bbox: { min: [bbox.min.x, bbox.min.y, bbox.min.z], max: [bbox.max.x, bbox.max.y, bbox.max.z] },
-      oldScale: originalScale.toArray(),
-      newScale,
-      position: editedShape.position
+    // Notify scene that shape dimensions changed - update surface highlights
+    const updateEvent = new CustomEvent('shapeDimensionsChanged', {
+      detail: {
+        shapeId: editedShape.id,
+        dimension,
+        newValue,
+        newScale
+      }
     });
+    window.dispatchEvent(updateEvent);
+
+    console.log(`🎯 Shape dimensions updated: ${dimension} = ${evaluatedValue.toFixed(2)}`);
   };
 
   const handleAddParameter = () => {
@@ -196,7 +253,6 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   const handleClearAllParameters = () => {
     setCustomParameters([]);
   };
-
 
   const handleParameterDescriptionChange = (id: string, description: string) => {
     setCustomParameters(prev => prev.map(param =>
@@ -238,6 +294,17 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     setCustomParameters(prev => prev.map(p =>
       p.id === id ? { ...p, result: displayValue } : p
     ));
+
+    // Dispatch parameter update event for vertex movement
+    const parameterUpdateEvent = new CustomEvent('parameterUpdated', {
+      detail: {
+        code: param.description,
+        value: evaluatedValue,
+        baseValue: convertToBaseUnit(evaluatedValue),
+      }
+    });
+    window.dispatchEvent(parameterUpdateEvent);
+    console.log(`Parameter ${param.description} updated: ${displayValue}`);
   };
 
   return (
@@ -250,6 +317,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
           >
             <ChevronLeft size={11} className="text-orange-600" />
           </button>
+          <Ruler size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Parameters</span>
         </div>
         <div className="flex items-center gap-2">
@@ -261,6 +329,17 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
               Clear All
             </button>
           )}
+          <button
+            onClick={toggleVertexPoints}
+            className={`p-1.5 rounded-sm transition-colors ${
+              showVertexPoints
+                ? 'bg-orange-100 text-orange-600'
+                : 'hover:bg-orange-100 text-orange-600'
+            }`}
+            title="Show/Hide Vertex Points"
+          >
+            <Circle size={14} fill={showVertexPoints ? 'currentColor' : 'none'} />
+          </button>
           <button
             onClick={handleAddParameter}
             className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-sm transition-colors"
@@ -276,28 +355,11 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
         <div className="bg-white rounded-md border border-stone-200 p-2">
           <div className="space-y-2">
             {canEditWidth && (
-              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                <button
-                  onClick={() => {
-                    setSelectedDimensions(prev => {
-                      const newSet = new Set(prev);
-                      if (newSet.has('width')) {
-                        newSet.delete('width');
-                      } else {
-                        newSet.add('width');
-                      }
-                      return newSet;
-                    });
-                  }}
-                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has('width')
-                      ? 'bg-white text-orange-500 border-orange-300'
-                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
-                  }`}
-                >
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   1
-                </button>
+                </div>
 
                 <input
                   type="text"
@@ -355,28 +417,11 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditHeight && (
-              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                <button
-                  onClick={() => {
-                    setSelectedDimensions(prev => {
-                      const newSet = new Set(prev);
-                      if (newSet.has('height')) {
-                        newSet.delete('height');
-                      } else {
-                        newSet.add('height');
-                      }
-                      return newSet;
-                    });
-                  }}
-                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has('height')
-                      ? 'bg-white text-orange-500 border-orange-300'
-                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
-                  }`}
-                >
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   2
-                </button>
+                </div>
 
                 <input
                   type="text"
@@ -434,28 +479,11 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             )}
 
             {canEditDepth && (
-              <div className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                <button
-                  onClick={() => {
-                    setSelectedDimensions(prev => {
-                      const newSet = new Set(prev);
-                      if (newSet.has('depth')) {
-                        newSet.delete('depth');
-                      } else {
-                        newSet.add('depth');
-                      }
-                      return newSet;
-                    });
-                  }}
-                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has('depth')
-                      ? 'bg-white text-orange-500 border-orange-300'
-                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
-                  }`}
-                >
+              <div className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm">
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   3
-                </button>
+                </div>
 
                 <input
                   type="text"
@@ -515,30 +543,12 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
             {customParameters.map((param, index) => (
               <div
                 key={param.id}
-                className="flex items-center h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
+                className="flex items-center gap-2 h-10 px-2 rounded-md border transition-all duration-200 border-orange-300 bg-orange-50/50 shadow-sm"
               >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                <button
-                  onClick={() => {
-                    setSelectedDimensions(prev => {
-                      const newSet = new Set(prev);
-                      const paramKey = `param-${param.id}`;
-                      if (newSet.has(paramKey)) {
-                        newSet.delete(paramKey);
-                      } else {
-                        newSet.add(paramKey);
-                      }
-                      return newSet;
-                    });
-                  }}
-                  className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow-sm border transition-colors ${
-                    selectedDimensions.has(`param-${param.id}`)
-                      ? 'bg-white text-orange-500 border-orange-300'
-                      : 'bg-gradient-to-br from-orange-400 to-orange-500 text-white border-orange-300'
-                  }`}
-                >
+                <div className="flex items-center gap-2 flex-1 pr-2 min-w-0">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm border border-orange-300">
                   {index + 4}
-                </button>
+                </div>
 
                 <input
                   type="text"
@@ -613,4 +623,4 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
   );
 };
 
-export default RefVolume;
+export default Module;

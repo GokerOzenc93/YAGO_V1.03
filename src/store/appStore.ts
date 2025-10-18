@@ -162,21 +162,6 @@ export enum OrthoMode {
   ON = 'on'
 }
 
-export interface MeasurementPoint {
-  position: THREE.Vector3;
-  shapeId: string;
-  edgeIndex?: number;
-}
-
-export interface ActiveMeasurement {
-  id: string;
-  point1: MeasurementPoint;
-  point2: MeasurementPoint | null;
-  distance: number;
-  dimension: 'width' | 'height' | 'depth' | 'custom';
-  parameterId?: string;
-}
-
 export interface SnapSettings {
   [SnapType.ENDPOINT]: boolean;
   [SnapType.MIDPOINT]: boolean;
@@ -224,15 +209,6 @@ interface AppState {
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  // Measurement system
-  isMeasurementMode: boolean;
-  setMeasurementMode: (enabled: boolean) => void;
-  activeMeasurement: ActiveMeasurement | null;
-  setActiveMeasurement: (measurement: ActiveMeasurement | null) => void;
-  measurements: ActiveMeasurement[];
-  addMeasurement: (measurement: ActiveMeasurement) => void;
-  removeMeasurement: (id: string) => void;
-  clearMeasurements: () => void;
   // YagoDesign integration
   isYagoDesignInitialized: boolean;
   setYagoDesignInitialized: (initialized: boolean) => void;
@@ -300,9 +276,41 @@ interface AppState {
   setIsAddPanelMode: (enabled: boolean) => void;
   isPanelEditMode: boolean;
   setIsPanelEditMode: (enabled: boolean) => void;
-  // Dimension visibility
-  visibleDimensions: Set<string>;
-  setVisibleDimensions: (dimensions: Set<string>) => void;
+  // Vertex points visibility
+  showVertexPoints: boolean;
+  setShowVertexPoints: (show: boolean) => void;
+  toggleVertexPoints: () => void;
+  // Vertex edit mode
+  vertexEditMode: {
+    isActive: boolean;
+    selectedVertexIndex: number | null;
+    hoveredVertexIndex: number | null;
+    activeAxis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
+    movementValue: number | null;
+    parameterCode: string | null;
+  };
+  setVertexEditMode: (mode: Partial<{
+    isActive: boolean;
+    selectedVertexIndex: number | null;
+    hoveredVertexIndex: number | null;
+    activeAxis: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
+    movementValue: number | null;
+    parameterCode: string | null;
+  }>) => void;
+  resetVertexEditMode: () => void;
+  // Vertex-parameter bindings
+  vertexParameterBindings: Map<string, {
+    shapeId: string;
+    vertexIndex: number;
+    axis: string;
+    parameterCode?: string;
+    displayValue?: number;
+    isLocked?: boolean;
+  }>;
+  addVertexParameterBinding: (shapeId: string, vertexIndex: number, axis: string, parameterCode?: string, displayValue?: number) => void;
+  updateVertexParameterBindingValue: (shapeId: string, vertexIndex: number, axis: string, displayValue: number) => void;
+  removeVertexParameterBinding: (shapeId: string, vertexIndex: number) => void;
+  toggleVertexParameterBindingLock: (shapeId: string, vertexIndex: number, axis: string) => void;
   history: {
     past: AppState[];
     future: AppState[];
@@ -330,12 +338,13 @@ function createCylinder() {
   };
 }
 
-// Example: Create and position shapes
+// 🎯 Origin is now at bottom-left-back corner (0,0,0)
+// Position shapes directly where you want their bottom-left corner
 const box = createBox();
-box.position = [0, 250, 0];
+box.position = [0, 0, 0];
 
 const cylinder = createCylinder();
-cylinder.position = [750, 250, 0];
+cylinder.position = [750, 0, 0];
 `;
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -409,10 +418,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ orthoMode: mode });
     console.log(`🎯 Ortho mode changed to: ${mode}`);
   },
-
-  // Dimension visibility
-  visibleDimensions: new Set<string>(),
-  setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
   
   // 🎯 NEW: Toggle ortho mode
   toggleOrthoMode: () => {
@@ -421,6 +426,110 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     set({ orthoMode: nextMode });
     console.log(`🎯 Ortho mode toggled from ${orthoMode} to ${nextMode}`);
+  },
+  
+  // Panel mode states
+  isAddPanelMode: false,
+  setIsAddPanelMode: (enabled) => set({ isAddPanelMode: enabled }),
+
+  isPanelEditMode: false,
+  setIsPanelEditMode: (enabled) => set({ isPanelEditMode: enabled }),
+
+  // Vertex points visibility
+  showVertexPoints: false,
+  setShowVertexPoints: (show) => {
+    set({ showVertexPoints: show });
+    console.log(`Vertex points ${show ? 'shown' : 'hidden'}`);
+  },
+
+  toggleVertexPoints: () => {
+    const { showVertexPoints } = get();
+    const newValue = !showVertexPoints;
+    set({ showVertexPoints: newValue });
+
+    // Reset vertex edit mode when toggling off
+    if (!newValue) {
+      get().resetVertexEditMode();
+    }
+
+    console.log(`Vertex points toggled: ${newValue}`);
+  },
+
+  // Vertex edit mode
+  vertexEditMode: {
+    isActive: false,
+    selectedVertexIndex: null,
+    hoveredVertexIndex: null,
+    activeAxis: null,
+    movementValue: null,
+    parameterCode: null,
+  },
+
+  setVertexEditMode: (updates) => {
+    set((state) => ({
+      vertexEditMode: {
+        ...state.vertexEditMode,
+        ...updates,
+      },
+    }));
+  },
+
+  resetVertexEditMode: () => {
+    set({
+      vertexEditMode: {
+        isActive: false,
+        selectedVertexIndex: null,
+        hoveredVertexIndex: null,
+        activeAxis: null,
+        movementValue: null,
+        parameterCode: null,
+      },
+    });
+    console.log('Vertex edit mode reset');
+  },
+
+  // Vertex-parameter bindings
+  vertexParameterBindings: new Map(),
+
+  addVertexParameterBinding: (shapeId, vertexIndex, axis, parameterCode, displayValue) => {
+    const key = `${shapeId}_${vertexIndex}_${axis}`;
+    const newBindings = new Map(get().vertexParameterBindings);
+    newBindings.set(key, { shapeId, vertexIndex, axis, parameterCode, displayValue, isLocked: false });
+    set({ vertexParameterBindings: newBindings });
+    console.log(`Vertex binding added: ${key} -> ${parameterCode || displayValue}`);
+  },
+
+  updateVertexParameterBindingValue: (shapeId, vertexIndex, axis, displayValue) => {
+    const key = `${shapeId}_${vertexIndex}_${axis}`;
+    const newBindings = new Map(get().vertexParameterBindings);
+    const existing = newBindings.get(key);
+    if (existing) {
+      newBindings.set(key, { ...existing, displayValue });
+      set({ vertexParameterBindings: newBindings });
+      console.log(`Vertex binding value updated: ${key} -> ${displayValue}`);
+    }
+  },
+
+  removeVertexParameterBinding: (shapeId, vertexIndex) => {
+    const newBindings = new Map(get().vertexParameterBindings);
+    const keysToRemove = Array.from(newBindings.keys()).filter(key =>
+      key.startsWith(`${shapeId}_${vertexIndex}_`)
+    );
+    keysToRemove.forEach(key => newBindings.delete(key));
+    set({ vertexParameterBindings: newBindings });
+    console.log(`Vertex bindings removed for: ${shapeId}_${vertexIndex}`);
+  },
+
+  toggleVertexParameterBindingLock: (shapeId, vertexIndex, axis) => {
+    const key = `${shapeId}_${vertexIndex}_${axis}`;
+    const newBindings = new Map(get().vertexParameterBindings);
+    const existing = newBindings.get(key);
+    if (existing) {
+      const newLockState = !existing.isLocked;
+      newBindings.set(key, { ...existing, isLocked: newLockState });
+      set({ vertexParameterBindings: newBindings });
+      console.log(`Vertex binding lock toggled: ${key} -> ${newLockState ? 'LOCKED' : 'UNLOCKED'}`);
+    }
   },
   
   // Snap settings - all enabled by default
@@ -560,7 +669,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           height - radius * 2,
           depth - radius * 2
         );
-        geometry.translate((width - radius * 2) / 2, (height - radius * 2) / 2, (depth - radius * 2) / 2);
 
         newShapes[shapes.indexOf(shape)] = {
           ...shape,
@@ -584,7 +692,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           height - distance * 2,
           depth - distance * 2
         );
-        geometry.translate((width - distance * 2) / 2, (height - distance * 2) / 2, (depth - distance * 2) / 2);
 
         newShapes[shapes.indexOf(shape)] = {
           ...shape,
@@ -601,42 +708,34 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ shapes: newShapes });
   },
   
-  shapes: (() => {
-    const shape1Geometry = new THREE.BoxGeometry(500, 500, 500);
-    shape1Geometry.translate(250, 250, 250);
-
-    const shape2Geometry = new THREE.BoxGeometry(300, 300, 300);
-    shape2Geometry.translate(150, 150, 150);
-
-    return [
-      {
-        id: '1',
-        type: 'box',
-        position: [-200, 0, 0],
-        rotation: [0, 0, 0],
-        scale: [1, 1, 1],
-        geometry: shape1Geometry,
-        parameters: {
-          width: 500,
-          height: 500,
-          depth: 500,
-        },
+  shapes: [
+    {
+      id: '1',
+      type: 'box',
+      position: [-200, 250, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      geometry: new THREE.BoxGeometry(500, 500, 500),
+      parameters: {
+        width: 500,
+        height: 500,
+        depth: 500,
       },
-      {
-        id: '2',
-        type: 'box',
-        position: [100, 0, 0],
-        rotation: [0, 0, 0],
-        scale: [1, 1, 1],
-        geometry: shape2Geometry,
-        parameters: {
-          width: 300,
-          height: 300,
-          depth: 300,
-        },
+    },
+    {
+      id: '2',
+      type: 'box',
+      position: [100, 250, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      geometry: new THREE.BoxGeometry(300, 300, 300),
+      parameters: {
+        width: 300,
+        height: 300,
+        depth: 300,
       },
-    ];
-  })(),
+    },
+  ],
   
   addShape: (shape) => 
     set((state) => ({ 

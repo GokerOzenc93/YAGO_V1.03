@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { TransformControls } from '@react-three/drei';
+import { TransformControls, Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Shape } from '../types/shapes';
@@ -42,6 +42,13 @@ const YagoDesignShape: React.FC<Props> = ({
     viewMode,
     updateShape,
     orthoMode, // 🎯 NEW: Get ortho mode
+    showVertexPoints,
+    vertexEditMode,
+    setVertexEditMode,
+    resetVertexEditMode,
+    vertexParameterBindings,
+    measurementUnit,
+    toggleVertexParameterBindingLock,
   } = useAppStore();
   const isSelected = selectedShapeId === shape.id;
   
@@ -57,6 +64,30 @@ const YagoDesignShape: React.FC<Props> = ({
   // Create edges geometry
   const edgesGeometry = useMemo(() => {
     return new THREE.EdgesGeometry(shapeGeometry);
+  }, [shapeGeometry]);
+
+  // Extract vertex positions for vertex points
+  const vertexPositions = useMemo(() => {
+    if (!shapeGeometry.attributes.position) return [];
+
+    const positions = shapeGeometry.attributes.position.array;
+    const vertices: [number, number, number][] = [];
+
+    // Extract unique vertices
+    const vertexMap = new Map<string, [number, number, number]>();
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+
+      if (!vertexMap.has(key)) {
+        vertexMap.set(key, [x, y, z]);
+      }
+    }
+
+    return Array.from(vertexMap.values());
   }, [shapeGeometry]);
 
   // Debug: Log shape information when selected
@@ -93,19 +124,19 @@ const YagoDesignShape: React.FC<Props> = ({
     if (!transformRef.current || !isSelected) return;
 
     const controls = transformRef.current;
-    
+
     // 🎯 NEW: Ortho mode constraint function
     const applyOrthoConstraint = (position: THREE.Vector3, originalPosition: THREE.Vector3) => {
       if (orthoMode === OrthoMode.OFF) return position;
-      
+
       // Calculate movement delta
       const delta = new THREE.Vector3().subVectors(position, originalPosition);
-      
+
       // Find the axis with maximum movement
       const absX = Math.abs(delta.x);
       const absY = Math.abs(delta.y);
       const absZ = Math.abs(delta.z);
-      
+
       // Constrain to the dominant axis
       if (absX >= absY && absX >= absZ) {
         // X axis dominant
@@ -118,7 +149,7 @@ const YagoDesignShape: React.FC<Props> = ({
         return new THREE.Vector3(originalPosition.x, originalPosition.y, position.z);
       }
     };
-    
+
     let originalPosition = new THREE.Vector3(...shape.position);
     let originalRotation = new THREE.Euler(...shape.rotation);
     let originalScale = new THREE.Vector3(...shape.scale);
@@ -128,11 +159,11 @@ const YagoDesignShape: React.FC<Props> = ({
 
       if (activeTool === 'Move') {
         let position = meshRef.current.position.clone();
-        
+
         // 🎯 NEW: Apply ortho mode constraint
         position = applyOrthoConstraint(position, originalPosition, orthoMode);
         meshRef.current.position.copy(position);
-        
+
         const snappedPosition = [
           Math.round(position.x / gridSize) * gridSize,
           Math.round(position.y / gridSize) * gridSize,
@@ -141,38 +172,106 @@ const YagoDesignShape: React.FC<Props> = ({
 
         meshRef.current.position.set(...snappedPosition);
         setSelectedObjectPosition(snappedPosition);
-        
+
         // 🎯 UPDATE SHAPE POSITION IN STORE
         updateShape(shape.id, {
           position: snappedPosition
         });
-        
+
         console.log(`🎯 Shape ${shape.id} position updated:`, snappedPosition);
       } else if (activeTool === 'Rotate') {
         const rotation = meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number];
-        
+
         // 🎯 UPDATE SHAPE ROTATION IN STORE
         updateShape(shape.id, {
           rotation: rotation
         });
-        
+
         console.log(`🎯 Shape ${shape.id} rotation updated:`, rotation);
       } else if (activeTool === 'Scale') {
-        const scale = meshRef.current.scale.toArray() as [number, number, number];
+        // 🎯 PIVOT POINT SCALING
+        // Geometry zaten sol alt köşeye kaydırılmış, sadece scale'ı güncelle
+        const newScale = meshRef.current.scale.toArray() as [number, number, number];
 
-        // 🎯 CRITICAL FIX: Geometry is now positioned with min corner at origin (0,0,0)
-        // This means when we scale with gizmo, it naturally grows in X+, Y+, Z+ directions!
-        // We DON'T need to adjust position because the geometry's origin IS the min corner
+        // 🎯 CHECK FOR LOCKED VERTEX BINDINGS
+        // If any vertex binding is locked, we need to constrain the scale to maintain that locked distance
+        const lockedBindings = Array.from(vertexParameterBindings.entries())
+          .filter(([key, binding]) =>
+            binding.shapeId === shape.id &&
+            binding.isLocked &&
+            binding.displayValue !== undefined
+          );
 
-        // 🎯 UPDATE SHAPE SCALE IN STORE (position stays the same)
+        if (lockedBindings.length > 0) {
+          // Apply constraints for each locked binding
+          lockedBindings.forEach(([key, binding]) => {
+            const axis = binding.axis;
+            const lockedDistance = binding.displayValue!;
+
+            // Get the axis index (x+/x- -> 0, y+/y- -> 1, z+/z- -> 2)
+            const axisIndex = axis.startsWith('x') ? 0 : axis.startsWith('y') ? 1 : 2;
+
+            // Get the original dimension for this axis
+            let originalDimension: number;
+            if (axisIndex === 0) {
+              originalDimension = shape.parameters.width || 500;
+            } else if (axisIndex === 1) {
+              originalDimension = shape.parameters.height || 500;
+            } else {
+              originalDimension = shape.parameters.depth || 500;
+            }
+
+            // Calculate what the scale should be to maintain the locked distance
+            // Original dimension * scale = locked distance
+            const requiredScale = lockedDistance / originalDimension;
+
+            // Constrain the scale on this axis to maintain the locked distance
+            newScale[axisIndex] = requiredScale;
+
+            console.log(`🔒 Locked constraint: ${axis} axis locked to ${lockedDistance}mm (original: ${originalDimension}mm), scale set to ${requiredScale.toFixed(3)}`);
+          });
+
+          // Apply the constrained scale
+          meshRef.current.scale.set(...newScale);
+        }
+
+        // 🎯 UPDATE NON-LOCKED VERTEX BINDINGS
+        // Update the displayValue for non-locked bindings based on the new scale
+        const allBindings = Array.from(vertexParameterBindings.entries())
+          .filter(([key, binding]) =>
+            binding.shapeId === shape.id &&
+            !binding.isLocked &&
+            binding.displayValue !== undefined
+          );
+
+        allBindings.forEach(([key, binding]) => {
+          const axis = binding.axis;
+          const axisIndex = axis.startsWith('x') ? 0 : axis.startsWith('y') ? 1 : 2;
+
+          // Get the original dimension for this axis
+          let originalDimension: number;
+          if (axisIndex === 0) {
+            originalDimension = shape.parameters.width || 500;
+          } else if (axisIndex === 1) {
+            originalDimension = shape.parameters.height || 500;
+          } else {
+            originalDimension = shape.parameters.depth || 500;
+          }
+
+          // Calculate new display value based on scale
+          const newDisplayValue = originalDimension * newScale[axisIndex];
+
+          // Update the binding
+          const { updateVertexParameterBindingValue } = useAppStore.getState();
+          updateVertexParameterBindingValue(shape.id, binding.vertexIndex, axis, newDisplayValue);
+        });
+
+        // 🎯 UPDATE SHAPE SCALE IN STORE
         updateShape(shape.id, {
-          scale: scale
+          scale: newScale
         });
 
-        console.log(`🎯 Gizmo Scale: Shape ${shape.id} scaled from origin (min corner):`, {
-          scale,
-          position: shape.position
-        });
+        console.log(`🎯 Shape ${shape.id} scale updated:`, newScale);
       }
     };
     
@@ -181,11 +280,14 @@ const YagoDesignShape: React.FC<Props> = ({
       originalPosition = new THREE.Vector3(...shape.position);
       originalRotation = new THREE.Euler(...shape.rotation);
       originalScale = new THREE.Vector3(...shape.scale);
+
+      // Store original transform values
+      // No extra calculation needed - geometry pivot is already at bottom left back corner
     };
 
     const handleObjectChangeEnd = () => {
       if (!meshRef.current) return;
-      
+
       // Final update based on active tool
       if (activeTool === 'Move') {
         const finalPosition = meshRef.current.position.toArray() as [number, number, number];
@@ -201,15 +303,10 @@ const YagoDesignShape: React.FC<Props> = ({
         console.log(`🎯 Shape ${shape.id} final rotation:`, finalRotation);
       } else if (activeTool === 'Scale') {
         const finalScale = meshRef.current.scale.toArray() as [number, number, number];
-
         updateShape(shape.id, {
           scale: finalScale
         });
-
-        console.log(`🎯 Shape ${shape.id} final scale from origin:`, {
-          scale: finalScale,
-          position: shape.position
-        });
+        console.log(`🎯 Shape ${shape.id} final scale:`, finalScale);
       }
     };
     
@@ -355,11 +452,52 @@ const YagoDesignShape: React.FC<Props> = ({
       console.log('✅ All surface highlights cleared');
     };
 
+    const handleShapeDimensionsChanged = (event: CustomEvent) => {
+      const { shapeId, dimension, newValue, newScale } = event.detail;
+
+      if (shapeId === shape.id && surfaceHighlights.size > 0) {
+        console.log(`🎯 Shape dimensions changed for shape ${shapeId}, updating ${surfaceHighlights.size} surface highlights`);
+
+        surfaceHighlights.forEach((highlight, rowId) => {
+          scene.remove(highlight);
+          if (highlight.geometry) highlight.geometry.dispose();
+          if (highlight.material) {
+            if (Array.isArray(highlight.material)) {
+              highlight.material.forEach(mat => mat.dispose());
+            } else {
+              highlight.material.dispose();
+            }
+          }
+
+          const faceIndex = (highlight as any).userData?.faceIndex;
+          const color = (highlight.material as THREE.MeshBasicMaterial).color.getHex();
+          const opacity = (highlight.material as THREE.MeshBasicMaterial).opacity;
+
+          if (faceIndex !== undefined && meshRef.current) {
+            const mockHit = {
+              faceIndex: faceIndex,
+              object: meshRef.current,
+              face: { a: 0, b: 1, c: 2 },
+              point: new THREE.Vector3()
+            };
+
+            const newHighlight = addFaceHighlight(scene, mockHit, shape, color, opacity, false, undefined, rowId);
+
+            if (newHighlight) {
+              surfaceHighlights.set(rowId, newHighlight.mesh);
+              console.log(`✅ Surface highlight recreated for row ${rowId} after dimension change`);
+            }
+          }
+        });
+      }
+    };
+
     window.addEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
     window.addEventListener('createSurfaceHighlight', handleCreateSurfaceHighlight as EventListener);
     window.addEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
     window.addEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
     window.addEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+    window.addEventListener('shapeDimensionsChanged', handleShapeDimensionsChanged as EventListener);
 
     return () => {
       window.removeEventListener('activateFaceSelection', handleActivateFaceSelection as EventListener);
@@ -367,6 +505,7 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('updateSurfaceHighlight', handleUpdateSurfaceHighlight as EventListener);
       window.removeEventListener('removeSurfaceHighlight', handleRemoveSurfaceHighlight as EventListener);
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
+      window.removeEventListener('shapeDimensionsChanged', handleShapeDimensionsChanged as EventListener);
     };
   }, [scene, camera, gl.domElement, shape]);
 
@@ -571,7 +710,7 @@ const YagoDesignShape: React.FC<Props> = ({
             ref={transformRef}
             object={meshRef.current}
             mode={
-              activeTool === 'Move' || activeTool === 'Select'
+              activeTool === 'Move'
                 ? 'translate'
                 : activeTool === 'Rotate'
                 ? 'rotate'
@@ -590,6 +729,191 @@ const YagoDesignShape: React.FC<Props> = ({
             }}
           />
         )}
+
+      {/* 🎯 VERTEX POINTS - Show all vertex points when enabled */}
+      {showVertexPoints && isBeingEdited && vertexPositions.map((pos, index) => {
+        const worldPos = [
+          pos[0] * shape.scale[0] + shape.position[0],
+          pos[1] * shape.scale[1] + shape.position[1],
+          pos[2] * shape.scale[2] + shape.position[2]
+        ] as [number, number, number];
+
+        const isHovered = vertexEditMode.hoveredVertexIndex === index;
+        const isSelectedVertex = vertexEditMode.selectedVertexIndex === index;
+
+        return (
+          <group key={`vertex-${index}`}>
+            {/* Vertex Point */}
+            <mesh
+              position={worldPos}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                setVertexEditMode({ hoveredVertexIndex: index });
+              }}
+              onPointerOut={(e) => {
+                e.stopPropagation();
+                if (vertexEditMode.hoveredVertexIndex === index) {
+                  setVertexEditMode({ hoveredVertexIndex: null });
+                }
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+
+                // If this vertex is already selected, cycle through axes
+                if (isSelectedVertex) {
+                  const axisOrder: Array<'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null> = ['x+', 'x-', 'y+', 'y-', 'z+', 'z-', null];
+                  const currentAxisIndex = vertexEditMode.activeAxis
+                    ? axisOrder.indexOf(vertexEditMode.activeAxis)
+                    : -1;
+                  const nextAxis = axisOrder[(currentAxisIndex + 1) % axisOrder.length];
+
+                  if (nextAxis === null) {
+                    // Reset selection
+                    resetVertexEditMode();
+                  } else {
+                    setVertexEditMode({ activeAxis: nextAxis });
+                  }
+                  console.log(`Vertex ${index} axis cycled to: ${nextAxis}`);
+                } else {
+                  // Select this vertex and start with X+ axis
+                  setVertexEditMode({
+                    selectedVertexIndex: index,
+                    activeAxis: 'x+',
+                    isActive: false,
+                  });
+                  console.log(`Vertex ${index} selected, starting with X+`);
+                }
+              }}
+              onPointerDown={(e) => {
+                // Right click (button 2) to confirm
+                if (e.button === 2 && isSelectedVertex && vertexEditMode.activeAxis) {
+                  e.stopPropagation();
+                  console.log(`Vertex ${index} confirmed on axis ${vertexEditMode.activeAxis}`);
+                  setVertexEditMode({ isActive: true });
+                }
+              }}
+            >
+              <sphereGeometry args={[8, 16, 16]} />
+              <meshBasicMaterial
+                color={isSelectedVertex ? '#ff0000' : isHovered ? '#ff6600' : '#000000'}
+                depthTest={false}
+              />
+            </mesh>
+
+            {/* Red Arrow for Active Axis (during selection) */}
+            {isSelectedVertex && vertexEditMode.activeAxis && (() => {
+              const axis = vertexEditMode.activeAxis;
+              const direction = new THREE.Vector3(
+                axis === 'x+' ? 1 : axis === 'x-' ? -1 : 0,
+                axis === 'y+' ? 1 : axis === 'y-' ? -1 : 0,
+                axis === 'z+' ? 1 : axis === 'z-' ? -1 : 0
+              );
+              return (
+                <arrowHelper
+                  args={[
+                    direction,
+                    new THREE.Vector3(...worldPos),
+                    100,
+                    0xff0000,
+                    30,
+                    20
+                  ]}
+                />
+              );
+            })()}
+
+            {/* Display arrows and values for confirmed bindings */}
+            {['x+', 'x-', 'y+', 'y-', 'z+', 'z-'].map((axis) => {
+              const bindingKey = `${shape.id}_${index}_${axis}`;
+              const binding = vertexParameterBindings.get(bindingKey);
+
+              if (!binding) return null;
+
+              const direction = new THREE.Vector3(
+                axis === 'x+' ? 1 : axis === 'x-' ? -1 : 0,
+                axis === 'y+' ? 1 : axis === 'y-' ? -1 : 0,
+                axis === 'z+' ? 1 : axis === 'z-' ? -1 : 0
+              );
+
+              const arrowLength = 100;
+              const arrowEndPos = new THREE.Vector3(...worldPos).add(
+                direction.clone().multiplyScalar(arrowLength)
+              );
+
+              // Format display text
+              let displayText = '';
+              if (binding.parameterCode && binding.displayValue !== undefined) {
+                // Show "a=200" format
+                displayText = `${binding.parameterCode}=${binding.displayValue.toFixed(0)}`;
+              } else if (binding.parameterCode) {
+                // Show just parameter code (waiting for value)
+                displayText = binding.parameterCode;
+              } else if (binding.displayValue !== undefined) {
+                // Show just the value
+                displayText = `${binding.displayValue.toFixed(0)}`;
+              }
+
+              return (
+                <group key={bindingKey}>
+                  {/* Persistent Arrow */}
+                  <arrowHelper
+                    args={[
+                      direction,
+                      new THREE.Vector3(...worldPos),
+                      arrowLength,
+                      0xff0000,
+                      30,
+                      20
+                    ]}
+                  />
+
+                  {/* Label at arrow tip with lock button */}
+                  {displayText && (
+                    <Html
+                      position={[arrowEndPos.x, arrowEndPos.y, arrowEndPos.z]}
+                      style={{
+                        background: 'rgba(255, 0, 0, 0.9)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <span style={{ pointerEvents: 'none' }}>{displayText} {measurementUnit}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleVertexParameterBindingLock(shape.id, index, axis);
+                        }}
+                        style={{
+                          background: binding.isLocked ? '#fbbf24' : 'rgba(255, 255, 255, 0.2)',
+                          border: 'none',
+                          borderRadius: '3px',
+                          padding: '2px 4px',
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title={binding.isLocked ? 'Locked: Length is fixed' : 'Unlocked: Length scales with shape'}
+                      >
+                        {binding.isLocked ? '🔒' : '🔓'}
+                      </button>
+                    </Html>
+                  )}
+                </group>
+              );
+            })}
+          </group>
+        );
+      })}
     </group>
   );
 };
