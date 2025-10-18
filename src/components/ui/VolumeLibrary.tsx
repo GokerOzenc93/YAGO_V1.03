@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Archive, Plus } from 'lucide-react';
+import { ChevronLeft, Archive, Plus, Save } from 'lucide-react';
 import { getSavedVolumes } from '../../utils/fileSystem';
 
 interface VolumeLibraryProps {
@@ -44,13 +44,23 @@ const VolumeLibrary: React.FC<VolumeLibraryProps> = ({
           <Archive size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Library</span>
         </div>
-        <button
-          onClick={onSaveCurrentVolume}
-          className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
-          title="Save current volume"
-        >
-          <Plus size={14} className="text-orange-600" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onSaveCurrentVolume}
+            className="h-6 px-2 text-xs font-medium bg-green-100 text-green-700 rounded-sm hover:bg-green-200 transition-colors flex items-center gap-1"
+            title="Save current volume"
+          >
+            <Save size={11} />
+            <span>Save</span>
+          </button>
+          <button
+            onClick={onSaveCurrentVolume}
+            className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
+            title="New volume"
+          >
+            <Plus size={14} className="text-orange-600" />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 p-4">
