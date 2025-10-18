@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store';
-import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler } from 'lucide-react';
+import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler, FolderOpen } from 'lucide-react';
 import * as THREE from 'three';
 
-const Toolbar: React.FC = () => {
+interface ToolbarProps {
+  onOpenCatalog: () => void;
+}
+
+const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
   const {
     setActiveTool,
     activeTool,
@@ -399,6 +403,15 @@ const Toolbar: React.FC = () => {
           </button>
 
           <div className="w-px h-6 bg-stone-300"></div>
+
+          <button
+            onClick={onOpenCatalog}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 transition-colors text-white font-medium shadow-md"
+            title="Open Geometry Catalog"
+          >
+            <FolderOpen size={14} />
+            <span className="text-sm font-semibold">Catalog</span>
+          </button>
 
           <div className="relative">
             <Search size={14} className="absolute left-3 top-2 text-stone-500" />

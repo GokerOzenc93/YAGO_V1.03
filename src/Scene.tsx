@@ -3,6 +3,8 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport, PerspectiveCamera, OrthographicCamera, TransformControls } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, ViewMode } from './store';
 import ContextMenu from './ui/ContextMenu';
+import SaveDialog from './ui/SaveDialog';
+import { catalogService } from './lib/supabase';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{
@@ -163,6 +165,7 @@ const Scene: React.FC = () => {
   const controlsRef = useRef<any>(null);
   const { shapes, cameraType, selectedShapeId, selectShape, deleteShape, copyShape, isolateShape, exitIsolation } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
+  const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -188,6 +191,40 @@ const Scene: React.FC = () => {
       shapeId,
       shapeType: shape?.type || 'unknown'
     });
+  };
+
+  const handleSave = async (data: { code: string; description: string; tags: string[] }) => {
+    if (!saveDialog.shapeId) return;
+
+    const shape = shapes.find(s => s.id === saveDialog.shapeId);
+    if (!shape) return;
+
+    try {
+      const geometryData = {
+        type: shape.type,
+        position: shape.position,
+        rotation: shape.rotation,
+        scale: shape.scale,
+        color: shape.color,
+        dimensions: shape.dimensions,
+        geometry: {
+          type: shape.geometry.type,
+          parameters: shape.geometry.parameters
+        }
+      };
+
+      await catalogService.save({
+        code: data.code,
+        description: data.description,
+        tags: data.tags,
+        geometry_data: geometryData
+      });
+
+      console.log('Geometry saved to catalog:', data.code);
+    } catch (error) {
+      console.error('Failed to save geometry:', error);
+      alert('Failed to save geometry. Please try again.');
+    }
   };
 
   return (
@@ -320,8 +357,19 @@ const Scene: React.FC = () => {
           console.log('Toggle visibility:', contextMenu.shapeId);
           setContextMenu(null);
         }}
+        onSave={() => {
+          setSaveDialog({ isOpen: true, shapeId: contextMenu.shapeId });
+          setContextMenu(null);
+        }}
       />
     )}
+
+    <SaveDialog
+      isOpen={saveDialog.isOpen}
+      onClose={() => setSaveDialog({ isOpen: false, shapeId: null })}
+      onSave={handleSave}
+      shapeId={saveDialog.shapeId || ''}
+    />
     </>
   );
 };

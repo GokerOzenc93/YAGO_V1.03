@@ -13,6 +13,7 @@ interface ContextMenuProps {
   onRotate: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
+  onSave: () => void;
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -26,6 +27,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onRotate,
   onDelete,
   onToggleVisibility,
+  onSave,
 }) => {
   const { setActiveTool, setPointToPointMoveState, selectShape } = useAppStore();
 
@@ -47,8 +49,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   };
 
   const handleSave = () => {
-    console.log('Save shape:', shapeId);
-    onClose();
+    onSave();
   };
 
   const handleSaveAs = () => {

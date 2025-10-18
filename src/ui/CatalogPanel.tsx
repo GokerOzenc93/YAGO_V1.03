@@ -1,0 +1,168 @@
+import React, { useEffect, useState } from 'react';
+import { X, Search, Tag, Download, Trash2 } from 'lucide-react';
+
+interface CatalogItem {
+  id: string;
+  code: string;
+  description: string;
+  tags: string[];
+  geometry_data: any;
+  created_at: string;
+}
+
+interface CatalogPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLoad: (item: CatalogItem) => void;
+  onDelete: (id: string) => void;
+  items: CatalogItem[];
+}
+
+const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, onDelete, items }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  const allTags = Array.from(new Set(items.flatMap(item => item.tags)));
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTag = !selectedTag || item.tags.includes(selectedTag);
+    return matchesSearch && matchesTag;
+  });
+
+  if (!isOpen) return null;
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+      onClick={handleOverlayClick}
+    >
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] border border-stone-200 flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+          <h2 className="text-lg font-semibold text-slate-800">Geometry Catalog</h2>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-md hover:bg-stone-100 transition-colors"
+          >
+            <X size={18} className="text-slate-600" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 border-b border-stone-200 space-y-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-2.5 text-stone-500" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by code or description..."
+              className="w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 text-slate-800"
+            />
+          </div>
+
+          {allTags.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-slate-600">Filter:</span>
+              <button
+                onClick={() => setSelectedTag(null)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  !selectedTag
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-stone-200 text-slate-700 hover:bg-stone-300'
+                }`}
+              >
+                All
+              </button>
+              {allTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                    selectedTag === tag
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-stone-200 text-slate-700 hover:bg-stone-300'
+                  }`}
+                >
+                  <Tag size={12} />
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-stone-500">
+              <Tag size={48} className="mb-3 opacity-30" />
+              <p className="text-lg font-medium">No items found</p>
+              <p className="text-sm">Save geometries to build your catalog</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredItems.map(item => (
+                <div
+                  key={item.id}
+                  className="border border-stone-200 rounded-lg p-4 hover:border-orange-400 hover:shadow-md transition-all bg-white"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-slate-800 text-sm mb-1">{item.code}</h3>
+                      <p className="text-xs text-stone-600 line-clamp-2">{item.description || 'No description'}</p>
+                    </div>
+                  </div>
+
+                  {item.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {item.tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-md"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onLoad(item)}
+                      className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Download size={14} />
+                      Load
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete "${item.code}"?`)) {
+                          onDelete(item.id);
+                        }
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-stone-200 hover:bg-red-100 hover:text-red-700 rounded-md transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] text-stone-500 mt-2">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CatalogPanel;

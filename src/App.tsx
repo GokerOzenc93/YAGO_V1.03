@@ -1,11 +1,16 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Scene from './Scene';
 import Toolbar from './ui/Toolbar';
 import Terminal from './ui/Terminal';
+import CatalogPanel from './ui/CatalogPanel';
 import { useAppStore } from './store';
+import { catalogService, CatalogItem } from './lib/supabase';
+import * as THREE from 'three';
 
 function App() {
-  const { setOpenCascadeInstance, setOpenCascadeLoading, opencascadeLoading } = useAppStore();
+  const { setOpenCascadeInstance, setOpenCascadeLoading, opencascadeLoading, addShape } = useAppStore();
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -63,6 +68,45 @@ function App() {
     };
   }, [setOpenCascadeInstance, setOpenCascadeLoading]);
 
+  useEffect(() => {
+    if (catalogOpen) {
+      loadCatalogItems();
+    }
+  }, [catalogOpen]);
+
+  const loadCatalogItems = async () => {
+    const items = await catalogService.getAll();
+    setCatalogItems(items);
+  };
+
+  const handleLoadFromCatalog = (item: CatalogItem) => {
+    const geometryData = item.geometry_data;
+
+    const geometry = new THREE.BoxGeometry(
+      geometryData.dimensions?.width || 100,
+      geometryData.dimensions?.height || 100,
+      geometryData.dimensions?.depth || 100
+    );
+
+    addShape({
+      type: geometryData.type || 'box',
+      geometry,
+      position: geometryData.position || [0, 50, 0],
+      rotation: geometryData.rotation || [0, 0, 0],
+      scale: geometryData.scale || [1, 1, 1],
+      color: geometryData.color || '#2563eb',
+      dimensions: geometryData.dimensions
+    });
+
+    setCatalogOpen(false);
+    console.log('Loaded geometry from catalog:', item.code);
+  };
+
+  const handleDeleteFromCatalog = async (id: string) => {
+    await catalogService.delete(id);
+    await loadCatalogItems();
+  };
+
   return (
     <div className="flex flex-col h-screen bg-stone-100">
       {opencascadeLoading && (
@@ -74,11 +118,18 @@ function App() {
           </div>
         </div>
       )}
-      <Toolbar />
+      <Toolbar onOpenCatalog={() => setCatalogOpen(true)} />
       <div className="flex-1 overflow-hidden pb-12">
         <Scene />
       </div>
       <Terminal />
+      <CatalogPanel
+        isOpen={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        onLoad={handleLoadFromCatalog}
+        onDelete={handleDeleteFromCatalog}
+        items={catalogItems}
+      />
     </div>
   );
 }
