@@ -82,27 +82,28 @@ function App() {
   const handleLoadFromCatalog = (item: CatalogItem) => {
     const geometryData = item.geometry_data;
     const dims = geometryData.dimensions;
+    const scale = geometryData.scale || [1, 1, 1];
 
     let geometry: THREE.BufferGeometry;
 
     switch (geometryData.type) {
       case 'cylinder':
         geometry = new THREE.CylinderGeometry(
-          dims?.radiusTop || 50,
-          dims?.radiusBottom || 50,
-          dims?.height || 100,
+          (dims?.radiusTop || 50) / scale[0],
+          (dims?.radiusBottom || 50) / scale[0],
+          (dims?.height || 100) / scale[1],
           32
         );
         break;
       case 'sphere':
-        geometry = new THREE.SphereGeometry(dims?.radius || 50, 32, 32);
+        geometry = new THREE.SphereGeometry((dims?.radius || 50) / scale[0], 32, 32);
         break;
       case 'box':
       default:
         geometry = new THREE.BoxGeometry(
-          dims?.width || 100,
-          dims?.height || 100,
-          dims?.depth || 100
+          (dims?.width || 100) / scale[0],
+          (dims?.height || 100) / scale[1],
+          (dims?.depth || 100) / scale[2]
         );
         break;
     }
@@ -112,7 +113,7 @@ function App() {
       geometry,
       position: geometryData.position || [0, 50, 0],
       rotation: geometryData.rotation || [0, 0, 0],
-      scale: geometryData.scale || [1, 1, 1],
+      scale: scale,
       color: geometryData.color || '#2563eb',
       dimensions: geometryData.dimensions
     });

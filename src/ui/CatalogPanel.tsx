@@ -70,6 +70,10 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
 const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, onDelete, items }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const allTags = Array.from(new Set(items.flatMap(item => item.tags)));
 
@@ -80,21 +84,62 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
     return matchesSearch && matchesTag;
   });
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setPosition({ x: window.innerWidth / 2 - 400, y: window.innerHeight / 2 - 300 });
+    }
+  }, [isOpen]);
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.drag-handle')) {
+      setIsDragging(true);
+      setDragOffset({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      });
     }
   };
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  if (!isOpen) return null;
+
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
-      onClick={handleOverlayClick}
-    >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] border border-stone-200 flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+    <div className="fixed inset-0 z-50 pointer-events-none">
+      <div
+        ref={panelRef}
+        className="absolute bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] border border-stone-200 flex flex-col pointer-events-auto"
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          cursor: isDragging ? 'grabbing' : 'default'
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        <div className="drag-handle flex items-center justify-between px-6 py-4 border-b border-stone-200 cursor-grab active:cursor-grabbing">
           <h2 className="text-lg font-semibold text-slate-800">Geometry Catalog</h2>
           <button
             onClick={onClose}
@@ -185,14 +230,18 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onLoad(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onLoad(item);
+                      }}
                       className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md transition-colors flex items-center justify-center gap-1"
                     >
                       <Download size={14} />
                       Load
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (confirm(`Delete "${item.code}"?`)) {
                           onDelete(item.id);
                         }
