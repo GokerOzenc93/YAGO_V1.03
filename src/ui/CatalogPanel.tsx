@@ -60,19 +60,20 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
 
   const color = geometryData.color || '#2563eb';
   const scale = geometryData.scale || [1, 1, 1];
+  const actualSize = geometryData.actualSize;
 
   const { cameraDistance, normalizedScale } = useMemo(() => {
-    const bbox = new THREE.Box3().setFromObject(new THREE.Mesh(geometry));
-    const size = new THREE.Vector3();
-    bbox.getSize(size);
+    let maxDim: number;
 
-    const scaledSize = new THREE.Vector3(
-      size.x * scale[0],
-      size.y * scale[1],
-      size.z * scale[2]
-    );
+    if (actualSize) {
+      maxDim = Math.max(actualSize.width, actualSize.height, actualSize.depth);
+    } else {
+      const bbox = new THREE.Box3().setFromObject(new THREE.Mesh(geometry));
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      maxDim = Math.max(size.x * scale[0], size.y * scale[1], size.z * scale[2]);
+    }
 
-    const maxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
     const targetSize = 120;
     const fitScale = targetSize / maxDim;
 
@@ -80,7 +81,7 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
       cameraDistance: 250,
       normalizedScale: [scale[0] * fitScale, scale[1] * fitScale, scale[2] * fitScale] as [number, number, number]
     };
-  }, [geometry, scale]);
+  }, [geometry, scale, actualSize]);
 
   return (
     <div className="w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">

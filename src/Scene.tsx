@@ -200,13 +200,24 @@ const Scene: React.FC = () => {
     if (!shape) return;
 
     try {
+      const bbox = new THREE.Box3().setFromObject(new THREE.Mesh(shape.geometry));
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+
+      const actualSize = {
+        width: size.x * shape.scale[0],
+        height: size.y * shape.scale[1],
+        depth: size.z * shape.scale[2]
+      };
+
       const geometryData = {
         type: shape.type,
         position: shape.position,
         rotation: shape.rotation,
         scale: shape.scale,
         color: shape.color,
-        parameters: shape.parameters
+        parameters: shape.parameters,
+        actualSize: actualSize
       };
 
       await catalogService.save({
@@ -216,7 +227,7 @@ const Scene: React.FC = () => {
         geometry_data: geometryData
       });
 
-      console.log('Geometry saved to catalog:', data.code);
+      console.log('Geometry saved to catalog:', data.code, 'Size:', actualSize);
       alert('Geometry saved successfully!');
       setSaveDialog({ isOpen: false, shapeId: null });
     } catch (error) {
