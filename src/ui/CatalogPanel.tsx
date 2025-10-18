@@ -62,16 +62,17 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
   };
 
   return (
-    <div className="w-full aspect-square rounded-lg overflow-hidden">
-      <Canvas dpr={[1, 2]} gl={{ alpha: true, preserveDrawingBuffer: true }}>
-        <color attach="background" args={['transparent']} />
-        <PerspectiveCamera makeDefault position={[150, 150, 150]} fov={45} />
-        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={1.5} />
-        <ambientLight intensity={1.2} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-        <directionalLight position={[-5, -5, -5]} intensity={0.5} />
+    <div className="w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+      <Canvas dpr={[1, 2]} gl={{ alpha: false, antialias: true }}>
+        <color attach="background" args={['#f8fafc']} />
+        <PerspectiveCamera makeDefault position={[250, 250, 250]} fov={35} />
+        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={1} />
+        <ambientLight intensity={1.5} />
+        <directionalLight position={[10, 10, 10]} intensity={1.2} />
+        <directionalLight position={[-10, -10, -10]} intensity={0.6} />
+        <spotLight position={[0, 20, 0]} intensity={0.5} />
         <mesh geometry={createGeometry()}>
-          <meshStandardMaterial color="#0044cc" metalness={0.2} roughness={0.5} />
+          <meshStandardMaterial color="#2563eb" metalness={0.1} roughness={0.3} />
         </mesh>
       </Canvas>
     </div>
