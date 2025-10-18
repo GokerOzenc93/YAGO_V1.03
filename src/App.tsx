@@ -49,7 +49,7 @@ function App() {
   }, [setOpenCascadeInstance]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900">
+    <div className="flex flex-col h-screen bg-stone-100">
       <Layout
         toolbar={<Toolbar />}
         content={<Scene />}
