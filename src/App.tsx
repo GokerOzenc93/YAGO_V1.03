@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
-import Layout from './ui/Layout';
 import Scene from './Scene';
 import Toolbar from './ui/Toolbar';
-import StatusBar from './ui/StatusBar';
 import Terminal from './ui/Terminal';
 import { useAppStore } from './store';
 
@@ -76,11 +74,10 @@ function App() {
           </div>
         </div>
       )}
-      <Layout
-        toolbar={<Toolbar />}
-        content={<Scene />}
-        statusBar={<StatusBar />}
-      />
+      <Toolbar />
+      <div className="flex-1 overflow-hidden pb-12">
+        <Scene />
+      </div>
       <Terminal />
     </div>
   );

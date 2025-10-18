@@ -140,16 +140,6 @@ const Toolbar: React.FC = () => {
     }
   }, [showPolylineMenu, showSnapMenu]);
 
-  const drawingTools = [
-    { id: Tool.POLYLINE, icon: <GitBranch size={12} />, label: 'Polyline', shortcut: 'PL', hasContextMenu: true },
-    { id: Tool.RECTANGLE, icon: <Square size={12} />, label: 'Rectangle', shortcut: 'R' },
-    { id: Tool.CIRCLE, icon: <Circle size={12} />, label: 'Circle', shortcut: 'C' },
-  ];
-
-  const booleanTools = [
-    { id: Tool.BOOLEAN_UNION, icon: <Plus size={12} />, label: 'Union', shortcut: 'U' },
-    { id: Tool.BOOLEAN_SUBTRACT, icon: <Minus size={12} />, label: 'Subtract', shortcut: 'S' },
-  ];
 
   const transformTools = [
     { id: Tool.SELECT, icon: <MousePointer2 size={12} />, label: 'Select', shortcut: 'V' },
@@ -589,26 +579,6 @@ const Toolbar: React.FC = () => {
         <div className="w-px h-8 bg-stone-300"></div>
 
         <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
-          {drawingTools.map((tool) => (
-            <button
-              key={tool.id}
-              className={`p-2 rounded-md transition-all ${
-                activeTool === tool.id
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
-              }`}
-              onClick={() => setActiveTool(tool.id)}
-              onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
-              title={`${tool.label} (${tool.shortcut})`}
-            >
-              {React.cloneElement(tool.icon, { size: 14 })}
-            </button>
-          ))}
-        </div>
-
-        <div className="w-px h-8 bg-stone-300"></div>
-
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
           {measurementTools.map((tool) => (
             <button
               key={tool.id}
@@ -632,38 +602,6 @@ const Toolbar: React.FC = () => {
             </button>
           ))}
         </div>
-
-        <div className="w-px h-8 bg-stone-300"></div>
-
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
-          {booleanTools.map((tool) => (
-            <button
-              key={tool.id}
-              className={`p-2 rounded-md transition-all ${
-                activeTool === tool.id
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : !selectedShapeId
-                  ? 'opacity-50 cursor-not-allowed text-stone-400'
-                  : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
-              }`}
-              onClick={() => {
-                if (selectedShapeId) {
-                  if (tool.id === Tool.BOOLEAN_UNION) {
-                    performBooleanOperation('union');
-                  } else if (tool.id === Tool.BOOLEAN_SUBTRACT) {
-                    performBooleanOperation('subtract');
-                  }
-                }
-              }}
-              disabled={!selectedShapeId}
-              title={`${tool.label} (${tool.shortcut})`}
-            >
-              {React.cloneElement(tool.icon, { size: 14 })}
-            </button>
-          ))}
-        </div>
-
-        <div className="w-px h-8 bg-stone-300"></div>
       </div>
 
       {showPolylineMenu && (
