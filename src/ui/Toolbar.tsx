@@ -75,7 +75,7 @@ const Toolbar: React.FC = () => {
     }
   };
 
-  const handleSubtract = () => {
+  const handleSubtract = async () => {
     console.log('Subtract button clicked');
     console.log('Selected shape ID:', selectedShapeId);
     console.log('Total shapes:', shapes.length);
@@ -85,6 +85,12 @@ const Toolbar: React.FC = () => {
       return;
     }
 
+    if (!opencascadeInstance) {
+      console.error('❌ OpenCascade not loaded yet');
+      return;
+    }
+
+    const { updateShape } = useAppStore.getState();
     const selectedShape = shapes.find((s) => s.id === selectedShapeId);
     const otherShapes = shapes.filter((s) => s.id !== selectedShapeId);
 
@@ -98,13 +104,40 @@ const Toolbar: React.FC = () => {
     console.log('Selected shape has ocShape:', !!selectedShape?.ocShape);
     console.log('Target shape has ocShape:', !!targetShape.ocShape);
 
-    if (!selectedShape?.ocShape || !targetShape.ocShape) {
-      console.error('❌ Both shapes must be OpenCascade geometries');
-      return;
-    }
+    try {
+      const { createOCGeometry } = await import('../opencascade');
 
-    console.log('🔧 Performing subtraction...');
-    subtractShape(targetShape.id, selectedShapeId);
+      if (!selectedShape?.ocShape && selectedShape) {
+        console.log('🔄 Converting selected shape to OpenCascade...');
+        const selectedOCShape = createOCGeometry(opencascadeInstance, {
+          type: selectedShape.type as any,
+          ...selectedShape.parameters
+        });
+        updateShape(selectedShape.id, { ocShape: selectedOCShape });
+      }
+
+      if (!targetShape.ocShape) {
+        console.log('🔄 Converting target shape to OpenCascade...');
+        const targetOCShape = createOCGeometry(opencascadeInstance, {
+          type: targetShape.type as any,
+          ...targetShape.parameters
+        });
+        updateShape(targetShape.id, { ocShape: targetOCShape });
+      }
+
+      setTimeout(() => {
+        const updatedShapes = useAppStore.getState().shapes;
+        const updatedSelected = updatedShapes.find((s) => s.id === selectedShapeId);
+        const updatedTarget = updatedShapes.find((s) => s.id === targetShape.id);
+
+        if (updatedSelected?.ocShape && updatedTarget?.ocShape) {
+          console.log('🔧 Performing subtraction...');
+          subtractShape(updatedTarget.id, updatedSelected.id);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('❌ Subtraction failed:', error);
+    }
   };
 
   const transformTools = [
