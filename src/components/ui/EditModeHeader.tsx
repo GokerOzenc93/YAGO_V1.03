@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Pin, PinOff, Save, ChevronLeft } from 'lucide-react';
+import { X, Pin, PinOff, ChevronLeft } from 'lucide-react';
 
 interface EditModeHeaderProps {
   volumeName: string;
@@ -13,7 +13,6 @@ interface EditModeHeaderProps {
 }
 
 const EditModeHeader: React.FC<EditModeHeaderProps> = ({
-  onSaveVolume,
   onToggleLock,
   onCollapse,
   onClose,
@@ -22,16 +21,7 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
 }) => {
 
   return (
-    <div className="flex items-center justify-between h-10 px-3 border-b border-gray-200">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onSaveVolume}
-          className="text-stone-600 hover:text-green-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-green-50 flex-shrink-0"
-          title="Save Volume"
-        >
-          <Save size={11} />
-        </button>
-      </div>
+    <div className="flex items-center justify-end h-10 px-3 border-b border-gray-200">
 
       {panelWidth > 200 && (
         <div className="flex items-center gap-1">

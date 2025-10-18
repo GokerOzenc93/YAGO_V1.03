@@ -598,6 +598,9 @@ const Scene: React.FC = () => {
             cabinetCode="ad060"
             description=""
             pose={1}
+            onSave={() => {
+              console.log('Save volume clicked from info bar');
+            }}
           />
         </div>
       )}
