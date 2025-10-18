@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Search, Tag, Download, Trash2 } from 'lucide-react';
+import { X, Search, Tag, Download, Trash2, Ruler } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -20,6 +20,21 @@ interface CatalogPanelProps {
   onDelete: (id: string) => void;
   items: CatalogItem[];
 }
+
+const formatDimensions = (geometryData: any): string => {
+  const params = geometryData.parameters || {};
+
+  switch (geometryData.type) {
+    case 'box':
+      return `${params.width || 0} × ${params.height || 0} × ${params.depth || 0} mm`;
+    case 'cylinder':
+      return `Ø${(params.radiusTop || 0) * 2} × H${params.height || 0} mm`;
+    case 'sphere':
+      return `Ø${(params.radius || 0) * 2} mm`;
+    default:
+      return 'N/A';
+  }
+};
 
 const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
   const createGeometry = () => {
@@ -198,6 +213,11 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                       ))}
                     </div>
                   )}
+
+                  <div className="flex items-center gap-1 text-[11px] text-slate-600 mb-3 bg-slate-50 px-2 py-1.5 rounded border border-slate-200">
+                    <Ruler size={12} className="text-slate-500" />
+                    <span className="font-mono font-medium">{formatDimensions(item.geometry_data)}</span>
+                  </div>
 
                   <div className="flex items-center gap-2">
                     <button

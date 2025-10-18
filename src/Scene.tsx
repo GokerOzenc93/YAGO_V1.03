@@ -206,7 +206,7 @@ const Scene: React.FC = () => {
         rotation: shape.rotation,
         scale: shape.scale,
         color: shape.color,
-        dimensions: shape.dimensions,
+        parameters: shape.parameters,
         geometry: {
           type: shape.geometry.type,
           parameters: shape.geometry.parameters

@@ -81,54 +81,41 @@ function App() {
 
   const handleLoadFromCatalog = (item: CatalogItem) => {
     const geometryData = item.geometry_data;
-    const dims = geometryData.dimensions;
+    const params = geometryData.parameters || {};
 
     let geometry: THREE.BufferGeometry;
-    let newDimensions;
 
     switch (geometryData.type) {
       case 'cylinder':
-        newDimensions = {
-          radiusTop: dims?.radiusTop || 50,
-          radiusBottom: dims?.radiusBottom || 50,
-          height: dims?.height || 100
-        };
         geometry = new THREE.CylinderGeometry(
-          newDimensions.radiusTop,
-          newDimensions.radiusBottom,
-          newDimensions.height,
+          params.radiusTop || 50,
+          params.radiusBottom || 50,
+          params.height || 100,
           32
         );
         break;
       case 'sphere':
-        newDimensions = {
-          radius: dims?.radius || 50
-        };
-        geometry = new THREE.SphereGeometry(newDimensions.radius, 32, 32);
+        geometry = new THREE.SphereGeometry(params.radius || 50, 32, 32);
         break;
       case 'box':
       default:
-        newDimensions = {
-          width: dims?.width || 100,
-          height: dims?.height || 100,
-          depth: dims?.depth || 100
-        };
         geometry = new THREE.BoxGeometry(
-          newDimensions.width,
-          newDimensions.height,
-          newDimensions.depth
+          params.width || 100,
+          params.height || 100,
+          params.depth || 100
         );
         break;
     }
 
     addShape({
+      id: `${geometryData.type}-${Date.now()}`,
       type: geometryData.type || 'box',
       geometry,
       position: geometryData.position || [0, 50, 0],
       rotation: geometryData.rotation || [0, 0, 0],
-      scale: [1, 1, 1],
+      scale: geometryData.scale || [1, 1, 1],
       color: geometryData.color || '#2563eb',
-      dimensions: newDimensions
+      parameters: params
     });
 
     setCatalogOpen(false);
