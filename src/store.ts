@@ -12,6 +12,7 @@ export interface Shape {
   color?: string;
   parameters: Record<string, any>;
   ocShape?: any;
+  isolated?: boolean;
 }
 
 export enum CameraType {
@@ -37,6 +38,9 @@ interface AppState {
   updateShape: (id: string, updates: Partial<Shape>) => void;
   deleteShape: (id: string) => void;
   subtractShape: (targetId: string, subtractId: string) => void;
+  copyShape: (id: string) => void;
+  isolateShape: (id: string) => void;
+  exitIsolation: () => void;
 
   selectedShapeId: string | null;
   selectShape: (id: string | null) => void;
@@ -106,6 +110,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error('❌ Boolean subtraction failed:', error);
     }
   },
+
+  copyShape: (id) => {
+    const state = get();
+    const shapeToCopy = state.shapes.find((s) => s.id === id);
+    if (shapeToCopy) {
+      const newShape = {
+        ...shapeToCopy,
+        id: `${shapeToCopy.type}-${Date.now()}`,
+        position: [
+          shapeToCopy.position[0] + 100,
+          shapeToCopy.position[1],
+          shapeToCopy.position[2] + 100
+        ] as [number, number, number]
+      };
+      set((state) => ({ shapes: [...state.shapes, newShape] }));
+    }
+  },
+
+  isolateShape: (id) =>
+    set((state) => ({
+      shapes: state.shapes.map((s) => ({
+        ...s,
+        isolated: s.id === id
+      }))
+    })),
+
+  exitIsolation: () =>
+    set((state) => ({
+      shapes: state.shapes.map((s) => ({ ...s, isolated: false }))
+    })),
 
   selectedShapeId: null,
   selectShape: (id) => set({ selectedShapeId: id }),

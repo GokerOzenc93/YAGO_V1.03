@@ -1,13 +1,20 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport, PerspectiveCamera, OrthographicCamera, TransformControls } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, ViewMode } from './store';
+import ContextMenu from './ui/ContextMenu';
 import * as THREE from 'three';
 
-const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitControlsRef: any }> = ({
+const ShapeWithTransform: React.FC<{
+  shape: any;
+  isSelected: boolean;
+  orbitControlsRef: any;
+  onContextMenu: (e: any, shapeId: string) => void;
+}> = ({
   shape,
   isSelected,
-  orbitControlsRef
+  orbitControlsRef,
+  onContextMenu
 }) => {
   const { selectShape, updateShape, activeTool, viewMode } = useAppStore();
   const transformRef = useRef<any>(null);
@@ -79,6 +86,10 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
 
   const isWireframe = viewMode === ViewMode.WIREFRAME;
 
+  if (shape.isolated === false) {
+    return null;
+  }
+
   return (
     <>
       <group
@@ -89,6 +100,10 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
         onClick={(e) => {
           e.stopPropagation();
           selectShape(shape.id);
+        }}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          onContextMenu(e, shape.id);
         }}
       >
         <mesh
@@ -141,7 +156,8 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
 
 const Scene: React.FC = () => {
   const controlsRef = useRef<any>(null);
-  const { shapes, cameraType, selectedShapeId, selectShape, deleteShape } = useAppStore();
+  const { shapes, cameraType, selectedShapeId, selectShape, deleteShape, copyShape, isolateShape, exitIsolation } = useAppStore();
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -149,24 +165,37 @@ const Scene: React.FC = () => {
         deleteShape(selectedShapeId);
       } else if (e.key === 'Escape') {
         selectShape(null);
+        exitIsolation();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, deleteShape, selectShape]);
+  }, [selectedShapeId, deleteShape, selectShape, exitIsolation]);
+
+  const handleContextMenu = (e: any, shapeId: string) => {
+    e.nativeEvent.preventDefault();
+    selectShape(shapeId);
+    setContextMenu({
+      x: e.nativeEvent.clientX,
+      y: e.nativeEvent.clientY,
+      shapeId
+    });
+  };
 
   return (
-    <Canvas
-      shadows
-      gl={{
-        antialias: true,
-        alpha: false,
-        preserveDrawingBuffer: true
-      }}
-      dpr={[1, 2]}
-    >
-      <color attach="background" args={['#f5f5f4']} />
+    <>
+      <Canvas
+        shadows
+        gl={{
+          antialias: true,
+          alpha: false,
+          preserveDrawingBuffer: true
+        }}
+        dpr={[1, 2]}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <color attach="background" args={['#f5f5f4']} />
 
       {cameraType === CameraType.PERSPECTIVE ? (
         <PerspectiveCamera
@@ -231,6 +260,7 @@ const Scene: React.FC = () => {
             shape={shape}
             isSelected={isSelected}
             orbitControlsRef={controlsRef}
+            onContextMenu={handleContextMenu}
           />
         );
       })}
@@ -252,6 +282,23 @@ const Scene: React.FC = () => {
         />
       </GizmoHelper>
     </Canvas>
+
+    {contextMenu && (
+      <ContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu(null)}
+        onIsolate={() => isolateShape(contextMenu.shapeId)}
+        onEdit={() => console.log('Edit:', contextMenu.shapeId)}
+        onCopy={() => copyShape(contextMenu.shapeId)}
+        onDelete={() => deleteShape(contextMenu.shapeId)}
+        onCut={() => {
+          copyShape(contextMenu.shapeId);
+          deleteShape(contextMenu.shapeId);
+        }}
+      />
+    )}
+    </>
   );
 };
 
