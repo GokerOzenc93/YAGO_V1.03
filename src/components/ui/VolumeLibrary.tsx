@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Archive, Plus } from 'lucide-react';
 import { getSavedVolumes } from '../../utils/fileSystem';
 
@@ -17,6 +17,20 @@ const VolumeLibrary: React.FC<VolumeLibraryProps> = ({
   onSaveCurrentVolume,
   refreshTrigger
 }) => {
+  const [volumes, setVolumes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadVolumes = async () => {
+      setLoading(true);
+      const volumeList = await getSavedVolumes();
+      setVolumes(volumeList);
+      setLoading(false);
+    };
+
+    loadVolumes();
+  }, [refreshTrigger]);
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex items-center justify-between h-10 px-3 bg-orange-50 border-b border-orange-200">
@@ -40,8 +54,11 @@ const VolumeLibrary: React.FC<VolumeLibraryProps> = ({
       </div>
 
       <div className="flex-1 p-4">
-        <div className="space-y-2">
-          {getSavedVolumes().map((volumeName) => (
+        {loading ? (
+          <div className="text-center py-4 text-xs text-gray-500">Loading volumes...</div>
+        ) : (
+          <div className="space-y-2">
+            {volumes.map((volumeName) => (
             <div key={volumeName} className="flex items-center justify-between h-10 px-3 bg-white rounded-md border border-stone-200">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-orange-100 rounded flex items-center justify-center">
@@ -65,13 +82,14 @@ const VolumeLibrary: React.FC<VolumeLibraryProps> = ({
               </div>
             </div>
           ))}
-          {getSavedVolumes().length === 0 && (
+          {volumes.length === 0 && (
             <div className="text-center py-8 text-slate-500">
               <Archive size={32} className="mx-auto mb-2 opacity-50" />
               <p className="text-xs">No saved volumes</p>
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

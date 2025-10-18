@@ -1,4 +1,5 @@
 // File system utilities for user data management
+import { supabase } from '../lib/supabase';
 
 export interface SurfaceSpecification {
   id: string;
@@ -37,32 +38,68 @@ export interface VolumeData {
 }
 
 /**
- * Save volume data to JSON file
+ * Save volume data to Supabase database
  */
 export const saveVolumeToProject = async (volumeName: string, volumeData: VolumeData): Promise<boolean> => {
   try {
-    const fileName = `${volumeName.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
-    const filePath = `src/data/volumes/${fileName}`;
-    
-    // Create the JSON content
-    const jsonContent = JSON.stringify(volumeData, null, 2);
-    
-    // Save to project folder (simulated - in real app would use Node.js fs)
-    console.log(`📁 Saving volume to: ${filePath}`);
-    console.log(`📄 Volume data:`, jsonContent);
-    
-    // Store in localStorage as fallback for browser environment
-    const storageKey = `volume_${volumeName}`;
-    localStorage.setItem(storageKey, jsonContent);
-    
-    // Also store list of saved volumes
-    const savedVolumes = JSON.parse(localStorage.getItem('saved_volumes') || '[]');
-    if (!savedVolumes.includes(volumeName)) {
-      savedVolumes.push(volumeName);
-      localStorage.setItem('saved_volumes', JSON.stringify(savedVolumes));
+    console.log(`📁 Saving volume to database: ${volumeName}`);
+    console.log(`📄 Volume data:`, volumeData);
+
+    // Check if volume already exists
+    const { data: existingVolume } = await supabase
+      .from('volumes')
+      .select('id')
+      .eq('name', volumeName)
+      .maybeSingle();
+
+    let result;
+
+    if (existingVolume) {
+      // Update existing volume
+      result = await supabase
+        .from('volumes')
+        .update({
+          type: volumeData.type,
+          dimensions: volumeData.dimensions,
+          position: volumeData.position,
+          rotation: volumeData.rotation,
+          scale: volumeData.scale,
+          original_points: volumeData.originalPoints,
+          geometry_data: volumeData.geometryData,
+          is_2d_shape: volumeData.is2DShape,
+          parameters: volumeData.parameters,
+          surface_specifications: volumeData.surfaceSpecifications,
+          is_saved: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingVolume.id);
+    } else {
+      // Insert new volume
+      result = await supabase
+        .from('volumes')
+        .insert({
+          id: volumeData.id,
+          name: volumeName,
+          type: volumeData.type,
+          dimensions: volumeData.dimensions,
+          position: volumeData.position,
+          rotation: volumeData.rotation,
+          scale: volumeData.scale,
+          original_points: volumeData.originalPoints,
+          geometry_data: volumeData.geometryData,
+          is_2d_shape: volumeData.is2DShape,
+          parameters: volumeData.parameters,
+          surface_specifications: volumeData.surfaceSpecifications,
+          is_saved: true
+        });
     }
-    
-    console.log(`✅ Volume saved: ${fileName}`);
+
+    if (result.error) {
+      console.error('❌ Supabase error:', result.error);
+      return false;
+    }
+
+    console.log(`✅ Volume saved to database: ${volumeName}`);
     return true;
   } catch (error) {
     console.error('❌ Failed to save volume:', error);
@@ -71,48 +108,91 @@ export const saveVolumeToProject = async (volumeName: string, volumeData: Volume
 };
 
 /**
- * Load volume data from project storage
+ * Load volume data from Supabase database
  */
-export const loadVolumeFromProject = (volumeName: string): Promise<VolumeData> => {
-  return new Promise((resolve, reject) => {
-    try {
-      const storageKey = `volume_${volumeName}`;
-      const content = localStorage.getItem(storageKey);
-      
-      if (!content) {
-        reject(new Error('Volume not found'));
-        return;
-      }
-      
-      const volumeData = JSON.parse(content) as VolumeData;
-      resolve(volumeData);
-    } catch (error) {
-      reject(new Error('Invalid volume data'));
-    }
-  });
-};
-
-/**
- * Get list of saved volumes
- */
-export const getSavedVolumes = (): string[] => {
-  return JSON.parse(localStorage.getItem('saved_volumes') || '[]');
-};
-
-/**
- * Delete volume from project storage
- */
-export const deleteVolumeFromProject = (volumeName: string): boolean => {
+export const loadVolumeFromProject = async (volumeName: string): Promise<VolumeData> => {
   try {
-    const storageKey = `volume_${volumeName}`;
-    localStorage.removeItem(storageKey);
-    
-    // Remove from saved volumes list
-    const savedVolumes = getSavedVolumes();
-    const updatedVolumes = savedVolumes.filter(name => name !== volumeName);
-    localStorage.setItem('saved_volumes', JSON.stringify(updatedVolumes));
-    
-    console.log(`✅ Volume deleted: ${volumeName}`);
+    const { data, error } = await supabase
+      .from('volumes')
+      .select('*')
+      .eq('name', volumeName)
+      .eq('is_saved', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      throw new Error('Failed to load volume from database');
+    }
+
+    if (!data) {
+      throw new Error('Volume not found');
+    }
+
+    // Convert database format to VolumeData format
+    const volumeData: VolumeData = {
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      dimensions: data.dimensions,
+      position: data.position,
+      rotation: data.rotation,
+      scale: data.scale,
+      originalPoints: data.original_points,
+      geometryData: data.geometry_data,
+      is2DShape: data.is_2d_shape,
+      parameters: data.parameters,
+      surfaceSpecifications: data.surface_specifications,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+
+    return volumeData;
+  } catch (error) {
+    console.error('❌ Failed to load volume:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get list of saved volumes from database
+ */
+export const getSavedVolumes = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('volumes')
+      .select('name')
+      .eq('is_saved', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return [];
+    }
+
+    return data ? data.map(v => v.name) : [];
+  } catch (error) {
+    console.error('❌ Failed to get saved volumes:', error);
+    return [];
+  }
+};
+
+/**
+ * Delete volume from database
+ */
+export const deleteVolumeFromProject = async (volumeName: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('volumes')
+      .delete()
+      .eq('name', volumeName)
+      .eq('is_saved', true);
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return false;
+    }
+
+    console.log(`✅ Volume deleted from database: ${volumeName}`);
     return true;
   } catch (error) {
     console.error('❌ Failed to delete volume:', error);

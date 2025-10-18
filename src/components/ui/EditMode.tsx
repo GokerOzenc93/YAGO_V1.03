@@ -240,16 +240,15 @@ const EditMode: React.FC<EditModeProps> = ({
     }
   };
 
-  const handleVolumeDelete = (volumeName: string) => {
+  const handleVolumeDelete = async (volumeName: string) => {
     const confirmed = window.confirm(`Are you sure you want to delete volume "${volumeName}"?`);
-    
+
     if (confirmed) {
       try {
-        const success = deleteVolumeFromProject(volumeName);
-        
+        const success = await deleteVolumeFromProject(volumeName);
+
         if (success) {
           console.log(`✅ Volume "${volumeName}" deleted successfully`);
-          // Force re-render by updating refresh trigger
           setRefreshTrigger(prev => prev + 1);
         } else {
           console.error(`❌ Failed to delete volume "${volumeName}"`);
