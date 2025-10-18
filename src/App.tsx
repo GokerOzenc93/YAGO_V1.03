@@ -86,13 +86,6 @@ function App() {
     let geometry: THREE.BufferGeometry;
 
     switch (geometryData.type) {
-      case 'box':
-        geometry = new THREE.BoxGeometry(
-          params.width || 100,
-          params.height || 100,
-          params.depth || 100
-        );
-        break;
       case 'cylinder':
         geometry = new THREE.CylinderGeometry(
           params.radiusTop || 50,
@@ -104,11 +97,13 @@ function App() {
       case 'sphere':
         geometry = new THREE.SphereGeometry(params.radius || 50, 32, 32);
         break;
-      case 'cone':
-        geometry = new THREE.ConeGeometry(params.radius || 40, params.height || 100, 32);
-        break;
+      case 'box':
       default:
-        geometry = new THREE.BoxGeometry(100, 100, 100);
+        geometry = new THREE.BoxGeometry(
+          params.width || 100,
+          params.height || 100,
+          params.depth || 100
+        );
         break;
     }
 
@@ -116,9 +111,9 @@ function App() {
       id: `${geometryData.type}-${Date.now()}`,
       type: geometryData.type || 'box',
       geometry,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
+      position: geometryData.position || [0, 50, 0],
+      rotation: geometryData.rotation || [0, 0, 0],
+      scale: geometryData.scale || [1, 1, 1],
       color: geometryData.color || '#2563eb',
       parameters: params
     });
