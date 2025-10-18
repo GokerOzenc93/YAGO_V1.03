@@ -35,6 +35,11 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
   const createGeometry = () => {
     const params = geometryData.parameters || {};
 
+    console.log('Preview creating geometry:', {
+      type: geometryData.type,
+      parameters: params
+    });
+
     switch (geometryData.type) {
       case 'box':
         return new THREE.BoxGeometry(
