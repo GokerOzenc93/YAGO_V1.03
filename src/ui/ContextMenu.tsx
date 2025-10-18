@@ -24,15 +24,18 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      onClose();
+      const target = e.target as HTMLElement;
+      if (!target.closest('.context-menu')) {
+        onClose();
+      }
     };
 
     setTimeout(() => {
-      document.addEventListener('click', handleClick, { capture: true });
-    }, 100);
+      document.addEventListener('mousedown', handleClick);
+    }, 50);
 
     return () => {
-      document.removeEventListener('click', handleClick, { capture: true });
+      document.removeEventListener('mousedown', handleClick);
     };
   }, [onClose]);
 
@@ -46,14 +49,20 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 
   return (
     <div
-      className="fixed bg-white rounded-lg shadow-xl border border-stone-200 py-1 z-[100] min-w-[160px]"
+      className="context-menu fixed bg-white rounded-lg shadow-xl border border-stone-200 py-1 z-[100] min-w-[160px]"
       style={{ left: x, top: y }}
       onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {menuItems.map((item, index) => (
         <button
           key={index}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             item.onClick();
             onClose();
