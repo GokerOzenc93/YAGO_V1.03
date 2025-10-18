@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { X, Search, Tag, Download, Trash2 } from 'lucide-react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import * as THREE from 'three';
 
 interface CatalogItem {
   id: string;
@@ -17,6 +20,52 @@ interface CatalogPanelProps {
   onDelete: (id: string) => void;
   items: CatalogItem[];
 }
+
+const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
+  const createGeometry = () => {
+    const dims = geometryData.dimensions;
+
+    switch (geometryData.type) {
+      case 'box':
+        return new THREE.BoxGeometry(
+          dims?.width || 100,
+          dims?.height || 100,
+          dims?.depth || 100
+        );
+      case 'cylinder':
+        return new THREE.CylinderGeometry(
+          dims?.radiusTop || 50,
+          dims?.radiusBottom || 50,
+          dims?.height || 100,
+          32
+        );
+      case 'sphere':
+        return new THREE.SphereGeometry(dims?.radius || 50, 32, 32);
+      default:
+        return new THREE.BoxGeometry(100, 100, 100);
+    }
+  };
+
+  const geometry = createGeometry();
+
+  return (
+    <div className="w-full h-32 bg-stone-50 rounded-md overflow-hidden mb-3 border border-stone-200">
+      <Canvas>
+        <PerspectiveCamera makeDefault position={[150, 150, 150]} fov={50} />
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <mesh geometry={geometry}>
+          <meshStandardMaterial color={geometryData.color || '#2563eb'} />
+          <lineSegments>
+            <edgesGeometry args={[geometry]} />
+            <lineBasicMaterial color="#1a1a1a" linewidth={1} />
+          </lineSegments>
+        </mesh>
+        <OrbitControls enableZoom={false} enablePan={false} />
+      </Canvas>
+    </div>
+  );
+};
 
 const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, onDelete, items }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -112,6 +161,8 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                   key={item.id}
                   className="border border-stone-200 rounded-lg p-4 hover:border-orange-400 hover:shadow-md transition-all bg-white"
                 >
+                  <GeometryPreview geometryData={item.geometry_data} />
+
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold text-slate-800 text-sm mb-1">{item.code}</h3>
