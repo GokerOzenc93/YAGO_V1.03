@@ -63,14 +63,16 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
 
   return (
     <div className="w-full h-40 bg-orange-50 rounded-lg overflow-hidden border-2 border-orange-200">
-      <Canvas>
-        <PerspectiveCamera makeDefault position={[2, 2, 2]} />
-        <OrbitControls enableZoom={false} enablePan={false} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 5, 5]} intensity={0.8} />
-        <mesh geometry={createGeometry()}>
-          <meshStandardMaterial color="#0044cc" />
+      <Canvas dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }}>
+        <PerspectiveCamera makeDefault position={[200, 200, 200]} fov={50} />
+        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={2} />
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
+        <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+        <mesh geometry={createGeometry()} castShadow receiveShadow>
+          <meshStandardMaterial color="#0044cc" metalness={0.3} roughness={0.4} />
         </mesh>
+        <gridHelper args={[500, 10, '#cccccc', '#eeeeee']} position={[0, -75, 0]} />
       </Canvas>
     </div>
   );
@@ -208,26 +210,9 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                   <GeometryPreview geometryData={item.geometry_data} />
 
                   <div className="mt-4">
-                    <h3 className="font-bold text-slate-900 text-lg mb-1">{item.code}</h3>
-                    <p className="text-sm text-slate-700 mb-3">{item.description || 'No description'}</p>
-                  </div>
-
-                  {item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {item.tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="px-3 py-1 text-xs font-bold bg-orange-500 text-white rounded-md uppercase"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 text-sm text-slate-700">
-                    <Ruler size={16} className="text-slate-500" />
-                    <span className="font-medium">{formatDimensions(item.geometry_data)}</span>
+                    <h3 className="font-bold text-slate-900 text-base leading-tight">
+                      {item.code} / {item.description || 'No description'}
+                    </h3>
                   </div>
                 </div>
               ))}
