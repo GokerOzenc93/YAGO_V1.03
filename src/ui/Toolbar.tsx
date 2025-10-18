@@ -422,7 +422,7 @@ const Toolbar: React.FC = () => {
           {menus.map((menu) => (
             <div key={menu.label} className="relative h-full">
               <button
-                className={`h-full px-3 text-sm font-medium hover:bg-stone-100 transition-colors flex items-center ${
+                className={`h-full px-3 text-xs font-medium hover:bg-stone-100 transition-colors flex items-center ${
                   activeMenu === menu.label ? 'bg-stone-100 text-slate-800' : 'text-slate-700'
                 }`}
                 onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}

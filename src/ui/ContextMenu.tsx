@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Copy, Move, RotateCcw, Trash2, Eye, EyeOff, Navigation } from 'lucide-react';
+import { Edit, Copy, RotateCcw, Trash2, Navigation, Save, FileDown } from 'lucide-react';
 import { useAppStore, Tool } from '../store';
 
 interface ContextMenuProps {
@@ -46,51 +46,67 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     onClose();
   };
 
+  const handleSave = () => {
+    console.log('Save shape:', shapeId);
+    onClose();
+  };
+
+  const handleSaveAs = () => {
+    console.log('Save As shape:', shapeId);
+    onClose();
+  };
+
   const menuItems = [
     {
-      icon: <Edit size={14} />,
+      icon: <Edit size={12} />,
       label: 'Edit',
       action: onEdit,
       enabled: true,
       shortcut: 'E',
-      description: 'Enter edit mode for this object'
+      badge: 'ISOLATE'
     },
     {
-      icon: <Copy size={14} />,
+      icon: <Copy size={12} />,
       label: 'Copy',
       action: onCopy,
-      enabled: false,
+      enabled: true,
       shortcut: 'Ctrl+C'
     },
     {
-      icon: <Navigation size={14} />,
-      label: 'Point to Point Move',
-      action: handlePointToPointMove,
-      enabled: true,
-      shortcut: 'P2P',
-      description: 'Move object from one snap point to another'
-    },
-    {
-      icon: <RotateCcw size={14} />,
+      icon: <RotateCcw size={12} />,
       label: 'Rotate',
       action: onRotate,
-      enabled: false,
+      enabled: true,
       shortcut: 'R'
+    },
+    {
+      icon: <Trash2 size={12} />,
+      label: 'Delete',
+      action: onDelete,
+      enabled: true,
+      shortcut: 'Del'
+    },
+    {
+      icon: <Navigation size={12} />,
+      label: 'Point to Point',
+      action: handlePointToPointMove,
+      enabled: true,
+      shortcut: 'P2P'
     },
     { type: 'separator' },
     {
-      icon: <Eye size={14} />,
-      label: 'Hide/Show',
-      action: onToggleVisibility,
-      enabled: false,
-      shortcut: 'H'
+      icon: <Save size={12} />,
+      label: 'Save',
+      action: handleSave,
+      enabled: true,
+      shortcut: 'Ctrl+S'
     },
     {
-      icon: <Trash2 size={14} />,
-      label: 'Delete',
-      action: onDelete,
-      enabled: false,
-      shortcut: 'Del'
+      icon: <FileDown size={12} />,
+      label: 'Save As',
+      action: handleSaveAs,
+      enabled: true,
+      shortcut: 'Ctrl+Shift+S'
     },
   ];
 
@@ -118,7 +134,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 
   return (
     <div
-      className="fixed bg-gray-800/95 backdrop-blur-sm rounded-md border border-gray-600/50 py-1 z-50 shadow-lg min-w-[180px]"
+      className="fixed bg-white rounded-lg border border-stone-200 py-1.5 z-50 shadow-xl min-w-[180px] font-inter"
       style={{
         left: position.x,
         top: position.y,
@@ -126,58 +142,52 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="px-3 py-1.5 border-b border-gray-600/50">
-        <div className="text-xs text-gray-400 font-medium">
+      <div className="px-3 py-1.5 border-b border-stone-200">
+        <div className="text-xs text-slate-800 font-semibold">
           {shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}
         </div>
-        <div className="text-[10px] text-gray-500 font-mono">
+        <div className="text-[10px] text-stone-500 font-mono">
           ID: {shapeId.substring(0, 8)}...
         </div>
       </div>
 
-      {menuItems.map((item, index) => (
-        item.type === 'separator' ? (
-          <div key={index} className="border-t border-gray-600/50 my-1" />
-        ) : (
-          <button
-            key={index}
-            className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between transition-colors ${
-              item.enabled
-                ? 'hover:bg-gray-700/50 text-gray-200 cursor-pointer'
-                : 'text-gray-500 cursor-not-allowed opacity-50'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (item.enabled) {
-                item.action();
-                onClose();
-              }
-            }}
-            disabled={!item.enabled}
-            title={item.description || item.label}
-          >
-            <div className="flex items-center gap-2">
-              {item.icon}
-              <span className="font-medium">{item.label}</span>
-              {item.label === 'Edit' && (
-                <span className="text-[9px] text-orange-400 bg-orange-400/20 px-1 rounded">
-                  ISOLATE
+      <div className="py-1">
+        {menuItems.map((item, index) => (
+          item.type === 'separator' ? (
+            <div key={index} className="border-t border-stone-200 my-1" />
+          ) : (
+            <button
+              key={index}
+              className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between transition-colors ${
+                item.enabled
+                  ? 'hover:bg-orange-50 text-slate-700 hover:text-orange-700 cursor-pointer'
+                  : 'text-stone-400 cursor-not-allowed opacity-50'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (item.enabled) {
+                  item.action();
+                }
+              }}
+              disabled={!item.enabled}
+            >
+              <div className="flex items-center gap-2">
+                {item.icon}
+                <span className="font-medium">{item.label}</span>
+                {item.badge && (
+                  <span className="text-[9px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded font-semibold">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              {item.shortcut && (
+                <span className="text-[10px] text-stone-500 font-mono">
+                  {item.shortcut}
                 </span>
               )}
-            </div>
-            {item.shortcut && (
-              <span className="text-[10px] text-gray-400 font-mono">
-                {item.shortcut}
-              </span>
-            )}
-          </button>
-        )
-      ))}
-
-      <div className="px-3 py-1 border-t border-gray-600/50 mt-1">
-        <div className="text-[10px] text-gray-500">
-          Edit mode will isolate this object
-        </div>
+            </button>
+          )
+        ))}
       </div>
     </div>
   );
