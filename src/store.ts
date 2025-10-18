@@ -51,7 +51,9 @@ interface AppState {
   setViewMode: (mode: ViewMode) => void;
 
   opencascadeInstance: OpenCascadeInstance | null;
+  opencascadeLoading: boolean;
   setOpenCascadeInstance: (instance: OpenCascadeInstance | null) => void;
+  setOpenCascadeLoading: (loading: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -118,5 +120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
 
   opencascadeInstance: null,
-  setOpenCascadeInstance: (instance) => set({ opencascadeInstance: instance })
+  opencascadeLoading: true,
+  setOpenCascadeInstance: (instance) => set({ opencascadeInstance: instance }),
+  setOpenCascadeLoading: (loading) => set({ opencascadeLoading: loading })
 }));
