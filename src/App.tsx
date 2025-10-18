@@ -5,7 +5,6 @@ import Toolbar from './ui/Toolbar';
 import StatusBar from './ui/StatusBar';
 import Terminal from './ui/Terminal';
 import { useAppStore } from './store';
-import initOpenCascade from 'opencascade.js/dist/opencascade.wasm.js';
 
 function App() {
   const { setOpenCascadeInstance, setOpenCascadeLoading, opencascadeLoading } = useAppStore();
@@ -14,25 +13,49 @@ function App() {
     let mounted = true;
 
     const loadOpenCascade = async () => {
-      console.log('🔄 Starting OpenCascade load from local package...');
+      if ((window as any).opencascadeLoaded) {
+        return;
+      }
+
+      console.log('🔄 Starting OpenCascade load...');
       setOpenCascadeLoading(true);
 
-      try {
-        const oc = await initOpenCascade({
-          locateFile: (path: string) => {
-            return `/${path}`;
-          }
-        });
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/opencascade.wasm.js';
+      script.async = true;
 
-        if (mounted) {
-          setOpenCascadeInstance(oc);
-          setOpenCascadeLoading(false);
-          console.log('✅ OpenCascade.js ready');
+      script.onload = async () => {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 200));
+
+          const initOC = (window as any).opencascade;
+          if (!initOC) {
+            throw new Error('OpenCascade not found');
+          }
+
+          const oc = await initOC({
+            locateFile: (path: string) =>
+              `https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/${path}`
+          });
+
+          if (mounted) {
+            setOpenCascadeInstance(oc);
+            setOpenCascadeLoading(false);
+            (window as any).opencascadeLoaded = true;
+            console.log('✅ OpenCascade.js ready');
+          }
+        } catch (error) {
+          console.error('❌ Failed to initialize OpenCascade:', error);
+          if (mounted) setOpenCascadeLoading(false);
         }
-      } catch (error) {
-        console.error('❌ Failed to initialize OpenCascade:', error);
+      };
+
+      script.onerror = () => {
+        console.error('❌ Failed to load OpenCascade script');
         if (mounted) setOpenCascadeLoading(false);
-      }
+      };
+
+      document.head.appendChild(script);
     };
 
     loadOpenCascade();
