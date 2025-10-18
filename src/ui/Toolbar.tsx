@@ -239,25 +239,6 @@ const Toolbar: React.FC = () => {
           </button>
         </div>
 
-        <div className="w-px h-6 bg-stone-300"></div>
-
-        <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
-          <button
-            className="p-1.5 rounded-sm hover:bg-stone-50 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
-            disabled={!selectedShapeId}
-            title="Union"
-          >
-            <Plus size={11} />
-          </button>
-          <button
-            onClick={handleSubtract}
-            className="p-1.5 rounded-sm hover:bg-red-50 hover:text-red-700 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            disabled={opencascadeLoading || !opencascadeInstance || !selectedShapeId || shapes.length < 2}
-            title={opencascadeLoading ? "Loading OpenCascade..." : "Subtract"}
-          >
-            <Minus size={11} />
-          </button>
-        </div>
       </div>
     </div>
   );
