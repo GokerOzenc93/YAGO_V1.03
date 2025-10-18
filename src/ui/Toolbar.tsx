@@ -76,15 +76,34 @@ const Toolbar: React.FC = () => {
   };
 
   const handleSubtract = () => {
+    console.log('Subtract button clicked');
+    console.log('Selected shape ID:', selectedShapeId);
+    console.log('Total shapes:', shapes.length);
+
     if (!selectedShapeId || shapes.length < 2) {
-      console.warn('Select a shape and ensure there are at least 2 shapes');
+      console.warn('⚠️ Need at least 2 shapes and one selected');
       return;
     }
 
+    const selectedShape = shapes.find((s) => s.id === selectedShapeId);
     const otherShapes = shapes.filter((s) => s.id !== selectedShapeId);
-    if (otherShapes.length === 0) return;
+
+    if (otherShapes.length === 0) {
+      console.warn('⚠️ No other shapes to subtract from');
+      return;
+    }
 
     const targetShape = otherShapes[0];
+
+    console.log('Selected shape has ocShape:', !!selectedShape?.ocShape);
+    console.log('Target shape has ocShape:', !!targetShape.ocShape);
+
+    if (!selectedShape?.ocShape || !targetShape.ocShape) {
+      console.error('❌ Both shapes must be OpenCascade geometries');
+      return;
+    }
+
+    console.log('🔧 Performing subtraction...');
     subtractShape(targetShape.id, selectedShapeId);
   };
 
