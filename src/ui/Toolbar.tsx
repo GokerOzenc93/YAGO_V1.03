@@ -390,11 +390,11 @@ const Toolbar: React.FC = () => {
                 ? 'bg-slate-800 text-white shadow-lg'
                 : 'bg-stone-200 hover:bg-stone-300 text-slate-800'
             }`}
-            title={`Ortho Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
+            title={`Linear Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
           >
             <Grid size={12} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-slate-800'} />
             <span className="text-sm font-medium">
-              Ortho
+              Linear
             </span>
           </button>
 

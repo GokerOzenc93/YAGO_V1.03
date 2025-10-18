@@ -120,15 +120,7 @@ const ShapeWithTransform: React.FC<{
             metalness={0.3}
             roughness={0.4}
           />
-          {isWireframe ? (
-            <lineSegments>
-              <edgesGeometry args={[shape.geometry]} />
-              <lineBasicMaterial
-                color={isSelected ? '#60a5fa' : '#ffffff'}
-                linewidth={isSelected ? 2 : 1}
-              />
-            </lineSegments>
-          ) : (
+          {!isWireframe && (
             <lineSegments>
               <edgesGeometry args={[shape.geometry]} />
               <lineBasicMaterial
@@ -140,6 +132,15 @@ const ShapeWithTransform: React.FC<{
             </lineSegments>
           )}
         </mesh>
+        {isWireframe && (
+          <lineSegments>
+            <edgesGeometry args={[shape.geometry]} />
+            <lineBasicMaterial
+              color={isSelected ? '#60a5fa' : '#1a1a1a'}
+              linewidth={isSelected ? 2 : 1}
+            />
+          </lineSegments>
+        )}
       </group>
 
       {isSelected && activeTool !== Tool.SELECT && (
