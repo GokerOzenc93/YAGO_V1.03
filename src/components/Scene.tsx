@@ -583,6 +583,8 @@ const Scene: React.FC = () => {
           setShowFaces={() => {}}
           isFaceEditMode={isFaceEditMode}
           setIsFaceEditMode={setIsFaceEditMode}
+          selectedFaces={selectedFaces}
+          setSelectedFaces={setSelectedFaces}
         />
       )}
 
@@ -751,6 +753,7 @@ const Scene: React.FC = () => {
               isBeingEdited={isCurrentlyEditing}
               isFaceEditMode={isFaceEditMode && isCurrentlyEditing}
               onFaceSelect={isCurrentlyEditing ? handleFaceSelect : undefined}
+              selectedFaces={isCurrentlyEditing ? selectedFaces : []}
             />
           );
         })}

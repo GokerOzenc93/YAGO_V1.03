@@ -21,6 +21,8 @@ interface EditModeProps {
   setShowFaces: (show: boolean) => void;
   isFaceEditMode: boolean;
   setIsFaceEditMode: (mode: boolean) => void;
+  selectedFaces: Array<{index: number, role: string}>;
+  setSelectedFaces: (faces: Array<{index: number, role: string}>) => void;
 }
 
 const EditMode: React.FC<EditModeProps> = ({
@@ -34,6 +36,8 @@ const EditMode: React.FC<EditModeProps> = ({
   setShowFaces,
   isFaceEditMode,
   setIsFaceEditMode,
+  selectedFaces: selectedFacesFromParent,
+  setSelectedFaces: setSelectedFacesInParent,
 }) => {
   const { addShape, selectShape, updateShape, loadedVolumeName, setLoadedVolumeName } = useAppStore();
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
@@ -58,7 +62,13 @@ const EditMode: React.FC<EditModeProps> = ({
   const startWidth = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
+  const [localSelectedFaces, setLocalSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
+
+  const selectedFaces = selectedFacesFromParent;
+  const setSelectedFaces = (faces: Array<{index: number, role: string}>) => {
+    setLocalSelectedFaces(faces);
+    setSelectedFacesInParent(faces);
+  };
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   const [surfaceSpecifications, setSurfaceSpecifications] = useState<SurfaceSpec[]>([]);

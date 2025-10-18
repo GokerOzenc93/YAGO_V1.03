@@ -23,6 +23,9 @@ interface Props {
   onContextMenuRequest?: (event: any, shape: Shape) => void;
   isEditMode?: boolean;
   isBeingEdited?: boolean;
+  isFaceEditMode?: boolean;
+  onFaceSelect?: (faceIndex: number) => void;
+  selectedFaces?: Array<{index: number, role: string}>;
 }
 
 const YagoDesignShape: React.FC<Props> = ({
@@ -30,6 +33,9 @@ const YagoDesignShape: React.FC<Props> = ({
   onContextMenuRequest,
   isEditMode = false,
   isBeingEdited = false,
+  isFaceEditMode = false,
+  onFaceSelect,
+  selectedFaces = [],
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const transformRef = useRef<any>(null);
@@ -369,6 +375,81 @@ const YagoDesignShape: React.FC<Props> = ({
       window.removeEventListener('clearAllSurfaceHighlights', handleClearAllSurfaceHighlights as EventListener);
     };
   }, [scene, camera, gl.domElement, shape]);
+
+  useEffect(() => {
+    if (!isBeingEdited || !meshRef.current) return;
+
+    surfaceHighlights.forEach((highlight, rowId) => {
+      scene.remove(highlight);
+      if (highlight.geometry) highlight.geometry.dispose();
+      if (highlight.material) {
+        if (Array.isArray(highlight.material)) {
+          highlight.material.forEach(mat => mat.dispose());
+        } else {
+          highlight.material.dispose();
+        }
+      }
+      removeFaceNumberText(rowId);
+    });
+    surfaceHighlights.clear();
+
+    const roleColors: Record<string, string> = {
+      'Front': '#3b82f6',
+      'Back': '#ef4444',
+      'Left': '#10b981',
+      'Right': '#f59e0b',
+      'Top': '#8b5cf6',
+      'Bottom': '#ec4899',
+      'Door': '#06b6d4',
+      'Drawer': '#14b8a6'
+    };
+
+    selectedFaces.forEach(({ index: faceIndex, role }) => {
+      const color = roleColors[role] || '#6b7280';
+      const rowId = `face-${faceIndex}-${role}`;
+
+      const geometry = meshRef.current!.geometry;
+      if (!geometry.index) return;
+
+      const positionAttr = geometry.attributes.position;
+      const indexArray = geometry.index.array;
+
+      const i1 = indexArray[faceIndex * 3];
+      const i2 = indexArray[faceIndex * 3 + 1];
+      const i3 = indexArray[faceIndex * 3 + 2];
+
+      const v1 = new THREE.Vector3().fromBufferAttribute(positionAttr, i1);
+      const v2 = new THREE.Vector3().fromBufferAttribute(positionAttr, i2);
+      const v3 = new THREE.Vector3().fromBufferAttribute(positionAttr, i3);
+
+      const center = new THREE.Vector3()
+        .add(v1).add(v2).add(v3)
+        .divideScalar(3);
+
+      const normal = new THREE.Vector3()
+        .crossVectors(
+          new THREE.Vector3().subVectors(v2, v1),
+          new THREE.Vector3().subVectors(v3, v1)
+        )
+        .normalize();
+
+      const mockHit = {
+        point: center,
+        normal: normal,
+        faceIndex: faceIndex,
+        distance: 0,
+        object: meshRef.current!
+      };
+
+      const highlight = addFaceHighlight(scene, mockHit, shape, color, 0.7, false, undefined, rowId);
+
+      if (highlight) {
+        surfaceHighlights.set(rowId, highlight.mesh);
+      }
+    });
+
+    console.log(`🎯 Synced ${selectedFaces.length} face highlights from selectedFaces prop`);
+  }, [selectedFaces, isBeingEdited, scene, shape]);
 
   const removeFaceNumberText = (rowId: string) => {
     const objectsToRemove: THREE.Object3D[] = [];
