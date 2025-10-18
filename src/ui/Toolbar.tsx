@@ -204,20 +204,18 @@ const Toolbar: React.FC = () => {
       </div>
 
       <div className="flex items-center h-10 gap-1.5 px-3">
-        <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm hover:bg-stone-50 text-stone-600 transition-all">
-            <Save size={11} />
-            <span className="text-xs">Save</span>
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm hover:bg-stone-50 text-stone-600 transition-all">
-            <File size={11} />
-            <span className="text-xs">New</span>
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm hover:bg-stone-50 text-stone-600 transition-all">
-            <FolderOpen size={11} />
-            <span className="text-xs">Save As</span>
-          </button>
-        </div>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-stone-50 text-stone-600 transition-all shadow-sm border border-stone-200">
+          <Save size={11} />
+          <span className="text-xs">Save</span>
+        </button>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-stone-50 text-stone-600 transition-all shadow-sm border border-stone-200">
+          <File size={11} />
+          <span className="text-xs">New</span>
+        </button>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-stone-50 text-stone-600 transition-all shadow-sm border border-stone-200">
+          <FolderOpen size={11} />
+          <span className="text-xs">Save As</span>
+        </button>
 
         <div className="w-px h-6 bg-stone-300"></div>
 
