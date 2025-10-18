@@ -163,6 +163,7 @@ const ShapeWithTransform: React.FC<{
 
 const Scene: React.FC = () => {
   const controlsRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { shapes, cameraType, selectedShapeId, selectShape, deleteShape, copyShape, isolateShape, exitIsolation } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
@@ -193,7 +194,13 @@ const Scene: React.FC = () => {
     });
   };
 
-  const handleSave = async (data: { code: string; description: string; tags: string[] }) => {
+  const captureSnapshot = (): string => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return '';
+    return canvas.toDataURL('image/png');
+  };
+
+  const handleSave = async (data: { code: string; description: string; tags: string[]; previewImage?: string }) => {
     if (!saveDialog.shapeId) return;
 
     const shape = shapes.find(s => s.id === saveDialog.shapeId);
@@ -213,7 +220,8 @@ const Scene: React.FC = () => {
         code: data.code,
         description: data.description,
         tags: data.tags,
-        geometry_data: geometryData
+        geometry_data: geometryData,
+        preview_image: data.previewImage
       });
 
       console.log('Geometry saved to catalog:', data.code);
@@ -367,6 +375,7 @@ const Scene: React.FC = () => {
       onClose={() => setSaveDialog({ isOpen: false, shapeId: null })}
       onSave={handleSave}
       shapeId={saveDialog.shapeId || ''}
+      captureSnapshot={captureSnapshot}
     />
     </>
   );

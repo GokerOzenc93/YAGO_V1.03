@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 
 interface SaveDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { code: string; description: string; tags: string[] }) => void;
+  onSave: (data: { code: string; description: string; tags: string[]; previewImage?: string }) => void;
   shapeId: string;
+  captureSnapshot: () => string;
 }
 
-const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave, shapeId }) => {
+const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave, shapeId, captureSnapshot }) => {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [previewImage, setPreviewImage] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      const snapshot = captureSnapshot();
+      setPreviewImage(snapshot);
+    } else {
+      setPreviewImage('');
+    }
+  }, [isOpen, captureSnapshot]);
 
   if (!isOpen) return null;
 
@@ -23,10 +34,11 @@ const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave, shapeI
       return;
     }
 
-    onSave({ code, description, tags });
+    onSave({ code, description, tags, previewImage });
     setCode('');
     setDescription('');
     setTagsInput('');
+    setPreviewImage('');
     onClose();
   };
 
@@ -53,6 +65,16 @@ const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave, shapeI
         </div>
 
         <div className="p-6 space-y-4">
+          {previewImage && (
+            <div className="w-full aspect-video bg-stone-100 rounded-lg overflow-hidden border border-stone-200">
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Code *
