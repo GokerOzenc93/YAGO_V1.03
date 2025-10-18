@@ -12,9 +12,30 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
   const { selectShape, updateShape, activeTool, viewMode } = useAppStore();
   const transformRef = useRef<any>(null);
   const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const pivotRef = useRef<THREE.Object3D>(null);
 
   useEffect(() => {
-    if (transformRef.current && isSelected) {
+    if (meshRef.current && groupRef.current) {
+      const bbox = new THREE.Box3().setFromObject(meshRef.current);
+      const minCorner = bbox.min;
+
+      meshRef.current.position.set(
+        -minCorner.x,
+        -minCorner.y,
+        -minCorner.z
+      );
+
+      groupRef.current.position.set(
+        shape.position[0] + minCorner.x,
+        shape.position[1] + minCorner.y,
+        shape.position[2] + minCorner.z
+      );
+    }
+  }, [shape.geometry]);
+
+  useEffect(() => {
+    if (transformRef.current && isSelected && groupRef.current) {
       const controls = transformRef.current;
 
       const onDraggingChanged = (event: any) => {
@@ -24,11 +45,11 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
       };
 
       const onChange = () => {
-        if (meshRef.current) {
+        if (groupRef.current) {
           updateShape(shape.id, {
-            position: meshRef.current.position.toArray() as [number, number, number],
-            rotation: meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number],
-            scale: meshRef.current.scale.toArray() as [number, number, number]
+            position: groupRef.current.position.toArray() as [number, number, number],
+            rotation: groupRef.current.rotation.toArray().slice(0, 3) as [number, number, number],
+            scale: groupRef.current.scale.toArray() as [number, number, number]
           });
         }
       };
@@ -59,17 +80,19 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
   const isWireframe = viewMode === ViewMode.WIREFRAME;
 
   return (
-    <group>
+    <group
+      ref={groupRef}
+      position={shape.position}
+      rotation={shape.rotation}
+      scale={shape.scale}
+      onClick={(e) => {
+        e.stopPropagation();
+        selectShape(shape.id);
+      }}
+    >
       <mesh
         ref={meshRef}
         geometry={shape.geometry}
-        position={shape.position}
-        rotation={shape.rotation}
-        scale={shape.scale}
-        onClick={(e) => {
-          e.stopPropagation();
-          selectShape(shape.id);
-        }}
         castShadow
         receiveShadow
       >
@@ -105,7 +128,7 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
       {isSelected && activeTool !== Tool.SELECT && (
         <TransformControls
           ref={transformRef}
-          object={meshRef.current!}
+          object={groupRef.current!}
           mode={getTransformMode()}
           size={0.8}
         />
