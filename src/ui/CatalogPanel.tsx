@@ -62,17 +62,17 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
   };
 
   return (
-    <div className="w-full h-40 bg-orange-50 rounded-lg overflow-hidden border-2 border-orange-200">
-      <Canvas dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }}>
-        <PerspectiveCamera makeDefault position={[200, 200, 200]} fov={50} />
-        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={2} />
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-        <directionalLight position={[-10, -10, -5]} intensity={0.5} />
-        <mesh geometry={createGeometry()} castShadow receiveShadow>
-          <meshStandardMaterial color="#0044cc" metalness={0.3} roughness={0.4} />
+    <div className="w-full aspect-square rounded-lg overflow-hidden">
+      <Canvas dpr={[1, 2]} gl={{ alpha: true, preserveDrawingBuffer: true }}>
+        <color attach="background" args={['transparent']} />
+        <PerspectiveCamera makeDefault position={[150, 150, 150]} fov={45} />
+        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={1.5} />
+        <ambientLight intensity={1.2} />
+        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <directionalLight position={[-5, -5, -5]} intensity={0.5} />
+        <mesh geometry={createGeometry()}>
+          <meshStandardMaterial color="#0044cc" metalness={0.2} roughness={0.5} />
         </mesh>
-        <gridHelper args={[500, 10, '#cccccc', '#eeeeee']} position={[0, -75, 0]} />
       </Canvas>
     </div>
   );
@@ -95,7 +95,7 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
 
   useEffect(() => {
     if (isOpen) {
-      setPosition({ x: window.innerWidth / 2 - 500, y: window.innerHeight / 2 - 350 });
+      setPosition({ x: window.innerWidth / 2 - 400, y: window.innerHeight / 2 - 350 });
     }
   }, [isOpen]);
 
@@ -140,7 +140,7 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
     <div className="fixed inset-0 z-50 pointer-events-none">
       <div
         ref={panelRef}
-        className="absolute bg-stone-50 rounded-2xl shadow-2xl w-full max-w-5xl h-[700px] border border-stone-300 flex flex-col pointer-events-auto"
+        className="absolute bg-stone-50 rounded-2xl shadow-2xl w-full max-w-3xl h-[700px] border border-stone-300 flex flex-col pointer-events-auto"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -148,9 +148,9 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
         }}
         onMouseDown={handleMouseDown}
       >
-        <div className="drag-handle flex items-center justify-between px-6 py-5 cursor-grab active:cursor-grabbing">
-          <h1 className="text-2xl font-bold text-slate-900">Geometry Catalog</h1>
-          <div className="flex items-center gap-3">
+        <div className="drag-handle flex items-center justify-between px-5 py-4 cursor-grab active:cursor-grabbing">
+          <h1 className="text-xl font-bold text-slate-900">Geometry Catalog</h1>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 if (selectedItem) {
@@ -159,13 +159,13 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                 }
               }}
               disabled={!selectedItem}
-              className={`px-6 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center gap-2 shadow-md ${
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-all flex items-center gap-1 ${
                 selectedItem
                   ? 'bg-orange-600 text-white hover:bg-orange-700'
                   : 'bg-stone-300 text-stone-500 cursor-not-allowed'
               }`}
             >
-              <Plus size={18} strokeWidth={2.5} />
+              <Plus size={14} strokeWidth={2} />
               Insert
             </button>
             <button
@@ -176,32 +176,32 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                 }
               }}
               disabled={!selectedItem}
-              className={`px-6 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center gap-2 shadow-md ${
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-all flex items-center gap-1 ${
                 selectedItem
                   ? 'bg-orange-400 text-white hover:bg-orange-500'
                   : 'bg-stone-300 text-stone-500 cursor-not-allowed'
               }`}
             >
-              <Trash2 size={18} strokeWidth={2.5} />
+              <Trash2 size={14} strokeWidth={2} />
               Delete
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-md hover:bg-stone-200 transition-colors ml-2"
+              className="p-1.5 rounded hover:bg-stone-200 transition-colors ml-1"
             >
-              <X size={20} className="text-slate-700" />
+              <X size={16} className="text-slate-700" />
             </button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-x-auto px-5 pb-5">
+            <div className="flex gap-3">
               {filteredItems.map(item => (
                 <div
                   key={item.id}
                   onClick={() => setSelectedItem(item)}
-                  className={`rounded-xl p-4 transition-all cursor-pointer border-2 ${
+                  className={`flex-shrink-0 w-44 rounded-lg p-3 transition-all cursor-pointer border-2 ${
                     selectedItem?.id === item.id
                       ? 'border-orange-500 bg-white shadow-lg'
                       : 'border-orange-300 bg-orange-50 hover:border-orange-400 hover:shadow-md'
@@ -209,8 +209,8 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                 >
                   <GeometryPreview geometryData={item.geometry_data} />
 
-                  <div className="mt-4">
-                    <h3 className="font-bold text-slate-900 text-base leading-tight">
+                  <div className="mt-2">
+                    <h3 className="font-semibold text-slate-900 text-xs leading-tight">
                       {item.code} / {item.description || 'No description'}
                     </h3>
                   </div>
@@ -219,20 +219,20 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
             </div>
           </div>
 
-          <div className="w-64 bg-stone-100 flex flex-col">
-            <div className="p-6">
-              <h3 className="text-xs font-bold text-slate-900 mb-4 uppercase tracking-wider">CATEGORIES</h3>
-              <div className="space-y-2">
+          <div className="w-48 bg-stone-100 flex flex-col">
+            <div className="p-4">
+              <h3 className="text-[10px] font-semibold text-slate-600 mb-3 uppercase tracking-wide">Categories</h3>
+              <div className="space-y-1.5">
                 <button
                   onClick={() => setSelectedTag(null)}
-                  className={`w-full text-left px-4 py-3 text-sm font-bold rounded-lg transition-colors flex items-center justify-between ${
+                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded transition-colors flex items-center justify-between ${
                     !selectedTag
-                      ? 'bg-orange-600 text-white shadow-md'
+                      ? 'bg-orange-600 text-white'
                       : 'bg-white text-slate-700 hover:bg-stone-200'
                   }`}
                 >
                   <span>All Items</span>
-                  <span className="text-sm font-bold">{items.length}</span>
+                  <span className="text-xs">{items.length}</span>
                 </button>
                 {allTags.map(tag => {
                   const count = items.filter(item => item.tags.includes(tag)).length;
@@ -240,14 +240,14 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                     <button
                       key={tag}
                       onClick={() => setSelectedTag(tag)}
-                      className={`w-full text-left px-4 py-3 text-sm font-bold rounded-lg transition-colors flex items-center justify-between uppercase ${
+                      className={`w-full text-left px-3 py-2 text-xs font-medium rounded transition-colors flex items-center justify-between uppercase ${
                         selectedTag === tag
-                          ? 'bg-orange-600 text-white shadow-md'
+                          ? 'bg-orange-600 text-white'
                           : 'bg-white text-slate-700 hover:bg-stone-200'
                       }`}
                     >
                       <span>{tag}</span>
-                      <span className="text-sm font-bold">{count}</span>
+                      <span className="text-xs">{count}</span>
                     </button>
                   );
                 })}
