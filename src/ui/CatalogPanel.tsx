@@ -10,6 +10,7 @@ interface CatalogItem {
   description: string;
   tags: string[];
   geometry_data: any;
+  preview_image?: string;
   created_at: string;
 }
 
@@ -239,7 +240,17 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                       : 'border-orange-300 bg-orange-50 hover:border-orange-400 hover:shadow-md'
                   }`}
                 >
-                  <GeometryPreview geometryData={item.geometry_data} />
+                  {item.preview_image ? (
+                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                      <img
+                        src={item.preview_image}
+                        alt={item.code}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <GeometryPreview geometryData={item.geometry_data} />
+                  )}
 
                   <div className="mt-2">
                     <h3 className="font-semibold text-slate-900 text-xs leading-tight">
