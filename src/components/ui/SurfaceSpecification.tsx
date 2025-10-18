@@ -12,15 +12,12 @@ interface SurfaceRow {
 
 interface SurfaceSpecificationProps {
   onBack: () => void;
-  surfaceRows: SurfaceRow[];
-  onSurfaceRowsChange: (rows: SurfaceRow[]) => void;
 }
 
 const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
-  onBack,
-  surfaceRows,
-  onSurfaceRowsChange
+  onBack
 }) => {
+  const [surfaceRows, setSurfaceRows] = useState<SurfaceRow[]>([]);
   const [isSelectionActive, setIsSelectionActive] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
 
@@ -33,8 +30,8 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       
       if (activeRowId) {
         // Update the active row with selected face
-        onSurfaceRowsChange(surfaceRows.map(row =>
-          row.id === activeRowId
+        setSurfaceRows(prev => prev.map(row => 
+          row.id === activeRowId 
             ? { ...row, faceIndex, confirmed: true, isActive: false }
             : row
         ));
@@ -78,7 +75,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
       confirmed: false
     };
     
-    onSurfaceRowsChange([...surfaceRows, newRow]);
+    setSurfaceRows(prev => [...prev, newRow]);
     setActiveRowId(newRowId);
     setIsSelectionActive(true);
     
@@ -101,13 +98,13 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     setActiveRowId(null);
     
     // Remove the last incomplete row if it exists
-    onSurfaceRowsChange(surfaceRows.filter(row => row.faceIndex !== null || row.confirmed));
+    setSurfaceRows(prev => prev.filter(row => row.faceIndex !== null || row.confirmed));
     
     console.log('🎯 Exited surface selection mode');
   };
 
   const handleRoleChange = (rowId: string, role: string) => {
-    onSurfaceRowsChange(surfaceRows.map(row =>
+    setSurfaceRows(prev => prev.map(row => 
       row.id === rowId ? { ...row, role, confirmed: false } : row
     ));
     
@@ -151,7 +148,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     }
 
     // Mark surface as confirmed
-    onSurfaceRowsChange(surfaceRows.map(r =>
+    setSurfaceRows(prev => prev.map(r => 
       r.id === rowId ? { ...r, confirmed: true } : r
     ));
 
@@ -160,14 +157,14 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
 
   const handleEditSurface = (rowId: string) => {
     // Make the row editable again
-    onSurfaceRowsChange(surfaceRows.map(r =>
+    setSurfaceRows(prev => prev.map(r => 
       r.id === rowId ? { ...r, confirmed: false } : r
     ));
     
     console.log(`✏️ Surface row ${rowId} set to editable mode`);
   };
   const handleFormulaChange = (rowId: string, formula: string) => {
-    onSurfaceRowsChange(surfaceRows.map(row =>
+    setSurfaceRows(prev => prev.map(row => 
       row.id === rowId ? { ...row, formula, confirmed: false } : row
     ));
     
@@ -182,7 +179,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     window.dispatchEvent(removeEvent);
     
     // Remove row from list
-    onSurfaceRowsChange(surfaceRows.filter(row => row.id !== rowId));
+    setSurfaceRows(prev => prev.filter(row => row.id !== rowId));
     
     console.log(`🎯 Row ${rowId} removed`);
   };
@@ -193,7 +190,7 @@ const SurfaceSpecification: React.FC<SurfaceSpecificationProps> = ({
     window.dispatchEvent(clearEvent);
     
     // Clear all rows
-    onSurfaceRowsChange([]);
+    setSurfaceRows([]);
     setIsSelectionActive(false);
     setActiveRowId(null);
     

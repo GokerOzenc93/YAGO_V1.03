@@ -5,7 +5,7 @@ import EditModeHeader from './EditModeHeader';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
 import RefVolume from './RefVolume';
-import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject, SurfaceSpecification as SurfaceSpec } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
 import * as THREE from 'three';
@@ -61,7 +61,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
-  const [surfaceSpecifications, setSurfaceSpecifications] = useState<SurfaceSpec[]>([]);
   
   const handleVolumeNameChange = (name: string) => {
     setLoadedVolumeName(name);
@@ -78,12 +77,10 @@ const EditMode: React.FC<EditModeProps> = ({
 
     try {
       const volumeData = createVolumeDataFromShape(editedShape, finalName);
-      volumeData.surfaceSpecifications = surfaceSpecifications;
-
       const success = await saveVolumeToProject(finalName, volumeData);
 
       if (success) {
-        console.log(`✅ Volume "${finalName}" saved successfully with ${surfaceSpecifications.length} surface specifications`);
+        console.log(`✅ Volume "${finalName}" saved successfully`);
         alert(`✅ Volume "${finalName}" saved to project!`);
         setLoadedVolumeName(finalName);
         setRefreshTrigger(prev => prev + 1);
@@ -222,14 +219,6 @@ const EditMode: React.FC<EditModeProps> = ({
       // Update volume name to loaded volume name
       setLoadedVolumeName(volumeName);
 
-      // Load surface specifications if available
-      if (volumeData.surfaceSpecifications && volumeData.surfaceSpecifications.length > 0) {
-        setSurfaceSpecifications(volumeData.surfaceSpecifications);
-        console.log(`🎯 Loaded ${volumeData.surfaceSpecifications.length} surface specifications`);
-      } else {
-        setSurfaceSpecifications([]);
-      }
-
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
       console.log(`🎯 Volume type changed to: ${volumeData.type} with current dimensions preserved`);
       console.log(`🎯 New parameters:`, newParameters);
@@ -338,7 +327,6 @@ const EditMode: React.FC<EditModeProps> = ({
     setActiveMainSection(null);
     setActiveVolumeSubSection(null);
     setLoadedVolumeName(null);
-    setSurfaceSpecifications([]);
     onExit();
   };
 
@@ -624,8 +612,6 @@ const EditMode: React.FC<EditModeProps> = ({
             {activeMainSection === 'volume' && activeVolumeSubSection === 'surface' && (
               <SurfaceSpecification
                 onBack={handleBackToMain}
-                surfaceRows={surfaceSpecifications}
-                onSurfaceRowsChange={setSurfaceSpecifications}
               />
             )}
 
