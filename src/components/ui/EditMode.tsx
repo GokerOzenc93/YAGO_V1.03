@@ -484,8 +484,8 @@ const EditMode: React.FC<EditModeProps> = ({
 
       {!isCollapsed && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between h-12 px-3 border-b border-gray-200 bg-gray-50">
-            <h1 className="text-base font-semibold text-gray-900">Edit Mode</h1>
+          <div className="flex items-center justify-between h-10 px-3 border-b border-gray-200 bg-white">
+            <h1 className="text-sm font-semibold text-gray-900">Edit Mode</h1>
           </div>
 
           <EditModeHeader
