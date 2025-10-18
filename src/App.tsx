@@ -81,12 +81,31 @@ function App() {
 
   const handleLoadFromCatalog = (item: CatalogItem) => {
     const geometryData = item.geometry_data;
+    const dims = geometryData.dimensions;
 
-    const geometry = new THREE.BoxGeometry(
-      geometryData.dimensions?.width || 100,
-      geometryData.dimensions?.height || 100,
-      geometryData.dimensions?.depth || 100
-    );
+    let geometry: THREE.BufferGeometry;
+
+    switch (geometryData.type) {
+      case 'cylinder':
+        geometry = new THREE.CylinderGeometry(
+          dims?.radiusTop || 50,
+          dims?.radiusBottom || 50,
+          dims?.height || 100,
+          32
+        );
+        break;
+      case 'sphere':
+        geometry = new THREE.SphereGeometry(dims?.radius || 50, 32, 32);
+        break;
+      case 'box':
+      default:
+        geometry = new THREE.BoxGeometry(
+          dims?.width || 100,
+          dims?.height || 100,
+          dims?.depth || 100
+        );
+        break;
+    }
 
     addShape({
       type: geometryData.type || 'box',

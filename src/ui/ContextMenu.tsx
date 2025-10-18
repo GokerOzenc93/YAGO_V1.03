@@ -145,10 +145,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     >
       <div className="px-3 py-1.5 border-b border-stone-200">
         <div className="text-xs text-slate-800 font-semibold">
-          {shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}
+          {shapeType ? shapeType.charAt(0).toUpperCase() + shapeType.slice(1) : 'Shape'}
         </div>
         <div className="text-[10px] text-stone-500 font-mono">
-          ID: {shapeId.substring(0, 8)}...
+          ID: {shapeId ? shapeId.substring(0, 8) : 'unknown'}...
         </div>
       </div>
 
