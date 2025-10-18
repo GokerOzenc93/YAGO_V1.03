@@ -13,10 +13,13 @@ function App() {
     let mounted = true;
 
     const loadOpenCascade = async () => {
-      if ((window as any).opencascade) {
+      const initOpenCascade = (window as any).initOpenCascade || (window as any).opencascade;
+      if (initOpenCascade) {
         console.log('🔄 OpenCascade already in window, initializing...');
         try {
-          const oc = await (window as any).opencascade();
+          const oc = await initOpenCascade({
+            locateFile: (path: string) => `https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.2/dist/${path}`
+          });
           if (mounted) {
             setOpenCascadeInstance(oc);
             setOpenCascadeLoading(false);
@@ -39,22 +42,28 @@ function App() {
       setOpenCascadeLoading(true);
 
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.b5ff984/dist/opencascade.full.js';
+      script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.2/dist/opencascade.wasm.js';
       script.async = false;
 
       script.onload = async () => {
         try {
           console.log('📦 OpenCascade script loaded, initializing...');
-          const initOpenCascade = (window as any).opencascade;
+
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          const initOpenCascade = (window as any).initOpenCascade || (window as any).opencascade;
           if (initOpenCascade) {
-            const oc = await initOpenCascade();
+            console.log('🔧 Found OpenCascade initializer, starting init...');
+            const oc = await initOpenCascade({
+              locateFile: (path: string) => `https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.2/dist/${path}`
+            });
             if (mounted) {
               setOpenCascadeInstance(oc);
               setOpenCascadeLoading(false);
               console.log('✅ OpenCascade.js ready');
             }
           } else {
-            throw new Error('opencascade not found on window');
+            throw new Error('opencascade initializer not found on window');
           }
         } catch (error) {
           console.error('❌ Failed to initialize OpenCascade:', error);
