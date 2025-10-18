@@ -601,6 +601,10 @@ const Scene: React.FC = () => {
             onSave={() => {
               console.log('Save volume clicked from info bar');
             }}
+            onSaveAs={() => {
+              console.log('Save As volume clicked from info bar');
+            }}
+            onExit={exitEditMode}
           />
         </div>
       )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save } from 'lucide-react';
+import { Save, X, FileCheck } from 'lucide-react';
 
 interface VolumeInfoBarProps {
   volumeName: string;
@@ -7,6 +7,8 @@ interface VolumeInfoBarProps {
   description: string;
   pose: number;
   onSave: () => void;
+  onSaveAs: () => void;
+  onExit: () => void;
 }
 
 const VolumeInfoBar: React.FC<VolumeInfoBarProps> = ({
@@ -15,6 +17,8 @@ const VolumeInfoBar: React.FC<VolumeInfoBarProps> = ({
   description,
   pose,
   onSave,
+  onSaveAs,
+  onExit,
 }) => {
   return (
     <div className="flex items-center justify-between h-10 px-3 bg-white border-b border-gray-200">
@@ -36,13 +40,32 @@ const VolumeInfoBar: React.FC<VolumeInfoBarProps> = ({
           <span className="text-xs font-semibold text-gray-900 font-mono">{pose}</span>
         </div>
       </div>
-      <button
-        onClick={onSave}
-        className="text-stone-600 hover:text-green-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-green-50 flex-shrink-0"
-        title="Save Volume"
-      >
-        <Save size={11} />
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onSave}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded border border-green-200 hover:border-green-300 transition-all flex-shrink-0"
+          title="Save Volume"
+        >
+          <Save size={12} />
+          <span>Save</span>
+        </button>
+        <button
+          onClick={onSaveAs}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 hover:border-blue-300 transition-all flex-shrink-0"
+          title="Save As New Volume"
+        >
+          <FileCheck size={12} />
+          <span>Save As</span>
+        </button>
+        <button
+          onClick={onExit}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded border border-red-200 hover:border-red-300 transition-all flex-shrink-0"
+          title="Exit Edit Mode"
+        >
+          <X size={12} />
+          <span>Exit</span>
+        </button>
+      </div>
     </div>
   );
 };
