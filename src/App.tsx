@@ -5,32 +5,23 @@ import Scene from './components/Scene';
 import Toolbar from './components/Toolbar';
 import StatusBar from './components/StatusBar';
 import Terminal from './components/Terminal';
-import { GeometryFactory } from './lib/geometryFactory';
 import { useAppStore } from './store/appStore';
 
 function App() {
-  const { setYagoDesignInitialized, setGeometryMode } = useAppStore();
+  const { setOpenCascadeInstance } = useAppStore();
 
   useEffect(() => {
-    // Initialize GeometryFactory on app start
-    const initializeGeometry = async () => {
+    const loadOpenCascade = async () => {
       try {
-        await GeometryFactory.initialize();
-        const isUsingYD = GeometryFactory.isUsingYagoDesign();
-        const mode = GeometryFactory.getCurrentMode();
-        
-        setYagoDesignInitialized(isUsingYD);
-        setGeometryMode(mode);
-        
-        console.log(`🎯 App initialized with geometry engine: ${mode}`);
+        const { useOpenCascade } = await import('./hooks/useOpenCascade');
+        console.log('✅ OpenCascade module loaded');
       } catch (error) {
-        console.error('Failed to initialize geometry factory:', error);
-        setGeometryMode('Three.js');
+        console.warn('⚠️ OpenCascade not available:', error);
       }
     };
 
-    initializeGeometry();
-  }, [setYagoDesignInitialized, setGeometryMode]);
+    loadOpenCascade();
+  }, [setOpenCascadeInstance]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-200">

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { TopoDS_Shape } from 'opencascade.js';
 
 export interface Shape {
   id: string;
@@ -22,6 +23,7 @@ export interface Shape {
   is2DShape?: boolean;
   isReference?: boolean;
   mesh?: THREE.Mesh;
+  ocShape?: TopoDS_Shape;
 }
 
 export const SHAPE_COLORS = {

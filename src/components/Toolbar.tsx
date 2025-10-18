@@ -4,23 +4,24 @@ import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FileP
 import * as THREE from 'three';
 
 const Toolbar: React.FC = () => {
-  const { 
-    setActiveTool, 
-    activeTool, 
+  const {
+    setActiveTool,
+    activeTool,
     setLastTransformTool,
-    addShape, 
-    selectedShapeId, 
-    modifyShape, 
+    addShape,
+    selectedShapeId,
+    modifyShape,
     performBooleanOperation,
-    cameraType, 
-    setCameraType, 
-    snapSettings, 
+    cameraType,
+    setCameraType,
+    snapSettings,
     toggleSnapSetting,
-    viewMode, // 🎯 NEW: Get current view mode
-    setViewMode, // 🎯 NEW: Set view mode
-    cycleViewMode, // 🎯 NEW: Cycle through view modes
-    orthoMode, // 🎯 NEW: Get current ortho mode
-    toggleOrthoMode // 🎯 NEW: Toggle ortho mode
+    viewMode,
+    setViewMode,
+    cycleViewMode,
+    orthoMode,
+    toggleOrthoMode,
+    opencascadeInstance
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -145,16 +146,106 @@ const Toolbar: React.FC = () => {
     }
   }, [showPolylineMenu, showSnapMenu]);
 
-  const drawingTools = [
-    { id: Tool.POLYLINE, icon: <GitBranch size={12} />, label: 'Polyline', shortcut: 'PL', hasContextMenu: true },
-    { id: Tool.RECTANGLE, icon: <Square size={12} />, label: 'Rectangle', shortcut: 'R' },
-    { id: Tool.CIRCLE, icon: <Circle size={12} />, label: 'Circle', shortcut: 'C' },
-  ];
 
   const booleanTools = [
     { id: Tool.BOOLEAN_UNION, icon: <Plus size={12} />, label: 'Union', shortcut: 'U' },
     { id: Tool.BOOLEAN_SUBTRACT, icon: <Minus size={12} />, label: 'Subtract', shortcut: 'S' },
   ];
+
+  const handleAddGeometry = async () => {
+    if (!opencascadeInstance) {
+      console.warn('⚠️ OpenCascade not initialized yet, loading dynamically...');
+
+      try {
+        const { createOCGeometry, convertOCShapeToThreeGeometry } = await import('../lib/opencascadeGeometry');
+
+        console.log('🔧 Creating OpenCascade geometry...');
+
+        const ocShape = createOCGeometry(opencascadeInstance!, {
+          type: 'box',
+          width: 600,
+          height: 600,
+          depth: 600
+        });
+
+        const geometry = convertOCShapeToThreeGeometry(opencascadeInstance!, ocShape);
+
+        const newShape = {
+          id: `oc-box-${Date.now()}`,
+          type: 'box' as const,
+          geometry,
+          position: [0, 300, 0] as [number, number, number],
+          rotation: [0, 0, 0] as [number, number, number],
+          scale: [1, 1, 1] as [number, number, number],
+          color: '#2563eb',
+          parameters: {
+            width: 600,
+            height: 600,
+            depth: 600
+          },
+          ocShape
+        };
+
+        addShape(newShape);
+        console.log('✅ OpenCascade geometry created and added to scene');
+      } catch (error) {
+        console.error('❌ OpenCascade not available:', error);
+
+        const geometry = new THREE.BoxGeometry(600, 600, 600);
+        const newShape = {
+          id: `box-${Date.now()}`,
+          type: 'box' as const,
+          geometry,
+          position: [0, 300, 0] as [number, number, number],
+          rotation: [0, 0, 0] as [number, number, number],
+          scale: [1, 1, 1] as [number, number, number],
+          color: '#2563eb',
+          parameters: {
+            width: 600,
+            height: 600,
+            depth: 600
+          }
+        };
+        addShape(newShape);
+        console.log('✅ Fallback Three.js geometry created');
+      }
+      return;
+    }
+
+    try {
+      const { createOCGeometry, convertOCShapeToThreeGeometry } = await import('../lib/opencascadeGeometry');
+
+      const ocShape = createOCGeometry(opencascadeInstance, {
+        type: 'box',
+        width: 600,
+        height: 600,
+        depth: 600
+      });
+
+      const geometry = convertOCShapeToThreeGeometry(opencascadeInstance, ocShape);
+
+      const newShape = {
+        id: `oc-box-${Date.now()}`,
+        type: 'box' as const,
+        geometry,
+        position: [0, 300, 0] as [number, number, number],
+        rotation: [0, 0, 0] as [number, number, number],
+        scale: [1, 1, 1] as [number, number, number],
+        color: '#2563eb',
+        parameters: {
+          width: 600,
+          height: 600,
+          depth: 600
+        },
+        ocShape
+      };
+
+      addShape(newShape);
+      console.log('✅ OpenCascade geometry created');
+    } catch (error) {
+      console.error('❌ Failed to create OpenCascade geometry:', error);
+    }
+  };
 
   const transformTools = [
     { id: Tool.SELECT, icon: <MousePointer2 size={12} />, label: 'Select', shortcut: 'V' },
@@ -619,23 +710,16 @@ const Toolbar: React.FC = () => {
         {/* Separator */}
         <div className="w-px h-6 bg-stone-300"></div>
 
-        {/* Drawing tools */}
+        {/* Add Geometry Button */}
         <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
-          {drawingTools.map((tool) => (
-            <button
-              key={tool.id}
-              className={`p-1.5 rounded-sm transition-all ${
-                activeTool === tool.id
-                  ? 'bg-orange-50 text-orange-800 shadow-sm border border-orange-200'
-                  : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
-              }`}
-              onClick={() => setActiveTool(tool.id)}
-              onContextMenu={tool.hasContextMenu ? handlePolylineRightClick : undefined}
-              title={`${tool.label} (${tool.shortcut})`}
-            >
-              {React.cloneElement(tool.icon, { size: 11 })}
-            </button>
-          ))}
+          <button
+            onClick={handleAddGeometry}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm hover:bg-orange-50 hover:text-orange-800 text-stone-600 transition-all font-medium"
+            title="Add OpenCascade Geometry (G)"
+          >
+            <Package size={11} />
+            <span className="text-xs">Add Geometry</span>
+          </button>
         </div>
 
         {/* Separator */}

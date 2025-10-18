@@ -3,6 +3,7 @@ import { Shape } from '../types/shapes';
 import * as THREE from 'three';
 import { performBooleanSubtract, performBooleanUnion } from '../utils/booleanOperations';
 import { GeometryFactory } from '../lib/geometryFactory';
+import type { OpenCascadeInstance } from 'opencascade.js';
 
 // Helper function to get shape bounds
 const getShapeBounds = (shape: Shape) => {
@@ -238,6 +239,9 @@ interface AppState {
   setYagoDesignInitialized: (initialized: boolean) => void;
   geometryMode: string;
   setGeometryMode: (mode: string) => void;
+  // OpenCascade integration
+  opencascadeInstance: OpenCascadeInstance | null;
+  setOpenCascadeInstance: (instance: OpenCascadeInstance | null) => void;
   cameraPosition: [number, number, number];
   setCameraPosition: (position: [number, number, number]) => void;
   selectedObjectPosition: [number, number, number];
@@ -355,9 +359,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   // YagoDesign integration
   isYagoDesignInitialized: false,
   setYagoDesignInitialized: (initialized) => set({ isYagoDesignInitialized: initialized }),
-  
+
   geometryMode: 'Three.js',
   setGeometryMode: (mode) => set({ geometryMode: mode }),
+
+  // OpenCascade integration
+  opencascadeInstance: null,
+  setOpenCascadeInstance: (instance) => set({ opencascadeInstance: instance }),
   
   gridSize: 50,
   setGridSize: (size) => set({ gridSize: size }),

@@ -12,7 +12,6 @@ import {
 } from '@react-three/drei';
 import { useAppStore, CameraType, Tool, MeasurementUnit, ViewMode } from '../store/appStore';
 import YagoDesignShape from './YagoDesignShape';
-import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
 import VolumeInfoBar from './ui/VolumeInfoBar';
@@ -711,10 +710,6 @@ const Scene: React.FC = () => {
           distance={2000}
         />
 
-        <DrawingPlane
-          onShowMeasurement={setMeasurementOverlay}
-          onHideMeasurement={() => setMeasurementOverlay(null)}
-        />
 
         <group position={[0, -0.001, 0]}>
           <Grid
