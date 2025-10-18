@@ -25,25 +25,25 @@ const VolumeInfoBar: React.FC<VolumeInfoBarProps> = ({
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded border border-gray-200">
           <span className="text-xs font-medium text-gray-500">Volume</span>
-          <span className="text-xs font-semibold text-gray-900">{volumeName}</span>
+          <span className="text-xs font-semibold text-gray-900 font-mono">{volumeName}</span>
         </div>
         <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded border border-gray-200">
           <span className="text-xs font-medium text-gray-500">CabinetCode</span>
-          <span className="text-xs font-semibold text-gray-900">{cabinetCode}</span>
+          <span className="text-xs font-semibold text-gray-900 font-mono">{cabinetCode}</span>
         </div>
         <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded border border-gray-200">
           <span className="text-xs font-medium text-gray-500">Description</span>
-          <span className="text-xs font-semibold text-gray-900">{description || '-'}</span>
+          <span className="text-xs font-semibold text-gray-900 font-mono">{description || '-'}</span>
         </div>
         <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded border border-gray-200">
           <span className="text-xs font-medium text-gray-500">Pose</span>
-          <span className="text-xs font-semibold text-gray-900">{pose}</span>
+          <span className="text-xs font-semibold text-gray-900 font-mono">{pose}</span>
         </div>
       </div>
       <div className="flex items-center gap-2">
         <button
           onClick={onSave}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 rounded border border-stone-200 hover:border-stone-300 transition-all flex-shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded border border-green-200 hover:border-green-300 transition-all flex-shrink-0"
           title="Save Volume"
         >
           <Save size={12} />
@@ -51,7 +51,7 @@ const VolumeInfoBar: React.FC<VolumeInfoBarProps> = ({
         </button>
         <button
           onClick={onSaveAs}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 rounded border border-stone-200 hover:border-stone-300 transition-all flex-shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 hover:border-blue-300 transition-all flex-shrink-0"
           title="Save As New Volume"
         >
           <FileCheck size={12} />
@@ -59,7 +59,7 @@ const VolumeInfoBar: React.FC<VolumeInfoBarProps> = ({
         </button>
         <button
           onClick={onExit}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 rounded border border-stone-200 hover:border-stone-300 transition-all flex-shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded border border-red-200 hover:border-red-300 transition-all flex-shrink-0"
           title="Exit Edit Mode"
         >
           <X size={12} />

@@ -35,15 +35,15 @@ const EditMode: React.FC<EditModeProps> = ({
   isFaceEditMode,
   setIsFaceEditMode,
 }) => {
-  const { addShape, selectShape, updateShape, loadedVolumeName, setLoadedVolumeName } = useAppStore();
+  const { addShape, selectShape, updateShape } = useAppStore();
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
   const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
   const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLocked, setIsLocked] = useState(true);
-
-  const volumeName = loadedVolumeName || 'Default Volume';
+  const [isLocked, setIsLocked] = useState(true); 
+  
+  const [volumeName, setVolumeName] = useState('DefaultVolume');
   const [cabinetCode, setCabinetCode] = useState('ad060');
   const [description, setDescription] = useState('');
   const [pose, setPose] = useState(1);
@@ -63,30 +63,20 @@ const EditMode: React.FC<EditModeProps> = ({
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   
   const handleVolumeNameChange = (name: string) => {
-    setLoadedVolumeName(name);
+    setVolumeName(name);
   };
 
   const handleSaveVolume = async () => {
-    const inputName = prompt('Enter volume name:', volumeName);
-
-    if (!inputName || inputName.trim() === '') {
-      return;
-    }
-
-    const finalName = inputName.trim();
-
     try {
-      const volumeData = createVolumeDataFromShape(editedShape, finalName);
-      const success = await saveVolumeToProject(finalName, volumeData);
-
+      const volumeData = createVolumeDataFromShape(editedShape, volumeName);
+      const success = await saveVolumeToProject(volumeName, volumeData);
+      
       if (success) {
-        console.log(`✅ Volume "${finalName}" saved successfully`);
-        alert(`✅ Volume "${finalName}" saved to project!`);
-        setLoadedVolumeName(finalName);
-        setRefreshTrigger(prev => prev + 1);
+        console.log(`✅ Volume "${volumeName}" saved successfully`);
+        alert(`✅ Volume "${volumeName}" saved to project!`);
       } else {
-        console.error(`❌ Failed to save volume "${finalName}"`);
-        alert(`❌ Failed to save volume "${finalName}"`);
+        console.error(`❌ Failed to save volume "${volumeName}"`);
+        alert(`❌ Failed to save volume "${volumeName}"`);
       }
     } catch (error) {
       console.error('❌ Error saving volume:', error);
@@ -217,8 +207,8 @@ const EditMode: React.FC<EditModeProps> = ({
       });
       
       // Update volume name to loaded volume name
-      setLoadedVolumeName(volumeName);
-
+      setVolumeName(volumeName);
+      
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
       console.log(`🎯 Volume type changed to: ${volumeData.type} with current dimensions preserved`);
       console.log(`🎯 New parameters:`, newParameters);
@@ -326,7 +316,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleClose = () => {
     setActiveMainSection(null);
     setActiveVolumeSubSection(null);
-    setLoadedVolumeName(null);
     onExit();
   };
 
@@ -604,7 +593,6 @@ const EditMode: React.FC<EditModeProps> = ({
                 onBack={handleBackToMain}
                 onVolumeSelect={handleVolumeSelect}
                 onVolumeDelete={handleVolumeDelete}
-                onSaveCurrentVolume={handleSaveVolume}
                 refreshTrigger={refreshTrigger}
               />
             )}
@@ -646,7 +634,7 @@ const EditMode: React.FC<EditModeProps> = ({
           </div>
         </div>
       )}
-
+      
       <div
         className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/20' : 'hover:bg-blue-500/20'}`}
         onMouseDown={handleResizeMouseDown}
