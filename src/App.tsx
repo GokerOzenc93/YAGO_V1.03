@@ -111,7 +111,7 @@ function App() {
       id: `${geometryData.type}-${Date.now()}`,
       type: geometryData.type || 'box',
       geometry,
-      position: geometryData.position || [0, 0, 0],
+      position: geometryData.position || [0, 50, 0],
       rotation: geometryData.rotation || [0, 0, 0],
       scale: geometryData.scale || [1, 1, 1],
       color: geometryData.color || '#2563eb',
