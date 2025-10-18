@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Search, Tag, Download, Trash2, Ruler } from 'lucide-react';
+import { X, Search, Tag, Download, Trash2, Ruler, Plus } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -85,6 +85,7 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
 const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, onDelete, items }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -156,12 +157,48 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
       >
         <div className="drag-handle flex items-center justify-between px-4 py-3 border-b border-stone-200 cursor-grab active:cursor-grabbing">
           <h2 className="text-base font-semibold text-slate-800">Geometry Catalog</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:bg-stone-100 transition-colors"
-          >
-            <X size={16} className="text-slate-600" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (selectedItem) {
+                  onLoad(selectedItem);
+                  setSelectedItem(null);
+                }
+              }}
+              disabled={!selectedItem}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                selectedItem
+                  ? 'bg-orange-600 text-white hover:bg-orange-700'
+                  : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              }`}
+            >
+              <Plus size={14} />
+              Insert
+            </button>
+            <button
+              onClick={() => {
+                if (selectedItem && confirm(`Delete "${selectedItem.code}"?`)) {
+                  onDelete(selectedItem.id);
+                  setSelectedItem(null);
+                }
+              }}
+              disabled={!selectedItem}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                selectedItem
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              }`}
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-md hover:bg-stone-100 transition-colors"
+            >
+              <X size={16} className="text-slate-600" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
@@ -177,14 +214,12 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
               {filteredItems.map(item => (
                 <div
                   key={item.id}
-                  onClick={() => onLoad(item)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    if (confirm(`Delete "${item.code}"?`)) {
-                      onDelete(item.id);
-                    }
-                  }}
-                  className="border border-stone-200 rounded-lg p-3 hover:border-orange-400 hover:shadow-md transition-all bg-white cursor-pointer"
+                  onClick={() => setSelectedItem(item)}
+                  className={`border rounded-lg p-3 hover:shadow-md transition-all cursor-pointer ${
+                    selectedItem?.id === item.id
+                      ? 'border-orange-500 bg-orange-50 shadow-md'
+                      : 'border-stone-200 bg-white hover:border-orange-400'
+                  }`}
                 >
                   <GeometryPreview geometryData={item.geometry_data} />
 
