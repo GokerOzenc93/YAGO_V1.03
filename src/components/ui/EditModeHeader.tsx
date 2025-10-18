@@ -21,7 +21,8 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
 }) => {
 
   return (
-    <div className="flex items-center justify-end h-10 px-3 border-b border-gray-200">
+    <div className="flex items-center justify-between h-10 px-3 border-b border-gray-200 bg-white">
+      <h1 className="text-sm font-semibold text-gray-900">Edit Mode</h1>
 
       {panelWidth > 200 && (
         <div className="flex items-center gap-1">

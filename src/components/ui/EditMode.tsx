@@ -632,10 +632,6 @@ const EditMode: React.FC<EditModeProps> = ({
               </div>
             )}
           </div>
-
-          <div className="flex items-center justify-between h-10 px-3 border-t border-gray-200 bg-white">
-            <h1 className="text-sm font-semibold text-gray-900">Edit Mode</h1>
-          </div>
         </div>
       )}
 
