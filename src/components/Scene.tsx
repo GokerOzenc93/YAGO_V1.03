@@ -188,6 +188,7 @@ const Scene: React.FC = () => {
     convertToBaseUnit,
     updateShape,
     viewMode,
+    loadedVolumeName,
   } = useAppStore();
 
   // 🎯 NEW: Handle view mode keyboard shortcuts
@@ -594,7 +595,7 @@ const Scene: React.FC = () => {
           }}
         >
           <VolumeInfoBar
-            volumeName="DefaultVolume"
+            volumeName={loadedVolumeName || 'Default Volume'}
             cabinetCode="ad060"
             description=""
             pose={1}
