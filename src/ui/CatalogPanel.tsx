@@ -146,7 +146,7 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
     <div className="fixed inset-0 z-50 pointer-events-none">
       <div
         ref={panelRef}
-        className="absolute bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] border border-stone-200 flex flex-col pointer-events-auto"
+        className="absolute bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[80vh] border border-stone-200 flex flex-col pointer-events-auto"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -154,31 +154,18 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
         }}
         onMouseDown={handleMouseDown}
       >
-        <div className="drag-handle flex items-center justify-between px-6 py-4 border-b border-stone-200 cursor-grab active:cursor-grabbing">
-          <h2 className="text-lg font-semibold text-slate-800">Geometry Catalog</h2>
+        <div className="drag-handle flex items-center justify-between px-4 py-3 border-b border-stone-200 cursor-grab active:cursor-grabbing">
+          <h2 className="text-base font-semibold text-slate-800">Geometry Catalog</h2>
           <button
             onClick={onClose}
             className="p-1 rounded-md hover:bg-stone-100 transition-colors"
           >
-            <X size={18} className="text-slate-600" />
+            <X size={16} className="text-slate-600" />
           </button>
         </div>
 
-        <div className="px-6 py-3 border-b border-stone-200">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-2.5 text-stone-500" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by code or description..."
-              className="w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 text-slate-800"
-            />
-          </div>
-        </div>
-
         <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4">
             {filteredItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-stone-500">
                 <Tag size={48} className="mb-3 opacity-30" />
@@ -186,86 +173,80 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                 <p className="text-sm">Save geometries to build your catalog</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filteredItems.map(item => (
                 <div
                   key={item.id}
-                  className="border border-stone-200 rounded-lg p-4 hover:border-orange-400 hover:shadow-md transition-all bg-white"
+                  onClick={() => onLoad(item)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (confirm(`Delete "${item.code}"?`)) {
+                      onDelete(item.id);
+                    }
+                  }}
+                  className="border border-stone-200 rounded-lg p-3 hover:border-orange-400 hover:shadow-md transition-all bg-white cursor-pointer"
                 >
                   <GeometryPreview geometryData={item.geometry_data} />
 
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-slate-800 text-sm mb-1">{item.code}</h3>
-                      <p className="text-xs text-stone-600 line-clamp-2">{item.description || 'No description'}</p>
-                    </div>
+                  <div className="mt-2">
+                    <h3 className="font-semibold text-slate-800 text-xs mb-0.5">{item.code}</h3>
+                    <p className="text-[10px] text-stone-600 line-clamp-1">{item.description || 'No description'}</p>
                   </div>
 
                   {item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {item.tags.map(tag => (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {item.tags.slice(0, 2).map(tag => (
                         <span
                           key={tag}
-                          className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-md"
+                          className="px-1.5 py-0.5 text-[10px] bg-orange-100 text-orange-700 rounded"
                         >
                           {tag}
                         </span>
                       ))}
+                      {item.tags.length > 2 && (
+                        <span className="px-1.5 py-0.5 text-[10px] bg-stone-100 text-stone-600 rounded">
+                          +{item.tags.length - 2}
+                        </span>
+                      )}
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1 text-[11px] text-slate-600 mb-3 bg-slate-50 px-2 py-1.5 rounded border border-slate-200">
-                    <Ruler size={12} className="text-slate-500" />
+                  <div className="flex items-center gap-1 text-[10px] text-slate-600 mt-2 bg-slate-50 px-2 py-1 rounded">
+                    <Ruler size={10} className="text-slate-500" />
                     <span className="font-mono font-medium">{formatDimensions(item.geometry_data)}</span>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onLoad(item);
-                      }}
-                      className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md transition-colors flex items-center justify-center gap-1"
-                    >
-                      <Download size={14} />
-                      Load
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Delete "${item.code}"?`)) {
-                          onDelete(item.id);
-                        }
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-stone-200 hover:bg-red-100 hover:text-red-700 rounded-md transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-
-                  <p className="text-[10px] text-stone-500 mt-2">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </p>
                 </div>
               ))}
               </div>
             )}
           </div>
 
-          <div className="w-64 border-l border-stone-200 bg-stone-50 overflow-y-auto">
-            <div className="p-4">
-              <h3 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Categories</h3>
-              <div className="space-y-1">
+          <div className="w-56 border-l border-stone-200 bg-stone-50 overflow-y-auto flex flex-col">
+            <div className="p-3 border-b border-stone-200">
+              <div className="relative">
+                <Search size={14} className="absolute left-2 top-2 text-stone-500" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full pl-8 pr-2 py-1.5 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 text-slate-800"
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              <h3 className="text-[10px] font-semibold text-slate-700 mb-2 uppercase tracking-wide">Categories</h3>
+              <div className="space-y-0.5">
                 <button
                   onClick={() => setSelectedTag(null)}
-                  className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                  className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors ${
                     !selectedTag
                       ? 'bg-orange-600 text-white font-medium'
                       : 'text-slate-700 hover:bg-stone-200'
                   }`}
                 >
                   All Items
-                  <span className="float-right text-xs opacity-70">
+                  <span className="float-right text-[10px] opacity-70">
                     {items.length}
                   </span>
                 </button>
@@ -275,14 +256,14 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                     <button
                       key={tag}
                       onClick={() => setSelectedTag(tag)}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors ${
                         selectedTag === tag
                           ? 'bg-orange-600 text-white font-medium'
                           : 'text-slate-700 hover:bg-stone-200'
                       }`}
                     >
                       {tag}
-                      <span className="float-right text-xs opacity-70">
+                      <span className="float-right text-[10px] opacity-70">
                         {count}
                       </span>
                     </button>
