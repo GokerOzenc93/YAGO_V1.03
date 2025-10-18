@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppStore, Tool, CameraType } from '../store';
+import { useAppStore, Tool, CameraType, ViewMode } from '../store';
 import {
   MousePointer2,
   Move,
@@ -10,7 +10,8 @@ import {
   Camera,
   CameraOff,
   Plus,
-  Minus
+  Minus,
+  Box
 } from 'lucide-react';
 import * as THREE from 'three';
 
@@ -22,6 +23,8 @@ const Toolbar: React.FC = () => {
     selectedShapeId,
     cameraType,
     setCameraType,
+    viewMode,
+    setViewMode,
     opencascadeInstance
   } = useAppStore();
 
@@ -91,6 +94,22 @@ const Toolbar: React.FC = () => {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() =>
+              setViewMode(
+                viewMode === ViewMode.WIREFRAME
+                  ? ViewMode.SOLID
+                  : ViewMode.WIREFRAME
+              )
+            }
+            className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 transition-colors"
+          >
+            <Box size={11} className="text-blue-700" />
+            <span className="text-xs font-semibold text-blue-800">
+              {viewMode === ViewMode.WIREFRAME ? 'Wire' : 'Solid'}
+            </span>
+          </button>
+
           <button
             onClick={() =>
               setCameraType(

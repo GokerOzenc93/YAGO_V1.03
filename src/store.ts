@@ -26,6 +26,11 @@ export enum Tool {
   SCALE = 'Scale'
 }
 
+export enum ViewMode {
+  WIREFRAME = 'wireframe',
+  SOLID = 'solid'
+}
+
 interface AppState {
   shapes: Shape[];
   addShape: (shape: Shape) => void;
@@ -40,6 +45,9 @@ interface AppState {
 
   cameraType: CameraType;
   setCameraType: (type: CameraType) => void;
+
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
 
   opencascadeInstance: OpenCascadeInstance | null;
   setOpenCascadeInstance: (instance: OpenCascadeInstance | null) => void;
@@ -66,6 +74,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   cameraType: CameraType.PERSPECTIVE,
   setCameraType: (type) => set({ cameraType: type }),
+
+  viewMode: ViewMode.WIREFRAME,
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   opencascadeInstance: null,
   setOpenCascadeInstance: (instance) => set({ opencascadeInstance: instance })

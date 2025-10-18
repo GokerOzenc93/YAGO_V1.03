@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport, PerspectiveCamera, OrthographicCamera, TransformControls } from '@react-three/drei';
-import { useAppStore, CameraType, Tool } from './store';
+import { useAppStore, CameraType, Tool, ViewMode } from './store';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitControlsRef: any }> = ({
@@ -9,7 +9,7 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
   isSelected,
   orbitControlsRef
 }) => {
-  const { selectShape, updateShape, activeTool } = useAppStore();
+  const { selectShape, updateShape, activeTool, viewMode } = useAppStore();
   const transformRef = useRef<any>(null);
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -56,6 +56,8 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
     }
   };
 
+  const isWireframe = viewMode === ViewMode.WIREFRAME;
+
   return (
     <group>
       <mesh
@@ -68,20 +70,26 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
           e.stopPropagation();
           selectShape(shape.id);
         }}
+        castShadow
+        receiveShadow
       >
         <meshStandardMaterial
           color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
-          transparent
-          opacity={0}
+          transparent={isWireframe}
+          opacity={isWireframe ? 0 : 1}
           depthWrite={true}
+          metalness={0.3}
+          roughness={0.4}
         />
-        <lineSegments>
-          <edgesGeometry args={[shape.geometry]} />
-          <lineBasicMaterial
-            color={isSelected ? '#60a5fa' : '#ffffff'}
-            linewidth={isSelected ? 2 : 1}
-          />
-        </lineSegments>
+        {isWireframe && (
+          <lineSegments>
+            <edgesGeometry args={[shape.geometry]} />
+            <lineBasicMaterial
+              color={isSelected ? '#60a5fa' : '#ffffff'}
+              linewidth={isSelected ? 2 : 1}
+            />
+          </lineSegments>
+        )}
       </mesh>
 
       {isSelected && activeTool !== Tool.SELECT && (
