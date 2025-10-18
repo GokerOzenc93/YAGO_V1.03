@@ -80,50 +80,52 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
   const isWireframe = viewMode === ViewMode.WIREFRAME;
 
   return (
-    <group
-      ref={groupRef}
-      position={shape.position}
-      rotation={shape.rotation}
-      scale={shape.scale}
-      onClick={(e) => {
-        e.stopPropagation();
-        selectShape(shape.id);
-      }}
-    >
-      <mesh
-        ref={meshRef}
-        geometry={shape.geometry}
-        castShadow
-        receiveShadow
+    <>
+      <group
+        ref={groupRef}
+        position={shape.position}
+        rotation={shape.rotation}
+        scale={shape.scale}
+        onClick={(e) => {
+          e.stopPropagation();
+          selectShape(shape.id);
+        }}
       >
-        <meshStandardMaterial
-          color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
-          transparent={isWireframe}
-          opacity={isWireframe ? 0 : 1}
-          depthWrite={true}
-          metalness={0.3}
-          roughness={0.4}
-        />
-        {isWireframe ? (
-          <lineSegments>
-            <edgesGeometry args={[shape.geometry]} />
-            <lineBasicMaterial
-              color={isSelected ? '#60a5fa' : '#ffffff'}
-              linewidth={isSelected ? 2 : 1}
-            />
-          </lineSegments>
-        ) : (
-          <lineSegments>
-            <edgesGeometry args={[shape.geometry]} />
-            <lineBasicMaterial
-              color={isSelected ? '#3b82f6' : '#1a1a1a'}
-              linewidth={1}
-              opacity={0.3}
-              transparent
-            />
-          </lineSegments>
-        )}
-      </mesh>
+        <mesh
+          ref={meshRef}
+          geometry={shape.geometry}
+          castShadow
+          receiveShadow
+        >
+          <meshStandardMaterial
+            color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
+            transparent={isWireframe}
+            opacity={isWireframe ? 0 : 1}
+            depthWrite={true}
+            metalness={0.3}
+            roughness={0.4}
+          />
+          {isWireframe ? (
+            <lineSegments>
+              <edgesGeometry args={[shape.geometry]} />
+              <lineBasicMaterial
+                color={isSelected ? '#60a5fa' : '#ffffff'}
+                linewidth={isSelected ? 2 : 1}
+              />
+            </lineSegments>
+          ) : (
+            <lineSegments>
+              <edgesGeometry args={[shape.geometry]} />
+              <lineBasicMaterial
+                color={isSelected ? '#3b82f6' : '#1a1a1a'}
+                linewidth={1}
+                opacity={0.3}
+                transparent
+              />
+            </lineSegments>
+          )}
+        </mesh>
+      </group>
 
       {isSelected && activeTool !== Tool.SELECT && (
         <TransformControls
@@ -133,7 +135,7 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
           size={0.8}
         />
       )}
-    </group>
+    </>
   );
 };
 
