@@ -571,7 +571,7 @@ const YagoDesignShape: React.FC<Props> = ({
             ref={transformRef}
             object={meshRef.current}
             mode={
-              activeTool === 'Move'
+              activeTool === 'Move' || activeTool === 'Select'
                 ? 'translate'
                 : activeTool === 'Rotate'
                 ? 'rotate'
