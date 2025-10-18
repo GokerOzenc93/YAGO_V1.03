@@ -1,11 +1,10 @@
-import React from 'react';
-import { useEffect } from 'react';
-import Layout from './components/Layout';
-import Scene from './components/Scene';
-import Toolbar from './components/Toolbar';
-import StatusBar from './components/StatusBar';
-import Terminal from './components/Terminal';
-import { useAppStore } from './store/appStore';
+import React, { useEffect } from 'react';
+import Layout from './ui/Layout';
+import Scene from './Scene';
+import Toolbar from './ui/Toolbar';
+import StatusBar from './ui/StatusBar';
+import Terminal from './ui/Terminal';
+import { useAppStore } from './store';
 
 function App() {
   const { setOpenCascadeInstance } = useAppStore();
@@ -13,8 +12,10 @@ function App() {
   useEffect(() => {
     const loadOpenCascade = async () => {
       try {
-        const { useOpenCascade } = await import('./hooks/useOpenCascade');
-        console.log('✅ OpenCascade module loaded');
+        const initOpenCascade = (await import('opencascade.js')).default;
+        const oc = await initOpenCascade();
+        setOpenCascadeInstance(oc);
+        console.log('✅ OpenCascade.js loaded');
       } catch (error) {
         console.warn('⚠️ OpenCascade not available:', error);
       }
@@ -24,7 +25,7 @@ function App() {
   }, [setOpenCascadeInstance]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-200">
+    <div className="flex flex-col h-screen bg-gray-900">
       <Layout
         toolbar={<Toolbar />}
         content={<Scene />}
