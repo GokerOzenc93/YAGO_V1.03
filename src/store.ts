@@ -24,12 +24,41 @@ export enum Tool {
   SELECT = 'Select',
   MOVE = 'Move',
   ROTATE = 'Rotate',
-  SCALE = 'Scale'
+  SCALE = 'Scale',
+  POINT_TO_POINT_MOVE = 'Point to Point Move',
+  POLYLINE = 'Polyline',
+  POLYLINE_EDIT = 'Polyline Edit',
+  RECTANGLE = 'Rectangle',
+  CIRCLE = 'Circle',
+  BOOLEAN_UNION = 'Boolean Union',
+  BOOLEAN_SUBTRACT = 'Boolean Subtract',
+  DIMENSION = 'Dimension'
 }
 
 export enum ViewMode {
   WIREFRAME = 'wireframe',
   SOLID = 'solid'
+}
+
+export enum ModificationType {
+  MIRROR = 'mirror',
+  ARRAY = 'array',
+  FILLET = 'fillet',
+  CHAMFER = 'chamfer'
+}
+
+export enum SnapType {
+  ENDPOINT = 'endpoint',
+  MIDPOINT = 'midpoint',
+  CENTER = 'center',
+  PERPENDICULAR = 'perpendicular',
+  INTERSECTION = 'intersection',
+  NEAREST = 'nearest'
+}
+
+export enum OrthoMode {
+  ON = 'on',
+  OFF = 'off'
 }
 
 interface AppState {
@@ -47,12 +76,28 @@ interface AppState {
 
   activeTool: Tool;
   setActiveTool: (tool: Tool) => void;
+  lastTransformTool: Tool;
+  setLastTransformTool: (tool: Tool) => void;
 
   cameraType: CameraType;
   setCameraType: (type: CameraType) => void;
 
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  cycleViewMode: () => void;
+
+  orthoMode: OrthoMode;
+  toggleOrthoMode: () => void;
+
+  snapSettings: Record<SnapType, boolean>;
+  toggleSnapSetting: (snapType: SnapType) => void;
+
+  modifyShape: (shapeId: string, modification: any) => void;
+  performBooleanOperation: (operation: 'union' | 'subtract') => void;
+
+  pointToPointMoveState: any;
+  setPointToPointMoveState: (state: any) => void;
+  enableAutoSnap: (tool: Tool) => void;
 
   opencascadeInstance: OpenCascadeInstance | null;
   opencascadeLoading: boolean;
@@ -147,11 +192,58 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTool: Tool.SELECT,
   setActiveTool: (tool) => set({ activeTool: tool }),
 
+  lastTransformTool: Tool.SELECT,
+  setLastTransformTool: (tool) => set({ lastTransformTool: tool }),
+
   cameraType: CameraType.PERSPECTIVE,
   setCameraType: (type) => set({ cameraType: type }),
 
-  viewMode: ViewMode.WIREFRAME,
+  viewMode: ViewMode.SOLID,
   setViewMode: (mode) => set({ viewMode: mode }),
+  cycleViewMode: () => {
+    const state = get();
+    const modes = [ViewMode.SOLID, ViewMode.WIREFRAME];
+    const currentIndex = modes.indexOf(state.viewMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    set({ viewMode: modes[nextIndex] });
+  },
+
+  orthoMode: OrthoMode.OFF,
+  toggleOrthoMode: () =>
+    set((state) => ({
+      orthoMode: state.orthoMode === OrthoMode.ON ? OrthoMode.OFF : OrthoMode.ON
+    })),
+
+  snapSettings: {
+    [SnapType.ENDPOINT]: false,
+    [SnapType.MIDPOINT]: false,
+    [SnapType.CENTER]: false,
+    [SnapType.PERPENDICULAR]: false,
+    [SnapType.INTERSECTION]: false,
+    [SnapType.NEAREST]: false
+  },
+  toggleSnapSetting: (snapType) =>
+    set((state) => ({
+      snapSettings: {
+        ...state.snapSettings,
+        [snapType]: !state.snapSettings[snapType]
+      }
+    })),
+
+  modifyShape: (shapeId, modification) => {
+    console.log('Modify shape:', shapeId, modification);
+  },
+
+  performBooleanOperation: (operation) => {
+    console.log('Boolean operation:', operation);
+  },
+
+  pointToPointMoveState: null,
+  setPointToPointMoveState: (state) => set({ pointToPointMoveState: state }),
+
+  enableAutoSnap: (tool) => {
+    console.log('Enable auto snap for tool:', tool);
+  },
 
   opencascadeInstance: null,
   opencascadeLoading: true,

@@ -157,7 +157,7 @@ const ShapeWithTransform: React.FC<{
 const Scene: React.FC = () => {
   const controlsRef = useRef<any>(null);
   const { shapes, cameraType, selectedShapeId, selectShape, deleteShape, copyShape, isolateShape, exitIsolation } = useAppStore();
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -176,10 +176,12 @@ const Scene: React.FC = () => {
   const handleContextMenu = (e: any, shapeId: string) => {
     e.nativeEvent.preventDefault();
     selectShape(shapeId);
+    const shape = shapes.find(s => s.id === shapeId);
     setContextMenu({
       x: e.nativeEvent.clientX,
       y: e.nativeEvent.clientY,
-      shapeId
+      shapeId,
+      shapeType: shape?.type || 'unknown'
     });
   };
 
@@ -285,16 +287,33 @@ const Scene: React.FC = () => {
 
     {contextMenu && (
       <ContextMenu
-        x={contextMenu.x}
-        y={contextMenu.y}
+        position={{ x: contextMenu.x, y: contextMenu.y }}
+        shapeId={contextMenu.shapeId}
+        shapeType={contextMenu.shapeType}
         onClose={() => setContextMenu(null)}
-        onIsolate={() => isolateShape(contextMenu.shapeId)}
-        onEdit={() => console.log('Edit:', contextMenu.shapeId)}
-        onCopy={() => copyShape(contextMenu.shapeId)}
-        onDelete={() => deleteShape(contextMenu.shapeId)}
-        onCut={() => {
+        onEdit={() => {
+          isolateShape(contextMenu.shapeId);
+          setContextMenu(null);
+        }}
+        onCopy={() => {
           copyShape(contextMenu.shapeId);
+          setContextMenu(null);
+        }}
+        onMove={() => {
+          console.log('Move:', contextMenu.shapeId);
+          setContextMenu(null);
+        }}
+        onRotate={() => {
+          console.log('Rotate:', contextMenu.shapeId);
+          setContextMenu(null);
+        }}
+        onDelete={() => {
           deleteShape(contextMenu.shapeId);
+          setContextMenu(null);
+        }}
+        onToggleVisibility={() => {
+          console.log('Toggle visibility:', contextMenu.shapeId);
+          setContextMenu(null);
         }}
       />
     )}
