@@ -23,20 +23,16 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onCut
 }) => {
   useEffect(() => {
-    const handleClick = () => onClose();
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
+    const handleClick = (e: MouseEvent) => {
       onClose();
     };
 
     setTimeout(() => {
-      document.addEventListener('click', handleClick);
-      document.addEventListener('contextmenu', handleContextMenu);
-    }, 0);
+      document.addEventListener('click', handleClick, { capture: true });
+    }, 100);
 
     return () => {
-      document.removeEventListener('click', handleClick);
-      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('click', handleClick, { capture: true });
     };
   }, [onClose]);
 

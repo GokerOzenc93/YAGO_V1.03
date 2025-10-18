@@ -20,11 +20,11 @@ const Terminal: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-stone-900 border-t border-stone-700 z-50 h-12">
-      <div className="flex items-center h-full px-4 gap-3">
-        <TerminalIcon size={16} className="text-stone-400 flex-shrink-0" />
-        <div className="flex-1 flex items-center gap-2 font-mono text-sm">
-          <span className="text-green-400">$</span>
+    <div className="fixed bottom-0 left-0 right-0 bg-stone-50 border-t border-stone-200 z-50 h-8">
+      <div className="flex items-center h-full px-3 gap-2">
+        <TerminalIcon size={12} className="text-stone-500 flex-shrink-0" />
+        <div className="flex-1 flex items-center gap-1.5 font-mono text-xs">
+          <span className="text-blue-600 font-semibold">$</span>
           <input
             ref={inputRef}
             type="text"
@@ -32,7 +32,7 @@ const Terminal: React.FC = () => {
             onChange={(e) => setCurrentCommand(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Enter command..."
-            className="flex-1 bg-transparent text-stone-300 outline-none placeholder-stone-600"
+            className="flex-1 bg-transparent text-slate-800 outline-none placeholder-stone-400"
             autoFocus
           />
         </div>
