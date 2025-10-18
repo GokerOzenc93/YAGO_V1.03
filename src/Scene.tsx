@@ -81,12 +81,22 @@ const ShapeWithTransform: React.FC<{ shape: any; isSelected: boolean; orbitContr
           metalness={0.3}
           roughness={0.4}
         />
-        {isWireframe && (
+        {isWireframe ? (
           <lineSegments>
             <edgesGeometry args={[shape.geometry]} />
             <lineBasicMaterial
               color={isSelected ? '#60a5fa' : '#ffffff'}
               linewidth={isSelected ? 2 : 1}
+            />
+          </lineSegments>
+        ) : (
+          <lineSegments>
+            <edgesGeometry args={[shape.geometry]} />
+            <lineBasicMaterial
+              color={isSelected ? '#3b82f6' : '#1a1a1a'}
+              linewidth={1}
+              opacity={0.3}
+              transparent
             />
           </lineSegments>
         )}
@@ -130,7 +140,7 @@ const Scene: React.FC = () => {
         preserveDrawingBuffer: true
       }}
       dpr={[1, 2]}
-      style={{ background: '#1a1a1a' }}
+      style={{ background: '#f5f5f4' }}
     >
       {cameraType === CameraType.PERSPECTIVE ? (
         <PerspectiveCamera
@@ -150,11 +160,17 @@ const Scene: React.FC = () => {
         />
       )}
 
-      <ambientLight intensity={0.5} />
+      <ambientLight intensity={0.6} />
       <directionalLight
         position={[2000, 3000, 2000]}
-        intensity={1.2}
+        intensity={1.5}
         castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+      />
+      <directionalLight
+        position={[-1000, 1500, -1000]}
+        intensity={0.4}
       />
 
       <OrbitControls
@@ -169,10 +185,10 @@ const Scene: React.FC = () => {
           args={[50000, 50000]}
           cellSize={50}
           cellThickness={2}
-          cellColor="#666"
+          cellColor="#d4d4d8"
           sectionSize={250}
           sectionThickness={3}
-          sectionColor="#444"
+          sectionColor="#a1a1aa"
           fadeDistance={Infinity}
           fadeStrength={0}
           followCamera={false}
