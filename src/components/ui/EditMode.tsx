@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Puzzle, PanelLeft, Archive, MousePointer, Ruler } from 'lucide-react';
 import { Shape } from '../../types/shapes';
 import EditModeHeader from './EditModeHeader';
+import VolumeInfoBar from './VolumeInfoBar';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
 import RefVolume from './RefVolume';
@@ -36,7 +37,7 @@ const EditMode: React.FC<EditModeProps> = ({
   setIsFaceEditMode,
 }) => {
   const { addShape, selectShape, updateShape } = useAppStore();
-  const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
+  const [panelHeight, setPanelHeight] = useState('calc(100vh - 118px)');
   const [panelTop, setPanelTop] = useState('88px');
   const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
   const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
@@ -450,13 +451,6 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   // Add data attribute for EditMode identification
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--edit-panel-width',
-      isCollapsed ? '4px' : `${panelWidth}px`
-    );
-  }, [panelWidth, isCollapsed]);
-
   return (
     <div
       ref={panelRef}
@@ -493,6 +487,13 @@ const EditMode: React.FC<EditModeProps> = ({
             onClose={handleClose}
             isLocked={isLocked}
             panelWidth={panelWidth}
+          />
+
+          <VolumeInfoBar
+            volumeName={volumeName}
+            cabinetCode={cabinetCode}
+            description={description}
+            pose={pose}
           />
 
           <div className="flex-1 flex flex-col overflow-hidden">

@@ -15,7 +15,6 @@ import YagoDesignShape from './YagoDesignShape';
 import DrawingPlane from './drawing/DrawingPlane';
 import ContextMenu from './ContextMenu';
 import EditMode from './ui/EditMode';
-import VolumeInfoBar from './ui/VolumeInfoBar';
 import { DimensionsManager } from './drawing/dimensionsSystem';
 import DimensionArrows from './DimensionArrows';
 import { fitCameraToShapes, fitCameraToShape } from '../utils/cameraUtils';
@@ -568,7 +567,7 @@ const Scene: React.FC = () => {
   const [sceneRef, setSceneRef] = useState(null);
 
   return (
-    <div className="w-full h-full bg-gray-100 relative">
+    <div className="w-full h-full bg-gray-100">
       {/* WebGL Style Edit Mode Panel */}
       {isEditMode && editedShape && (
         <EditMode
@@ -583,23 +582,6 @@ const Scene: React.FC = () => {
           isFaceEditMode={isFaceEditMode}
           setIsFaceEditMode={setIsFaceEditMode}
         />
-      )}
-
-      {/* Volume Info Bar - Positioned after EditMode panel */}
-      {isEditMode && editedShape && (
-        <div
-          className="absolute top-0 left-0 right-0 z-10"
-          style={{
-            left: isEditMode ? 'var(--edit-panel-width, 340px)' : '0',
-          }}
-        >
-          <VolumeInfoBar
-            volumeName="DefaultVolume"
-            cabinetCode="ad060"
-            description=""
-            pose={1}
-          />
-        </div>
       )}
 
       <Canvas
