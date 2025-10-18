@@ -149,7 +149,7 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
           </button>
         </div>
 
-        <div className="px-6 py-4 border-b border-stone-200 space-y-3">
+        <div className="px-6 py-3 border-b border-stone-200">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-2.5 text-stone-500" />
             <input
@@ -160,47 +160,18 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
               className="w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 text-slate-800"
             />
           </div>
-
-          {allTags.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-slate-600">Filter:</span>
-              <button
-                onClick={() => setSelectedTag(null)}
-                className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                  !selectedTag
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-stone-200 text-slate-700 hover:bg-stone-300'
-                }`}
-              >
-                All
-              </button>
-              {allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setSelectedTag(tag)}
-                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                    selectedTag === tag
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-stone-200 text-slate-700 hover:bg-stone-300'
-                  }`}
-                >
-                  <Tag size={12} />
-                  {tag}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-stone-500">
-              <Tag size={48} className="mb-3 opacity-30" />
-              <p className="text-lg font-medium">No items found</p>
-              <p className="text-sm">Save geometries to build your catalog</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6">
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-stone-500">
+                <Tag size={48} className="mb-3 opacity-30" />
+                <p className="text-lg font-medium">No items found</p>
+                <p className="text-sm">Save geometries to build your catalog</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems.map(item => (
                 <div
                   key={item.id}
@@ -257,8 +228,49 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({ isOpen, onClose, onLoad, on
                   </p>
                 </div>
               ))}
+              </div>
+            )}
+          </div>
+
+          <div className="w-64 border-l border-stone-200 bg-stone-50 overflow-y-auto">
+            <div className="p-4">
+              <h3 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Categories</h3>
+              <div className="space-y-1">
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                    !selectedTag
+                      ? 'bg-orange-600 text-white font-medium'
+                      : 'text-slate-700 hover:bg-stone-200'
+                  }`}
+                >
+                  All Items
+                  <span className="float-right text-xs opacity-70">
+                    {items.length}
+                  </span>
+                </button>
+                {allTags.map(tag => {
+                  const count = items.filter(item => item.tags.includes(tag)).length;
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(tag)}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        selectedTag === tag
+                          ? 'bg-orange-600 text-white font-medium'
+                          : 'text-slate-700 hover:bg-stone-200'
+                      }`}
+                    >
+                      {tag}
+                      <span className="float-right text-xs opacity-70">
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
