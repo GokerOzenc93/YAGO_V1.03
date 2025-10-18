@@ -67,16 +67,26 @@ const EditMode: React.FC<EditModeProps> = ({
   };
 
   const handleSaveVolume = async () => {
+    const inputName = prompt('Enter volume name:', volumeName);
+
+    if (!inputName || inputName.trim() === '') {
+      return;
+    }
+
+    const finalName = inputName.trim();
+
     try {
-      const volumeData = createVolumeDataFromShape(editedShape, volumeName);
-      const success = await saveVolumeToProject(volumeName, volumeData);
-      
+      const volumeData = createVolumeDataFromShape(editedShape, finalName);
+      const success = await saveVolumeToProject(finalName, volumeData);
+
       if (success) {
-        console.log(`✅ Volume "${volumeName}" saved successfully`);
-        alert(`✅ Volume "${volumeName}" saved to project!`);
+        console.log(`✅ Volume "${finalName}" saved successfully`);
+        alert(`✅ Volume "${finalName}" saved to project!`);
+        setLoadedVolumeName(finalName);
+        setRefreshTrigger(prev => prev + 1);
       } else {
-        console.error(`❌ Failed to save volume "${volumeName}"`);
-        alert(`❌ Failed to save volume "${volumeName}"`);
+        console.error(`❌ Failed to save volume "${finalName}"`);
+        alert(`❌ Failed to save volume "${finalName}"`);
       }
     } catch (error) {
       console.error('❌ Error saving volume:', error);
@@ -594,6 +604,7 @@ const EditMode: React.FC<EditModeProps> = ({
                 onBack={handleBackToMain}
                 onVolumeSelect={handleVolumeSelect}
                 onVolumeDelete={handleVolumeDelete}
+                onSaveCurrentVolume={handleSaveVolume}
                 refreshTrigger={refreshTrigger}
               />
             )}
