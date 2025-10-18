@@ -142,15 +142,15 @@ const Toolbar: React.FC = () => {
 
 
   const transformTools = [
-    { id: Tool.SELECT, icon: <MousePointer2 size={12} />, label: 'Select', shortcut: 'V' },
-    { id: Tool.MOVE, icon: <Move size={12} />, label: 'Move', shortcut: 'M' },
-    { id: Tool.POINT_TO_POINT_MOVE, icon: <Navigation size={12} />, label: 'Point to Point', shortcut: 'P2P' },
-    { id: Tool.ROTATE, icon: <RotateCcw size={12} />, label: 'Rotate', shortcut: 'Ro' },
-    { id: Tool.SCALE, icon: <Maximize size={12} />, label: 'Scale', shortcut: 'S' },
+    { id: Tool.SELECT, icon: <MousePointer2 size={11} />, label: 'Select', shortcut: 'V' },
+    { id: Tool.MOVE, icon: <Move size={11} />, label: 'Move', shortcut: 'M' },
+    { id: Tool.POINT_TO_POINT_MOVE, icon: <Navigation size={11} />, label: 'Point to Point', shortcut: 'P2P' },
+    { id: Tool.ROTATE, icon: <RotateCcw size={11} />, label: 'Rotate', shortcut: 'Ro' },
+    { id: Tool.SCALE, icon: <Maximize size={11} />, label: 'Scale', shortcut: 'S' },
   ];
 
   const measurementTools = [
-    { id: Tool.DIMENSION, icon: <Ruler size={12} />, label: 'Dimension', shortcut: 'D' },
+    { id: Tool.DIMENSION, icon: <Ruler size={11} />, label: 'Dimension', shortcut: 'D' },
   ];
 
   const menus = [
@@ -300,15 +300,30 @@ const Toolbar: React.FC = () => {
   ];
 
   const quickAccessButtons = [
-    { icon: <FilePlus size={12} />, label: 'New', shortcut: 'Ctrl+N' },
-    { icon: <Save size={12} />, label: 'Save', shortcut: 'Ctrl+S' },
-    { icon: <FileDown size={12} />, label: 'Save As', shortcut: 'Ctrl+Shift+S' },
+    { icon: <FilePlus size={11} />, label: 'New', shortcut: 'Ctrl+N' },
+    { icon: <Save size={11} />, label: 'Save', shortcut: 'Ctrl+S' },
+    { icon: <FileDown size={11} />, label: 'Save As', shortcut: 'Ctrl+Shift+S' },
   ];
 
   const editButtons = [
-    { icon: <Undo2 size={12} />, label: 'Undo', shortcut: 'Ctrl+Z' },
-    { icon: <Redo2 size={12} />, label: 'Redo', shortcut: 'Ctrl+Y' },
+    { icon: <Undo2 size={11} />, label: 'Undo', shortcut: 'Ctrl+Z' },
+    { icon: <Redo2 size={11} />, label: 'Redo', shortcut: 'Ctrl+Y' },
   ];
+
+  const handleAddGeometry = () => {
+    const geometry = new THREE.BoxGeometry(600, 600, 600);
+    addShape({
+      id: `box-${Date.now()}`,
+      type: 'box',
+      geometry,
+      position: [0, 300, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      color: '#2563eb',
+      parameters: { width: 600, height: 600, depth: 600 }
+    });
+    console.log('✅ Box geometry added');
+  };
 
   return (
     <div className="flex flex-col font-inter">
@@ -451,41 +466,41 @@ const Toolbar: React.FC = () => {
       </div>
 
       <div className="flex items-center h-12 gap-3 px-4 bg-stone-50 border-b border-stone-200">
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
+        <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
           {quickAccessButtons.map((button, index) => (
             <button
               key={index}
-              className="p-2 rounded-md text-stone-600 hover:bg-stone-50 hover:text-slate-800 transition-colors"
+              className="p-1.5 rounded text-stone-600 hover:bg-stone-50 hover:text-slate-800 transition-colors"
               title={`${button.label} (${button.shortcut})`}
             >
-              {React.cloneElement(button.icon, { size: 14 })}
+              {button.icon}
             </button>
           ))}
         </div>
 
-        <div className="w-px h-8 bg-stone-300"></div>
+        <div className="w-px h-7 bg-stone-300"></div>
 
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
+        <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
           {editButtons.map((button, index) => (
             <button
               key={index}
-              className="p-2 rounded-md text-stone-600 hover:bg-stone-50 hover:text-slate-800 transition-colors"
+              className="p-1.5 rounded text-stone-600 hover:bg-stone-50 hover:text-slate-800 transition-colors"
               title={`${button.label} (${button.shortcut})`}
             >
-              {React.cloneElement(button.icon, { size: 14 })}
+              {button.icon}
             </button>
           ))}
         </div>
 
-        <div className="w-px h-8 bg-stone-300"></div>
+        <div className="w-px h-7 bg-stone-300"></div>
 
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
+        <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
           {transformTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 rounded transition-all ${
                 activeTool === tool.id
-                  ? 'bg-slate-800 text-white shadow-md'
+                  ? 'bg-orange-100 text-orange-700 border border-orange-300'
                   : (tool.id === Tool.SELECT || selectedShapeId)
                   ? 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
                   : 'opacity-50 cursor-not-allowed text-stone-400'
@@ -500,91 +515,91 @@ const Toolbar: React.FC = () => {
               disabled={tool.id !== Tool.SELECT && !selectedShapeId}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 14 })}
+              {tool.icon}
             </button>
           ))}
         </div>
 
-        <div className="w-px h-8 bg-stone-300"></div>
+        <div className="w-px h-7 bg-stone-300"></div>
 
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
+        <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
           <button
             onClick={() => handleSnapToggle(SnapType.ENDPOINT)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded transition-all ${
               snapSettings[SnapType.ENDPOINT]
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Endpoint Snap"
           >
-            <Target size={14} />
+            <Target size={11} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.MIDPOINT)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded transition-all ${
               snapSettings[SnapType.MIDPOINT]
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Midpoint Snap"
           >
-            <Navigation size={14} />
+            <Navigation size={11} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.CENTER)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded transition-all ${
               snapSettings[SnapType.CENTER]
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Center Snap"
           >
-            <Crosshair size={14} />
+            <Crosshair size={11} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.PERPENDICULAR)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded transition-all ${
               snapSettings[SnapType.PERPENDICULAR]
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Perpendicular Snap"
           >
-            <Zap size={14} />
+            <Zap size={11} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.INTERSECTION)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded transition-all ${
               snapSettings[SnapType.INTERSECTION]
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Intersection Snap"
           >
-            <Intersection size={14} />
+            <Intersection size={11} />
           </button>
           <button
             onClick={() => handleSnapToggle(SnapType.NEAREST)}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1.5 rounded transition-all ${
               snapSettings[SnapType.NEAREST]
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
                 : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
             }`}
             title="Nearest Snap"
           >
-            <MapPin size={14} />
+            <MapPin size={11} />
           </button>
         </div>
 
-        <div className="w-px h-8 bg-stone-300"></div>
+        <div className="w-px h-7 bg-stone-300"></div>
 
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1.5 shadow-sm border border-stone-200">
+        <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
           {measurementTools.map((tool) => (
             <button
               key={tool.id}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 rounded transition-all ${
                 activeTool === tool.id
-                  ? 'bg-slate-800 text-white shadow-md'
+                  ? 'bg-orange-100 text-orange-700 border border-orange-300'
                   : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
               }`}
               onClick={() => {
@@ -598,10 +613,21 @@ const Toolbar: React.FC = () => {
               }}
               title={`${tool.label} (${tool.shortcut})`}
             >
-              {React.cloneElement(tool.icon, { size: 14 })}
+              {tool.icon}
             </button>
           ))}
         </div>
+
+        <div className="w-px h-7 bg-stone-300"></div>
+
+        <button
+          onClick={handleAddGeometry}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white transition-colors shadow-sm"
+          title="Add Geometry (B)"
+        >
+          <Package size={11} />
+          <span className="text-xs font-medium">Add Geometry</span>
+        </button>
       </div>
 
       {showPolylineMenu && (
