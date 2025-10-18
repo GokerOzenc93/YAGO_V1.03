@@ -46,11 +46,18 @@ export const saveVolumeToProject = async (volumeName: string, volumeData: Volume
     console.log(`📄 Volume data:`, volumeData);
 
     // Check if volume already exists
-    const { data: existingVolume } = await supabase
+    console.log('🔍 Checking if volume exists...');
+    const { data: existingVolume, error: checkError } = await supabase
       .from('volumes')
       .select('id')
       .eq('name', volumeName)
       .maybeSingle();
+
+    if (checkError) {
+      console.error('❌ Error checking existing volume:', checkError);
+    }
+
+    console.log('Existing volume:', existingVolume);
 
     let result;
 
@@ -158,6 +165,7 @@ export const loadVolumeFromProject = async (volumeName: string): Promise<VolumeD
  */
 export const getSavedVolumes = async (): Promise<string[]> => {
   try {
+    console.log('🔍 Fetching saved volumes from database...');
     const { data, error } = await supabase
       .from('volumes')
       .select('name')
@@ -169,6 +177,7 @@ export const getSavedVolumes = async (): Promise<string[]> => {
       return [];
     }
 
+    console.log('✅ Fetched volumes:', data);
     return data ? data.map(v => v.name) : [];
   } catch (error) {
     console.error('❌ Failed to get saved volumes:', error);
