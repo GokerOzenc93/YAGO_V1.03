@@ -132,13 +132,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       shapes: state.shapes.map((s) => ({
         ...s,
-        isolated: s.id === id
+        isolated: s.id !== id ? false : undefined
       }))
     })),
 
   exitIsolation: () =>
     set((state) => ({
-      shapes: state.shapes.map((s) => ({ ...s, isolated: false }))
+      shapes: state.shapes.map((s) => ({ ...s, isolated: undefined }))
     })),
 
   selectedShapeId: null,
