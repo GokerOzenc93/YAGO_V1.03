@@ -88,32 +88,57 @@ function App() {
     switch (geometryData.type) {
       case 'cylinder':
         geometry = new THREE.CylinderGeometry(
-          params.radiusTop || 50,
-          params.radiusBottom || 50,
-          params.height || 100,
+          params.radiusTop !== undefined ? params.radiusTop : 50,
+          params.radiusBottom !== undefined ? params.radiusBottom : 50,
+          params.height !== undefined ? params.height : 100,
           32
         );
         break;
       case 'sphere':
-        geometry = new THREE.SphereGeometry(params.radius || 50, 32, 32);
+        geometry = new THREE.SphereGeometry(
+          params.radius !== undefined ? params.radius : 50,
+          32,
+          32
+        );
+        break;
+      case 'cone':
+        geometry = new THREE.ConeGeometry(
+          params.radius !== undefined ? params.radius : 40,
+          params.height !== undefined ? params.height : 100,
+          32
+        );
         break;
       case 'box':
       default:
         geometry = new THREE.BoxGeometry(
-          params.width || 100,
-          params.height || 100,
-          params.depth || 100
+          params.width !== undefined ? params.width : 100,
+          params.height !== undefined ? params.height : 100,
+          params.depth !== undefined ? params.depth : 100
         );
         break;
     }
+
+    const newPosition: [number, number, number] = [
+      geometryData.position?.[0] ?? 0,
+      geometryData.position?.[1] ?? 0,
+      geometryData.position?.[2] ?? 0
+    ];
 
     addShape({
       id: `${geometryData.type}-${Date.now()}`,
       type: geometryData.type || 'box',
       geometry,
-      position: geometryData.position || [0, 50, 0],
-      rotation: geometryData.rotation || [0, 0, 0],
-      scale: geometryData.scale || [1, 1, 1],
+      position: newPosition,
+      rotation: [
+        geometryData.rotation?.[0] ?? 0,
+        geometryData.rotation?.[1] ?? 0,
+        geometryData.rotation?.[2] ?? 0
+      ],
+      scale: [
+        geometryData.scale?.[0] ?? 1,
+        geometryData.scale?.[1] ?? 1,
+        geometryData.scale?.[2] ?? 1
+      ],
       color: geometryData.color || '#2563eb',
       parameters: params
     });
