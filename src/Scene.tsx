@@ -200,14 +200,37 @@ const Scene: React.FC = () => {
     if (!shape) return;
 
     try {
+      const actualParameters = { ...shape.parameters };
+
+      if (shape.type === 'box' && actualParameters.width && actualParameters.height && actualParameters.depth) {
+        actualParameters.width = actualParameters.width * shape.scale[0];
+        actualParameters.height = actualParameters.height * shape.scale[1];
+        actualParameters.depth = actualParameters.depth * shape.scale[2];
+      } else if (shape.type === 'cylinder' && actualParameters.height) {
+        if (actualParameters.radiusTop !== undefined) {
+          actualParameters.radiusTop = actualParameters.radiusTop * shape.scale[0];
+        }
+        if (actualParameters.radiusBottom !== undefined) {
+          actualParameters.radiusBottom = actualParameters.radiusBottom * shape.scale[0];
+        }
+        actualParameters.height = actualParameters.height * shape.scale[1];
+      } else if (shape.type === 'sphere' && actualParameters.radius) {
+        actualParameters.radius = actualParameters.radius * shape.scale[0];
+      } else if (shape.type === 'cone' && actualParameters.radius && actualParameters.height) {
+        actualParameters.radius = actualParameters.radius * shape.scale[0];
+        actualParameters.height = actualParameters.height * shape.scale[1];
+      }
+
       const geometryData = {
         type: shape.type,
         position: shape.position,
         rotation: shape.rotation,
-        scale: shape.scale,
+        scale: [1, 1, 1],
         color: shape.color,
-        parameters: shape.parameters
+        parameters: actualParameters
       };
+
+      console.log('Saving geometry with scaled parameters:', actualParameters);
 
       await catalogService.save({
         code: data.code,
