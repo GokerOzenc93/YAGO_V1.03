@@ -79,14 +79,17 @@ const Toolbar: React.FC = () => {
     console.log('Subtract button clicked');
     console.log('Selected shape ID:', selectedShapeId);
     console.log('Total shapes:', shapes.length);
+    console.log('OpenCascade loaded:', !!opencascadeInstance);
 
-    if (!selectedShapeId || shapes.length < 2) {
-      console.warn('⚠️ Need at least 2 shapes and one selected');
+    if (!opencascadeInstance) {
+      console.error('❌ OpenCascade not loaded yet - please wait a moment and try again');
+      alert('OpenCascade is still loading. Please wait a few seconds and try again.');
       return;
     }
 
-    if (!opencascadeInstance) {
-      console.error('❌ OpenCascade not loaded yet');
+    if (!selectedShapeId || shapes.length < 2) {
+      console.warn('⚠️ Need at least 2 shapes and one selected');
+      alert('Please select a shape and ensure there are at least 2 shapes.');
       return;
     }
 
@@ -250,8 +253,8 @@ const Toolbar: React.FC = () => {
           <button
             onClick={handleSubtract}
             className="p-1.5 rounded-sm hover:bg-red-50 hover:text-red-700 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            disabled={!selectedShapeId || shapes.length < 2}
-            title="Subtract"
+            disabled={!opencascadeInstance || !selectedShapeId || shapes.length < 2}
+            title={!opencascadeInstance ? "Loading OpenCascade..." : "Subtract"}
           >
             <Minus size={11} />
           </button>
