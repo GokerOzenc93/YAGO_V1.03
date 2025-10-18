@@ -5,7 +5,7 @@ import EditModeHeader from './EditModeHeader';
 import VolumeLibrary from './VolumeLibrary';
 import SurfaceSpecification from './SurfaceSpecification';
 import RefVolume from './RefVolume';
-import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject, SurfaceSpecification as SurfaceSpec } from '../../utils/fileSystem';
+import { saveVolumeToProject, createVolumeDataFromShape, loadVolumeFromProject, deleteVolumeFromProject } from '../../utils/fileSystem';
 import { useAppStore } from '../../store/appStore';
 import { GeometryFactory } from '../../lib/geometryFactory';
 import * as THREE from 'three';
@@ -35,15 +35,15 @@ const EditMode: React.FC<EditModeProps> = ({
   isFaceEditMode,
   setIsFaceEditMode,
 }) => {
-  const { addShape, selectShape, updateShape, loadedVolumeName, setLoadedVolumeName } = useAppStore();
+  const { addShape, selectShape, updateShape } = useAppStore();
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
   const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
   const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLocked, setIsLocked] = useState(true);
-
-  const volumeName = loadedVolumeName || 'Default Volume';
+  const [isLocked, setIsLocked] = useState(true); 
+  
+  const [volumeName, setVolumeName] = useState('DefaultVolume');
   const [cabinetCode, setCabinetCode] = useState('ad060');
   const [description, setDescription] = useState('');
   const [pose, setPose] = useState(1);
@@ -61,35 +61,22 @@ const EditMode: React.FC<EditModeProps> = ({
   const [selectedFaces, setSelectedFaces] = useState<Array<{index: number, role: string}>>([]);
   const [pendingFaceSelection, setPendingFaceSelection] = useState<number | null>(null);
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
-  const [surfaceSpecifications, setSurfaceSpecifications] = useState<SurfaceSpec[]>([]);
   
   const handleVolumeNameChange = (name: string) => {
-    setLoadedVolumeName(name);
+    setVolumeName(name);
   };
 
   const handleSaveVolume = async () => {
-    const inputName = prompt('Enter volume name:', volumeName);
-
-    if (!inputName || inputName.trim() === '') {
-      return;
-    }
-
-    const finalName = inputName.trim();
-
     try {
-      const volumeData = createVolumeDataFromShape(editedShape, finalName);
-      volumeData.surfaceSpecifications = surfaceSpecifications;
-
-      const success = await saveVolumeToProject(finalName, volumeData);
-
+      const volumeData = createVolumeDataFromShape(editedShape, volumeName);
+      const success = await saveVolumeToProject(volumeName, volumeData);
+      
       if (success) {
-        console.log(`✅ Volume "${finalName}" saved successfully with ${surfaceSpecifications.length} surface specifications`);
-        alert(`✅ Volume "${finalName}" saved to project!`);
-        setLoadedVolumeName(finalName);
-        setRefreshTrigger(prev => prev + 1);
+        console.log(`✅ Volume "${volumeName}" saved successfully`);
+        alert(`✅ Volume "${volumeName}" saved to project!`);
       } else {
-        console.error(`❌ Failed to save volume "${finalName}"`);
-        alert(`❌ Failed to save volume "${finalName}"`);
+        console.error(`❌ Failed to save volume "${volumeName}"`);
+        alert(`❌ Failed to save volume "${volumeName}"`);
       }
     } catch (error) {
       console.error('❌ Error saving volume:', error);
@@ -220,16 +207,8 @@ const EditMode: React.FC<EditModeProps> = ({
       });
       
       // Update volume name to loaded volume name
-      setLoadedVolumeName(volumeName);
-
-      // Load surface specifications if available
-      if (volumeData.surfaceSpecifications && volumeData.surfaceSpecifications.length > 0) {
-        setSurfaceSpecifications(volumeData.surfaceSpecifications);
-        console.log(`🎯 Loaded ${volumeData.surfaceSpecifications.length} surface specifications`);
-      } else {
-        setSurfaceSpecifications([]);
-      }
-
+      setVolumeName(volumeName);
+      
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
       console.log(`🎯 Volume type changed to: ${volumeData.type} with current dimensions preserved`);
       console.log(`🎯 New parameters:`, newParameters);
@@ -337,8 +316,6 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleClose = () => {
     setActiveMainSection(null);
     setActiveVolumeSubSection(null);
-    setLoadedVolumeName(null);
-    setSurfaceSpecifications([]);
     onExit();
   };
 
@@ -616,7 +593,6 @@ const EditMode: React.FC<EditModeProps> = ({
                 onBack={handleBackToMain}
                 onVolumeSelect={handleVolumeSelect}
                 onVolumeDelete={handleVolumeDelete}
-                onSaveCurrentVolume={handleSaveVolume}
                 refreshTrigger={refreshTrigger}
               />
             )}
@@ -624,8 +600,6 @@ const EditMode: React.FC<EditModeProps> = ({
             {activeMainSection === 'volume' && activeVolumeSubSection === 'surface' && (
               <SurfaceSpecification
                 onBack={handleBackToMain}
-                surfaceRows={surfaceSpecifications}
-                onSurfaceRowsChange={setSurfaceSpecifications}
               />
             )}
 
@@ -660,7 +634,7 @@ const EditMode: React.FC<EditModeProps> = ({
           </div>
         </div>
       )}
-
+      
       <div
         className={`absolute top-0 right-0 w-3 h-full cursor-ew-resize bg-transparent transition-colors ${isResizing ? 'bg-blue-500/20' : 'hover:bg-blue-500/20'}`}
         onMouseDown={handleResizeMouseDown}

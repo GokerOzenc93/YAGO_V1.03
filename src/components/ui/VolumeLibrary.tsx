@@ -1,12 +1,11 @@
 import React from 'react';
-import { ChevronLeft, Archive, Plus } from 'lucide-react';
+import { ChevronLeft, Archive } from 'lucide-react';
 import { getSavedVolumes } from '../../utils/fileSystem';
 
 interface VolumeLibraryProps {
   onBack: () => void;
   onVolumeSelect: (volumeName: string) => void;
   onVolumeDelete: (volumeName: string) => void;
-  onSaveCurrentVolume: () => void;
   refreshTrigger: number;
 }
 
@@ -14,7 +13,6 @@ const VolumeLibrary: React.FC<VolumeLibraryProps> = ({
   onBack,
   onVolumeSelect,
   onVolumeDelete,
-  onSaveCurrentVolume,
   refreshTrigger
 }) => {
   return (
@@ -30,13 +28,6 @@ const VolumeLibrary: React.FC<VolumeLibraryProps> = ({
           <Archive size={11} className="text-orange-600" />
           <span className="text-xs font-medium text-orange-800">Volume Library</span>
         </div>
-        <button
-          onClick={onSaveCurrentVolume}
-          className="p-1.5 hover:bg-orange-200 rounded-sm transition-colors"
-          title="Save current volume"
-        >
-          <Plus size={14} className="text-orange-600" />
-        </button>
       </div>
 
       <div className="flex-1 p-4">

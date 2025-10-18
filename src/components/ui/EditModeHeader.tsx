@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pin, PinOff, ChevronLeft } from 'lucide-react';
+import { X, Pin, PinOff, Save, ChevronLeft } from 'lucide-react';
 
 interface EditModeHeaderProps {
   volumeName: string;
@@ -13,6 +13,7 @@ interface EditModeHeaderProps {
 }
 
 const EditModeHeader: React.FC<EditModeHeaderProps> = ({
+  onSaveVolume,
   onToggleLock,
   onCollapse,
   onClose,
@@ -21,8 +22,16 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
 }) => {
 
   return (
-    <div className="flex items-center justify-between h-10 px-3 border-b border-gray-200 bg-white">
-      <h1 className="text-sm font-semibold text-gray-900">Edit Mode</h1>
+    <div className="flex items-center justify-between h-10 px-3 border-b border-gray-200">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onSaveVolume}
+          className="text-stone-600 hover:text-green-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-green-50 flex-shrink-0"
+          title="Save Volume"
+        >
+          <Save size={11} />
+        </button>
+      </div>
 
       {panelWidth > 200 && (
         <div className="flex items-center gap-1">
@@ -44,6 +53,14 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
             title={isLocked ? 'Paneli Çöz' : 'Paneli Sabitle'}
           >
             {isLocked ? <Pin size={11} /> : <PinOff size={11} />}
+          </button>
+
+          <button
+            onClick={onClose}
+            className="text-stone-600 hover:text-red-600 p-1.5 rounded-sm transition-colors bg-stone-50 hover:bg-red-50 flex-shrink-0"
+            title="Düzenleme Modundan Çık"
+          >
+            <X size={11} />
           </button>
         </div>
       )}
