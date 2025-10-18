@@ -140,8 +140,9 @@ const Scene: React.FC = () => {
         preserveDrawingBuffer: true
       }}
       dpr={[1, 2]}
-      style={{ background: '#f5f5f4' }}
     >
+      <color attach="background" args={['#f5f5f4']} />
+
       {cameraType === CameraType.PERSPECTIVE ? (
         <PerspectiveCamera
           makeDefault
