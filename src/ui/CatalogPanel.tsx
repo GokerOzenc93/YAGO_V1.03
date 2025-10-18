@@ -30,8 +30,6 @@ const StaticMesh: React.FC<{ geometry: THREE.BufferGeometry; color: string; rota
 };
 
 const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
-  const [bounds, setBounds] = useState<THREE.Box3 | null>(null);
-
   const createGeometry = () => {
     const params = geometryData.parameters || {};
 
@@ -60,25 +58,29 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
 
   const geometry = useMemo(() => createGeometry(), [geometryData]);
 
-  useEffect(() => {
-    if (geometry) {
-      const box = new THREE.Box3().setFromObject(new THREE.Mesh(geometry));
-      setBounds(box);
-    }
-  }, [geometry]);
-
   const color = geometryData.color || '#2563eb';
-  const rotation = geometryData.rotation || [0, 0, 0];
-  const position = geometryData.position || [0, 0, 0];
   const scale = geometryData.scale || [1, 1, 1];
 
-  const cameraDistance = useMemo(() => {
-    if (!bounds) return 300;
+  const { cameraDistance, normalizedScale } = useMemo(() => {
+    const bbox = new THREE.Box3().setFromObject(new THREE.Mesh(geometry));
     const size = new THREE.Vector3();
-    bounds.getSize(size);
-    const maxDim = Math.max(size.x, size.y, size.z);
-    return maxDim * 2.2;
-  }, [bounds]);
+    bbox.getSize(size);
+
+    const scaledSize = new THREE.Vector3(
+      size.x * scale[0],
+      size.y * scale[1],
+      size.z * scale[2]
+    );
+
+    const maxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
+    const targetSize = 120;
+    const fitScale = targetSize / maxDim;
+
+    return {
+      cameraDistance: 250,
+      normalizedScale: [scale[0] * fitScale, scale[1] * fitScale, scale[2] * fitScale] as [number, number, number]
+    };
+  }, [geometry, scale]);
 
   return (
     <div className="w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
@@ -87,8 +89,8 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
         gl={{ alpha: false, antialias: true }}
       >
         <color attach="background" args={['#f8fafc']} />
-        <PerspectiveCamera makeDefault position={[cameraDistance, cameraDistance * 0.7, cameraDistance * 0.8]} fov={40} />
-        <OrbitControls enableZoom={true} enablePan={false} target={[0, 0, 0]} />
+        <PerspectiveCamera makeDefault position={[cameraDistance * 0.8, cameraDistance * 0.7, cameraDistance * 0.8]} fov={35} />
+        <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} target={[0, 0, 0]} />
         <ambientLight intensity={1.2} />
         <directionalLight position={[5, 10, 5]} intensity={1.4} />
         <directionalLight position={[-5, -5, -5]} intensity={0.5} />
@@ -96,9 +98,9 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
         <StaticMesh
           geometry={geometry}
           color={color}
-          rotation={[0, 0, 0]}
+          rotation={[-Math.PI / 6, Math.PI / 4, 0]}
           position={[0, 0, 0]}
-          scale={[1, 1, 1]}
+          scale={normalizedScale}
         />
       </Canvas>
     </div>
