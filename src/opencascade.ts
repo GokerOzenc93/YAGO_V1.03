@@ -1,4 +1,4 @@
-import type { OpenCascadeInstance, TopoDS_Shape } from 'opencascade.js';
+import type { OpenCascadeInstance, TopoDS_Shape } from './vite-env';
 import * as THREE from 'three';
 
 export interface OCGeometryParams {

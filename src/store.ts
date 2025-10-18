@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import type { OpenCascadeInstance } from 'opencascade.js';
+import type { OpenCascadeInstance } from './vite-env';
 
 export interface Shape {
   id: string;

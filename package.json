@@ -14,7 +14,6 @@
     "@react-three/fiber": "^8.15.19",
     "@supabase/supabase-js": "^2.39.0",
     "lucide-react": "^0.344.0",
-    "opencascade.js": "^2.0.0-beta.b5ff984",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.162.0",

@@ -12,10 +12,34 @@ function App() {
   useEffect(() => {
     const loadOpenCascade = async () => {
       try {
-        const initOpenCascade = (await import('opencascade.js')).default;
-        const oc = await initOpenCascade();
-        setOpenCascadeInstance(oc);
-        console.log('✅ OpenCascade.js loaded');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.b5ff984/dist/opencascade.full.js';
+        script.async = true;
+
+        script.onload = async () => {
+          try {
+            const initOpenCascade = (window as any).opencascade;
+            if (initOpenCascade) {
+              const oc = await initOpenCascade();
+              setOpenCascadeInstance(oc);
+              console.log('✅ OpenCascade.js loaded from CDN');
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to initialize OpenCascade:', error);
+          }
+        };
+
+        script.onerror = () => {
+          console.warn('⚠️ Failed to load OpenCascade from CDN');
+        };
+
+        document.head.appendChild(script);
+
+        return () => {
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+        };
       } catch (error) {
         console.warn('⚠️ OpenCascade not available:', error);
       }

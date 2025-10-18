@@ -25,12 +25,19 @@ src/
 - **BREP Geometry**: All geometry created using OpenCascade.js
 - **3D Viewport**: Real-time 3D rendering with Three.js
 - **Wireframe Display**: Clean edge visualization
+- **Transform Controls**: Interactive translate, rotate, and scale tools
+- **Object Selection**: Click to select objects, visual feedback
 - **Camera Controls**:
   - Perspective/Orthographic toggle
   - Orbit controls with damping
+  - Auto-disable during transforms
+- **Keyboard Shortcuts**:
+  - `Delete` - Delete selected object
+  - `Escape` - Deselect object
 - **Gizmo**: Visual axis helper
 - **Grid**: Infinite grid for reference
 - **Terminal**: Built-in console for debugging
+- **Live Status Bar**: Object count, selection info, position tracking
 
 ## Tech Stack
 
@@ -59,7 +66,7 @@ npm run build
 
 ## OpenCascade Integration
 
-OpenCascade.js is loaded dynamically to avoid build issues with WebAssembly modules. If OpenCascade fails to load, the application falls back to Three.js primitives.
+OpenCascade.js is loaded from CDN to avoid WebAssembly bundling issues. The library is loaded dynamically at runtime via script injection. If OpenCascade fails to load, the application falls back to Three.js primitives.
 
 ### Creating Geometry
 
@@ -99,11 +106,21 @@ const { shapes, addShape, selectShape, opencascadeInstance } = useAppStore();
 
 ## Development Notes
 
-- OpenCascade.js is marked as external in Vite config
+- OpenCascade.js is loaded from CDN (jsDelivr) to avoid Vite WebAssembly issues
 - All geometry is BREP-based for precision
 - Wireframe-only display (opacity: 0 on meshes)
+- TransformControls automatically disable OrbitControls during drag
 - Two-level file structure for simplicity
 - UI components isolated in `/ui` folder
+
+## Usage
+
+1. **Add Geometry**: Click "Add Geometry" in toolbar to create a box
+2. **Select Object**: Click on any object in the 3D view
+3. **Transform**: Use toolbar tools (Move/Rotate/Scale) to transform selected object
+4. **Delete**: Press `Delete` key to remove selected object
+5. **Camera**: Toggle Perspective/Orthographic from toolbar
+6. **Console**: Click terminal icon (bottom-right) for debug output
 
 ## License
 
