@@ -206,7 +206,11 @@ const Scene: React.FC = () => {
         rotation: shape.rotation,
         scale: shape.scale,
         color: shape.color,
-        parameters: shape.parameters
+        parameters: shape.parameters,
+        geometry: {
+          type: shape.geometry.type,
+          parameters: shape.geometry.parameters
+        }
       };
 
       await catalogService.save({
@@ -217,8 +221,6 @@ const Scene: React.FC = () => {
       });
 
       console.log('Geometry saved to catalog:', data.code);
-      alert('Geometry saved successfully!');
-      setSaveDialog({ isOpen: false, shapeId: null });
     } catch (error) {
       console.error('Failed to save geometry:', error);
       alert('Failed to save geometry. Please try again.');

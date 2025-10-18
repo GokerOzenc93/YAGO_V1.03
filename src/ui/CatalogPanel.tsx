@@ -21,9 +21,17 @@ interface CatalogPanelProps {
   items: CatalogItem[];
 }
 
-const StaticMesh: React.FC<{ geometry: THREE.BufferGeometry; color: string; rotation: [number, number, number]; position: [number, number, number]; scale: [number, number, number] }> = ({ geometry, color, rotation, position, scale }) => {
+const MeshWithAnimation: React.FC<{ geometry: THREE.BufferGeometry; color: string; rotation: [number, number, number]; position: [number, number, number]; scale: [number, number, number] }> = ({ geometry, color, rotation, position, scale }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += 0.01;
+    }
+  });
+
   return (
-    <mesh geometry={geometry} position={position} rotation={rotation} scale={scale}>
+    <mesh ref={meshRef} geometry={geometry} position={position} rotation={rotation} scale={scale}>
       <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} />
     </mesh>
   );
@@ -73,12 +81,13 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
   const scale = geometryData.scale || [1, 1, 1];
 
   const cameraDistance = useMemo(() => {
-    if (!bounds) return 300;
+    if (!bounds) return 250;
     const size = new THREE.Vector3();
     bounds.getSize(size);
-    const maxDim = Math.max(size.x, size.y, size.z);
-    return maxDim * 2.2;
+    return Math.max(size.x, size.y, size.z) * 2.5;
   }, [bounds]);
+
+  const center = bounds ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0, 0, 0);
 
   return (
     <div className="w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
@@ -87,19 +96,21 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
         gl={{ alpha: false, antialias: true }}
       >
         <color attach="background" args={['#f8fafc']} />
-        <PerspectiveCamera makeDefault position={[cameraDistance, cameraDistance * 0.7, cameraDistance * 0.8]} fov={40} />
-        <OrbitControls enableZoom={true} enablePan={false} target={[0, 0, 0]} />
+        <PerspectiveCamera makeDefault position={[cameraDistance, cameraDistance, cameraDistance]} fov={35} />
+        <OrbitControls enableZoom={false} enablePan={false} />
         <ambientLight intensity={1.2} />
         <directionalLight position={[5, 10, 5]} intensity={1.4} />
         <directionalLight position={[-5, -5, -5]} intensity={0.5} />
 
-        <StaticMesh
-          geometry={geometry}
-          color={color}
-          rotation={[0, 0, 0]}
-          position={[0, 0, 0]}
-          scale={[1, 1, 1]}
-        />
+        <group position={[-center.x, -center.y, -center.z]}>
+          <MeshWithAnimation
+            geometry={geometry}
+            color={color}
+            rotation={rotation as [number, number, number]}
+            position={position as [number, number, number]}
+            scale={scale as [number, number, number]}
+          />
+        </group>
       </Canvas>
     </div>
   );
