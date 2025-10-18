@@ -11,7 +11,9 @@ import {
   CameraOff,
   Plus,
   Minus,
-  Box
+  Box,
+  File,
+  FolderOpen
 } from 'lucide-react';
 import * as THREE from 'three';
 
@@ -152,17 +154,39 @@ const Toolbar: React.FC = () => {
   return (
     <div className="flex flex-col bg-stone-50 border-b border-stone-200">
       <div className="flex items-center h-12 px-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-slate-800">Untitled Project</span>
+            <span className="text-[10px] text-slate-500">Drawing 1 - Not Saved</span>
+          </div>
+
+          <div className="w-px h-8 bg-stone-300"></div>
+
+          <div className="flex items-center gap-1">
+            <button className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors">
+              <Save size={11} className="text-slate-600" />
+              <span className="text-xs text-slate-700">Save</span>
+            </button>
+            <button className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors">
+              <File size={11} className="text-slate-600" />
+              <span className="text-xs text-slate-700">New</span>
+            </button>
+            <button className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors">
+              <FolderOpen size={11} className="text-slate-600" />
+              <span className="text-xs text-slate-700">Save As</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
           <img
             src="/yago_logo.png"
             alt="YAGO Design"
             className="h-6 w-auto object-contain"
           />
-          <div className="w-px h-5 bg-stone-300"></div>
-          <span className="text-sm font-semibold text-slate-800">YAGO CAD</span>
-        </div>
 
-        <div className="ml-auto flex items-center gap-2">
+          <div className="w-px h-5 bg-stone-300"></div>
+
           <button
             onClick={() =>
               setViewMode(
@@ -202,14 +226,6 @@ const Toolbar: React.FC = () => {
       </div>
 
       <div className="flex items-center h-10 gap-1.5 px-3">
-        <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
-          <button className="p-1.5 rounded-sm text-stone-600 hover:bg-stone-50">
-            <Save size={11} />
-          </button>
-        </div>
-
-        <div className="w-px h-6 bg-stone-300"></div>
-
         <div className="flex items-center gap-0.5 bg-white rounded-md p-1 shadow-sm border border-stone-200">
           {transformTools.map((tool) => (
             <button
