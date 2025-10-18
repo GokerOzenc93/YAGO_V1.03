@@ -146,7 +146,7 @@ const Scene: React.FC = () => {
       {cameraType === CameraType.PERSPECTIVE ? (
         <PerspectiveCamera
           makeDefault
-          position={[1000, 1600, 1800]}
+          position={[2000, 2000, 2000]}
           fov={45}
           near={1}
           far={50000}
@@ -154,7 +154,7 @@ const Scene: React.FC = () => {
       ) : (
         <OrthographicCamera
           makeDefault
-          position={[1000, 1600, 1800]}
+          position={[2000, 2000, 2000]}
           zoom={0.25}
           near={-50000}
           far={50000}
@@ -177,11 +177,12 @@ const Scene: React.FC = () => {
       <OrbitControls
         ref={controlsRef}
         makeDefault
+        target={[0, 0, 0]}
         enableDamping
         dampingFactor={0.05}
       />
 
-      <group position={[0, -0.001, 0]}>
+      <group position={[-2500, -0.001, -2500]}>
         <Grid
           args={[50000, 50000]}
           cellSize={50}
