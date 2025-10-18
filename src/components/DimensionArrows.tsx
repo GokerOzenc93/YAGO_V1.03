@@ -9,7 +9,7 @@ interface DimensionArrowsProps {
 }
 
 const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
-  const { convertToDisplayUnit, measurementUnit } = useAppStore();
+  const { convertToDisplayUnit, measurementUnit, visibleDimensions } = useAppStore();
 
   const dimensions = useMemo(() => {
     if (!shape.geometry) return null;
@@ -46,9 +46,13 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
   if (!dimensions) return null;
 
   const offset = 50;
+  const showWidth = !visibleDimensions.has('width');
+  const showHeight = !visibleDimensions.has('height');
+  const showDepth = !visibleDimensions.has('depth');
 
   return (
     <group>
+      {showWidth && (
       <group>
           <Line
             points={[
@@ -95,7 +99,9 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             </div>
           </Html>
         </group>
+      )}
 
+      {showHeight && (
       <group>
           <Line
             points={[
@@ -142,7 +148,9 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             </div>
           </Html>
         </group>
+      )}
 
+      {showDepth && (
       <group>
           <Line
             points={[
@@ -189,6 +197,7 @@ const DimensionArrows: React.FC<DimensionArrowsProps> = ({ shape }) => {
             </div>
           </Html>
         </group>
+      )}
     </group>
   );
 };

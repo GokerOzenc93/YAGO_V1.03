@@ -409,6 +409,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ orthoMode: mode });
     console.log(`🎯 Ortho mode changed to: ${mode}`);
   },
+
+  // Dimension visibility
+  visibleDimensions: new Set<string>(),
+  setVisibleDimensions: (dimensions) => set({ visibleDimensions: dimensions }),
   
   // 🎯 NEW: Toggle ortho mode
   toggleOrthoMode: () => {

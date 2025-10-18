@@ -21,6 +21,7 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
     convertToDisplayUnit,
     convertToBaseUnit,
     updateShape,
+    setVisibleDimensions,
   } = useAppStore();
 
 
@@ -58,6 +59,10 @@ const RefVolume: React.FC<RefVolumeProps> = ({ editedShape, onClose }) => {
 
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setVisibleDimensions(selectedDimensions);
+  }, [selectedDimensions, setVisibleDimensions]);
 
 
   const canEditWidth = ['box', 'rectangle2d', 'polyline2d', 'polygon2d', 'polyline3d', 'polygon3d'].includes(editedShape.type);
