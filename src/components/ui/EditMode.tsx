@@ -100,8 +100,13 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleVolumeSelect = async (volumeName: string) => {
     try {
       console.log(`🎯 Loading volume: ${volumeName}`);
+
+      // Clear current face selections and surface specifications FIRST
+      setSelectedFaces([]);
+      setSurfaceSpecifications([]);
+
       const volumeData = await loadVolumeFromProject(volumeName);
-      
+
       // Get current dimensions from edited shape
       const currentGeometry = editedShape.geometry;
       currentGeometry.computeBoundingBox();
@@ -223,22 +228,23 @@ const EditMode: React.FC<EditModeProps> = ({
       setLoadedVolumeName(volumeName);
 
       // Load surface specifications if available
-      if (volumeData.surfaceSpecifications && volumeData.surfaceSpecifications.length > 0) {
+      if (volumeData.surfaceSpecifications && Array.isArray(volumeData.surfaceSpecifications) && volumeData.surfaceSpecifications.length > 0) {
         setSurfaceSpecifications(volumeData.surfaceSpecifications);
 
         // Convert surface specifications to selectedFaces for visual highlighting
         const loadedFaces: Array<{index: number, role: string}> = [];
         volumeData.surfaceSpecifications.forEach(spec => {
-          spec.faces.forEach(faceIndex => {
-            loadedFaces.push({ index: faceIndex, role: spec.role });
-          });
+          if (spec && spec.faces && Array.isArray(spec.faces)) {
+            spec.faces.forEach(faceIndex => {
+              loadedFaces.push({ index: faceIndex, role: spec.role });
+            });
+          }
         });
         setSelectedFaces(loadedFaces);
 
         console.log(`🎯 Loaded ${volumeData.surfaceSpecifications.length} surface specifications with ${loadedFaces.length} faces`);
       } else {
-        setSurfaceSpecifications([]);
-        setSelectedFaces([]);
+        console.log(`🎯 No surface specifications to load`);
       }
 
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
