@@ -385,15 +385,15 @@ const Toolbar: React.FC = () => {
 
           <button
             onClick={handleOrthoModeToggle}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
               orthoMode === OrthoMode.ON
                 ? 'bg-slate-800 text-white shadow-lg'
                 : 'bg-stone-200 hover:bg-stone-300 text-slate-800'
             }`}
             title={`Linear Mode: ${orthoMode === OrthoMode.ON ? 'ON' : 'OFF'} - Snap to axis directions`}
           >
-            <Grid size={12} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-slate-800'} />
-            <span className="text-sm font-medium">
+            <Grid size={14} className={orthoMode === OrthoMode.ON ? 'text-white' : 'text-slate-800'} />
+            <span className="text-sm font-semibold">
               Linear
             </span>
           </button>

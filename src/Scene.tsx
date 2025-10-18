@@ -106,21 +106,18 @@ const ShapeWithTransform: React.FC<{
           onContextMenu(e, shape.id);
         }}
       >
-        <mesh
-          ref={meshRef}
-          geometry={shape.geometry}
-          castShadow
-          receiveShadow
-        >
-          <meshStandardMaterial
-            color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
-            transparent={isWireframe}
-            opacity={isWireframe ? 0 : 1}
-            depthWrite={true}
-            metalness={0.3}
-            roughness={0.4}
-          />
-          {!isWireframe && (
+        {!isWireframe && (
+          <mesh
+            ref={meshRef}
+            geometry={shape.geometry}
+            castShadow
+            receiveShadow
+          >
+            <meshStandardMaterial
+              color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
+              metalness={0.3}
+              roughness={0.4}
+            />
             <lineSegments>
               <edgesGeometry args={[shape.geometry]} />
               <lineBasicMaterial
@@ -130,16 +127,23 @@ const ShapeWithTransform: React.FC<{
                 transparent
               />
             </lineSegments>
-          )}
-        </mesh>
+          </mesh>
+        )}
         {isWireframe && (
-          <lineSegments>
-            <edgesGeometry args={[shape.geometry]} />
-            <lineBasicMaterial
-              color={isSelected ? '#60a5fa' : '#1a1a1a'}
-              linewidth={isSelected ? 2 : 1}
+          <>
+            <mesh
+              ref={meshRef}
+              geometry={shape.geometry}
+              visible={false}
             />
-          </lineSegments>
+            <lineSegments>
+              <edgesGeometry args={[shape.geometry]} />
+              <lineBasicMaterial
+                color={isSelected ? '#60a5fa' : '#1a1a1a'}
+                linewidth={isSelected ? 2 : 1}
+              />
+            </lineSegments>
+          </>
         )}
       </group>
 
