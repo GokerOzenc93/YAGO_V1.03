@@ -35,15 +35,15 @@ const EditMode: React.FC<EditModeProps> = ({
   isFaceEditMode,
   setIsFaceEditMode,
 }) => {
-  const { addShape, selectShape, updateShape } = useAppStore();
+  const { addShape, selectShape, updateShape, loadedVolumeName, setLoadedVolumeName } = useAppStore();
   const [panelHeight, setPanelHeight] = useState('calc(100vh - 108px)');
   const [panelTop, setPanelTop] = useState('88px');
   const [activeMainSection, setActiveMainSection] = useState<'volume' | 'panel' | null>(null);
   const [activeVolumeSubSection, setActiveVolumeSubSection] = useState<'library' | 'surface' | 'parameters' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLocked, setIsLocked] = useState(true); 
-  
-  const [volumeName, setVolumeName] = useState('DefaultVolume');
+  const [isLocked, setIsLocked] = useState(true);
+
+  const volumeName = loadedVolumeName || 'Default Volume';
   const [cabinetCode, setCabinetCode] = useState('ad060');
   const [description, setDescription] = useState('');
   const [pose, setPose] = useState(1);
@@ -63,7 +63,7 @@ const EditMode: React.FC<EditModeProps> = ({
   const [activeFaceSelectionMode, setActiveFaceSelectionMode] = useState(false);
   
   const handleVolumeNameChange = (name: string) => {
-    setVolumeName(name);
+    setLoadedVolumeName(name);
   };
 
   const handleSaveVolume = async () => {
@@ -207,8 +207,8 @@ const EditMode: React.FC<EditModeProps> = ({
       });
       
       // Update volume name to loaded volume name
-      setVolumeName(volumeName);
-      
+      setLoadedVolumeName(volumeName);
+
       console.log(`✅ Volume loaded successfully: ${volumeName}`);
       console.log(`🎯 Volume type changed to: ${volumeData.type} with current dimensions preserved`);
       console.log(`🎯 New parameters:`, newParameters);
@@ -316,6 +316,7 @@ const EditMode: React.FC<EditModeProps> = ({
   const handleClose = () => {
     setActiveMainSection(null);
     setActiveVolumeSubSection(null);
+    setLoadedVolumeName(null);
     onExit();
   };
 
