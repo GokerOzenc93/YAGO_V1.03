@@ -1,5 +1,14 @@
 // File system utilities for user data management
 
+export interface SurfaceSpecification {
+  id: string;
+  faceIndex: number | null;
+  role: string;
+  formula: string;
+  isActive: boolean;
+  confirmed: boolean;
+}
+
 export interface VolumeData {
   id: string;
   name: string;
@@ -22,6 +31,7 @@ export interface VolumeData {
   } | null;
   is2DShape?: boolean; // 🎯 NEW: 2D shape flag
   parameters?: any; // 🎯 NEW: Shape parameters
+  surfaceSpecifications?: SurfaceSpecification[]; // 🎯 NEW: Surface specifications
   createdAt: string;
   updatedAt: string;
 }
