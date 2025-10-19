@@ -641,6 +641,23 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
           <Package size={11} />
           <span className="text-xs font-medium">Add Geometry</span>
         </button>
+
+        <div className="w-px h-7 bg-stone-300"></div>
+
+        <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
+          <button
+            className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
+            title="Parameters"
+          >
+            <Settings size={11} />
+          </button>
+          <button
+            className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
+            title="Panel"
+          >
+            <PanelLeft size={11} />
+          </button>
+        </div>
       </div>
 
       {showPolylineMenu && (
