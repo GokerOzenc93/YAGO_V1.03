@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, GripVertical, Plus } from 'lucide-react';
+import { X, GripVertical, Plus, Check } from 'lucide-react';
 import { useAppStore } from '../store';
 import * as THREE from 'three';
 
@@ -148,6 +148,37 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
     }
   };
 
+  const deleteCustomParameter = (id: string) => {
+    const updatedParams = customParameters.filter((param) => param.id !== id);
+    setCustomParameters(updatedParams);
+
+    if (selectedShape) {
+      updateShape(selectedShape.id, {
+        parameters: {
+          ...selectedShape.parameters,
+          customParameters: updatedParams,
+        },
+      });
+    }
+  };
+
+  const applyChanges = () => {
+    if (!selectedShape) return;
+
+    const newGeometry = new THREE.BoxGeometry(width, height, depth);
+
+    updateShape(selectedShape.id, {
+      geometry: newGeometry,
+      parameters: {
+        ...selectedShape.parameters,
+        width,
+        height,
+        depth,
+        customParameters,
+      },
+    });
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -211,7 +242,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="Width"
                   readOnly
-                  className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
               </div>
 
@@ -238,7 +269,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="Height"
                   readOnly
-                  className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
               </div>
 
@@ -265,46 +296,63 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="Depth"
                   readOnly
-                  className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
               </div>
             </div>
 
             {customParameters.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-2 pt-2 border-t border-stone-200">
                 {customParameters.map((param) => (
                   <div key={param.id} className="flex gap-1 items-center">
                     <input
                       type="text"
                       value={param.name}
                       onChange={(e) => updateCustomParameter(param.id, 'name', e.target.value)}
-                      className="w-10 px-2 py-1 text-xs font-medium border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-10 px-2 py-1 text-xs font-medium text-center border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="P"
                     />
                     <input
                       type="text"
                       value={param.expression}
                       onChange={(e) => updateCustomParameter(param.id, 'expression', e.target.value)}
-                      className="w-16 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-16 px-2 py-1 text-xs text-center border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="0"
                     />
                     <input
                       type="text"
                       value={param.result}
                       readOnly
-                      className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                      className="w-16 px-2 py-1 text-xs text-center border border-stone-300 rounded bg-stone-50 text-stone-600"
                     />
                     <input
                       type="text"
                       value={param.description}
                       onChange={(e) => updateCustomParameter(param.id, 'description', e.target.value)}
-                      className="w-32 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="Description"
                     />
+                    <button
+                      onClick={() => deleteCustomParameter(param.id)}
+                      className="p-1 hover:bg-red-100 rounded transition-colors"
+                      title="Delete Parameter"
+                    >
+                      <X size={14} className="text-red-600" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
+
+            <div className="pt-3 border-t border-stone-200 mt-3">
+              <button
+                onClick={applyChanges}
+                className="w-full px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Check size={16} />
+                Apply Changes
+              </button>
+            </div>
           </div>
         ) : (
           <div className="text-xs text-stone-500 text-center py-3">
