@@ -224,12 +224,8 @@ const Scene: React.FC = () => {
   }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode]);
 
   useEffect(() => {
-    (window as any).handleVertexOffset = (offset: number) => {
-      if (selectedShapeId && selectedVertexIndex !== null) {
-        const offsetVector: [number, number, number] = [0, 0, 0];
-        const dirIndex = vertexDirection === 'x' ? 0 : vertexDirection === 'y' ? 1 : 2;
-        offsetVector[dirIndex] = offset;
-
+    (window as any).handleVertexOffset = (newValue: number) => {
+      if (selectedShapeId && selectedVertexIndex !== null && vertexDirection) {
         const shape = shapes.find(s => s.id === selectedShapeId);
         if (shape && shape.parameters) {
           const vertices = [
@@ -243,14 +239,25 @@ const Scene: React.FC = () => {
             [0, shape.parameters.height, shape.parameters.depth],
           ];
 
+          const originalPos = vertices[selectedVertexIndex];
+          const newPosition: [number, number, number] = [...originalPos] as [number, number, number];
+
+          if (vertexDirection === 'x+' || vertexDirection === 'x-') {
+            newPosition[0] = newValue;
+          } else if (vertexDirection === 'y+' || vertexDirection === 'y-') {
+            newPosition[1] = newValue;
+          } else if (vertexDirection === 'z+' || vertexDirection === 'z-') {
+            newPosition[2] = newValue;
+          }
+
           addVertexModification(selectedShapeId, {
             vertexIndex: selectedVertexIndex,
-            originalPosition: vertices[selectedVertexIndex] as [number, number, number],
-            offset: offsetVector,
+            originalPosition: originalPos as [number, number, number],
+            newPosition,
             direction: vertexDirection
           });
 
-          console.log(`✅ Vertex ${selectedVertexIndex} modified: ${vertexDirection}+${offset}`);
+          console.log(`✅ Vertex ${selectedVertexIndex} set to ${newValue} in ${vertexDirection}`);
         }
 
         (window as any).pendingVertexEdit = false;
@@ -258,7 +265,7 @@ const Scene: React.FC = () => {
       }
     };
 
-    (window as any).pendingVertexEdit = selectedVertexIndex !== null;
+    (window as any).pendingVertexEdit = selectedVertexIndex !== null && vertexDirection !== null;
 
     return () => {
       delete (window as any).handleVertexOffset;
@@ -267,6 +274,9 @@ const Scene: React.FC = () => {
   }, [selectedShapeId, selectedVertexIndex, vertexDirection, shapes, addVertexModification, setSelectedVertexIndex]);
 
   const handleContextMenu = (e: any, shapeId: string) => {
+    if (vertexEditMode) {
+      return;
+    }
     e.nativeEvent.preventDefault();
     selectShape(shapeId);
     const shape = shapes.find(s => s.id === shapeId);

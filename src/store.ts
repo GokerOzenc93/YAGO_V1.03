@@ -110,8 +110,8 @@ interface AppState {
   setVertexEditMode: (enabled: boolean) => void;
   selectedVertexIndex: number | null;
   setSelectedVertexIndex: (index: number | null) => void;
-  vertexDirection: 'x' | 'y' | 'z';
-  setVertexDirection: (direction: 'x' | 'y' | 'z') => void;
+  vertexDirection: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
+  setVertexDirection: (direction: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-') => void;
   addVertexModification: (shapeId: string, modification: VertexModification) => void;
 }
 
@@ -264,7 +264,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setVertexEditMode: (enabled) => set({ vertexEditMode: enabled }),
   selectedVertexIndex: null,
   setSelectedVertexIndex: (index) => set({ selectedVertexIndex: index }),
-  vertexDirection: 'x',
+  vertexDirection: null,
   setVertexDirection: (direction) => set({ vertexDirection: direction }),
   addVertexModification: (shapeId, modification) =>
     set((state) => ({

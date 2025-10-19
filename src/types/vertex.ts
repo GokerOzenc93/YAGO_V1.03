@@ -3,8 +3,8 @@ import * as THREE from 'three';
 export interface VertexModification {
   vertexIndex: number;
   originalPosition: [number, number, number];
-  offset: [number, number, number];
-  direction: 'x' | 'y' | 'z';
+  newPosition: [number, number, number];
+  direction: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-';
 }
 
 export interface ShapeVertexData {
