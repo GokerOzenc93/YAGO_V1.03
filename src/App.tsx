@@ -46,7 +46,7 @@ function App() {
         console.log('🔧 Initializing OpenCascade WASM... (this may take 10-30 seconds)');
         const startTime = Date.now();
 
-        const oc = await Promise.race([
+        const oc: any = await Promise.race([
           initOpenCascade(),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('OpenCascade initialization timeout (60s)')), 60000)
@@ -55,13 +55,19 @@ function App() {
 
         const loadTime = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`✅ OpenCascade WASM loaded in ${loadTime}s`);
+        console.log('🔍 Mounted status:', mounted);
+        console.log('🔍 OC instance type:', typeof oc, oc);
 
         if (mounted) {
+          console.log('💾 Storing OC instance...');
           (window as any).opencascadeInstance = oc;
           (window as any).opencascadeLoading = false;
           setOpenCascadeInstance(oc);
+          console.log('🔄 Setting loading to false...');
           setOpenCascadeLoading(false);
           console.log('✅ OpenCascade.js ready!');
+        } else {
+          console.warn('⚠️ Component unmounted, skipping state update');
         }
       } catch (error) {
         console.error('❌ Failed to load OpenCascade:', error);
