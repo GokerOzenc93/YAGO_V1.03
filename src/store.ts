@@ -138,23 +138,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     try {
-      const { CSG } = await import('three-csg-ts');
+      const { subtract: csgSubtract } = await import('./utils/csg');
 
       const targetMesh = new THREE.Mesh(target.geometry.clone());
       targetMesh.position.set(...target.position);
       targetMesh.rotation.set(...target.rotation);
       targetMesh.scale.set(...target.scale);
-      targetMesh.updateMatrix();
-      targetMesh.geometry.applyMatrix4(targetMesh.matrix);
+      targetMesh.updateMatrixWorld();
 
       const subtractMesh = new THREE.Mesh(subtract.geometry.clone());
       subtractMesh.position.set(...subtract.position);
       subtractMesh.rotation.set(...subtract.rotation);
       subtractMesh.scale.set(...subtract.scale);
-      subtractMesh.updateMatrix();
-      subtractMesh.geometry.applyMatrix4(subtractMesh.matrix);
+      subtractMesh.updateMatrixWorld();
 
-      const resultGeometry = CSG.subtract(targetMesh, subtractMesh);
+      const resultGeometry = csgSubtract(targetMesh, subtractMesh);
 
       set((state) => ({
         shapes: state.shapes
@@ -174,7 +172,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedShapeId: targetId
       }));
 
-      console.log('✅ CSG subtraction completed using three-csg-ts');
+      console.log('✅ CSG subtraction completed');
     } catch (error) {
       console.error('❌ CSG subtraction failed:', error);
     }
