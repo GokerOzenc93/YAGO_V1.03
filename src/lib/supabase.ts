@@ -39,7 +39,36 @@ export const catalogService = {
     description: string;
     tags: string[];
     geometry_data: any;
+    preview_image?: string;
   }): Promise<CatalogItem | null> {
+    const { data: existing } = await supabase
+      .from('geometry_catalog')
+      .select('id')
+      .eq('code', item.code)
+      .maybeSingle();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('geometry_catalog')
+        .update({
+          description: item.description,
+          tags: item.tags,
+          geometry_data: item.geometry_data,
+          preview_image: item.preview_image,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating catalog item:', error);
+        throw error;
+      }
+
+      return data;
+    }
+
     const { data, error } = await supabase
       .from('geometry_catalog')
       .insert([{
