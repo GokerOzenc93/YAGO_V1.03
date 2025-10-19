@@ -331,6 +331,9 @@ const Scene: React.FC = () => {
   };
 
   const handleFaceSelect = (shapeId: string, faceIndex: number, faceNormal: THREE.Vector3, faceCenter: THREE.Vector3) => {
+    if (drawingPanelOpen) {
+      return;
+    }
     setSelectedFace({ shapeId, faceIndex });
     setFaceInfo({ normal: faceNormal, center: faceCenter });
     setActiveTool(Tool.POLYLINE);

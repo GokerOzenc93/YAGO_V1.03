@@ -22,6 +22,9 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
   const { polylinePoints, addPolylinePoint, orthoMode } = useAppStore();
   const [previewPoint, setPreviewPoint] = useState<{ x: number; y: number } | null>(null);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [snapIndicator, setSnapIndicator] = useState<{ x: number; y: number; type: string } | null>(null);
+  const [waitingForLength, setWaitingForLength] = useState(false);
+  const [directionVector, setDirectionVector] = useState<{ x: number; y: number } | null>(null);
 
   const getFaceDimensions = () => {
     const w = shape.parameters.width;
@@ -95,6 +98,40 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
     return [x, y, 0];
   };
 
+  const findSnapPoint = (point: { x: number; y: number }, snapRadius: number = 20): { x: number; y: number; type?: string } | null => {
+    const { snapSettings } = useAppStore.getState();
+    const points2D = polylinePoints.map(convert3DTo2D);
+
+    if (snapSettings.endpoint) {
+      for (let i = 0; i < points2D.length; i++) {
+        const canvasPoint = worldToCanvas(points2D[i].x, points2D[i].y);
+        const dist = Math.sqrt(
+          Math.pow(point.x - canvasPoint.x, 2) + Math.pow(point.y - canvasPoint.y, 2)
+        );
+        if (dist < snapRadius) {
+          return { ...canvasPoint, type: 'endpoint' };
+        }
+      }
+    }
+
+    if (snapSettings.midpoint && points2D.length > 1) {
+      for (let i = 1; i < points2D.length; i++) {
+        const p1 = points2D[i - 1];
+        const p2 = points2D[i];
+        const midpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const canvasMid = worldToCanvas(midpoint.x, midpoint.y);
+        const dist = Math.sqrt(
+          Math.pow(point.x - canvasMid.x, 2) + Math.pow(point.y - canvasMid.y, 2)
+        );
+        if (dist < snapRadius) {
+          return { ...canvasMid, type: 'midpoint' };
+        }
+      }
+    }
+
+    return null;
+  };
+
   const snapToOrtho = (point: { x: number; y: number }, lastPoint: { x: number; y: number }) => {
     if (orthoMode === OrthoMode.OFF) {
       return point;
@@ -116,7 +153,57 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     setCanvasOffset({ x: rect.left, y: rect.top });
-  }, [isOpen]);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ' && polylinePoints.length > 0 && directionVector && !waitingForLength) {
+        e.preventDefault();
+        setWaitingForLength(true);
+        console.log('⌨️ Waiting for length input in terminal...');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, polylinePoints, directionVector, waitingForLength]);
+
+  useEffect(() => {
+    if (!waitingForLength) {
+      delete (window as any).pendingPolylineLength;
+      delete (window as any).handlePolylineLength;
+      return;
+    }
+
+    (window as any).pendingPolylineLength = true;
+    (window as any).handlePolylineLength = (lengthValue: number) => {
+      if (polylinePoints.length > 0 && directionVector) {
+        const lastPoint3D = polylinePoints[polylinePoints.length - 1];
+        const lastPoint2D = convert3DTo2D(lastPoint3D);
+
+        const dir = directionVector;
+        const mag = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
+        const normalized = { x: dir.x / mag, y: dir.y / mag };
+
+        const newPoint2D = {
+          x: lastPoint2D.x + normalized.x * lengthValue,
+          y: lastPoint2D.y + normalized.y * lengthValue
+        };
+
+        const point3D = convert2DTo3D(newPoint2D.x, newPoint2D.y);
+        addPolylinePoint(point3D);
+        console.log(`✅ Polyline point added via terminal: ${lengthValue}mm`, point3D);
+
+        setWaitingForLength(false);
+        setDirectionVector(null);
+      }
+    };
+
+    return () => {
+      delete (window as any).pendingPolylineLength;
+      delete (window as any).handlePolylineLength;
+    };
+  }, [waitingForLength, directionVector, polylinePoints, addPolylinePoint]);
 
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
@@ -193,6 +280,19 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
       }
     }
 
+    if (snapIndicator) {
+      ctx.strokeStyle = '#ff6600';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(snapIndicator.x, snapIndicator.y, 12, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ff6600';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      const label = snapIndicator.type === 'endpoint' ? 'EP' : 'MP';
+      ctx.fillText(label, snapIndicator.x + 18, snapIndicator.y - 8);
+    }
+
     ctx.fillStyle = '#1a1a1a';
     ctx.font = '14px Inter, sans-serif';
     ctx.fillText(`Width: ${faceWidth.toFixed(0)}mm`, padding, padding - 30);
@@ -205,14 +305,23 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
     ctx.restore();
 
     ctx.fillText(`${faceWidth.toFixed(0)}mm`, padding + (faceWidth * scale) / 2 - 30, canvasHeight - padding + 30);
-  }, [polylinePoints, previewPoint, isOpen, faceWidth, faceHeight, orthoMode, scale]);
+  }, [polylinePoints, previewPoint, snapIndicator, isOpen, faceWidth, faceHeight, orthoMode, scale]);
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || waitingForLength) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     const canvasX = e.clientX - rect.left;
     const canvasY = e.clientY - rect.top;
+
+    const snapPoint = findSnapPoint({ x: canvasX, y: canvasY });
+    if (snapPoint) {
+      setPreviewPoint({ x: snapPoint.x, y: snapPoint.y });
+      setSnapIndicator({ x: snapPoint.x, y: snapPoint.y, type: snapPoint.type || 'unknown' });
+      return;
+    } else {
+      setSnapIndicator(null);
+    }
 
     const worldPoint = canvasToWorld(canvasX, canvasY);
 
@@ -227,6 +336,16 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
       const lastPoint3D = polylinePoints[polylinePoints.length - 1];
       const lastPoint2D = convert3DTo2D(lastPoint3D);
       finalPoint = snapToOrtho(worldPoint, lastPoint2D);
+
+      const dx = finalPoint.x - lastPoint2D.x;
+      const dy = finalPoint.y - lastPoint2D.y;
+      setDirectionVector({ x: dx, y: dy });
+    } else if (polylinePoints.length > 0) {
+      const lastPoint3D = polylinePoints[polylinePoints.length - 1];
+      const lastPoint2D = convert3DTo2D(lastPoint3D);
+      const dx = finalPoint.x - lastPoint2D.x;
+      const dy = finalPoint.y - lastPoint2D.y;
+      setDirectionVector({ x: dx, y: dy });
     }
 
     const canvas2D = worldToCanvas(finalPoint.x, finalPoint.y);
@@ -274,9 +393,15 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
           <div>
             <h2 className="text-xl font-bold text-slate-800">{faceLabel}</h2>
             <p className="text-sm text-stone-600 mt-1">
-              Click to add polyline points. Press ESC to exit.
-              {orthoMode === OrthoMode.ON && (
-                <span className="ml-2 text-orange-600 font-semibold">Linear Mode: ON</span>
+              {waitingForLength ? (
+                <span className="text-orange-600 font-semibold">Enter length in terminal...</span>
+              ) : (
+                <>
+                  Click to add points. Space to enter length. ESC to exit.
+                  {orthoMode === OrthoMode.ON && (
+                    <span className="ml-2 text-orange-600 font-semibold">Linear Mode: ON</span>
+                  )}
+                </>
               )}
             </p>
           </div>

@@ -81,6 +81,19 @@ const Terminal: React.FC = () => {
       return;
     }
 
+    if ((window as any).pendingPolylineLength) {
+      const lengthValue = parseFloat(trimmedCommand);
+      if (!isNaN(lengthValue) && lengthValue > 0) {
+        if ((window as any).handlePolylineLength) {
+          (window as any).handlePolylineLength(lengthValue);
+          setCommandInput('');
+          return;
+        }
+      }
+      console.log('Geçersiz uzunluk değeri. Pozitif bir sayı girin.');
+      return;
+    }
+
     if ((window as any).pendingExtrudeShape) {
       if (trimmedCommand === '' || trimmedCommand.toLowerCase() === 'enter') {
         if ((window as any).handleConvertTo2D) {
