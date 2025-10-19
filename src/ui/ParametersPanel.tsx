@@ -28,6 +28,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
   const [height, setHeight] = useState(0);
   const [depth, setDepth] = useState(0);
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
+  const [vertexModifications, setVertexModifications] = useState<any[]>([]);
 
   useEffect(() => {
     console.log('Parameters Panel - Selected Shape:', {
@@ -45,11 +46,13 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
       setHeight(selectedShape.parameters.height || 0);
       setDepth(selectedShape.parameters.depth || 0);
       setCustomParameters(selectedShape.parameters.customParameters || []);
+      setVertexModifications(selectedShape.vertexModifications || []);
     } else {
       setWidth(0);
       setHeight(0);
       setDepth(0);
       setCustomParameters([]);
+      setVertexModifications([]);
     }
   }, [selectedShape, selectedShapeId, shapes]);
 
@@ -214,6 +217,38 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
   const applyChanges = () => {
     if (!selectedShape) return;
 
+    const evaluateVertexExpression = (expr: string): number => {
+      try {
+        let evalExpr = expr
+          .replace(/\bW\b/g, width.toString())
+          .replace(/\bH\b/g, height.toString())
+          .replace(/\bD\b/g, depth.toString());
+
+        customParameters.forEach((p) => {
+          const regex = new RegExp(`\\b${p.name}\\b`, 'g');
+          evalExpr = evalExpr.replace(regex, p.result.toString());
+        });
+
+        const sanitized = evalExpr.replace(/[^0-9+\-*/().\s]/g, '');
+        const result = Function(`"use strict"; return (${sanitized})`)();
+        return typeof result === 'number' && !isNaN(result) ? result : 0;
+      } catch {
+        return 0;
+      }
+    };
+
+    const updatedVertexMods = vertexModifications.map((mod: any) => {
+      const expression = mod.expression || String(mod.newPosition[0]);
+      const result = evaluateVertexExpression(expression);
+      const newPos = [...mod.newPosition] as [number, number, number];
+
+      if (mod.direction.startsWith('x')) newPos[0] = result;
+      else if (mod.direction.startsWith('y')) newPos[1] = result;
+      else newPos[2] = result;
+
+      return { ...mod, newPosition: newPos };
+    });
+
     updateShape(selectedShape.id, {
       parameters: {
         ...selectedShape.parameters,
@@ -222,6 +257,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
         depth,
         customParameters,
       },
+      vertexModifications: updatedVertexMods
     });
   };
 
@@ -402,9 +438,9 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
               </div>
             )}
 
-            {selectedShape.vertexModifications && selectedShape.vertexModifications.length > 0 && (
+            {vertexModifications.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-stone-200">
-                {selectedShape.vertexModifications.map((mod: any, idx: number) => {
+                {vertexModifications.map((mod: any, idx: number) => {
                   const currentValue = mod.direction.startsWith('x') ? mod.newPosition[0] :
                                        mod.direction.startsWith('y') ? mod.newPosition[1] :
                                        mod.newPosition[2];
@@ -445,16 +481,9 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                         value={expression}
                         onChange={(e) => {
                           const newExpr = e.target.value;
-                          const newResult = evaluateVertexExpression(newExpr);
-                          const newPos = [...mod.newPosition] as [number, number, number];
-
-                          if (mod.direction.startsWith('x')) newPos[0] = newResult;
-                          else if (mod.direction.startsWith('y')) newPos[1] = newResult;
-                          else newPos[2] = newResult;
-
-                          const updatedMods = [...selectedShape.vertexModifications];
-                          updatedMods[idx] = { ...mod, expression: newExpr, newPosition: newPos };
-                          updateShape(selectedShape.id, { vertexModifications: updatedMods });
+                          const updatedMods = [...vertexModifications];
+                          updatedMods[idx] = { ...mod, expression: newExpr };
+                          setVertexModifications(updatedMods);
                         }}
                         className="w-16 px-2 py-1 text-xs text-center border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                         placeholder="0"
@@ -469,17 +498,17 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                         type="text"
                         value={mod.description || ''}
                         onChange={(e) => {
-                          const updatedMods = [...selectedShape.vertexModifications];
+                          const updatedMods = [...vertexModifications];
                           updatedMods[idx] = { ...mod, description: e.target.value };
-                          updateShape(selectedShape.id, { vertexModifications: updatedMods });
+                          setVertexModifications(updatedMods);
                         }}
                         className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                         placeholder="Description"
                       />
                       <button
                         onClick={() => {
-                          const updatedMods = selectedShape.vertexModifications.filter((_: any, i: number) => i !== idx);
-                          updateShape(selectedShape.id, { vertexModifications: updatedMods });
+                          const updatedMods = vertexModifications.filter((_: any, i: number) => i !== idx);
+                          setVertexModifications(updatedMods);
                         }}
                         className="p-1 hover:bg-red-100 rounded transition-colors flex-shrink-0"
                         title="Delete Vertex"
