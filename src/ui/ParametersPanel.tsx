@@ -108,19 +108,6 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
 
     const updatedCustomParams = recalculateCustomParameters(newWidth, newHeight, newDepth);
     setCustomParameters(updatedCustomParams);
-
-    const newGeometry = new THREE.BoxGeometry(newWidth, newHeight, newDepth);
-
-    updateShape(selectedShape.id, {
-      geometry: newGeometry,
-      parameters: {
-        ...selectedShape.parameters,
-        width: newWidth,
-        height: newHeight,
-        depth: newDepth,
-        customParameters: updatedCustomParams,
-      },
-    });
   };
 
   const addCustomParameter = () => {
