@@ -268,16 +268,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   setVertexDirection: (direction) => set({ vertexDirection: direction }),
   addVertexModification: (shapeId, modification) =>
     set((state) => ({
-      shapes: state.shapes.map((shape) =>
-        shape.id === shapeId
-          ? {
-              ...shape,
-              vertexModifications: [
-                ...(shape.vertexModifications || []),
-                modification
-              ]
-            }
-          : shape
-      )
+      shapes: state.shapes.map((shape) => {
+        if (shape.id !== shapeId) return shape;
+
+        const existingMods = shape.vertexModifications || [];
+        const existingIndex = existingMods.findIndex(
+          m => m.vertexIndex === modification.vertexIndex
+        );
+
+        let newMods;
+        if (existingIndex >= 0) {
+          newMods = [...existingMods];
+          newMods[existingIndex] = modification;
+        } else {
+          newMods = [...existingMods, modification];
+        }
+
+        return {
+          ...shape,
+          vertexModifications: newMods
+        };
+      })
     }))
 }));

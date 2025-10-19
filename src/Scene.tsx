@@ -236,7 +236,7 @@ const Scene: React.FC = () => {
       if (selectedShapeId && selectedVertexIndex !== null && vertexDirection) {
         const shape = shapes.find(s => s.id === selectedShapeId);
         if (shape && shape.parameters) {
-          const vertices = [
+          const baseVertices = [
             [0, 0, 0],
             [shape.parameters.width, 0, 0],
             [shape.parameters.width, shape.parameters.height, 0],
@@ -247,8 +247,14 @@ const Scene: React.FC = () => {
             [0, shape.parameters.height, shape.parameters.depth],
           ];
 
-          const originalPos = vertices[selectedVertexIndex];
-          const newPosition: [number, number, number] = [...originalPos] as [number, number, number];
+          const originalPos = baseVertices[selectedVertexIndex];
+
+          const existingMod = shape.vertexModifications?.find(
+            (m: any) => m.vertexIndex === selectedVertexIndex
+          );
+          const currentPos = existingMod ? existingMod.newPosition : originalPos;
+
+          const newPosition: [number, number, number] = [...currentPos] as [number, number, number];
 
           if (vertexDirection === 'x+' || vertexDirection === 'x-') {
             newPosition[0] = newValue;
@@ -265,7 +271,7 @@ const Scene: React.FC = () => {
             direction: vertexDirection
           });
 
-          console.log(`✅ Vertex ${selectedVertexIndex} set to ${newValue} in ${vertexDirection}`);
+          console.log(`✅ Vertex ${selectedVertexIndex} moved to [${newPosition[0]}, ${newPosition[1]}, ${newPosition[2]}]`);
         }
 
         (window as any).pendingVertexEdit = false;

@@ -199,11 +199,17 @@ export const VertexEditor: React.FC<VertexEditorProps> = ({
 
   const handleVertexClick = (index: number, e: any) => {
     e.stopPropagation();
-    setSelectedIndex(index);
-    setCurrentDirection(null);
-    setShowDirectionSelector(true);
-    onVertexSelect(index);
-    console.log(`✓ Vertex ${index} selected - Choose direction`);
+
+    if (selectedIndex === index && currentDirection) {
+      setShowDirectionSelector(true);
+      console.log(`🔄 Change direction for vertex ${index}`);
+    } else {
+      setSelectedIndex(index);
+      setCurrentDirection(null);
+      setShowDirectionSelector(true);
+      onVertexSelect(index);
+      console.log(`✓ Vertex ${index} selected - Choose direction`);
+    }
   };
 
   const handleDirectionSelect = (direction: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-') => {
@@ -216,8 +222,17 @@ export const VertexEditor: React.FC<VertexEditorProps> = ({
   const handleVertexRightClick = (index: number, e: any) => {
     e.stopPropagation();
     if (selectedIndex === index && currentDirection) {
-      console.log(`✓ Confirmed - Waiting for terminal input (${currentDirection})`);
+      console.log(`✓ Confirmed - Waiting for terminal input for vertex ${index} (${currentDirection})`);
       (window as any).pendingVertexEdit = true;
+    }
+  };
+
+  const handleVertexDoubleClick = (index: number, e: any) => {
+    e.stopPropagation();
+    if (selectedIndex === index && currentDirection) {
+      setShowDirectionSelector(true);
+      setCurrentDirection(null);
+      console.log(`🔄 Change direction for vertex ${index}`);
     }
   };
 
