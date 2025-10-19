@@ -156,7 +156,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        width: '220px',
+        width: '420px',
       }}
     >
       <div
