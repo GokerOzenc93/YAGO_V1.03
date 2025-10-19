@@ -118,7 +118,17 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
 
   const evaluateExpression = (expression: string): number => {
     try {
-      const sanitized = expression.replace(/[^0-9+\-*/().\s]/g, '');
+      let expr = expression
+        .replace(/\bW\b/g, width.toString())
+        .replace(/\bH\b/g, height.toString())
+        .replace(/\bD\b/g, depth.toString());
+
+      customParameters.forEach((param) => {
+        const regex = new RegExp(`\\b${param.name}\\b`, 'g');
+        expr = expr.replace(regex, param.result.toString());
+      });
+
+      const sanitized = expr.replace(/[^0-9+\-*/().\s]/g, '');
       const result = Function(`"use strict"; return (${sanitized})`)();
       return typeof result === 'number' && !isNaN(result) ? result : 0;
     } catch {
