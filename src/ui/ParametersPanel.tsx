@@ -192,34 +192,82 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-stone-700">W:</label>
-                <input
-                  type="number"
-                  value={width}
-                  onChange={(e) => handleDimensionChange('width', Number(e.target.value))}
-                  className="w-28 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
-                />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-stone-700">W:</label>
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    value={width}
+                    onChange={(e) => handleDimensionChange('width', Number(e.target.value))}
+                    className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  />
+                  <input
+                    type="text"
+                    value={width}
+                    readOnly
+                    className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  />
+                  <input
+                    type="text"
+                    value="Width"
+                    readOnly
+                    className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-stone-700">H:</label>
-                <input
-                  type="number"
-                  value={height}
-                  onChange={(e) => handleDimensionChange('height', Number(e.target.value))}
-                  className="w-28 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
-                />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-stone-700">H:</label>
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    value={height}
+                    onChange={(e) => handleDimensionChange('height', Number(e.target.value))}
+                    className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  />
+                  <input
+                    type="text"
+                    value={height}
+                    readOnly
+                    className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  />
+                  <input
+                    type="text"
+                    value="Height"
+                    readOnly
+                    className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-stone-700">D:</label>
-                <input
-                  type="number"
-                  value={depth}
-                  onChange={(e) => handleDimensionChange('depth', Number(e.target.value))}
-                  className="w-28 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
-                />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-stone-700">D:</label>
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    value={depth}
+                    onChange={(e) => handleDimensionChange('depth', Number(e.target.value))}
+                    className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  />
+                  <input
+                    type="text"
+                    value={depth}
+                    readOnly
+                    className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  />
+                  <input
+                    type="text"
+                    value="Depth"
+                    readOnly
+                    className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  />
+                </div>
               </div>
             </div>
 
