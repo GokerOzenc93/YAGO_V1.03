@@ -189,12 +189,17 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
           <div className="space-y-2">
             <div className="space-y-2">
               <div className="flex gap-1 items-center">
-                <label className="text-xs font-medium text-stone-700 w-8">W:</label>
+                <input
+                  type="text"
+                  value="W"
+                  readOnly
+                  className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
+                />
                 <input
                   type="number"
                   value={width}
                   onChange={(e) => handleDimensionChange('width', Number(e.target.value))}
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <input
                   type="text"
@@ -211,12 +216,17 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
               </div>
 
               <div className="flex gap-1 items-center">
-                <label className="text-xs font-medium text-stone-700 w-8">H:</label>
+                <input
+                  type="text"
+                  value="H"
+                  readOnly
+                  className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
+                />
                 <input
                   type="number"
                   value={height}
                   onChange={(e) => handleDimensionChange('height', Number(e.target.value))}
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <input
                   type="text"
@@ -233,12 +243,17 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
               </div>
 
               <div className="flex gap-1 items-center">
-                <label className="text-xs font-medium text-stone-700 w-8">D:</label>
+                <input
+                  type="text"
+                  value="D"
+                  readOnly
+                  className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
+                />
                 <input
                   type="number"
                   value={depth}
                   onChange={(e) => handleDimensionChange('depth', Number(e.target.value))}
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <input
                   type="text"
