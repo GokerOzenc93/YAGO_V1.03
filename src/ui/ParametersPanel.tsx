@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, GripVertical } from 'lucide-react';
+import { X, GripVertical, Plus } from 'lucide-react';
 import { useAppStore } from '../store';
 import * as THREE from 'three';
+
+interface CustomParameter {
+  id: string;
+  name: string;
+  expression: string;
+  result: number;
+  description: string;
+}
 
 interface ParametersPanelProps {
   isOpen: boolean;
@@ -19,12 +27,14 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
   const [depth, setDepth] = useState(0);
+  const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
 
   useEffect(() => {
     if (selectedShape && selectedShape.parameters) {
       setWidth(selectedShape.parameters.width || 0);
       setHeight(selectedShape.parameters.height || 0);
       setDepth(selectedShape.parameters.depth || 0);
+      setCustomParameters(selectedShape.parameters.customParameters || []);
     }
   }, [selectedShape]);
 
@@ -84,6 +94,60 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
     });
   };
 
+  const addCustomParameter = () => {
+    const newParam: CustomParameter = {
+      id: `param-${Date.now()}`,
+      name: 'New Parameter',
+      expression: '0',
+      result: 0,
+      description: '',
+    };
+    const updatedParams = [...customParameters, newParam];
+    setCustomParameters(updatedParams);
+
+    if (selectedShape) {
+      updateShape(selectedShape.id, {
+        parameters: {
+          ...selectedShape.parameters,
+          customParameters: updatedParams,
+        },
+      });
+    }
+  };
+
+  const evaluateExpression = (expression: string): number => {
+    try {
+      const sanitized = expression.replace(/[^0-9+\-*/().\s]/g, '');
+      const result = Function(`"use strict"; return (${sanitized})`)();
+      return typeof result === 'number' && !isNaN(result) ? result : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const updateCustomParameter = (id: string, field: keyof CustomParameter, value: string) => {
+    const updatedParams = customParameters.map((param) => {
+      if (param.id === id) {
+        const updated = { ...param, [field]: value };
+        if (field === 'expression') {
+          updated.result = evaluateExpression(value);
+        }
+        return updated;
+      }
+      return param;
+    });
+    setCustomParameters(updatedParams);
+
+    if (selectedShape) {
+      updateShape(selectedShape.id, {
+        parameters: {
+          ...selectedShape.parameters,
+          customParameters: updatedParams,
+        },
+      });
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -103,12 +167,21 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
           <GripVertical size={14} className="text-stone-400" />
           <span className="text-sm font-semibold text-slate-800">Parameters</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-0.5 hover:bg-stone-200 rounded transition-colors"
-        >
-          <X size={14} className="text-stone-600" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={addCustomParameter}
+            className="p-0.5 hover:bg-stone-200 rounded transition-colors"
+            title="Add Parameter"
+          >
+            <Plus size={14} className="text-stone-600" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-0.5 hover:bg-stone-200 rounded transition-colors"
+          >
+            <X size={14} className="text-stone-600" />
+          </button>
+        </div>
       </div>
 
       <div className="p-3">
@@ -149,6 +222,45 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                 />
               </div>
             </div>
+
+            {customParameters.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-stone-200 space-y-2">
+                {customParameters.map((param) => (
+                  <div key={param.id} className="space-y-1">
+                    <input
+                      type="text"
+                      value={param.name}
+                      onChange={(e) => updateCustomParameter(param.id, 'name', e.target.value)}
+                      className="w-full px-2 py-1 text-xs font-medium border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      placeholder="Parameter name"
+                    />
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={param.expression}
+                        onChange={(e) => updateCustomParameter(param.id, 'expression', e.target.value)}
+                        className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        placeholder="Expression"
+                      />
+                      <input
+                        type="text"
+                        value={param.result}
+                        readOnly
+                        className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                        placeholder="Result"
+                      />
+                      <input
+                        type="text"
+                        value={param.description}
+                        onChange={(e) => updateCustomParameter(param.id, 'description', e.target.value)}
+                        className="w-16 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        placeholder="Note"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-xs text-stone-500 text-center py-3">
