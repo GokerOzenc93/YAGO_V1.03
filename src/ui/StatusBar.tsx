@@ -8,7 +8,7 @@ const StatusBar: React.FC = () => {
   const vertexModCount = selectedShape?.vertexModifications?.length || 0;
 
   return (
-    <div className="absolute bottom-4 left-0 right-0 flex items-center h-6 px-4 bg-stone-800 text-stone-300 text-xs border-t border-stone-700 z-20">
+    <div className="absolute bottom-5 left-0 right-0 flex items-center h-6 px-4 bg-stone-800 text-stone-300 text-xs border-t border-stone-700 z-20">
       <div className="flex items-center gap-3">
         <span className="font-semibold">
           {opencascadeLoading ? '⏳ Loading OpenCascade...' : opencascadeInstance ? '✓ OpenCascade Ready' : '✗ OpenCascade Failed'}
