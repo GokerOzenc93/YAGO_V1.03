@@ -317,16 +317,19 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
   ];
 
   const handleAddGeometry = () => {
-    const geometry = new THREE.BoxGeometry(600, 600, 600);
+    const w = 600, h = 600, d = 600;
+    const geometry = new THREE.BoxGeometry(w, h, d);
+    geometry.translate(w / 2, h / 2, d / 2);
+
     addShape({
       id: `box-${Date.now()}`,
       type: 'box',
       geometry,
-      position: [0, 300, 0],
+      position: [0, 0, 0],
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       color: '#2563eb',
-      parameters: { width: 600, height: 600, depth: 600 }
+      parameters: { width: w, height: h, depth: d }
     });
     console.log('✅ Box geometry added');
   };

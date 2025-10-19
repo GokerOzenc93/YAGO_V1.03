@@ -28,33 +28,21 @@ const ShapeWithTransform: React.FC<{
 
   useEffect(() => {
     if (shape.parameters?.width && shape.parameters?.height && shape.parameters?.depth) {
-      const newGeometry = new THREE.BoxGeometry(
-        shape.parameters.width,
-        shape.parameters.height,
-        shape.parameters.depth
-      );
+      const w = shape.parameters.width;
+      const h = shape.parameters.height;
+      const d = shape.parameters.depth;
+
+      const newGeometry = new THREE.BoxGeometry(w, h, d);
+      newGeometry.translate(w / 2, h / 2, d / 2);
+
       setLocalGeometry(newGeometry);
+      setGeometryKey(prev => prev + 1);
 
       return () => {
         newGeometry.dispose();
       };
     }
   }, [shape.parameters?.width, shape.parameters?.height, shape.parameters?.depth]);
-
-  useEffect(() => {
-    if (!meshRef.current || !groupRef.current || isUpdatingRef.current) return;
-
-    const bbox = new THREE.Box3().setFromObject(meshRef.current);
-    const minCorner = bbox.min;
-
-    meshRef.current.position.set(
-      -minCorner.x,
-      -minCorner.y,
-      -minCorner.z
-    );
-
-    setGeometryKey(prev => prev + 1);
-  }, [localGeometry]);
 
   useEffect(() => {
     if (!groupRef.current || isUpdatingRef.current) return;

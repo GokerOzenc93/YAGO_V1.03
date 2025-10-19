@@ -42,12 +42,14 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
     });
 
     switch (geometryData.type) {
-      case 'box':
-        return new THREE.BoxGeometry(
-          params.width || 100,
-          params.height || 100,
-          params.depth || 100
-        );
+      case 'box': {
+        const w = params.width || 100;
+        const h = params.height || 100;
+        const d = params.depth || 100;
+        const geometry = new THREE.BoxGeometry(w, h, d);
+        geometry.translate(w / 2, h / 2, d / 2);
+        return geometry;
+      }
       case 'cylinder':
         return new THREE.CylinderGeometry(
           params.radiusTop || 50,
@@ -59,8 +61,11 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
         return new THREE.SphereGeometry(params.radius || 50, 32, 32);
       case 'cone':
         return new THREE.ConeGeometry(params.radius || 40, params.height || 100, 32);
-      default:
-        return new THREE.BoxGeometry(100, 100, 100);
+      default: {
+        const geometry = new THREE.BoxGeometry(100, 100, 100);
+        geometry.translate(50, 50, 50);
+        return geometry;
+      }
     }
   };
 

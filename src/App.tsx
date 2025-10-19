@@ -120,14 +120,15 @@ function App() {
         console.log('🔺 Created cone:', { radius: params.radius, height: params.height });
         break;
       case 'box':
-      default:
-        geometry = new THREE.BoxGeometry(
-          params.width !== undefined ? params.width : 100,
-          params.height !== undefined ? params.height : 100,
-          params.depth !== undefined ? params.depth : 100
-        );
-        console.log('📦 Created box:', { width: params.width, height: params.height, depth: params.depth });
+      default: {
+        const w = params.width !== undefined ? params.width : 100;
+        const h = params.height !== undefined ? params.height : 100;
+        const d = params.depth !== undefined ? params.depth : 100;
+        geometry = new THREE.BoxGeometry(w, h, d);
+        geometry.translate(w / 2, h / 2, d / 2);
+        console.log('📦 Created box:', { width: w, height: h, depth: d });
         break;
+      }
     }
 
     const newPosition: [number, number, number] = [
