@@ -7,9 +7,6 @@ import SaveDialog from './ui/SaveDialog';
 import { catalogService } from './lib/supabase';
 import { createBoxGeometry, applyVertexModificationsToGeometry } from './utils/geometry';
 import { VertexEditor } from './ui/VertexEditor';
-import { FaceSelector } from './ui/FaceSelector';
-import { PolylineDrawer } from './ui/PolylineDrawer';
-import { FaceDrawingPanel } from './ui/FaceDrawingPanel';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{
@@ -215,18 +212,10 @@ const Scene: React.FC = () => {
     setSelectedVertexIndex,
     vertexDirection,
     setVertexDirection,
-    addVertexModification,
-    activeTool,
-    setActiveTool,
-    selectedFace,
-    setSelectedFace,
-    clearPolylinePoints,
-    polylinePoints
+    addVertexModification
   } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
-  const [faceInfo, setFaceInfo] = useState<{ normal: THREE.Vector3; center: THREE.Vector3 } | null>(null);
-  const [drawingPanelOpen, setDrawingPanelOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -236,17 +225,12 @@ const Scene: React.FC = () => {
         selectShape(null);
         exitIsolation();
         setVertexEditMode(false);
-        setSelectedFace(null);
-        setFaceInfo(null);
-        clearPolylinePoints();
-        setActiveTool(Tool.SELECT);
-        setDrawingPanelOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode, setSelectedFace, clearPolylinePoints, setActiveTool]);
+  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode]);
 
   useEffect(() => {
     (window as any).handleVertexOffset = (newValue: number) => {
@@ -328,17 +312,6 @@ const Scene: React.FC = () => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return '';
     return canvas.toDataURL('image/png');
-  };
-
-  const handleFaceSelect = (shapeId: string, faceIndex: number, faceNormal: THREE.Vector3, faceCenter: THREE.Vector3) => {
-    if (drawingPanelOpen) {
-      return;
-    }
-    setSelectedFace({ shapeId, faceIndex });
-    setFaceInfo({ normal: faceNormal, center: faceCenter });
-    setActiveTool(Tool.POLYLINE);
-    setDrawingPanelOpen(true);
-    console.log('✅ Face selected:', { shapeId, faceIndex, normal: faceNormal.toArray(), center: faceCenter.toArray() });
   };
 
   const handleSave = async (data: { code: string; description: string; tags: string[]; previewImage?: string }) => {
@@ -474,44 +447,6 @@ const Scene: React.FC = () => {
                 }}
               />
             )}
-            {isSelected && activeTool === Tool.FACE_SELECT && !selectedFace && (
-              <FaceSelector
-                shape={shape}
-                onFaceSelect={(faceIndex, faceNormal, faceCenter) =>
-                  handleFaceSelect(shape.id, faceIndex, faceNormal, faceCenter)
-                }
-              />
-            )}
-            {selectedFace && selectedFace.shapeId === shape.id && (
-              <group position={shape.position}>
-                {polylinePoints.map((point, index) => (
-                  <mesh key={`polyline-point-${index}`} position={point}>
-                    <sphereGeometry args={[15, 16, 16]} />
-                    <meshBasicMaterial color="#ff0000" />
-                  </mesh>
-                ))}
-                {polylinePoints.length > 1 &&
-                  polylinePoints.map((point, index) => {
-                    if (index === 0) return null;
-                    const prevPoint = polylinePoints[index - 1];
-                    const start = new THREE.Vector3(...prevPoint);
-                    const end = new THREE.Vector3(...point);
-                    const midpoint = start.clone().add(end).multiplyScalar(0.5);
-                    const distance = start.distanceTo(end);
-                    const direction = end.clone().sub(start).normalize();
-                    const angle = Math.atan2(direction.y, direction.x);
-
-                    return (
-                      <group key={`polyline-line-${index}`} position={midpoint.toArray()}>
-                        <mesh rotation={[0, 0, angle]}>
-                          <boxGeometry args={[distance, 4, 4]} />
-                          <meshBasicMaterial color="#ff0000" />
-                        </mesh>
-                      </group>
-                    );
-                  })}
-              </group>
-            )}
           </React.Fragment>
         );
       })}
@@ -577,22 +512,6 @@ const Scene: React.FC = () => {
       shapeId={saveDialog.shapeId || ''}
       captureSnapshot={captureSnapshot}
     />
-
-    {selectedFace && faceInfo && (
-      <FaceDrawingPanel
-        isOpen={drawingPanelOpen}
-        onClose={() => {
-          setDrawingPanelOpen(false);
-          setSelectedFace(null);
-          setFaceInfo(null);
-          clearPolylinePoints();
-          setActiveTool(Tool.SELECT);
-        }}
-        faceIndex={selectedFace.faceIndex}
-        faceNormal={faceInfo.normal}
-        shape={shapes.find(s => s.id === selectedFace.shapeId)}
-      />
-    )}
     </>
   );
 };

@@ -647,20 +647,6 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
           </button>
           <button
             onClick={() => {
-              setActiveTool(Tool.FACE_SELECT);
-              console.log('Polyline face select mode activated');
-            }}
-            className={`p-1.5 rounded transition-all ${
-              activeTool === Tool.FACE_SELECT
-                ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
-            }`}
-            title="Polyline (PL)"
-          >
-            <GitBranch size={11} />
-          </button>
-          <button
-            onClick={() => {
               if (selectedShapeId) {
                 setShowParametersPanel(!showParametersPanel);
               } else {
