@@ -188,7 +188,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        width: '360px',
+        width: '560px',
       }}
     >
       <div
@@ -350,7 +350,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                 onClick={applyChanges}
                 className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors flex items-center justify-center gap-1.5"
               >
-                <Check size={10} />
+                <Check size={14} />
                 Apply Changes
               </button>
             </div>
