@@ -3,8 +3,6 @@ import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, Or
 import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler, FolderOpen, Home } from 'lucide-react';
 import { createBoxGeometry } from '../utils/geometry';
 import { ParametersPanel } from './ParametersPanel';
-import { subtractReferenceGeometry, checkIntersection } from '../utils/csg';
-import * as THREE from 'three';
 
 interface ToolbarProps {
   onOpenCatalog: () => void;
@@ -30,7 +28,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
     toggleOrthoMode,
     shapes,
     updateShape,
-    deleteShape
+    deleteShape,
+    subtractReferenceShapes
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -403,56 +402,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
 
   const handleSubtractReference = () => {
     console.log('🔘 Subtract button clicked!');
-    console.log('📊 Total shapes:', shapes.length);
-
-    const normalShapes = shapes.filter(s => !s.isReference);
-    const referenceShapes = shapes.filter(s => s.isReference);
-
-    console.log('📦 Normal shapes:', normalShapes.length);
-    console.log('🔴 Reference shapes:', referenceShapes.length);
-
-    if (referenceShapes.length === 0) {
-      console.log('⚠️ No reference geometry found');
-      alert('No reference geometry found! Add a reference box first.');
-      return;
-    }
-
-    if (normalShapes.length === 0) {
-      console.log('⚠️ No normal geometry to subtract from');
-      alert('No normal geometry found! Add a normal box first.');
-      return;
-    }
-
-    console.log(`🔧 Starting subtraction: ${normalShapes.length} normal shapes, ${referenceShapes.length} reference shapes`);
-
-    normalShapes.forEach(normalShape => {
-      const intersectingRefs = referenceShapes.filter(refShape =>
-        checkIntersection(normalShape, refShape)
-      );
-
-      if (intersectingRefs.length > 0) {
-        console.log(`✂️ Subtracting ${intersectingRefs.length} reference geometries from ${normalShape.id}`);
-
-        try {
-          const newGeometry = subtractReferenceGeometry(normalShape, intersectingRefs);
-
-          updateShape(normalShape.id, {
-            geometry: newGeometry,
-            parameters: { ...normalShape.parameters, subtracted: true }
-          });
-
-          console.log(`✅ Subtraction completed for ${normalShape.id}`);
-        } catch (error) {
-          console.error(`❌ Subtraction failed for ${normalShape.id}:`, error);
-        }
-      }
-    });
-
-    referenceShapes.forEach(refShape => {
-      deleteShape(refShape.id);
-    });
-
-    console.log('✅ All reference geometries removed');
+    subtractReferenceShapes();
   };
 
   return (
