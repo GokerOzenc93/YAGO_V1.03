@@ -633,18 +633,14 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
 
         <div className="w-px h-7 bg-stone-300"></div>
 
-        <button
-          onClick={handleAddGeometry}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white transition-colors shadow-sm"
-          title="Add Geometry (B)"
-        >
-          <Package size={11} />
-          <span className="text-xs font-medium">Add Geometry</span>
-        </button>
-
-        <div className="w-px h-7 bg-stone-300"></div>
-
         <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
+          <button
+            onClick={handleAddGeometry}
+            className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
+            title="Add Geometry (B)"
+          >
+            <Package size={11} />
+          </button>
           <button
             className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
             title="Parameters"
