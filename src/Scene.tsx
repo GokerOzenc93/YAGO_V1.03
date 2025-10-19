@@ -39,7 +39,8 @@ const ShapeWithTransform: React.FC<{
       if (shape.vertexModifications && shape.vertexModifications.length > 0) {
         newGeometry = applyVertexModificationsToGeometry(
           newGeometry,
-          shape.vertexModifications
+          shape.vertexModifications,
+          shape.parameters
         );
         console.log(`✨ Applied ${shape.vertexModifications.length} vertex modifications to shape ${shape.id}`);
       }

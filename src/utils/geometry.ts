@@ -32,7 +32,8 @@ export function createBoxGeometry(width: number, height: number, depth: number):
 
 export function applyVertexModificationsToGeometry(
   geometry: THREE.BufferGeometry,
-  modifications: VertexModification[]
+  modifications: VertexModification[],
+  currentParams: BoxParameters
 ): THREE.BufferGeometry {
   if (!modifications || modifications.length === 0) {
     return geometry;
@@ -42,7 +43,19 @@ export function applyVertexModificationsToGeometry(
   const positions = positionAttribute.array as Float32Array;
 
   modifications.forEach((mod) => {
-    const vertexIndices = findAllVertexOccurrences(positions, mod.originalPosition);
+    const currentBaseVertices = [
+      [0, 0, 0],
+      [currentParams.width, 0, 0],
+      [currentParams.width, currentParams.height, 0],
+      [0, currentParams.height, 0],
+      [0, 0, currentParams.depth],
+      [currentParams.width, 0, currentParams.depth],
+      [currentParams.width, currentParams.height, currentParams.depth],
+      [0, currentParams.height, currentParams.depth],
+    ];
+
+    const currentBasePos = currentBaseVertices[mod.vertexIndex];
+    const vertexIndices = findAllVertexOccurrences(positions, currentBasePos as [number, number, number]);
 
     vertexIndices.forEach((idx) => {
       positions[idx] = mod.newPosition[0];
