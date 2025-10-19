@@ -9,13 +9,6 @@ import { catalogService, CatalogItem } from './lib/supabase';
 import { createGeometryFromType } from './utils/geometry';
 import * as THREE from 'three';
 
-declare global {
-  interface Window {
-    opencascade: any;
-    ocInstance: any;
-  }
-}
-
 function App() {
   const { setOpenCascadeInstance, setOpenCascadeLoading, opencascadeLoading, addShape } = useAppStore();
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -25,102 +18,49 @@ function App() {
     let mounted = true;
 
     const loadOpenCascade = async () => {
-      if (window.ocInstance) {
-        console.log('ℹ️ OpenCascade already loaded');
-        setOpenCascadeInstance(window.ocInstance);
-        setOpenCascadeLoading(false);
+      if ((window as any).opencascadeLoaded) {
         return;
       }
 
-      console.log('🔄 Loading OpenCascade from CDN...');
+      console.log('🔄 Starting OpenCascade load...');
       setOpenCascadeLoading(true);
 
-      try {
-        const scriptExists = document.querySelector('script[src*="opencascade.wasm.js"]');
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/opencascade.wasm.js';
+      script.async = true;
 
-        if (!scriptExists) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/opencascade.wasm.js';
-            script.async = true;
-            script.crossOrigin = 'anonymous';
+      script.onload = async () => {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 200));
 
-            script.onload = () => {
-              console.log('✅ Script loaded');
-              resolve(true);
-            };
-
-            script.onerror = (err) => {
-              console.error('❌ Script load failed:', err);
-              reject(new Error('Failed to load OpenCascade script'));
-            };
-
-            document.head.appendChild(script);
-          });
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        if (!window.opencascade) {
-          throw new Error('opencascade not found on window');
-        }
-
-        console.log('🔄 Initializing OpenCascade instance...');
-
-        const oc = await window.opencascade({
-          locateFile: (path: string) => {
-            const url = `https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/${path}`;
-            console.log(`📦 Loading: ${path}`);
-            return url;
+          const initOC = (window as any).opencascade;
+          if (!initOC) {
+            throw new Error('OpenCascade not found');
           }
-        });
 
-        if (!mounted) return;
+          const oc = await initOC({
+            locateFile: (path: string) =>
+              `https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/${path}`
+          });
 
-        if (!oc) {
-          throw new Error('OpenCascade initialization returned null');
+          if (mounted) {
+            setOpenCascadeInstance(oc);
+            setOpenCascadeLoading(false);
+            (window as any).opencascadeLoaded = true;
+            console.log('✅ OpenCascade.js ready');
+          }
+        } catch (error) {
+          console.error('❌ Failed to initialize OpenCascade:', error);
+          if (mounted) setOpenCascadeLoading(false);
         }
+      };
 
-        console.log('🔍 Verifying OpenCascade API...');
+      script.onerror = () => {
+        console.error('❌ Failed to load OpenCascade script');
+        if (mounted) setOpenCascadeLoading(false);
+      };
 
-        const apiCheck = {
-          BRepPrimAPI_MakeBox: !!oc.BRepPrimAPI_MakeBox,
-          BRepPrimAPI_MakeBox_1: !!oc.BRepPrimAPI_MakeBox_1,
-          BRepPrimAPI_MakeBox_2: !!oc.BRepPrimAPI_MakeBox_2,
-          BRepAlgoAPI_Cut: !!oc.BRepAlgoAPI_Cut,
-          BRepAlgoAPI_Cut_1: !!oc.BRepAlgoAPI_Cut_1,
-          BRepAlgoAPI_Cut_2: !!oc.BRepAlgoAPI_Cut_2,
-          BRepAlgoAPI_Fuse: !!oc.BRepAlgoAPI_Fuse,
-          BRepAlgoAPI_Fuse_1: !!oc.BRepAlgoAPI_Fuse_1,
-          BRepAlgoAPI_Fuse_2: !!oc.BRepAlgoAPI_Fuse_2,
-        };
-
-        console.log('📊 API Status:', apiCheck);
-
-        const hasMakeBox = apiCheck.BRepPrimAPI_MakeBox || apiCheck.BRepPrimAPI_MakeBox_1 || apiCheck.BRepPrimAPI_MakeBox_2;
-        const hasCut = apiCheck.BRepAlgoAPI_Cut || apiCheck.BRepAlgoAPI_Cut_1 || apiCheck.BRepAlgoAPI_Cut_2;
-        const hasFuse = apiCheck.BRepAlgoAPI_Fuse || apiCheck.BRepAlgoAPI_Fuse_1 || apiCheck.BRepAlgoAPI_Fuse_2;
-
-        if (!hasMakeBox) {
-          throw new Error('Critical API missing: No BRepPrimAPI_MakeBox variant found');
-        }
-
-        setOpenCascadeInstance(oc);
-        setOpenCascadeLoading(false);
-        window.ocInstance = oc;
-
-        console.log('✅ OpenCascade loaded successfully!');
-        console.log('✅ Primitive shapes: AVAILABLE');
-        console.log('✅ Boolean Cut:', hasCut ? 'AVAILABLE' : 'NOT AVAILABLE');
-        console.log('✅ Boolean Fuse:', hasFuse ? 'AVAILABLE' : 'NOT AVAILABLE');
-
-      } catch (error) {
-        console.error('❌ OpenCascade initialization failed:', error);
-        if (mounted) {
-          setOpenCascadeLoading(false);
-          console.error('Please refresh the page to retry');
-        }
-      }
+      document.head.appendChild(script);
     };
 
     loadOpenCascade();
@@ -198,7 +138,7 @@ function App() {
           <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col items-center gap-3">
             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
             <div className="text-sm font-medium text-slate-700">Loading OpenCascade...</div>
-            <div className="text-xs text-slate-500">Initializing WebAssembly module</div>
+            <div className="text-xs text-slate-500">Please wait a moment</div>
           </div>
         </div>
       )}

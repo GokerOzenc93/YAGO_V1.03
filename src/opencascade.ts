@@ -124,98 +124,37 @@ export const performOCBoolean = (
   shape2: TopoDS_Shape,
   operation: 'union' | 'subtract' | 'intersect'
 ): TopoDS_Shape => {
-  console.log(`🔄 Performing boolean ${operation}...`);
+  const progressRange = new oc.Message_ProgressRange_1();
 
-  if (!oc) {
-    throw new Error('OpenCascade instance is null');
-  }
-
-  if (!shape1 || !shape2) {
-    throw new Error('One or both shapes are null');
-  }
-
-  try {
-    let progressRange: any = null;
-    try {
-      if (oc.Message_ProgressRange_1) {
-        progressRange = new oc.Message_ProgressRange_1();
+  switch (operation) {
+    case 'union': {
+      const fuse = new oc.BRepAlgoAPI_Fuse_3(shape1, shape2, progressRange);
+      fuse.Build(progressRange);
+      if (!fuse.IsDone()) {
+        throw new Error('Boolean union failed');
       }
-    } catch (e) {
-      console.warn('⚠️ Message_ProgressRange_1 not available, using simpler API');
+      return fuse.Shape();
     }
 
-    switch (operation) {
-      case 'union': {
-        let fuse: any;
-        if (progressRange && oc.BRepAlgoAPI_Fuse_3) {
-          fuse = new oc.BRepAlgoAPI_Fuse_3(shape1, shape2, progressRange);
-          fuse.Build(progressRange);
-        } else if (oc.BRepAlgoAPI_Fuse_2) {
-          fuse = new oc.BRepAlgoAPI_Fuse_2(shape1, shape2);
-          fuse.Build();
-        } else if (oc.BRepAlgoAPI_Fuse_1) {
-          fuse = new oc.BRepAlgoAPI_Fuse_1(shape1, shape2);
-        } else {
-          throw new Error('No BRepAlgoAPI_Fuse constructor available');
-        }
-
-        if (!fuse.IsDone()) {
-          throw new Error('Boolean union failed - operation not done');
-        }
-        const result = fuse.Shape();
-        console.log('✅ Boolean union completed');
-        return result;
+    case 'subtract': {
+      const cut = new oc.BRepAlgoAPI_Cut_3(shape1, shape2, progressRange);
+      cut.Build(progressRange);
+      if (!cut.IsDone()) {
+        throw new Error('Boolean subtract failed');
       }
-
-      case 'subtract': {
-        let cut: any;
-        if (progressRange && oc.BRepAlgoAPI_Cut_3) {
-          cut = new oc.BRepAlgoAPI_Cut_3(shape1, shape2, progressRange);
-          cut.Build(progressRange);
-        } else if (oc.BRepAlgoAPI_Cut_2) {
-          cut = new oc.BRepAlgoAPI_Cut_2(shape1, shape2);
-          cut.Build();
-        } else if (oc.BRepAlgoAPI_Cut_1) {
-          cut = new oc.BRepAlgoAPI_Cut_1(shape1, shape2);
-        } else {
-          throw new Error('No BRepAlgoAPI_Cut constructor available');
-        }
-
-        if (!cut.IsDone()) {
-          throw new Error('Boolean subtract failed - operation not done');
-        }
-        const result = cut.Shape();
-        console.log('✅ Boolean subtract completed');
-        return result;
-      }
-
-      case 'intersect': {
-        let common: any;
-        if (progressRange && oc.BRepAlgoAPI_Common_3) {
-          common = new oc.BRepAlgoAPI_Common_3(shape1, shape2, progressRange);
-          common.Build(progressRange);
-        } else if (oc.BRepAlgoAPI_Common_2) {
-          common = new oc.BRepAlgoAPI_Common_2(shape1, shape2);
-          common.Build();
-        } else if (oc.BRepAlgoAPI_Common_1) {
-          common = new oc.BRepAlgoAPI_Common_1(shape1, shape2);
-        } else {
-          throw new Error('No BRepAlgoAPI_Common constructor available');
-        }
-
-        if (!common.IsDone()) {
-          throw new Error('Boolean intersect failed - operation not done');
-        }
-        const result = common.Shape();
-        console.log('✅ Boolean intersect completed');
-        return result;
-      }
-
-      default:
-        throw new Error(`Unknown operation: ${operation}`);
+      return cut.Shape();
     }
-  } catch (error) {
-    console.error(`❌ Boolean ${operation} failed:`, error);
-    throw error;
+
+    case 'intersect': {
+      const common = new oc.BRepAlgoAPI_Common_3(shape1, shape2, progressRange);
+      common.Build(progressRange);
+      if (!common.IsDone()) {
+        throw new Error('Boolean intersect failed');
+      }
+      return common.Shape();
+    }
+
+    default:
+      throw new Error(`Unknown operation: ${operation}`);
   }
 };
