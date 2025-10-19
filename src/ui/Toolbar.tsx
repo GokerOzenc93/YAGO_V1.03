@@ -646,9 +646,20 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
             <Package size={11} />
           </button>
           <button
-            onClick={() => setShowParametersPanel(!showParametersPanel)}
-            className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
-            title="Parameters"
+            onClick={() => {
+              if (selectedShapeId) {
+                setShowParametersPanel(!showParametersPanel);
+              } else {
+                console.log('⚠️ No shape selected - cannot open parameters panel');
+              }
+            }}
+            className={`p-1.5 rounded transition-all ${
+              selectedShapeId
+                ? 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
+                : 'text-stone-300 cursor-not-allowed'
+            }`}
+            title={selectedShapeId ? "Parameters" : "Select a shape first"}
+            disabled={!selectedShapeId}
           >
             <Settings size={11} />
           </button>

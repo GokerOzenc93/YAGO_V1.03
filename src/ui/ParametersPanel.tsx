@@ -30,13 +30,35 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
   const [customParameters, setCustomParameters] = useState<CustomParameter[]>([]);
 
   useEffect(() => {
+    console.log('Parameters Panel - Selected Shape:', {
+      selectedShapeId,
+      shapesCount: shapes.length,
+      selectedShape: selectedShape ? {
+        id: selectedShape.id,
+        type: selectedShape.type,
+        parameters: selectedShape.parameters
+      } : null
+    });
+
     if (selectedShape && selectedShape.parameters) {
       setWidth(selectedShape.parameters.width || 0);
       setHeight(selectedShape.parameters.height || 0);
       setDepth(selectedShape.parameters.depth || 0);
       setCustomParameters(selectedShape.parameters.customParameters || []);
+    } else {
+      setWidth(0);
+      setHeight(0);
+      setDepth(0);
+      setCustomParameters([]);
     }
-  }, [selectedShape]);
+  }, [selectedShape, selectedShapeId, shapes]);
+
+  useEffect(() => {
+    if (!selectedShapeId && isOpen) {
+      console.log('⚠️ No shape selected - closing parameters panel');
+      onClose();
+    }
+  }, [selectedShapeId, isOpen, onClose]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
