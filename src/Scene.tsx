@@ -24,7 +24,6 @@ const ShapeWithTransform: React.FC<{
   const groupRef = useRef<THREE.Group>(null);
   const isUpdatingRef = useRef(false);
   const [localGeometry, setLocalGeometry] = useState(shape.geometry);
-  const [geometryKey, setGeometryKey] = useState(0);
 
   useEffect(() => {
     if (shape.parameters?.width && shape.parameters?.height && shape.parameters?.depth) {
@@ -52,8 +51,6 @@ const ShapeWithTransform: React.FC<{
       -minCorner.y,
       -minCorner.z
     );
-
-    setGeometryKey(prev => prev + 1);
   }, [localGeometry]);
 
   useEffect(() => {
@@ -183,11 +180,10 @@ const ShapeWithTransform: React.FC<{
         )}
       </group>
 
-      {isSelected && activeTool !== Tool.SELECT && groupRef.current && (
+      {isSelected && activeTool !== Tool.SELECT && (
         <TransformControls
-          key={geometryKey}
           ref={transformRef}
-          object={groupRef.current}
+          object={groupRef.current!}
           mode={getTransformMode()}
           size={0.8}
         />
