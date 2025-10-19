@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store';
 import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler, FolderOpen } from 'lucide-react';
-import * as THREE from 'three';
+import { createBoxGeometry } from '../utils/geometry';
 import { ParametersPanel } from './ParametersPanel';
 
 interface ToolbarProps {
@@ -318,8 +318,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
 
   const handleAddGeometry = () => {
     const w = 600, h = 600, d = 600;
-    const geometry = new THREE.BoxGeometry(w, h, d);
-    geometry.translate(w / 2, h / 2, d / 2);
+    const geometry = createBoxGeometry(w, h, d);
 
     addShape({
       id: `box-${Date.now()}`,

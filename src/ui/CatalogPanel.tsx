@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { createGeometryFromType } from '../utils/geometry';
 import * as THREE from 'three';
 
 interface CatalogItem {
@@ -34,39 +35,12 @@ const GeometryPreview: React.FC<{ geometryData: any }> = ({ geometryData }) => {
   const [bounds, setBounds] = useState<THREE.Box3 | null>(null);
 
   const createGeometry = () => {
-    const params = geometryData.parameters || {};
-
     console.log('Preview creating geometry:', {
       type: geometryData.type,
-      parameters: params
+      parameters: geometryData.parameters
     });
 
-    switch (geometryData.type) {
-      case 'box': {
-        const w = params.width || 100;
-        const h = params.height || 100;
-        const d = params.depth || 100;
-        const geometry = new THREE.BoxGeometry(w, h, d);
-        geometry.translate(w / 2, h / 2, d / 2);
-        return geometry;
-      }
-      case 'cylinder':
-        return new THREE.CylinderGeometry(
-          params.radiusTop || 50,
-          params.radiusBottom || 50,
-          params.height || 100,
-          32
-        );
-      case 'sphere':
-        return new THREE.SphereGeometry(params.radius || 50, 32, 32);
-      case 'cone':
-        return new THREE.ConeGeometry(params.radius || 40, params.height || 100, 32);
-      default: {
-        const geometry = new THREE.BoxGeometry(100, 100, 100);
-        geometry.translate(50, 50, 50);
-        return geometry;
-      }
-    }
+    return createGeometryFromType(geometryData.type, geometryData.parameters);
   };
 
   const geometry = useMemo(() => createGeometry(), [geometryData]);

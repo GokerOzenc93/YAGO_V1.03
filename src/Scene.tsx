@@ -5,6 +5,7 @@ import { useAppStore, CameraType, Tool, ViewMode } from './store';
 import ContextMenu from './ui/ContextMenu';
 import SaveDialog from './ui/SaveDialog';
 import { catalogService } from './lib/supabase';
+import { createBoxGeometry } from './utils/geometry';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{
@@ -28,12 +29,11 @@ const ShapeWithTransform: React.FC<{
 
   useEffect(() => {
     if (shape.parameters?.width && shape.parameters?.height && shape.parameters?.depth) {
-      const w = shape.parameters.width;
-      const h = shape.parameters.height;
-      const d = shape.parameters.depth;
-
-      const newGeometry = new THREE.BoxGeometry(w, h, d);
-      newGeometry.translate(w / 2, h / 2, d / 2);
+      const newGeometry = createBoxGeometry(
+        shape.parameters.width,
+        shape.parameters.height,
+        shape.parameters.depth
+      );
 
       setLocalGeometry(newGeometry);
       setGeometryKey(prev => prev + 1);

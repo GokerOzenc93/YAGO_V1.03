@@ -5,6 +5,7 @@ import Terminal from './ui/Terminal';
 import CatalogPanel from './ui/CatalogPanel';
 import { useAppStore } from './store';
 import { catalogService, CatalogItem } from './lib/supabase';
+import { createGeometryFromType } from './utils/geometry';
 import * as THREE from 'three';
 
 function App() {
@@ -81,55 +82,16 @@ function App() {
 
   const handleLoadFromCatalog = (item: CatalogItem) => {
     const geometryData = item.geometry_data;
-    const params = geometryData.parameters || {};
 
     console.log('📥 Loading geometry from catalog:', {
       code: item.code,
       type: geometryData.type,
-      parameters: params,
+      parameters: geometryData.parameters,
       position: geometryData.position,
       scale: geometryData.scale
     });
 
-    let geometry: THREE.BufferGeometry;
-
-    switch (geometryData.type) {
-      case 'cylinder':
-        geometry = new THREE.CylinderGeometry(
-          params.radiusTop !== undefined ? params.radiusTop : 50,
-          params.radiusBottom !== undefined ? params.radiusBottom : 50,
-          params.height !== undefined ? params.height : 100,
-          32
-        );
-        console.log('🔷 Created cylinder:', { radiusTop: params.radiusTop, radiusBottom: params.radiusBottom, height: params.height });
-        break;
-      case 'sphere':
-        geometry = new THREE.SphereGeometry(
-          params.radius !== undefined ? params.radius : 50,
-          32,
-          32
-        );
-        console.log('🔵 Created sphere:', { radius: params.radius });
-        break;
-      case 'cone':
-        geometry = new THREE.ConeGeometry(
-          params.radius !== undefined ? params.radius : 40,
-          params.height !== undefined ? params.height : 100,
-          32
-        );
-        console.log('🔺 Created cone:', { radius: params.radius, height: params.height });
-        break;
-      case 'box':
-      default: {
-        const w = params.width !== undefined ? params.width : 100;
-        const h = params.height !== undefined ? params.height : 100;
-        const d = params.depth !== undefined ? params.depth : 100;
-        geometry = new THREE.BoxGeometry(w, h, d);
-        geometry.translate(w / 2, h / 2, d / 2);
-        console.log('📦 Created box:', { width: w, height: h, depth: d });
-        break;
-      }
-    }
+    const geometry = createGeometryFromType(geometryData.type, geometryData.parameters);
 
     const newPosition: [number, number, number] = [
       geometryData.position?.[0] ?? 0,
