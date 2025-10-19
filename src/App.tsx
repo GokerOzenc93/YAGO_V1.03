@@ -17,7 +17,10 @@ function App() {
     let mounted = true;
 
     const loadOpenCascade = async () => {
-      if ((window as any).opencascadeLoaded) {
+      if ((window as any).opencascadeLoaded && (window as any).opencascadeInstance) {
+        console.log('✅ OpenCascade already loaded, reusing instance');
+        setOpenCascadeInstance((window as any).opencascadeInstance);
+        setOpenCascadeLoading(false);
         return;
       }
 
@@ -44,6 +47,7 @@ function App() {
               setOpenCascadeInstance(oc);
               setOpenCascadeLoading(false);
               (window as any).opencascadeLoaded = true;
+              (window as any).opencascadeInstance = oc;
               console.log('✅ OpenCascade.js ready');
             }
           } catch (error) {

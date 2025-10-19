@@ -256,7 +256,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   opencascadeInstance: null,
-  opencascadeLoading: true,
+  opencascadeLoading: false,
   setOpenCascadeInstance: (instance) => set({ opencascadeInstance: instance }),
   setOpenCascadeLoading: (loading) => set({ opencascadeLoading: loading }),
 
