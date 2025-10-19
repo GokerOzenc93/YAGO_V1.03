@@ -6,6 +6,10 @@ export function subtractReferenceGeometry(
   targetShape: Shape,
   referenceShapes: Shape[]
 ): THREE.BufferGeometry {
+  console.log('🔧 subtractReferenceGeometry called');
+  console.log('  Target:', targetShape.id, targetShape.type);
+  console.log('  References:', referenceShapes.map(r => r.id));
+
   const evaluator = new Evaluator();
 
   const targetBrush = new Brush(targetShape.geometry);
@@ -14,10 +18,14 @@ export function subtractReferenceGeometry(
   targetBrush.scale.set(...targetShape.scale);
   targetBrush.updateMatrixWorld();
 
+  console.log('  Target brush created and positioned');
+
   let result = targetBrush;
 
   for (const refShape of referenceShapes) {
     if (!refShape.isReference) continue;
+
+    console.log('  Processing reference:', refShape.id);
 
     const refBrush = new Brush(refShape.geometry);
     refBrush.position.set(...refShape.position);
@@ -25,10 +33,13 @@ export function subtractReferenceGeometry(
     refBrush.scale.set(...refShape.scale);
     refBrush.updateMatrixWorld();
 
+    console.log('  Calling evaluator.evaluate with SUBTRACTION');
     const tempResult = evaluator.evaluate(result, refBrush, SUBTRACTION);
+    console.log('  Evaluation complete, result:', tempResult);
     result = tempResult;
   }
 
+  console.log('  Returning geometry');
   return result.geometry;
 }
 
