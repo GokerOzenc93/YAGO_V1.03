@@ -338,7 +338,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                       className="p-1 hover:bg-red-100 rounded transition-colors"
                       title="Delete Parameter"
                     >
-                      <X size={14} className="text-red-400" />
+                      <X size={14} className="text-red-600" />
                     </button>
                   </div>
                 ))}
@@ -350,7 +350,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                 onClick={applyChanges}
                 className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors flex items-center justify-center gap-1.5"
               >
-                <Check size={14} />
+                <Check size={10} />
                 Apply Changes
               </button>
             </div>
