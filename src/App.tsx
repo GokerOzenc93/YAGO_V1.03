@@ -41,9 +41,20 @@ function App() {
       try {
         console.log('📦 Importing OpenCascade module...');
         const { initOpenCascade } = await import('opencascade.js');
+        console.log('📦 Module imported successfully');
 
-        console.log('🔧 Initializing OpenCascade WASM...');
-        const oc = await initOpenCascade();
+        console.log('🔧 Initializing OpenCascade WASM... (this may take 10-30 seconds)');
+        const startTime = Date.now();
+
+        const oc = await Promise.race([
+          initOpenCascade(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('OpenCascade initialization timeout (60s)')), 60000)
+          )
+        ]);
+
+        const loadTime = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.log(`✅ OpenCascade WASM loaded in ${loadTime}s`);
 
         if (mounted) {
           (window as any).opencascadeInstance = oc;
@@ -54,6 +65,10 @@ function App() {
         }
       } catch (error) {
         console.error('❌ Failed to load OpenCascade:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
         (window as any).opencascadeLoading = false;
         if (mounted) setOpenCascadeLoading(false);
       }
@@ -131,10 +146,14 @@ function App() {
     <div className="flex flex-col h-screen bg-stone-100">
       {opencascadeLoading && (
         <div className="fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col items-center gap-3">
+          <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col items-center gap-3 max-w-md">
             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <div className="text-sm font-medium text-slate-700">Loading OpenCascade...</div>
-            <div className="text-xs text-slate-500">Please wait a moment</div>
+            <div className="text-sm font-medium text-slate-700">Loading OpenCascade WASM...</div>
+            <div className="text-xs text-slate-500 text-center">
+              Initializing 3D geometry engine (63MB)
+              <br />
+              This may take 10-30 seconds on first load
+            </div>
           </div>
         </div>
       )}
