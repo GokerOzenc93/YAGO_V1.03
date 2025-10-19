@@ -23,6 +23,22 @@ const ShapeWithTransform: React.FC<{
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   const isUpdatingRef = useRef(false);
+  const [localGeometry, setLocalGeometry] = useState(shape.geometry);
+
+  useEffect(() => {
+    if (shape.parameters?.width && shape.parameters?.height && shape.parameters?.depth) {
+      const newGeometry = new THREE.BoxGeometry(
+        shape.parameters.width,
+        shape.parameters.height,
+        shape.parameters.depth
+      );
+      setLocalGeometry(newGeometry);
+
+      return () => {
+        newGeometry.dispose();
+      };
+    }
+  }, [shape.parameters?.width, shape.parameters?.height, shape.parameters?.depth]);
 
   useEffect(() => {
     if (!meshRef.current || !groupRef.current || isUpdatingRef.current) return;
@@ -35,7 +51,7 @@ const ShapeWithTransform: React.FC<{
       -minCorner.y,
       -minCorner.z
     );
-  }, [shape.geometry]);
+  }, [localGeometry]);
 
   useEffect(() => {
     if (!groupRef.current || isUpdatingRef.current) return;
@@ -126,7 +142,7 @@ const ShapeWithTransform: React.FC<{
         {!isWireframe && (
           <mesh
             ref={meshRef}
-            geometry={shape.geometry}
+            geometry={localGeometry}
             castShadow
             receiveShadow
           >
@@ -136,7 +152,7 @@ const ShapeWithTransform: React.FC<{
               roughness={0.4}
             />
             <lineSegments>
-              <edgesGeometry args={[shape.geometry]} />
+              <edgesGeometry args={[localGeometry]} />
               <lineBasicMaterial
                 color={isSelected ? '#3b82f6' : '#1a1a1a'}
                 linewidth={1}
@@ -150,11 +166,11 @@ const ShapeWithTransform: React.FC<{
           <>
             <mesh
               ref={meshRef}
-              geometry={shape.geometry}
+              geometry={localGeometry}
               visible={false}
             />
             <lineSegments>
-              <edgesGeometry args={[shape.geometry]} />
+              <edgesGeometry args={[localGeometry]} />
               <lineBasicMaterial
                 color={isSelected ? '#60a5fa' : '#1a1a1a'}
                 linewidth={isSelected ? 2 : 1}

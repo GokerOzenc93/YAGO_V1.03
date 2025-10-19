@@ -192,10 +192,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
   const applyChanges = () => {
     if (!selectedShape) return;
 
-    const newGeometry = new THREE.BoxGeometry(width, height, depth);
-
     updateShape(selectedShape.id, {
-      geometry: newGeometry,
       parameters: {
         ...selectedShape.parameters,
         width,
