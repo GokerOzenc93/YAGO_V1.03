@@ -358,62 +358,6 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
               </div>
             </div>
 
-            {selectedShape.vertexModifications && selectedShape.vertexModifications.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-stone-200">
-                <div className="text-xs font-semibold text-stone-700 mb-2">Vertex Modifications</div>
-                {selectedShape.vertexModifications.map((mod: any, idx: number) => (
-                  <div key={idx} className="flex gap-1 items-center bg-blue-50 p-1 rounded">
-                    <input
-                      type="text"
-                      value={`V${mod.vertexIndex}`}
-                      readOnly
-                      className="w-10 px-2 py-1 text-xs font-medium border border-blue-300 rounded bg-blue-100 text-blue-700 text-center"
-                    />
-                    <input
-                      type="text"
-                      value={mod.direction}
-                      readOnly
-                      className="w-12 px-2 py-1 text-xs border border-blue-300 rounded bg-blue-100 text-blue-700 text-center"
-                    />
-                    <input
-                      type="number"
-                      value={
-                        mod.direction.startsWith('x') ? mod.newPosition[0] :
-                        mod.direction.startsWith('y') ? mod.newPosition[1] :
-                        mod.newPosition[2]
-                      }
-                      onChange={(e) => {
-                        const newValue = Number(e.target.value);
-                        const newPos = [...mod.newPosition] as [number, number, number];
-                        if (mod.direction.startsWith('x')) newPos[0] = newValue;
-                        else if (mod.direction.startsWith('y')) newPos[1] = newValue;
-                        else newPos[2] = newValue;
-
-                        const updatedMods = [...selectedShape.vertexModifications];
-                        updatedMods[idx] = { ...mod, newPosition: newPos };
-                        updateShape(selectedShape.id, { vertexModifications: updatedMods });
-                      }}
-                      className="w-16 px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
-                    />
-                    <input
-                      type="text"
-                      value={`[${mod.newPosition[0]}, ${mod.newPosition[1]}, ${mod.newPosition[2]}]`}
-                      readOnly
-                      className="flex-1 px-2 py-1 text-xs border border-blue-300 rounded bg-blue-100 text-blue-700"
-                    />
-                    <button
-                      onClick={() => {
-                        const updatedMods = selectedShape.vertexModifications.filter((_: any, i: number) => i !== idx);
-                        updateShape(selectedShape.id, { vertexModifications: updatedMods });
-                      }}
-                      className="p-1 hover:bg-red-100 rounded transition-colors flex-shrink-0"
-                    >
-                      <X size={12} className="text-red-600" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {customParameters.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-stone-200">
@@ -455,6 +399,96 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {selectedShape.vertexModifications && selectedShape.vertexModifications.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-stone-200">
+                {selectedShape.vertexModifications.map((mod: any, idx: number) => {
+                  const currentValue = mod.direction.startsWith('x') ? mod.newPosition[0] :
+                                       mod.direction.startsWith('y') ? mod.newPosition[1] :
+                                       mod.newPosition[2];
+
+                  const evaluateVertexExpression = (expr: string): number => {
+                    try {
+                      let evalExpr = expr
+                        .replace(/\bW\b/g, width.toString())
+                        .replace(/\bH\b/g, height.toString())
+                        .replace(/\bD\b/g, depth.toString());
+
+                      customParameters.forEach((p) => {
+                        const regex = new RegExp(`\\b${p.name}\\b`, 'g');
+                        evalExpr = evalExpr.replace(regex, p.result.toString());
+                      });
+
+                      const sanitized = evalExpr.replace(/[^0-9+\-*/().\s]/g, '');
+                      const result = Function(`"use strict"; return (${sanitized})`)();
+                      return typeof result === 'number' && !isNaN(result) ? result : currentValue;
+                    } catch {
+                      return currentValue;
+                    }
+                  };
+
+                  const expression = mod.expression || String(currentValue);
+                  const result = evaluateVertexExpression(expression);
+
+                  return (
+                    <div key={idx} className="flex gap-1 items-center">
+                      <input
+                        type="text"
+                        value={`V${mod.vertexIndex}`}
+                        readOnly
+                        className="w-10 px-2 py-1 text-xs font-medium text-center border border-stone-300 rounded bg-stone-50 text-stone-700"
+                      />
+                      <input
+                        type="text"
+                        value={expression}
+                        onChange={(e) => {
+                          const newExpr = e.target.value;
+                          const newResult = evaluateVertexExpression(newExpr);
+                          const newPos = [...mod.newPosition] as [number, number, number];
+
+                          if (mod.direction.startsWith('x')) newPos[0] = newResult;
+                          else if (mod.direction.startsWith('y')) newPos[1] = newResult;
+                          else newPos[2] = newResult;
+
+                          const updatedMods = [...selectedShape.vertexModifications];
+                          updatedMods[idx] = { ...mod, expression: newExpr, newPosition: newPos };
+                          updateShape(selectedShape.id, { vertexModifications: updatedMods });
+                        }}
+                        className="w-16 px-2 py-1 text-xs text-center border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        placeholder="0"
+                      />
+                      <input
+                        type="text"
+                        value={result}
+                        readOnly
+                        className="w-16 px-2 py-1 text-xs text-center border border-stone-300 rounded bg-stone-50 text-stone-600"
+                      />
+                      <input
+                        type="text"
+                        value={mod.description || ''}
+                        onChange={(e) => {
+                          const updatedMods = [...selectedShape.vertexModifications];
+                          updatedMods[idx] = { ...mod, description: e.target.value };
+                          updateShape(selectedShape.id, { vertexModifications: updatedMods });
+                        }}
+                        className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        placeholder="Description"
+                      />
+                      <button
+                        onClick={() => {
+                          const updatedMods = selectedShape.vertexModifications.filter((_: any, i: number) => i !== idx);
+                          updateShape(selectedShape.id, { vertexModifications: updatedMods });
+                        }}
+                        className="p-1 hover:bg-red-100 rounded transition-colors flex-shrink-0"
+                        title="Delete Vertex"
+                      >
+                        <X size={14} className="text-red-600" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

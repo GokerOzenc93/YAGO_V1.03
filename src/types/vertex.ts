@@ -5,6 +5,8 @@ export interface VertexModification {
   originalPosition: [number, number, number];
   newPosition: [number, number, number];
   direction: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-';
+  expression?: string;
+  description?: string;
 }
 
 export interface ShapeVertexData {

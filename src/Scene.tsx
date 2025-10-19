@@ -265,11 +265,16 @@ const Scene: React.FC = () => {
             newPosition[2] = newValue;
           }
 
+          const axisName = vertexDirection[0].toUpperCase();
+          const directionSymbol = vertexDirection[1] === '+' ? '+' : '-';
+
           addVertexModification(selectedShapeId, {
             vertexIndex: selectedVertexIndex,
             originalPosition: originalPos as [number, number, number],
             newPosition,
-            direction: vertexDirection
+            direction: vertexDirection,
+            expression: String(newValue),
+            description: `Vertex ${selectedVertexIndex} ${axisName}${directionSymbol}`
           });
 
           console.log(`✅ Vertex ${selectedVertexIndex} moved to [${newPosition[0]}, ${newPosition[1]}, ${newPosition[2]}]`);
