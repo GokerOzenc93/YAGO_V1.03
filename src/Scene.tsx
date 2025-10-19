@@ -26,8 +26,6 @@ const ShapeWithTransform: React.FC<{
 
   useEffect(() => {
     if (meshRef.current && groupRef.current) {
-      const currentGroupPos = groupRef.current.position.clone();
-
       const bbox = new THREE.Box3().setFromObject(meshRef.current);
       const minCorner = bbox.min;
 
@@ -36,20 +34,28 @@ const ShapeWithTransform: React.FC<{
         -minCorner.y,
         -minCorner.z
       );
-
-      if (groupRef.current.position.x === shape.position[0] &&
-          groupRef.current.position.y === shape.position[1] &&
-          groupRef.current.position.z === shape.position[2]) {
-        groupRef.current.position.set(
-          shape.position[0] + minCorner.x,
-          shape.position[1] + minCorner.y,
-          shape.position[2] + minCorner.z
-        );
-      } else {
-        groupRef.current.position.copy(currentGroupPos);
-      }
     }
   }, [shape.geometry]);
+
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(
+        shape.position[0],
+        shape.position[1],
+        shape.position[2]
+      );
+      groupRef.current.rotation.set(
+        shape.rotation[0],
+        shape.rotation[1],
+        shape.rotation[2]
+      );
+      groupRef.current.scale.set(
+        shape.scale[0],
+        shape.scale[1],
+        shape.scale[2]
+      );
+    }
+  }, [shape.position, shape.rotation, shape.scale]);
 
   useEffect(() => {
     if (transformRef.current && isSelected && groupRef.current) {
