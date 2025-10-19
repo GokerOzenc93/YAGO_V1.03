@@ -452,7 +452,6 @@ const Scene: React.FC = () => {
       })}
 
       <mesh
-        onClick={() => selectShape(null)}
         position={[0, -1, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
