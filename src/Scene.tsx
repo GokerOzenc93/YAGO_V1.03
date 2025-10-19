@@ -34,11 +34,7 @@ const ShapeWithTransform: React.FC<{
         -minCorner.y,
         -minCorner.z
       );
-    }
-  }, [shape.geometry]);
 
-  useEffect(() => {
-    if (groupRef.current) {
       groupRef.current.position.set(
         shape.position[0],
         shape.position[1],
@@ -55,7 +51,7 @@ const ShapeWithTransform: React.FC<{
         shape.scale[2]
       );
     }
-  }, [shape.position, shape.rotation, shape.scale]);
+  }, [shape.geometry, shape.position, shape.rotation, shape.scale]);
 
   useEffect(() => {
     if (transformRef.current && isSelected && groupRef.current) {
