@@ -193,19 +193,19 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="W"
                   readOnly
-                  className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
+                  className="w-10 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
                 />
                 <input
                   type="number"
                   value={width}
                   onChange={(e) => handleDimensionChange('width', Number(e.target.value))}
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-16 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <input
                   type="text"
                   value={width}
                   readOnly
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
                 <input
                   type="text"
@@ -220,19 +220,19 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="H"
                   readOnly
-                  className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
+                  className="w-10 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
                 />
                 <input
                   type="number"
                   value={height}
                   onChange={(e) => handleDimensionChange('height', Number(e.target.value))}
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-16 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <input
                   type="text"
                   value={height}
                   readOnly
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
                 <input
                   type="text"
@@ -247,19 +247,19 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="D"
                   readOnly
-                  className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
+                  className="w-10 px-2 py-1 text-xs font-medium border border-stone-300 rounded bg-stone-50 text-stone-700 text-center"
                 />
                 <input
                   type="number"
                   value={depth}
                   onChange={(e) => handleDimensionChange('depth', Number(e.target.value))}
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-16 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <input
                   type="text"
                   value={depth}
                   readOnly
-                  className="w-12 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
                 <input
                   type="text"
@@ -278,27 +278,27 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                       type="text"
                       value={param.name}
                       onChange={(e) => updateCustomParameter(param.id, 'name', e.target.value)}
-                      className="w-8 px-2 py-1 text-xs font-medium border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-10 px-2 py-1 text-xs font-medium border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="P"
                     />
                     <input
                       type="text"
                       value={param.expression}
                       onChange={(e) => updateCustomParameter(param.id, 'expression', e.target.value)}
-                      className="w-12 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-16 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="0"
                     />
                     <input
                       type="text"
                       value={param.result}
                       readOnly
-                      className="w-12 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                      className="w-16 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                     />
                     <input
                       type="text"
                       value={param.description}
                       onChange={(e) => updateCustomParameter(param.id, 'description', e.target.value)}
-                      className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-32 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="Description"
                     />
                   </div>
