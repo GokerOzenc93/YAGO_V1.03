@@ -209,9 +209,6 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
 
     updateShape(selectedShape.id, {
       geometry: newGeometry,
-      position: selectedShape.position,
-      rotation: selectedShape.rotation,
-      scale: selectedShape.scale,
       parameters: {
         ...selectedShape.parameters,
         width,
