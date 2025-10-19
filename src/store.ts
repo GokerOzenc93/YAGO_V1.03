@@ -15,7 +15,6 @@ export interface Shape {
   ocShape?: any;
   isolated?: boolean;
   vertexModifications?: VertexModification[];
-  isReference?: boolean;
 }
 
 export enum CameraType {
@@ -97,7 +96,6 @@ interface AppState {
 
   modifyShape: (shapeId: string, modification: any) => void;
   performBooleanOperation: (operation: 'union' | 'subtract') => void;
-  subtractReferenceShapes: () => void;
 
   pointToPointMoveState: any;
   setPointToPointMoveState: (state: any) => void;
@@ -248,59 +246,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   performBooleanOperation: (operation) => {
     console.log('Boolean operation:', operation);
-  },
-
-  subtractReferenceShapes: async () => {
-    const state = get();
-    const normalShapes = state.shapes.filter(s => !s.isReference);
-    const referenceShapes = state.shapes.filter(s => s.isReference);
-
-    console.log('🔘 subtractReferenceShapes called');
-    console.log('📦 Normal shapes:', normalShapes.length);
-    console.log('🔴 Reference shapes:', referenceShapes.length);
-
-    if (referenceShapes.length === 0 || normalShapes.length === 0) {
-      console.log('⚠️ Nothing to subtract');
-      return;
-    }
-
-    try {
-      const { subtractReferenceGeometry, checkIntersection } = await import('./utils/csg');
-
-      normalShapes.forEach(normalShape => {
-        const intersectingRefs = referenceShapes.filter(refShape =>
-          checkIntersection(normalShape, refShape)
-        );
-
-        if (intersectingRefs.length > 0) {
-          console.log(`✂️ Subtracting ${intersectingRefs.length} reference geometries from ${normalShape.id}`);
-
-          try {
-            const newGeometry = subtractReferenceGeometry(normalShape, intersectingRefs);
-
-            set((state) => ({
-              shapes: state.shapes.map(s =>
-                s.id === normalShape.id
-                  ? { ...s, geometry: newGeometry, parameters: { ...s.parameters, subtracted: true } }
-                  : s
-              )
-            }));
-
-            console.log(`✅ Subtraction completed for ${normalShape.id}`);
-          } catch (error) {
-            console.error(`❌ Subtraction failed for ${normalShape.id}:`, error);
-          }
-        }
-      });
-
-      set((state) => ({
-        shapes: state.shapes.filter(s => !s.isReference)
-      }));
-
-      console.log('✅ All reference geometries removed');
-    } catch (error) {
-      console.error('❌ Failed to perform subtraction:', error);
-    }
   },
 
   pointToPointMoveState: null,

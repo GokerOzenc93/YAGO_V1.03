@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store';
-import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler, FolderOpen, Home } from 'lucide-react';
+import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler, FolderOpen } from 'lucide-react';
 import { createBoxGeometry } from '../utils/geometry';
 import { ParametersPanel } from './ParametersPanel';
 
@@ -25,11 +25,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
     setViewMode,
     cycleViewMode,
     orthoMode,
-    toggleOrthoMode,
-    shapes,
-    updateShape,
-    deleteShape,
-    subtractReferenceShapes
+    toggleOrthoMode
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -217,14 +213,6 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
       ]
     },
     {
-      label: 'Reference',
-      items: [
-        { icon: <Box size={11} />, label: 'Add Reference Box', shortcut: 'Shift+B', action: 'addReferenceBox' },
-        { icon: <Cylinder size={11} />, label: 'Add Reference Cylinder', shortcut: 'Shift+C', action: 'addReferenceCylinder' },
-        { icon: <Home size={11} />, label: 'Add Reference House', shortcut: 'Shift+H', action: 'addReferenceHouse' },
-      ]
-    },
-    {
       label: 'Modify',
       items: [
         { icon: <Move size={11} />, label: 'Move', shortcut: 'M' },
@@ -340,69 +328,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       color: '#2563eb',
-      parameters: { width: w, height: h, depth: d },
-      isReference: false
+      parameters: { width: w, height: h, depth: d }
     });
     console.log('✅ Box geometry added');
-  };
-
-  const handleAddReferenceBox = () => {
-    const w = 400, h = 400, d = 400;
-    const geometry = createBoxGeometry(w, h, d);
-
-    addShape({
-      id: `ref-box-${Date.now()}`,
-      type: 'reference-box',
-      geometry,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      color: '#ef4444',
-      parameters: { width: w, height: h, depth: d },
-      isReference: true
-    });
-    console.log('✅ Reference Box added');
-  };
-
-  const handleAddReferenceCylinder = () => {
-    const radius = 200, height = 600;
-    const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-
-    addShape({
-      id: `ref-cylinder-${Date.now()}`,
-      type: 'reference-cylinder',
-      geometry,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      color: '#ef4444',
-      parameters: { radius, height },
-      isReference: true
-    });
-    console.log('✅ Reference Cylinder added');
-  };
-
-  const handleAddReferenceHouse = () => {
-    const w = 800, h = 600, d = 600;
-    const geometry = createBoxGeometry(w, h, d);
-
-    addShape({
-      id: `ref-house-${Date.now()}`,
-      type: 'reference-house',
-      geometry,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      color: '#ef4444',
-      parameters: { width: w, height: h, depth: d },
-      isReference: true
-    });
-    console.log('✅ Reference House added');
-  };
-
-  const handleSubtractReference = () => {
-    console.log('🔘 Subtract button clicked!');
-    subtractReferenceShapes();
   };
 
   return (
@@ -534,9 +462,6 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
                         onClick={() => {
                           if (item.label === 'Solid View') handleViewModeChange(ViewMode.SOLID);
                           else if (item.label === 'Wireframe View') handleViewModeChange(ViewMode.WIREFRAME);
-                          else if ((item as any).action === 'addReferenceBox') handleAddReferenceBox();
-                          else if ((item as any).action === 'addReferenceCylinder') handleAddReferenceCylinder();
-                          else if ((item as any).action === 'addReferenceHouse') handleAddReferenceHouse();
                           setActiveMenu(null);
                         }}
                       >
@@ -715,24 +640,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
         <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 shadow-sm border border-stone-200">
           <button
             onClick={handleAddGeometry}
-            className="p-1.5 rounded transition-all hover:bg-stone-50 text-blue-600 hover:text-blue-800"
+            className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
             title="Add Geometry (B)"
           >
             <Package size={11} />
-          </button>
-          <button
-            onClick={handleAddReferenceBox}
-            className="p-1.5 rounded transition-all hover:bg-stone-50 text-red-600 hover:text-red-800"
-            title="Add Reference Box (Shift+B)"
-          >
-            <Box size={11} />
-          </button>
-          <button
-            onClick={handleSubtractReference}
-            className="p-1.5 rounded transition-all hover:bg-stone-50 text-orange-600 hover:text-orange-800"
-            title="Subtract Reference Geometry"
-          >
-            <Minus size={11} />
           </button>
           <button
             onClick={() => {
