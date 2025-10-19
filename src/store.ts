@@ -15,6 +15,7 @@ export interface Shape {
   ocShape?: any;
   isolated?: boolean;
   vertexModifications?: VertexModification[];
+  isReference?: boolean;
 }
 
 export enum CameraType {

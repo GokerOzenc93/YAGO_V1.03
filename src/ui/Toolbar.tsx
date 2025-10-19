@@ -213,6 +213,14 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
       ]
     },
     {
+      label: 'Reference',
+      items: [
+        { icon: <Box size={11} />, label: 'Add Reference Box', shortcut: 'Shift+B', action: 'addReferenceBox' },
+        { icon: <Cylinder size={11} />, label: 'Add Reference Cylinder', shortcut: 'Shift+C', action: 'addReferenceCylinder' },
+        { icon: <Home size={11} />, label: 'Add Reference House', shortcut: 'Shift+H', action: 'addReferenceHouse' },
+      ]
+    },
+    {
       label: 'Modify',
       items: [
         { icon: <Move size={11} />, label: 'Move', shortcut: 'M' },
@@ -328,9 +336,64 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       color: '#2563eb',
-      parameters: { width: w, height: h, depth: d }
+      parameters: { width: w, height: h, depth: d },
+      isReference: false
     });
     console.log('✅ Box geometry added');
+  };
+
+  const handleAddReferenceBox = () => {
+    const w = 400, h = 400, d = 400;
+    const geometry = createBoxGeometry(w, h, d);
+
+    addShape({
+      id: `ref-box-${Date.now()}`,
+      type: 'reference-box',
+      geometry,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      color: '#ef4444',
+      parameters: { width: w, height: h, depth: d },
+      isReference: true
+    });
+    console.log('✅ Reference Box added');
+  };
+
+  const handleAddReferenceCylinder = () => {
+    const radius = 200, height = 600;
+    const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+
+    addShape({
+      id: `ref-cylinder-${Date.now()}`,
+      type: 'reference-cylinder',
+      geometry,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      color: '#ef4444',
+      parameters: { radius, height },
+      isReference: true
+    });
+    console.log('✅ Reference Cylinder added');
+  };
+
+  const handleAddReferenceHouse = () => {
+    const w = 800, h = 600, d = 600;
+    const geometry = createBoxGeometry(w, h, d);
+
+    addShape({
+      id: `ref-house-${Date.now()}`,
+      type: 'reference-house',
+      geometry,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      color: '#ef4444',
+      parameters: { width: w, height: h, depth: d },
+      isReference: true
+    });
+    console.log('✅ Reference House added');
   };
 
   return (
@@ -462,6 +525,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
                         onClick={() => {
                           if (item.label === 'Solid View') handleViewModeChange(ViewMode.SOLID);
                           else if (item.label === 'Wireframe View') handleViewModeChange(ViewMode.WIREFRAME);
+                          else if ((item as any).action === 'addReferenceBox') handleAddReferenceBox();
+                          else if ((item as any).action === 'addReferenceCylinder') handleAddReferenceCylinder();
+                          else if ((item as any).action === 'addReferenceHouse') handleAddReferenceHouse();
                           setActiveMenu(null);
                         }}
                       >

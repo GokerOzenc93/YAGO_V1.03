@@ -20,7 +20,7 @@ const ShapeWithTransform: React.FC<{
   orbitControlsRef,
   onContextMenu
 }) => {
-  const { selectShape, updateShape, activeTool, viewMode } = useAppStore();
+  const { selectShape, updateShape, activeTool, viewMode, shapes } = useAppStore();
   const transformRef = useRef<any>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -127,6 +127,39 @@ const ShapeWithTransform: React.FC<{
     return null;
   }
 
+  const checkIntersection = () => {
+    if (!shape.isReference || !meshRef.current) return false;
+
+    const referenceBounds = new THREE.Box3().setFromObject(meshRef.current);
+
+    for (const otherShape of shapes) {
+      if (otherShape.id === shape.id || otherShape.isReference) continue;
+
+      const tempMesh = new THREE.Mesh(otherShape.geometry);
+      tempMesh.position.set(...otherShape.position);
+      tempMesh.rotation.set(...otherShape.rotation);
+      tempMesh.scale.set(...otherShape.scale);
+
+      const otherBounds = new THREE.Box3().setFromObject(tempMesh);
+
+      if (referenceBounds.intersectsBox(otherBounds)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const isIntersecting = shape.isReference ? checkIntersection() : false;
+
+  const getShapeColor = () => {
+    if (isSelected) return '#60a5fa';
+    if (shape.isReference) {
+      return isIntersecting ? '#eab308' : '#ef4444';
+    }
+    return shape.color || '#2563eb';
+  };
+
   return (
     <>
       <group
@@ -148,9 +181,11 @@ const ShapeWithTransform: React.FC<{
             receiveShadow
           >
             <meshStandardMaterial
-              color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
+              color={getShapeColor()}
               metalness={0.3}
               roughness={0.4}
+              transparent={shape.isReference}
+              opacity={shape.isReference ? 0.6 : 1.0}
             />
             <lineSegments>
               <edgesGeometry args={[localGeometry]} />
@@ -173,7 +208,7 @@ const ShapeWithTransform: React.FC<{
             <lineSegments>
               <edgesGeometry args={[localGeometry]} />
               <lineBasicMaterial
-                color={isSelected ? '#60a5fa' : '#1a1a1a'}
+                color={isSelected ? '#60a5fa' : (shape.isReference ? (isIntersecting ? '#eab308' : '#ef4444') : '#1a1a1a')}
                 linewidth={isSelected ? 2 : 1}
               />
             </lineSegments>
