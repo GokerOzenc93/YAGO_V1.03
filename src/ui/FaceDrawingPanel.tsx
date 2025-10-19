@@ -63,6 +63,10 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
   };
 
   const convert3DTo2D = (point3D: [number, number, number]) => {
+    const w = shape.parameters.width;
+    const h = shape.parameters.height;
+    const d = shape.parameters.depth;
+
     if (Math.abs(faceNormal.z) > 0.9) {
       return { x: point3D[0], y: point3D[1] };
     } else if (Math.abs(faceNormal.y) > 0.9) {
@@ -74,12 +78,19 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
   };
 
   const convert2DTo3D = (x: number, y: number): [number, number, number] => {
+    const w = shape.parameters.width;
+    const h = shape.parameters.height;
+    const d = shape.parameters.depth;
+
     if (Math.abs(faceNormal.z) > 0.9) {
-      return [x, y, faceNormal.z > 0 ? shape.parameters.depth : 0];
+      const zPos = faceNormal.z > 0 ? d : 0;
+      return [x, y, zPos];
     } else if (Math.abs(faceNormal.y) > 0.9) {
-      return [x, faceNormal.y > 0 ? shape.parameters.height : 0, y];
+      const yPos = faceNormal.y > 0 ? h : 0;
+      return [x, yPos, y];
     } else if (Math.abs(faceNormal.x) > 0.9) {
-      return [faceNormal.x > 0 ? shape.parameters.width : 0, y, x];
+      const xPos = faceNormal.x > 0 ? w : 0;
+      return [xPos, y, x];
     }
     return [x, y, 0];
   };
@@ -245,7 +256,13 @@ export const FaceDrawingPanel: React.FC<FaceDrawingPanelProps> = ({
 
     const point3D = convert2DTo3D(finalPoint.x, finalPoint.y);
     addPolylinePoint(point3D);
-    console.log(`✅ Polyline point added (2D panel):`, point3D);
+    console.log(`✅ Polyline point added (2D panel):`, {
+      canvas: { x: canvasX, y: canvasY },
+      world2D: finalPoint,
+      world3D: point3D,
+      faceNormal: faceNormal.toArray(),
+      faceDims: { width: faceWidth, height: faceHeight }
+    });
   };
 
   if (!isOpen) return null;

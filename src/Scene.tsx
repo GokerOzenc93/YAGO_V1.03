@@ -220,7 +220,8 @@ const Scene: React.FC = () => {
     setActiveTool,
     selectedFace,
     setSelectedFace,
-    clearPolylinePoints
+    clearPolylinePoints,
+    polylinePoints
   } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
@@ -477,6 +478,36 @@ const Scene: React.FC = () => {
                   handleFaceSelect(shape.id, faceIndex, faceNormal, faceCenter)
                 }
               />
+            )}
+            {selectedFace && selectedFace.shapeId === shape.id && (
+              <group position={shape.position}>
+                {polylinePoints.map((point, index) => (
+                  <mesh key={`polyline-point-${index}`} position={point}>
+                    <sphereGeometry args={[15, 16, 16]} />
+                    <meshBasicMaterial color="#ff0000" />
+                  </mesh>
+                ))}
+                {polylinePoints.length > 1 &&
+                  polylinePoints.map((point, index) => {
+                    if (index === 0) return null;
+                    const prevPoint = polylinePoints[index - 1];
+                    const start = new THREE.Vector3(...prevPoint);
+                    const end = new THREE.Vector3(...point);
+                    const midpoint = start.clone().add(end).multiplyScalar(0.5);
+                    const distance = start.distanceTo(end);
+                    const direction = end.clone().sub(start).normalize();
+                    const angle = Math.atan2(direction.y, direction.x);
+
+                    return (
+                      <group key={`polyline-line-${index}`} position={midpoint.toArray()}>
+                        <mesh rotation={[0, 0, angle]}>
+                          <boxGeometry args={[distance, 4, 4]} />
+                          <meshBasicMaterial color="#ff0000" />
+                        </mesh>
+                      </group>
+                    );
+                  })}
+              </group>
             )}
           </React.Fragment>
         );
