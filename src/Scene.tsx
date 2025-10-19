@@ -22,44 +22,40 @@ const ShapeWithTransform: React.FC<{
   const transformRef = useRef<any>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
-  const pivotRef = useRef<THREE.Object3D>(null);
+  const isUpdatingRef = useRef(false);
 
   useEffect(() => {
-    if (meshRef.current && groupRef.current) {
-      const currentGroupPosition = groupRef.current.position.clone();
+    if (!meshRef.current || !groupRef.current || isUpdatingRef.current) return;
 
-      const bbox = new THREE.Box3().setFromObject(meshRef.current);
-      const minCorner = bbox.min;
+    const bbox = new THREE.Box3().setFromObject(meshRef.current);
+    const minCorner = bbox.min;
 
-      meshRef.current.position.set(
-        -minCorner.x,
-        -minCorner.y,
-        -minCorner.z
-      );
-
-      groupRef.current.position.copy(currentGroupPosition);
-      groupRef.current.rotation.set(
-        shape.rotation[0],
-        shape.rotation[1],
-        shape.rotation[2]
-      );
-      groupRef.current.scale.set(
-        shape.scale[0],
-        shape.scale[1],
-        shape.scale[2]
-      );
-    }
+    meshRef.current.position.set(
+      -minCorner.x,
+      -minCorner.y,
+      -minCorner.z
+    );
   }, [shape.geometry]);
 
   useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.position.set(
-        shape.position[0],
-        shape.position[1],
-        shape.position[2]
-      );
-    }
-  }, [shape.position]);
+    if (!groupRef.current || isUpdatingRef.current) return;
+
+    groupRef.current.position.set(
+      shape.position[0],
+      shape.position[1],
+      shape.position[2]
+    );
+    groupRef.current.rotation.set(
+      shape.rotation[0],
+      shape.rotation[1],
+      shape.rotation[2]
+    );
+    groupRef.current.scale.set(
+      shape.scale[0],
+      shape.scale[1],
+      shape.scale[2]
+    );
+  }, [shape.position, shape.rotation, shape.scale]);
 
   useEffect(() => {
     if (transformRef.current && isSelected && groupRef.current) {
@@ -73,11 +69,15 @@ const ShapeWithTransform: React.FC<{
 
       const onChange = () => {
         if (groupRef.current) {
+          isUpdatingRef.current = true;
           updateShape(shape.id, {
             position: groupRef.current.position.toArray() as [number, number, number],
             rotation: groupRef.current.rotation.toArray().slice(0, 3) as [number, number, number],
             scale: groupRef.current.scale.toArray() as [number, number, number]
           });
+          setTimeout(() => {
+            isUpdatingRef.current = false;
+          }, 0);
         }
       };
 
@@ -114,9 +114,6 @@ const ShapeWithTransform: React.FC<{
     <>
       <group
         ref={groupRef}
-        position={shape.position}
-        rotation={shape.rotation}
-        scale={shape.scale}
         onClick={(e) => {
           e.stopPropagation();
           selectShape(shape.id);
