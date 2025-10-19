@@ -187,6 +187,16 @@ export const VertexEditor: React.FC<VertexEditorProps> = ({
     shape.parameters.depth
   );
 
+  const modifiedVertices = vertices.map((vertex, index) => {
+    if (shape.vertexModifications) {
+      const mod = shape.vertexModifications.find((m: any) => m.vertexIndex === index);
+      if (mod) {
+        return new THREE.Vector3(mod.newPosition[0], mod.newPosition[1], mod.newPosition[2]);
+      }
+    }
+    return vertex;
+  });
+
   const handleVertexClick = (index: number, e: any) => {
     e.stopPropagation();
     setSelectedIndex(index);
@@ -217,7 +227,7 @@ export const VertexEditor: React.FC<VertexEditorProps> = ({
       rotation={[shape.rotation[0], shape.rotation[1], shape.rotation[2]]}
       scale={[shape.scale[0], shape.scale[1], shape.scale[2]]}
     >
-      {vertices.map((vertex, index) => (
+      {modifiedVertices.map((vertex, index) => (
         <VertexPoint
           key={index}
           position={vertex}
@@ -232,13 +242,13 @@ export const VertexEditor: React.FC<VertexEditorProps> = ({
       ))}
       {showDirectionSelector && selectedIndex !== null && (
         <DirectionSelector
-          position={vertices[selectedIndex]}
+          position={modifiedVertices[selectedIndex]}
           onDirectionSelect={handleDirectionSelect}
         />
       )}
       {currentDirection && selectedIndex !== null && !showDirectionSelector && (
         <DirectionArrow
-          position={vertices[selectedIndex]}
+          position={modifiedVertices[selectedIndex]}
           direction={currentDirection}
         />
       )}

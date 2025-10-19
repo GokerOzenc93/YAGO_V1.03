@@ -5,7 +5,7 @@ import { useAppStore, CameraType, Tool, ViewMode } from './store';
 import ContextMenu from './ui/ContextMenu';
 import SaveDialog from './ui/SaveDialog';
 import { catalogService } from './lib/supabase';
-import { createBoxGeometry } from './utils/geometry';
+import { createBoxGeometry, applyVertexModificationsToGeometry } from './utils/geometry';
 import { VertexEditor } from './ui/VertexEditor';
 import * as THREE from 'three';
 
@@ -30,11 +30,19 @@ const ShapeWithTransform: React.FC<{
 
   useEffect(() => {
     if (shape.parameters?.width && shape.parameters?.height && shape.parameters?.depth) {
-      const newGeometry = createBoxGeometry(
+      let newGeometry = createBoxGeometry(
         shape.parameters.width,
         shape.parameters.height,
         shape.parameters.depth
       );
+
+      if (shape.vertexModifications && shape.vertexModifications.length > 0) {
+        newGeometry = applyVertexModificationsToGeometry(
+          newGeometry,
+          shape.vertexModifications
+        );
+        console.log(`✨ Applied ${shape.vertexModifications.length} vertex modifications to shape ${shape.id}`);
+      }
 
       setLocalGeometry(newGeometry);
       setGeometryKey(prev => prev + 1);
@@ -43,7 +51,7 @@ const ShapeWithTransform: React.FC<{
         newGeometry.dispose();
       };
     }
-  }, [shape.parameters?.width, shape.parameters?.height, shape.parameters?.depth]);
+  }, [shape.parameters?.width, shape.parameters?.height, shape.parameters?.depth, shape.vertexModifications]);
 
   useEffect(() => {
     if (!groupRef.current || isUpdatingRef.current) return;
