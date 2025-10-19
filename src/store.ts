@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
 import type { OpenCascadeInstance } from './vite-env';
+import { VertexModification } from './types/vertex';
 
 export interface Shape {
   id: string;
@@ -13,6 +14,7 @@ export interface Shape {
   parameters: Record<string, any>;
   ocShape?: any;
   isolated?: boolean;
+  vertexModifications?: VertexModification[];
 }
 
 export enum CameraType {
@@ -103,6 +105,14 @@ interface AppState {
   opencascadeLoading: boolean;
   setOpenCascadeInstance: (instance: OpenCascadeInstance | null) => void;
   setOpenCascadeLoading: (loading: boolean) => void;
+
+  vertexEditMode: boolean;
+  setVertexEditMode: (enabled: boolean) => void;
+  selectedVertexIndex: number | null;
+  setSelectedVertexIndex: (index: number | null) => void;
+  vertexDirection: 'x' | 'y' | 'z';
+  setVertexDirection: (direction: 'x' | 'y' | 'z') => void;
+  addVertexModification: (shapeId: string, modification: VertexModification) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -248,5 +258,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   opencascadeInstance: null,
   opencascadeLoading: true,
   setOpenCascadeInstance: (instance) => set({ opencascadeInstance: instance }),
-  setOpenCascadeLoading: (loading) => set({ opencascadeLoading: loading })
+  setOpenCascadeLoading: (loading) => set({ opencascadeLoading: loading }),
+
+  vertexEditMode: false,
+  setVertexEditMode: (enabled) => set({ vertexEditMode: enabled }),
+  selectedVertexIndex: null,
+  setSelectedVertexIndex: (index) => set({ selectedVertexIndex: index }),
+  vertexDirection: 'x',
+  setVertexDirection: (direction) => set({ vertexDirection: direction }),
+  addVertexModification: (shapeId, modification) =>
+    set((state) => ({
+      shapes: state.shapes.map((shape) =>
+        shape.id === shapeId
+          ? {
+              ...shape,
+              vertexModifications: [
+                ...(shape.vertexModifications || []),
+                modification
+              ]
+            }
+          : shape
+      )
+    }))
 }));

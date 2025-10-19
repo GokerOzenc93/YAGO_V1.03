@@ -6,6 +6,7 @@ import ContextMenu from './ui/ContextMenu';
 import SaveDialog from './ui/SaveDialog';
 import { catalogService } from './lib/supabase';
 import { createBoxGeometry } from './utils/geometry';
+import { VertexEditor } from './ui/VertexEditor';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{
@@ -187,7 +188,23 @@ const ShapeWithTransform: React.FC<{
 const Scene: React.FC = () => {
   const controlsRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { shapes, cameraType, selectedShapeId, selectShape, deleteShape, copyShape, isolateShape, exitIsolation } = useAppStore();
+  const {
+    shapes,
+    cameraType,
+    selectedShapeId,
+    selectShape,
+    deleteShape,
+    copyShape,
+    isolateShape,
+    exitIsolation,
+    vertexEditMode,
+    setVertexEditMode,
+    selectedVertexIndex,
+    setSelectedVertexIndex,
+    vertexDirection,
+    setVertexDirection,
+    addVertexModification
+  } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
 
@@ -198,12 +215,56 @@ const Scene: React.FC = () => {
       } else if (e.key === 'Escape') {
         selectShape(null);
         exitIsolation();
+        setVertexEditMode(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, deleteShape, selectShape, exitIsolation]);
+  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode]);
+
+  useEffect(() => {
+    (window as any).handleVertexOffset = (offset: number) => {
+      if (selectedShapeId && selectedVertexIndex !== null) {
+        const offsetVector: [number, number, number] = [0, 0, 0];
+        const dirIndex = vertexDirection === 'x' ? 0 : vertexDirection === 'y' ? 1 : 2;
+        offsetVector[dirIndex] = offset;
+
+        const shape = shapes.find(s => s.id === selectedShapeId);
+        if (shape && shape.parameters) {
+          const vertices = [
+            [0, 0, 0],
+            [shape.parameters.width, 0, 0],
+            [shape.parameters.width, shape.parameters.height, 0],
+            [0, shape.parameters.height, 0],
+            [0, 0, shape.parameters.depth],
+            [shape.parameters.width, 0, shape.parameters.depth],
+            [shape.parameters.width, shape.parameters.height, shape.parameters.depth],
+            [0, shape.parameters.height, shape.parameters.depth],
+          ];
+
+          addVertexModification(selectedShapeId, {
+            vertexIndex: selectedVertexIndex,
+            originalPosition: vertices[selectedVertexIndex] as [number, number, number],
+            offset: offsetVector,
+            direction: vertexDirection
+          });
+
+          console.log(`✅ Vertex ${selectedVertexIndex} modified: ${vertexDirection}+${offset}`);
+        }
+
+        (window as any).pendingVertexEdit = false;
+        setSelectedVertexIndex(null);
+      }
+    };
+
+    (window as any).pendingVertexEdit = selectedVertexIndex !== null;
+
+    return () => {
+      delete (window as any).handleVertexOffset;
+      delete (window as any).pendingVertexEdit;
+    };
+  }, [selectedShapeId, selectedVertexIndex, vertexDirection, shapes, addVertexModification, setSelectedVertexIndex]);
 
   const handleContextMenu = (e: any, shapeId: string) => {
     e.nativeEvent.preventDefault();
@@ -236,7 +297,8 @@ const Scene: React.FC = () => {
         rotation: shape.rotation,
         scale: shape.scale,
         color: shape.color,
-        parameters: shape.parameters
+        parameters: shape.parameters,
+        vertexModifications: shape.vertexModifications || []
       };
 
       console.log('💾 Saving geometry:', {
@@ -336,13 +398,25 @@ const Scene: React.FC = () => {
       {shapes.map((shape) => {
         const isSelected = selectedShapeId === shape.id;
         return (
-          <ShapeWithTransform
-            key={shape.id}
-            shape={shape}
-            isSelected={isSelected}
-            orbitControlsRef={controlsRef}
-            onContextMenu={handleContextMenu}
-          />
+          <React.Fragment key={shape.id}>
+            <ShapeWithTransform
+              shape={shape}
+              isSelected={isSelected}
+              orbitControlsRef={controlsRef}
+              onContextMenu={handleContextMenu}
+            />
+            {isSelected && vertexEditMode && (
+              <VertexEditor
+                shape={shape}
+                isActive={true}
+                onVertexSelect={(index) => setSelectedVertexIndex(index)}
+                onDirectionChange={(dir) => setVertexDirection(dir)}
+                onOffsetConfirm={(vertexIndex, direction, offset) => {
+                  console.log('Offset confirmed:', { vertexIndex, direction, offset });
+                }}
+              />
+            )}
+          </React.Fragment>
         );
       })}
 

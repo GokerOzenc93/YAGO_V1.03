@@ -68,6 +68,19 @@ const Terminal: React.FC = () => {
     const trimmedCommand = command.trim();
     if (!trimmedCommand) return;
 
+    if ((window as any).pendingVertexEdit) {
+      const offsetValue = parseFloat(trimmedCommand);
+      if (!isNaN(offsetValue)) {
+        if ((window as any).handleVertexOffset) {
+          (window as any).handleVertexOffset(offsetValue);
+          setCommandInput('');
+          return;
+        }
+      }
+      console.log('Geçersiz offset değeri. Bir sayı girin.');
+      return;
+    }
+
     if ((window as any).pendingExtrudeShape) {
       if (trimmedCommand === '' || trimmedCommand.toLowerCase() === 'enter') {
         if ((window as any).handleConvertTo2D) {

@@ -17,7 +17,7 @@ interface ParametersPanelProps {
 }
 
 export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
-  const { selectedShapeId, shapes, updateShape } = useAppStore();
+  const { selectedShapeId, shapes, updateShape, vertexEditMode, setVertexEditMode } = useAppStore();
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -223,6 +223,17 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
           <span className="text-sm font-semibold text-slate-800">Parameters</span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setVertexEditMode(!vertexEditMode)}
+            className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+              vertexEditMode
+                ? 'bg-orange-600 text-white'
+                : 'bg-stone-200 text-slate-700 hover:bg-stone-300'
+            }`}
+            title="Edit Vertices"
+          >
+            VERTEX
+          </button>
           <button
             onClick={addCustomParameter}
             className="p-0.5 hover:bg-stone-200 rounded transition-colors"
