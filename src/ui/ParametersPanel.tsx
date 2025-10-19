@@ -70,6 +70,31 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
     }
   }, [isDragging, dragOffset]);
 
+  const recalculateCustomParameters = (newWidth: number, newHeight: number, newDepth: number) => {
+    return customParameters.map((param) => {
+      let expr = param.expression
+        .replace(/\bW\b/g, newWidth.toString())
+        .replace(/\bH\b/g, newHeight.toString())
+        .replace(/\bD\b/g, newDepth.toString());
+
+      customParameters.forEach((p) => {
+        const regex = new RegExp(`\\b${p.name}\\b`, 'g');
+        expr = expr.replace(regex, p.result.toString());
+      });
+
+      try {
+        const sanitized = expr.replace(/[^0-9+\-*/().\s]/g, '');
+        const result = Function(`"use strict"; return (${sanitized})`)();
+        return {
+          ...param,
+          result: typeof result === 'number' && !isNaN(result) ? result : 0,
+        };
+      } catch {
+        return { ...param, result: 0 };
+      }
+    });
+  };
+
   const handleDimensionChange = (dimension: 'width' | 'height' | 'depth', value: number) => {
     if (!selectedShape) return;
 
@@ -81,6 +106,9 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
     setHeight(newHeight);
     setDepth(newDepth);
 
+    const updatedCustomParams = recalculateCustomParameters(newWidth, newHeight, newDepth);
+    setCustomParameters(updatedCustomParams);
+
     const newGeometry = new THREE.BoxGeometry(newWidth, newHeight, newDepth);
 
     updateShape(selectedShape.id, {
@@ -90,6 +118,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
         width: newWidth,
         height: newHeight,
         depth: newDepth,
+        customParameters: updatedCustomParams,
       },
     });
   };
