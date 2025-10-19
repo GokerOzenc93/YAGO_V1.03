@@ -117,11 +117,22 @@ const DirectionSelector: React.FC<{
     return '#3b82f6';
   };
 
+  const getRotation = (dir: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-'): [number, number, number] => {
+    switch (dir) {
+      case 'x+': return [0, 0, -Math.PI / 2];
+      case 'x-': return [0, 0, Math.PI / 2];
+      case 'y+': return [0, 0, 0];
+      case 'y-': return [Math.PI, 0, 0];
+      case 'z+': return [Math.PI / 2, 0, 0];
+      case 'z-': return [-Math.PI / 2, 0, 0];
+    }
+  };
+
   return (
     <group>
       {directions.map((dir) => {
         const dirVector = getDirectionVector(dir);
-        const arrowLength = 40;
+        const arrowLength = 60;
         const endPosition = position.clone().add(dirVector.clone().multiplyScalar(arrowLength));
         const color = getColor(dir);
 
@@ -139,16 +150,17 @@ const DirectionSelector: React.FC<{
                   itemSize={3}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color={color} linewidth={2} transparent opacity={0.6} />
+              <lineBasicMaterial color={color} linewidth={3} transparent opacity={0.8} />
             </line>
             <mesh
               position={endPosition}
+              rotation={getRotation(dir)}
               onClick={(e) => {
                 e.stopPropagation();
                 onDirectionSelect(dir);
               }}
             >
-              <sphereGeometry args={[3, 8, 8]} />
+              <coneGeometry args={[8, 16, 8]} />
               <meshBasicMaterial color={color} />
             </mesh>
           </group>

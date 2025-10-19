@@ -56,12 +56,6 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
     }
   }, [selectedShape, selectedShapeId, shapes]);
 
-  useEffect(() => {
-    if (!selectedShapeId && isOpen) {
-      console.log('⚠️ No shape selected - closing parameters panel');
-      onClose();
-    }
-  }, [selectedShapeId, isOpen, onClose]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
