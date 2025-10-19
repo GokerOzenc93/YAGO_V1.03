@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Scene from './Scene';
 import Toolbar from './ui/Toolbar';
 import Terminal from './ui/Terminal';
+import StatusBar from './ui/StatusBar';
 import CatalogPanel from './ui/CatalogPanel';
 import { useAppStore } from './store';
 import { catalogService, CatalogItem } from './lib/supabase';
@@ -142,10 +143,13 @@ function App() {
         </div>
       )}
       <Toolbar onOpenCatalog={() => setCatalogOpen(true)} />
-      <div className="flex-1 overflow-hidden pb-12">
+      <div className="flex-1 overflow-hidden relative">
         <Scene />
       </div>
-      <Terminal />
+      <div className="relative">
+        <Terminal />
+        <StatusBar />
+      </div>
       <CatalogPanel
         isOpen={catalogOpen}
         onClose={() => setCatalogOpen(false)}

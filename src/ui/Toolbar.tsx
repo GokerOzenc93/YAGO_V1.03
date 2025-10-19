@@ -25,7 +25,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
     setViewMode,
     cycleViewMode,
     orthoMode,
-    toggleOrthoMode
+    toggleOrthoMode,
+    opencascadeInstance
   } = useAppStore();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showModifyMenu, setShowModifyMenu] = useState(false);
@@ -316,9 +317,27 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
     { icon: <Redo2 size={11} />, label: 'Redo', shortcut: 'Ctrl+Y' },
   ];
 
-  const handleAddGeometry = () => {
+  const handleAddGeometry = async () => {
     const w = 600, h = 600, d = 600;
     const geometry = createBoxGeometry(w, h, d);
+
+    let ocShape = null;
+    if (opencascadeInstance) {
+      try {
+        const { createOCGeometry } = await import('../opencascade');
+        ocShape = createOCGeometry(opencascadeInstance, {
+          type: 'box',
+          width: w,
+          height: h,
+          depth: d
+        });
+        console.log('✅ OpenCascade shape created for box');
+      } catch (error) {
+        console.error('❌ Failed to create OpenCascade shape:', error);
+      }
+    } else {
+      console.warn('⚠️ OpenCascade not loaded, adding box without OC shape');
+    }
 
     addShape({
       id: `box-${Date.now()}`,
@@ -328,7 +347,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       color: '#2563eb',
-      parameters: { width: w, height: h, depth: d }
+      parameters: { width: w, height: h, depth: d },
+      ocShape
     });
     console.log('✅ Box geometry added');
   };

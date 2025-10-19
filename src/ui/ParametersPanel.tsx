@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, GripVertical, Plus, Check } from 'lucide-react';
+import { X, GripVertical, Plus, Check, Minus } from 'lucide-react';
 import { useAppStore } from '../store';
 import * as THREE from 'three';
 
@@ -17,7 +17,7 @@ interface ParametersPanelProps {
 }
 
 export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
-  const { selectedShapeId, shapes, updateShape, vertexEditMode, setVertexEditMode } = useAppStore();
+  const { selectedShapeId, shapes, updateShape, vertexEditMode, setVertexEditMode, subtractShape, opencascadeInstance } = useAppStore();
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -285,6 +285,31 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
             title="Edit Vertices"
           >
             VERTEX
+          </button>
+          <button
+            onClick={() => {
+              if (!opencascadeInstance) {
+                alert('OpenCascade is not loaded yet. Please wait.');
+                return;
+              }
+              if (!selectedShapeId) {
+                alert('Please select a shape first.');
+                return;
+              }
+              const otherShapes = shapes.filter(s => s.id !== selectedShapeId && s.ocShape);
+              if (otherShapes.length === 0) {
+                alert('No other shapes available for subtraction.');
+                return;
+              }
+              const targetShape = otherShapes[0];
+              if (confirm(`Subtract selected shape from "${targetShape.type}"?`)) {
+                subtractShape(targetShape.id, selectedShapeId);
+              }
+            }}
+            className="px-2 py-1 text-[10px] font-medium rounded transition-colors bg-red-600 text-white hover:bg-red-700"
+            title="Subtract from another shape"
+          >
+            <Minus size={12} />
           </button>
           <button
             onClick={addCustomParameter}
