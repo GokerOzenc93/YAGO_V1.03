@@ -16,51 +16,107 @@ function App() {
 
   useEffect(() => {
     let mounted = true;
+    let scriptElement: HTMLScriptElement | null = null;
 
     const loadOpenCascade = async () => {
       if ((window as any).opencascadeLoaded) {
+        console.log('ℹ️ OpenCascade already loaded');
+        setOpenCascadeInstance((window as any).opencascadeInstance);
+        setOpenCascadeLoading(false);
         return;
       }
 
-      console.log('🔄 Starting OpenCascade load...');
+      console.log('🔄 Starting OpenCascade load from CDN...');
       setOpenCascadeLoading(true);
 
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/opencascade.wasm.js';
-      script.async = true;
+      const existingScript = document.querySelector('script[src*="opencascade.wasm.js"]');
+      if (existingScript) {
+        console.log('ℹ️ Script already added, waiting...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if ((window as any).opencascade) {
+          await initializeOC();
+        }
+        return;
+      }
 
-      script.onload = async () => {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 200));
+      scriptElement = document.createElement('script');
+      scriptElement.src = 'https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/opencascade.wasm.js';
+      scriptElement.async = true;
+      scriptElement.crossOrigin = 'anonymous';
 
-          const initOC = (window as any).opencascade;
-          if (!initOC) {
-            throw new Error('OpenCascade not found');
-          }
+      scriptElement.onload = async () => {
+        console.log('✅ Script loaded');
+        await initializeOC();
+      };
 
-          const oc = await initOC({
-            locateFile: (path: string) =>
-              `https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/${path}`
-          });
-
-          if (mounted) {
-            setOpenCascadeInstance(oc);
-            setOpenCascadeLoading(false);
-            (window as any).opencascadeLoaded = true;
-            console.log('✅ OpenCascade.js ready');
-          }
-        } catch (error) {
-          console.error('❌ Failed to initialize OpenCascade:', error);
-          if (mounted) setOpenCascadeLoading(false);
+      scriptElement.onerror = (error) => {
+        console.error('❌ Failed to load OpenCascade script:', error);
+        if (mounted) {
+          setOpenCascadeLoading(false);
         }
       };
 
-      script.onerror = () => {
-        console.error('❌ Failed to load OpenCascade script');
-        if (mounted) setOpenCascadeLoading(false);
-      };
+      document.head.appendChild(scriptElement);
+    };
 
-      document.head.appendChild(script);
+    const initializeOC = async () => {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const initOC = (window as any).opencascade;
+        if (!initOC) {
+          throw new Error('opencascade initializer not found on window object');
+        }
+
+        console.log('🔄 Initializing OpenCascade...');
+        const oc = await initOC({
+          locateFile: (path: string) => {
+            const url = `https://cdn.jsdelivr.net/npm/opencascade.js@1.1.1/dist/${path}`;
+            console.log(`📂 Loading: ${url}`);
+            return url;
+          }
+        });
+
+        if (!mounted) return;
+
+        if (!oc) {
+          throw new Error('OpenCascade initialization returned null');
+        }
+
+        console.log('🔍 Verifying OpenCascade API...');
+        const apis = {
+          'BRepPrimAPI_MakeBox_2': !!oc.BRepPrimAPI_MakeBox_2,
+          'BRepAlgoAPI_Cut_2': !!oc.BRepAlgoAPI_Cut_2,
+          'BRepAlgoAPI_Cut_3': !!oc.BRepAlgoAPI_Cut_3,
+          'BRepAlgoAPI_Fuse_2': !!oc.BRepAlgoAPI_Fuse_2,
+          'BRepAlgoAPI_Fuse_3': !!oc.BRepAlgoAPI_Fuse_3,
+          'Message_ProgressRange_1': !!oc.Message_ProgressRange_1
+        };
+
+        console.log('📊 API Status:', apis);
+
+        if (!oc.BRepPrimAPI_MakeBox_2) {
+          throw new Error('Critical API missing: BRepPrimAPI_MakeBox_2');
+        }
+
+        if (!oc.BRepAlgoAPI_Cut_2 && !oc.BRepAlgoAPI_Cut_3) {
+          console.warn('⚠️ Boolean Cut operations may not be available');
+        }
+
+        setOpenCascadeInstance(oc);
+        setOpenCascadeLoading(false);
+        (window as any).opencascadeLoaded = true;
+        (window as any).opencascadeInstance = oc;
+
+        console.log('✅ OpenCascade.js loaded successfully!');
+        console.log('✅ Boolean operations:', oc.BRepAlgoAPI_Cut_2 || oc.BRepAlgoAPI_Cut_3 ? 'AVAILABLE' : 'LIMITED');
+        console.log('✅ Primitive shapes: AVAILABLE');
+      } catch (error) {
+        console.error('❌ Failed to initialize OpenCascade:', error);
+        if (mounted) {
+          setOpenCascadeLoading(false);
+        }
+      }
     };
 
     loadOpenCascade();
