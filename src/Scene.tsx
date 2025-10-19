@@ -9,6 +9,7 @@ import { createBoxGeometry, applyVertexModificationsToGeometry } from './utils/g
 import { VertexEditor } from './ui/VertexEditor';
 import { FaceSelector } from './ui/FaceSelector';
 import { PolylineDrawer } from './ui/PolylineDrawer';
+import { FaceDrawingPanel } from './ui/FaceDrawingPanel';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{
@@ -224,6 +225,7 @@ const Scene: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
   const [faceInfo, setFaceInfo] = useState<{ normal: THREE.Vector3; center: THREE.Vector3 } | null>(null);
+  const [drawingPanelOpen, setDrawingPanelOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -237,6 +239,7 @@ const Scene: React.FC = () => {
         setFaceInfo(null);
         clearPolylinePoints();
         setActiveTool(Tool.SELECT);
+        setDrawingPanelOpen(false);
       }
     };
 
@@ -330,6 +333,7 @@ const Scene: React.FC = () => {
     setSelectedFace({ shapeId, faceIndex });
     setFaceInfo({ normal: faceNormal, center: faceCenter });
     setActiveTool(Tool.POLYLINE);
+    setDrawingPanelOpen(true);
     console.log('✅ Face selected:', { shapeId, faceIndex, normal: faceNormal.toArray(), center: faceCenter.toArray() });
   };
 
@@ -474,13 +478,6 @@ const Scene: React.FC = () => {
                 }
               />
             )}
-            {selectedFace && selectedFace.shapeId === shape.id && activeTool === Tool.POLYLINE && faceInfo && (
-              <PolylineDrawer
-                faceNormal={faceInfo.normal}
-                faceCenter={faceInfo.center}
-                shapePosition={shape.position}
-              />
-            )}
           </React.Fragment>
         );
       })}
@@ -546,6 +543,22 @@ const Scene: React.FC = () => {
       shapeId={saveDialog.shapeId || ''}
       captureSnapshot={captureSnapshot}
     />
+
+    {selectedFace && faceInfo && (
+      <FaceDrawingPanel
+        isOpen={drawingPanelOpen}
+        onClose={() => {
+          setDrawingPanelOpen(false);
+          setSelectedFace(null);
+          setFaceInfo(null);
+          clearPolylinePoints();
+          setActiveTool(Tool.SELECT);
+        }}
+        faceIndex={selectedFace.faceIndex}
+        faceNormal={faceInfo.normal}
+        shape={shapes.find(s => s.id === selectedFace.shapeId)}
+      />
+    )}
     </>
   );
 };
