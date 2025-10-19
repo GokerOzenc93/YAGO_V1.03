@@ -669,6 +669,26 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
           >
             <PanelLeft size={11} />
           </button>
+          <button
+            onClick={() => {
+              const { activeTool, setActiveTool } = useAppStore.getState();
+              if (activeTool === Tool.BOOLEAN_SUBTRACT) {
+                setActiveTool(Tool.SELECT);
+                console.log('🔧 CSG Subtract mode deactivated');
+              } else {
+                setActiveTool(Tool.BOOLEAN_SUBTRACT);
+                console.log('🔧 CSG Subtract mode activated - Click first object (base), then second object (subtract)');
+              }
+            }}
+            className={`p-1.5 rounded transition-all ${
+              activeTool === Tool.BOOLEAN_SUBTRACT
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                : 'hover:bg-stone-50 text-stone-600 hover:text-slate-800'
+            }`}
+            title="CSG Subtract - Remove one shape from another"
+          >
+            <Minus size={11} />
+          </button>
         </div>
       </div>
 
