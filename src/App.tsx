@@ -83,6 +83,14 @@ function App() {
     const geometryData = item.geometry_data;
     const params = geometryData.parameters || {};
 
+    console.log('📥 Loading geometry from catalog:', {
+      code: item.code,
+      type: geometryData.type,
+      parameters: params,
+      position: geometryData.position,
+      scale: geometryData.scale
+    });
+
     let geometry: THREE.BufferGeometry;
 
     switch (geometryData.type) {
@@ -93,6 +101,7 @@ function App() {
           params.height !== undefined ? params.height : 100,
           32
         );
+        console.log('🔷 Created cylinder:', { radiusTop: params.radiusTop, radiusBottom: params.radiusBottom, height: params.height });
         break;
       case 'sphere':
         geometry = new THREE.SphereGeometry(
@@ -100,6 +109,7 @@ function App() {
           32,
           32
         );
+        console.log('🔵 Created sphere:', { radius: params.radius });
         break;
       case 'cone':
         geometry = new THREE.ConeGeometry(
@@ -107,6 +117,7 @@ function App() {
           params.height !== undefined ? params.height : 100,
           32
         );
+        console.log('🔺 Created cone:', { radius: params.radius, height: params.height });
         break;
       case 'box':
       default:
@@ -115,6 +126,7 @@ function App() {
           params.height !== undefined ? params.height : 100,
           params.depth !== undefined ? params.depth : 100
         );
+        console.log('📦 Created box:', { width: params.width, height: params.height, depth: params.depth });
         break;
     }
 
