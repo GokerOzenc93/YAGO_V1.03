@@ -7,6 +7,8 @@ import SaveDialog from './ui/SaveDialog';
 import { catalogService } from './lib/supabase';
 import { createBoxGeometry, applyVertexModificationsToGeometry } from './utils/geometry';
 import { VertexEditor } from './ui/VertexEditor';
+import { FaceSelector } from './ui/FaceSelector';
+import { PolylineDrawer } from './ui/PolylineDrawer';
 import * as THREE from 'three';
 
 const ShapeWithTransform: React.FC<{
@@ -212,10 +214,16 @@ const Scene: React.FC = () => {
     setSelectedVertexIndex,
     vertexDirection,
     setVertexDirection,
-    addVertexModification
+    addVertexModification,
+    activeTool,
+    setActiveTool,
+    selectedFace,
+    setSelectedFace,
+    clearPolylinePoints
   } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
+  const [faceInfo, setFaceInfo] = useState<{ normal: THREE.Vector3; center: THREE.Vector3 } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -225,12 +233,16 @@ const Scene: React.FC = () => {
         selectShape(null);
         exitIsolation();
         setVertexEditMode(false);
+        setSelectedFace(null);
+        setFaceInfo(null);
+        clearPolylinePoints();
+        setActiveTool(Tool.SELECT);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode]);
+  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode, setSelectedFace, clearPolylinePoints, setActiveTool]);
 
   useEffect(() => {
     (window as any).handleVertexOffset = (newValue: number) => {
@@ -312,6 +324,13 @@ const Scene: React.FC = () => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return '';
     return canvas.toDataURL('image/png');
+  };
+
+  const handleFaceSelect = (shapeId: string, faceIndex: number, faceNormal: THREE.Vector3, faceCenter: THREE.Vector3) => {
+    setSelectedFace({ shapeId, faceIndex });
+    setFaceInfo({ normal: faceNormal, center: faceCenter });
+    setActiveTool(Tool.POLYLINE);
+    console.log('✅ Face selected:', { shapeId, faceIndex, normal: faceNormal.toArray(), center: faceCenter.toArray() });
   };
 
   const handleSave = async (data: { code: string; description: string; tags: string[]; previewImage?: string }) => {
@@ -445,6 +464,21 @@ const Scene: React.FC = () => {
                 onOffsetConfirm={(vertexIndex, direction, offset) => {
                   console.log('Offset confirmed:', { vertexIndex, direction, offset });
                 }}
+              />
+            )}
+            {isSelected && activeTool === Tool.FACE_SELECT && !selectedFace && (
+              <FaceSelector
+                shape={shape}
+                onFaceSelect={(faceIndex, faceNormal, faceCenter) =>
+                  handleFaceSelect(shape.id, faceIndex, faceNormal, faceCenter)
+                }
+              />
+            )}
+            {selectedFace && selectedFace.shapeId === shape.id && activeTool === Tool.POLYLINE && faceInfo && (
+              <PolylineDrawer
+                faceNormal={faceInfo.normal}
+                faceCenter={faceInfo.center}
+                shapePosition={shape.position}
               />
             )}
           </React.Fragment>

@@ -34,7 +34,8 @@ export enum Tool {
   CIRCLE = 'Circle',
   BOOLEAN_UNION = 'Boolean Union',
   BOOLEAN_SUBTRACT = 'Boolean Subtract',
-  DIMENSION = 'Dimension'
+  DIMENSION = 'Dimension',
+  FACE_SELECT = 'Face Select'
 }
 
 export enum ViewMode {
@@ -113,6 +114,14 @@ interface AppState {
   vertexDirection: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-' | null;
   setVertexDirection: (direction: 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-') => void;
   addVertexModification: (shapeId: string, modification: VertexModification) => void;
+
+  polylineMode: boolean;
+  setPolylineMode: (enabled: boolean) => void;
+  selectedFace: { shapeId: string; faceIndex: number } | null;
+  setSelectedFace: (face: { shapeId: string; faceIndex: number } | null) => void;
+  polylinePoints: Array<[number, number, number]>;
+  addPolylinePoint: (point: [number, number, number]) => void;
+  clearPolylinePoints: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -289,5 +298,13 @@ export const useAppStore = create<AppState>((set, get) => ({
           vertexModifications: newMods
         };
       })
-    }))
+    })),
+
+  polylineMode: false,
+  setPolylineMode: (enabled) => set({ polylineMode: enabled }),
+  selectedFace: null,
+  setSelectedFace: (face) => set({ selectedFace: face }),
+  polylinePoints: [],
+  addPolylinePoint: (point) => set((state) => ({ polylinePoints: [...state.polylinePoints, point] })),
+  clearPolylinePoints: () => set({ polylinePoints: [] })
 }));
