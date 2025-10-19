@@ -82,16 +82,17 @@ function App() {
 
   const handleLoadFromCatalog = (item: CatalogItem) => {
     const geometryData = item.geometry_data;
+    const params = geometryData.parameters || {};
 
     console.log('📥 Loading geometry from catalog:', {
       code: item.code,
       type: geometryData.type,
-      parameters: geometryData.parameters,
+      parameters: params,
       position: geometryData.position,
       scale: geometryData.scale
     });
 
-    const geometry = createGeometryFromType(geometryData.type, geometryData.parameters);
+    const geometry = createGeometryFromType(geometryData.type, params);
 
     const newPosition: [number, number, number] = [
       geometryData.position?.[0] ?? 0,
@@ -119,7 +120,7 @@ function App() {
     });
 
     setCatalogOpen(false);
-    console.log('Loaded geometry from catalog:', item.code);
+    console.log('✅ Loaded geometry from catalog:', item.code);
   };
 
   const handleDeleteFromCatalog = async (id: string) => {
