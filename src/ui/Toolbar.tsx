@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Tool, useAppStore, ModificationType, CameraType, SnapType, ViewMode, OrthoMode } from '../store';
 import { MousePointer2, Move, RotateCcw, Maximize, FileDown, Upload, Save, FilePlus, Undo2, Redo2, Grid, Layers, Box, Cylinder, Settings, HelpCircle, Search, Copy, Scissors, ClipboardPaste, Square, Circle, FlipHorizontal, Copy as Copy1, Minus, Eraser, Plus, Eye, Monitor, Package, Edit, BarChart3, Cog, FileText, PanelLeft, GitBranch, Edit3, Camera, CameraOff, Target, Navigation, Crosshair, RotateCw, Zap, InspectionPanel as Intersection, MapPin, Frame as Wireframe, Cuboid as Cube, Ruler, FolderOpen } from 'lucide-react';
 import * as THREE from 'three';
+import { ParametersPanel } from './ParametersPanel';
 
 interface ToolbarProps {
   onOpenCatalog: () => void;
@@ -31,6 +32,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
   const [showPolylineMenu, setShowPolylineMenu] = useState(false);
   const [showSnapMenu, setShowSnapMenu] = useState(false);
   const [polylineMenuPosition, setPolylineMenuPosition] = useState({ x: 0, y: 0 });
+  const [showParametersPanel, setShowParametersPanel] = useState(false);
 
   const shouldDisableSnap = ['Select', 'Move', 'Rotate', 'Scale'].includes(activeTool);
 
@@ -642,6 +644,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
             <Package size={11} />
           </button>
           <button
+            onClick={() => setShowParametersPanel(!showParametersPanel)}
             className="p-1.5 rounded transition-all hover:bg-stone-50 text-stone-600 hover:text-slate-800"
             title="Parameters"
           >
@@ -683,6 +686,11 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenCatalog }) => {
           </button>
         </div>
       )}
+
+      <ParametersPanel
+        isOpen={showParametersPanel}
+        onClose={() => setShowParametersPanel(false)}
+      />
     </div>
   );
 };
