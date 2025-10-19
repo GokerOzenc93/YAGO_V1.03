@@ -131,28 +131,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     const target = state.shapes.find((s) => s.id === targetId);
     const subtract = state.shapes.find((s) => s.id === subtractId);
+    const oc = state.opencascadeInstance;
 
-    if (!target || !subtract) {
-      console.error('Cannot perform subtraction: missing shapes');
+    if (!target || !subtract || !oc || !target.ocShape || !subtract.ocShape) {
+      console.error('Cannot perform subtraction: missing shapes or OpenCascade');
       return;
     }
 
     try {
-      const { subtract: csgSubtract } = await import('./utils/csg');
+      const { performOCBoolean, convertOCShapeToThreeGeometry } = await import('./opencascade');
 
-      const targetMesh = new THREE.Mesh(target.geometry.clone());
-      targetMesh.position.set(...target.position);
-      targetMesh.rotation.set(...target.rotation);
-      targetMesh.scale.set(...target.scale);
-      targetMesh.updateMatrixWorld();
-
-      const subtractMesh = new THREE.Mesh(subtract.geometry.clone());
-      subtractMesh.position.set(...subtract.position);
-      subtractMesh.rotation.set(...subtract.rotation);
-      subtractMesh.scale.set(...subtract.scale);
-      subtractMesh.updateMatrixWorld();
-
-      const resultGeometry = csgSubtract(targetMesh, subtractMesh);
+      const resultShape = performOCBoolean(oc, target.ocShape, subtract.ocShape, 'subtract');
+      const resultGeometry = convertOCShapeToThreeGeometry(oc, resultShape);
 
       set((state) => ({
         shapes: state.shapes
@@ -162,9 +152,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               ? {
                   ...s,
                   geometry: resultGeometry,
-                  position: [0, 0, 0] as [number, number, number],
-                  rotation: [0, 0, 0] as [number, number, number],
-                  scale: [1, 1, 1] as [number, number, number],
+                  ocShape: resultShape,
                   parameters: { ...s.parameters, modified: true }
                 }
               : s
@@ -172,9 +160,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedShapeId: targetId
       }));
 
-      console.log('✅ CSG subtraction completed');
+      console.log('✅ Boolean subtraction completed');
     } catch (error) {
-      console.error('❌ CSG subtraction failed:', error);
+      console.error('❌ Boolean subtraction failed:', error);
     }
   },
 

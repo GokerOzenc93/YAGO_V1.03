@@ -14,15 +14,11 @@ const ShapeWithTransform: React.FC<{
   isSelected: boolean;
   orbitControlsRef: any;
   onContextMenu: (e: any, shapeId: string) => void;
-  onShapeClick?: (shapeId: string) => void;
-  isCSGHighlight?: boolean;
 }> = ({
   shape,
   isSelected,
   orbitControlsRef,
-  onContextMenu,
-  onShapeClick,
-  isCSGHighlight = false
+  onContextMenu
 }) => {
   const { selectShape, updateShape, activeTool, viewMode } = useAppStore();
   const transformRef = useRef<any>(null);
@@ -137,11 +133,7 @@ const ShapeWithTransform: React.FC<{
         ref={groupRef}
         onClick={(e) => {
           e.stopPropagation();
-          if (onShapeClick) {
-            onShapeClick(shape.id);
-          } else {
-            selectShape(shape.id);
-          }
+          selectShape(shape.id);
         }}
         onContextMenu={(e) => {
           e.stopPropagation();
@@ -156,11 +148,9 @@ const ShapeWithTransform: React.FC<{
             receiveShadow
           >
             <meshStandardMaterial
-              color={isCSGHighlight ? '#f97316' : isSelected ? '#60a5fa' : shape.color || '#2563eb'}
+              color={isSelected ? '#60a5fa' : shape.color || '#2563eb'}
               metalness={0.3}
               roughness={0.4}
-              emissive={isCSGHighlight ? '#f97316' : undefined}
-              emissiveIntensity={isCSGHighlight ? 0.2 : 0}
             />
             <lineSegments>
               <edgesGeometry args={[localGeometry]} />
@@ -222,14 +212,10 @@ const Scene: React.FC = () => {
     setSelectedVertexIndex,
     vertexDirection,
     setVertexDirection,
-    addVertexModification,
-    activeTool,
-    setActiveTool,
-    subtractShape
+    addVertexModification
   } = useAppStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string; shapeType: string } | null>(null);
   const [saveDialog, setSaveDialog] = useState<{ isOpen: boolean; shapeId: string | null }>({ isOpen: false, shapeId: null });
-  const [firstShapeForCSG, setFirstShapeForCSG] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -239,16 +225,12 @@ const Scene: React.FC = () => {
         selectShape(null);
         exitIsolation();
         setVertexEditMode(false);
-        setFirstShapeForCSG(null);
-        if (activeTool === Tool.BOOLEAN_SUBTRACT) {
-          setActiveTool(Tool.SELECT);
-        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode, activeTool, setActiveTool]);
+  }, [selectedShapeId, deleteShape, selectShape, exitIsolation, setVertexEditMode]);
 
   useEffect(() => {
     (window as any).handleVertexOffset = (newValue: number) => {
@@ -311,27 +293,8 @@ const Scene: React.FC = () => {
     };
   }, [selectedShapeId, selectedVertexIndex, vertexDirection, shapes, addVertexModification, setSelectedVertexIndex]);
 
-  const handleShapeClick = (shapeId: string) => {
-    if (activeTool === Tool.BOOLEAN_SUBTRACT) {
-      if (!firstShapeForCSG) {
-        setFirstShapeForCSG(shapeId);
-        selectShape(shapeId);
-        console.log('🎯 First shape selected (base):', shapeId);
-      } else if (firstShapeForCSG !== shapeId) {
-        console.log('🔧 Performing CSG subtraction:', { base: firstShapeForCSG, subtract: shapeId });
-        subtractShape(firstShapeForCSG, shapeId);
-        setFirstShapeForCSG(null);
-        setActiveTool(Tool.SELECT);
-      } else {
-        console.log('⚠️ Cannot subtract shape from itself');
-      }
-    } else {
-      selectShape(shapeId);
-    }
-  };
-
   const handleContextMenu = (e: any, shapeId: string) => {
-    if (vertexEditMode || activeTool === Tool.BOOLEAN_SUBTRACT) {
+    if (vertexEditMode) {
       return;
     }
     e.nativeEvent.preventDefault();
@@ -465,7 +428,6 @@ const Scene: React.FC = () => {
 
       {shapes.map((shape) => {
         const isSelected = selectedShapeId === shape.id;
-        const isCSGHighlight = activeTool === Tool.BOOLEAN_SUBTRACT && firstShapeForCSG === shape.id;
         return (
           <React.Fragment key={shape.id}>
             <ShapeWithTransform
@@ -473,8 +435,6 @@ const Scene: React.FC = () => {
               isSelected={isSelected}
               orbitControlsRef={controlsRef}
               onContextMenu={handleContextMenu}
-              onShapeClick={handleShapeClick}
-              isCSGHighlight={isCSGHighlight}
             />
             {isSelected && vertexEditMode && (
               <VertexEditor
@@ -552,19 +512,6 @@ const Scene: React.FC = () => {
       shapeId={saveDialog.shapeId || ''}
       captureSnapshot={captureSnapshot}
     />
-
-    {activeTool === Tool.BOOLEAN_SUBTRACT && (
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-orange-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 pointer-events-none">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">
-            {!firstShapeForCSG
-              ? '1️⃣ Click on the base object (the object to keep)'
-              : '2️⃣ Click on the object to subtract (will be removed)'}
-          </span>
-          <span className="text-xs opacity-75">Press ESC to cancel</span>
-        </div>
-      </div>
-    )}
     </>
   );
 };
