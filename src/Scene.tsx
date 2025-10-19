@@ -331,7 +331,8 @@ const Scene: React.FC = () => {
         type: shape.type,
         parameters: shape.parameters,
         position: shape.position,
-        scale: shape.scale
+        scale: shape.scale,
+        vertexModifications: shape.vertexModifications?.length || 0
       });
 
       await catalogService.save({

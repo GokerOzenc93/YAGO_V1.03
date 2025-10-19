@@ -89,7 +89,8 @@ function App() {
       type: geometryData.type,
       parameters: params,
       position: geometryData.position,
-      scale: geometryData.scale
+      scale: geometryData.scale,
+      vertexModifications: geometryData.vertexModifications?.length || 0
     });
 
     const geometry = createGeometryFromType(geometryData.type, params);
@@ -116,7 +117,8 @@ function App() {
         geometryData.scale?.[2] ?? 1
       ],
       color: geometryData.color || '#2563eb',
-      parameters: params
+      parameters: params,
+      vertexModifications: geometryData.vertexModifications || []
     });
 
     setCatalogOpen(false);
