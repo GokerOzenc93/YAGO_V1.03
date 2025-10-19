@@ -338,7 +338,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                       className="p-1 hover:bg-red-100 rounded transition-colors"
                       title="Delete Parameter"
                     >
-                      <X size={14} className="text-red-600" />
+                      <X size={14} className="text-red-400" />
                     </button>
                   </div>
                 ))}
