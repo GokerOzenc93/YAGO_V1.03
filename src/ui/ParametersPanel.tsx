@@ -95,9 +95,10 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
   };
 
   const addCustomParameter = () => {
+    const nextNumber = customParameters.length + 1;
     const newParam: CustomParameter = {
       id: `param-${Date.now()}`,
-      name: 'P',
+      name: `P${nextNumber}`,
       expression: '0',
       result: 0,
       description: '',
@@ -187,7 +188,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        width: '520px',
+        width: '360px',
       }}
     >
       <div
@@ -242,7 +243,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="Width"
                   readOnly
-                  className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-20 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
               </div>
 
@@ -269,7 +270,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="Height"
                   readOnly
-                  className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-20 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
               </div>
 
@@ -296,7 +297,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                   type="text"
                   value="Depth"
                   readOnly
-                  className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
+                  className="w-20 px-2 py-1 text-xs border border-stone-300 rounded bg-stone-50 text-stone-600"
                 />
               </div>
             </div>
@@ -329,7 +330,7 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
                       type="text"
                       value={param.description}
                       onChange={(e) => updateCustomParameter(param.id, 'description', e.target.value)}
-                      className="w-[180px] px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                      className="w-20 px-2 py-1 text-xs border border-stone-300 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       placeholder="Description"
                     />
                     <button
@@ -347,9 +348,9 @@ export function ParametersPanel({ isOpen, onClose }: ParametersPanelProps) {
             <div className="pt-3 border-t border-stone-200 mt-3">
               <button
                 onClick={applyChanges}
-                className="w-full px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors flex items-center justify-center gap-1.5"
               >
-                <Check size={16} />
+                <Check size={14} />
                 Apply Changes
               </button>
             </div>
